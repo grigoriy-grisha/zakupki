@@ -1,0 +1,177 @@
+generator client {
+    provider = "prisma-client"
+    output   = "../generated/client"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+// ── Enums ──
+
+enum PurchaseStatus {
+    DRAFT
+    ACTIVE
+    SUPPLEMENT
+    CLOSED
+    ARRIVED
+    DONE
+}
+
+enum PaymentStatus {
+    PENDING
+    CONFIRMED
+    REJECTED
+}
+
+enum PromoType {
+    PERCENT
+    FIXED
+}
+
+// ── Models ──
+
+model Unit {
+    id           Int       @id @default(autoincrement())
+    name         String
+    shortName    String
+    multiplicity Decimal   @db.Decimal(10, 3) @default(1)
+    products     Product[]
+    createdAt    DateTime  @default(now())
+}
+
+model User {
+    id         Int          @id @default(autoincrement())
+    telegramId String       @unique
+    username   String?
+    firstName  String
+    lastName   String?
+    phone      String?
+    createdAt  DateTime     @default(now())
+    orderLines OrderLine[]
+    payments   Payment[]
+
+    @@index([createdAt])
+}
+
+model Product {
+    id            Int            @id @default(autoincrement())
+    name          String
+    description   String?
+    unitId        Int
+    pricePerUnit  Decimal        @db.Decimal(10, 2)
+    brand         String?
+    sku           String?        @unique
+    createdAt     DateTime       @default(now())
+    photos        ProductPhoto[]
+    purchaseItems PurchaseItem[]
+    unit          Unit           @relation(fields: [unitId], references: [id])
+
+    @@index([createdAt])
+    @@index([unitId])
+}
+
+model ProductPhoto {
+    id        Int     @id @default(autoincrement())
+    productId Int
+    data      Bytes
+    mimeType  String  @default("image/jpeg")
+    sortOrder Int     @default(0)
+    product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+    @@index([productId])
+}
+
+model Purchase {
+    id        Int            @id @default(autoincrement())
+    tag       String         @unique
+    title     String
+    status    PurchaseStatus @default(DRAFT)
+    minAmount Decimal        @db.Decimal(10, 2)
+    deadline  DateTime
+    createdAt DateTime       @default(now())
+    items     PurchaseItem[]
+    payments  Payment[]
+    promoCodes PromoCode[]
+
+    @@index([status])
+    @@index([createdAt])
+}
+
+model PurchaseItem {
+    id            Int           @id @default(autoincrement())
+    purchaseId    Int
+    productId     Int
+    priceOverride Decimal?      @db.Decimal(10, 2)
+    minQty        Decimal?      @db.Decimal(10, 3)
+    availableQty  Decimal?      @db.Decimal(10, 3)
+    tgMessageId   String?
+    tgChannelId   String?
+    isActive      Boolean       @default(true)
+    purchase      Purchase      @relation(fields: [purchaseId], references: [id])
+    product       Product       @relation(fields: [productId], references: [id])
+    orderLines    OrderLine[]
+
+    @@unique([purchaseId, productId])
+    @@index([purchaseId])
+    @@index([productId])
+}
+
+model OrderLine {
+    id             Int          @id @default(autoincrement())
+    purchaseItemId Int
+    userId         Int
+    quantity       Decimal      @db.Decimal(10, 3)
+    amountDue      Decimal      @db.Decimal(10, 2)
+    createdAt      DateTime     @default(now())
+    updatedAt      DateTime     @updatedAt
+    purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+    user           User         @relation(fields: [userId], references: [id])
+
+    @@unique([purchaseItemId, userId])
+    @@index([userId])
+    @@index([purchaseItemId])
+}
+
+model Payment {
+    id             Int           @id @default(autoincrement())
+    userId         Int
+    purchaseId     Int
+    amount         Decimal       @db.Decimal(10, 2)
+    status         PaymentStatus @default(PENDING)
+    userComment    String?
+    proofData      Bytes?
+    proofMimeType  String?
+    adminNote      String?
+    paidAt         DateTime      @default(now())
+    note           String?
+    promoCodeId    Int?
+    parentId       Int?
+    user           User          @relation(fields: [userId], references: [id])
+    purchase       Purchase      @relation(fields: [purchaseId], references: [id])
+    promoCode      PromoCode?    @relation(fields: [promoCodeId], references: [id])
+    parent         Payment?      @relation("PaymentChildren", fields: [parentId], references: [id])
+    children       Payment[]     @relation("PaymentChildren")
+
+    @@index([userId])
+    @@index([purchaseId])
+}
+
+model PromoCode {
+    id          Int       @id @default(autoincrement())
+    code        String    @unique
+    label       String?
+    type        PromoType
+    value       Decimal   @db.Decimal(10, 2)
+    purchaseId  Int?
+    maxUses     Int?
+    usedCount   Int       @default(0)
+    minAmount   Decimal?  @db.Decimal(10, 2)
+    expiresAt   DateTime?
+    isActive    Boolean   @default(true)
+    createdAt   DateTime  @default(now())
+    purchase    Purchase? @relation(fields: [purchaseId], references: [id])
+    usages      Payment[]
+
+    @@index([purchaseId])
+}

@@ -1,0 +1,32 @@
+{
+    "name": "@zakupki/database",
+    "version": "1.0.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/database.ts",
+            "source": "./src/database.ts",
+            "default": "./src/database.ts"
+        }
+    },
+    "scripts": {
+        "prisma:generate": "prisma generate --config ./prisma/prisma.config.ts",
+        "prisma:migrate": "prisma migrate dev --config ./prisma/prisma.config.ts",
+        "prisma:deploy": "prisma migrate deploy --config ./prisma/prisma.config.ts",
+        "prisma:studio": "prisma studio --config ./prisma/prisma.config.ts",
+        "prisma:reset": "prisma migrate reset --force --config ./prisma/prisma.config.ts",
+        "prisma:db:seed": "tsx prisma/seed.ts",
+        "typecheck": "tsc --noEmit"
+    },
+    "license": "ISC",
+    "dependencies": {
+        "@prisma/adapter-pg": "^7.8.0",
+        "@prisma/client": "7.8.0",
+        "dotenv": "^17.4.2",
+        "prisma": "7.8.0",
+        "typescript": "^6.0.3"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.2"
+    }
+}

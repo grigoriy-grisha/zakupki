@@ -1,0 +1,48 @@
+{
+    "name": "zakupki",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev:web": "pnpm --filter @zakupki/frontend dev",
+        "dev:bot": "pnpm --filter @zakupki/bot dev",
+        "build": "pnpm run -r build",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "typecheck": "pnpm run -r typecheck",
+        "db:generate": "pnpm --filter @zakupki/database prisma:generate",
+        "db:migrate": "pnpm --filter @zakupki/database prisma:migrate",
+        "db:deploy": "pnpm --filter @zakupki/database prisma:deploy",
+        "db:studio": "pnpm --filter @zakupki/database prisma:studio",
+        "db:seed": "pnpm --filter @zakupki/database prisma:db:seed",
+        "db:reset": "pnpm --filter @zakupki/database prisma:reset"
+    },
+    "dependencies": {
+        "tsx": "^4.21.0",
+        "typescript": "^6.0.3"
+    },
+    "devDependencies": {
+        "eslint": "^9.39.4",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-simple-import-sort": "^13.0.0",
+        "eslint-plugin-unused-imports": "^4.4.1",
+        "globals": "^17.6.0",
+        "prettier": "^3.8.3",
+        "typescript-eslint": "^8.59.2"
+    },
+    "packageManager": "pnpm@10.28.1",
+    "engines": {
+        "node": "22.15.0",
+        "pnpm": "10.28.1"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "@prisma/client",
+            "@prisma/engines",
+            "esbuild",
+            "prisma"
+        ]
+    }
+}

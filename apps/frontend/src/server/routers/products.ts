@@ -1,0 +1,72 @@
+import { z } from 'zod';
+
+import { ProductRepository } from '../domain/product.repository';
+import { ProductService } from '../services/product.service';
+import type { PrismaClient } from '@zakupki/database';
+import { adminProcedure, publicProcedure, router } from '../trpc';
+
+function services(db: PrismaClient) {
+    return { product: new ProductService(new ProductRepository(db)) };
+}
+
+export const productsRouter = router({
+    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+        const { product } = services(ctx.db);
+        return product.list(input?.search);
+    }),
+
+    getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+        const { product } = services(ctx.db);
+        return product.getById(input.id);
+    }),
+
+    create: adminProcedure
+        .input(
+            z.object({
+                name: z.string().min(1),
+                description: z.string().optional(),
+                unitId: z.number(),
+                pricePerUnit: z.number().positive(),
+                brand: z.string().optional(),
+                sku: z.string().optional(),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            const { product } = services(ctx.db);
+            return product.create(input);
+        }),
+
+    update: adminProcedure
+        .input(
+            z.object({
+                id: z.number(),
+                name: z.string().optional(),
+                description: z.string().optional(),
+                unitId: z.number().optional(),
+                pricePerUnit: z.number().positive().optional(),
+                brand: z.string().optional(),
+                sku: z.string().optional(),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            const { id, ...data } = input;
+            const { product } = services(ctx.db);
+            return product.update(id, data);
+        }),
+
+    delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        const { product } = services(ctx.db);
+        return product.delete(input.id);
+    }),
+
+    uploadPhoto: adminProcedure
+        .input(z.object({ productId: z.number(), sortOrder: z.number().default(0) }))
+        .mutation(async () => {
+            return { ok: true };
+        }),
+
+    deletePhoto: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        const { product } = services(ctx.db);
+        return product.deletePhoto(input.id);
+    }),
+});
