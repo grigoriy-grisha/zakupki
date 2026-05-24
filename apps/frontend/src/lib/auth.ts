@@ -1,3 +1,4 @@
+import { AuthDataValidator } from '@telegram-auth/server';
 import { dbClient, ensureClientRole, getUserRoleKind, RoleKind } from '@zakupki/database';
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
@@ -31,6 +32,28 @@ async function verifyVk(rawData: string) {
     };
 }
 
+async function verifyTelegram(rawData: string) {
+    const botToken = process.env.BOT_TOKEN;
+    if (!botToken) throw new Error('BOT_TOKEN is not set');
+
+    const validator = new AuthDataValidator({ botToken });
+    const parsed = JSON.parse(rawData) as Record<string, string | number>;
+    const dataMap = new Map(Object.entries(parsed)) as Map<string, string | number>;
+    const tgUser = await validator.validate(dataMap).catch(() => null);
+    if (!tgUser) return null;
+
+    const firstName = typeof tgUser.first_name === 'string' ? tgUser.first_name : '';
+    const lastName = typeof tgUser.last_name === 'string' ? tgUser.last_name : '';
+    const username = typeof parsed.username === 'string' ? parsed.username : null;
+
+    return {
+        providerAccountId: String(tgUser.id),
+        name: [firstName, lastName].filter(Boolean).join(' ') || username || 'User',
+        avatar: typeof tgUser.photo_url === 'string' ? tgUser.photo_url : null,
+        username,
+    };
+}
+
 export const authOptions: NextAuthOptions = {
     session: { strategy: 'jwt' },
     pages: { signIn: ROUTES.login.path },
@@ -38,39 +61,49 @@ export const authOptions: NextAuthOptions = {
         CredentialsProvider({
             id: 'vk',
             name: 'VK',
-            credentials: {
-                data: { type: 'text' },
-            },
+            credentials: { data: { type: 'text' } },
             async authorize(credentials) {
                 if (!credentials?.data) return null;
-
                 const verified = await verifyVk(credentials.data);
                 if (!verified) return null;
 
                 const [firstName, ...rest] = verified.name.split(' ');
                 const lastName = rest.join(' ') || undefined;
-                const vkId = verified.providerAccountId;
-
                 const user = await dbClient.user.upsert({
-                    where: { vkId },
+                    where: { vkId: verified.providerAccountId },
                     update: { firstName, lastName, avatarUrl: verified.avatar },
+                    create: { vkId: verified.providerAccountId, firstName, lastName, avatarUrl: verified.avatar },
+                });
+                await ensureClientRole(user.id);
+                const role = await getUserRoleKind(user.id);
+                return { id: String(user.id), name: verified.name, image: verified.avatar, role };
+            },
+        }),
+        CredentialsProvider({
+            id: 'telegram',
+            name: 'Telegram',
+            credentials: { data: { type: 'text' } },
+            async authorize(credentials) {
+                if (!credentials?.data) return null;
+                const verified = await verifyTelegram(credentials.data);
+                if (!verified) return null;
+
+                const [firstName, ...rest] = verified.name.split(' ');
+                const lastName = rest.join(' ') || undefined;
+                const user = await dbClient.user.upsert({
+                    where: { telegramId: verified.providerAccountId },
+                    update: { firstName, lastName, avatarUrl: verified.avatar, username: verified.username ?? undefined },
                     create: {
-                        vkId,
+                        telegramId: verified.providerAccountId,
                         firstName,
                         lastName,
                         avatarUrl: verified.avatar,
+                        username: verified.username ?? undefined,
                     },
                 });
-
                 await ensureClientRole(user.id);
                 const role = await getUserRoleKind(user.id);
-
-                return {
-                    id: String(user.id),
-                    name: verified.name,
-                    image: verified.avatar,
-                    role,
-                };
+                return { id: String(user.id), name: verified.name, image: verified.avatar, role };
             },
         }),
     ],
@@ -79,8 +112,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 token.avatar = user.image;
-                token.role =
-                    'role' in user && user.role === RoleKind.ADMIN ? RoleKind.ADMIN : RoleKind.CLIENT;
+                token.role = 'role' in user && user.role === RoleKind.ADMIN ? RoleKind.ADMIN : RoleKind.CLIENT;
             } else if (token.id && !token.role) {
                 token.role = await getUserRoleKind(Number(token.id));
             }
@@ -90,8 +122,7 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 session.user.id = token.id as string;
                 session.user.image = token.avatar as string | null;
-                session.user.role =
-                    token.role === RoleKind.ADMIN ? RoleKind.ADMIN : RoleKind.CLIENT;
+                session.user.role = token.role === RoleKind.ADMIN ? RoleKind.ADMIN : RoleKind.CLIENT;
             }
             return session;
         },
@@ -108,10 +139,7 @@ declare module 'next-auth' {
             role: RoleKind;
         };
     }
-
-    interface User {
-        role?: RoleKind;
-    }
+    interface User { role?: RoleKind; }
 }
 
 declare module 'next-auth/jwt' {
