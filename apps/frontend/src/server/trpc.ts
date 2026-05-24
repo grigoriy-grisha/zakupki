@@ -1,8 +1,23 @@
-import { dbClient } from '@zakupki/database';
+import { dbClient, getUserRoleKind, RoleKind } from '@zakupki/database';
 import { initTRPC, TRPCError } from '@trpc/server';
+import type { Session } from 'next-auth';
+import { getServerSession } from 'next-auth';
+
+import { authOptions } from '@/lib/auth';
 
 export const createTRPCContext = async () => {
-    return { db: dbClient };
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id ? Number(session.user.id) : null;
+    const role =
+        session?.user?.role ??
+        (userId != null && !Number.isNaN(userId) ? await getUserRoleKind(userId) : null);
+
+    return {
+        db: dbClient,
+        session,
+        userId: userId != null && !Number.isNaN(userId) ? userId : null,
+        role,
+    };
 };
 
 const t = initTRPC.context<Awaited<ReturnType<typeof createTRPCContext>>>().create();
@@ -10,12 +25,26 @@ const t = initTRPC.context<Awaited<ReturnType<typeof createTRPCContext>>>().crea
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
-export const adminProcedure = t.procedure.use(async ({ next }) => {
-    // TODO: implement admin auth check (X-Telegram-Id in ADMIN_TELEGRAM_IDS)
-    return next();
+const requireAuth = t.middleware(async ({ ctx, next }) => {
+    if (ctx.userId == null) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Необходима авторизация' });
+    }
+
+    return next({
+        ctx: {
+            ...ctx,
+            session: ctx.session as Session,
+            userId: ctx.userId,
+            role: ctx.role ?? RoleKind.CLIENT,
+        },
+    });
 });
 
-export const telegramProcedure = t.procedure.use(async ({ next }) => {
-    // TODO: implement Telegram WebApp initData validation
-    return next();
+export const protectedProcedure = t.procedure.use(requireAuth);
+
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+    if (ctx.role !== RoleKind.ADMIN) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Недостаточно прав администратора' });
+    }
+    return next({ ctx });
 });

@@ -10,10 +10,11 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
+        "@grammyjs/auto-retry": "^2.0.2",
+        "@grammyjs/conversations": "^2.1.0",
         "@zakupki/database": "workspace:*",
         "grammy": "^1.36.1",
-        "@grammyjs/conversations": "^2.1.0",
-        "@grammyjs/auto-retry": "^2.0.2"
+        "undici": "^8.3.0"
     },
     "devDependencies": {
         "@types/node": "^25.6.2",

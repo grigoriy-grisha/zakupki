@@ -16,6 +16,7 @@
         "db:migrate": "pnpm --filter @zakupki/database prisma:migrate",
         "db:deploy": "pnpm --filter @zakupki/database prisma:deploy",
         "db:studio": "pnpm --filter @zakupki/database prisma:studio",
+        "db:grant-admin": "pnpm --filter @zakupki/database exec tsx scripts/grant-admin.mts",
         "db:seed": "pnpm --filter @zakupki/database prisma:db:seed",
         "db:reset": "pnpm --filter @zakupki/database prisma:reset"
     },

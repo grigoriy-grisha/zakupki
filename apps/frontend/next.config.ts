@@ -10,8 +10,7 @@ const nextConfig: NextConfig = {
     outputFileTracingIncludes: {
         './**': ['../../shared/database/generated/**/*'],
     },
-    allowedDevOrigins: ['prudishly-jocular-dachshund.cloudpub.ru']
-
+    allowedDevOrigins: ['fabulously-profuse-dobsonfly.cloudpub.ru']
 };
 
 export default nextConfig;
