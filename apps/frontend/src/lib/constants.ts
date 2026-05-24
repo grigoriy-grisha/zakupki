@@ -11,6 +11,7 @@ export const ROUTES = {
     users: { path: '/users', label: 'Участники' },
     settings: { path: '/settings', label: 'Настройки' },
     shop: { path: '/shop', label: 'Мои закупки' },
+    profile: { path: '/profile', label: 'Профиль' },
 } as const satisfies Record<string, AppRoute>;
 
 export const API_ROUTES = {
@@ -30,6 +31,7 @@ export const APP_PAGE_PATHS = [
     ROUTES.products.path,
     ROUTES.users.path,
     ROUTES.settings.path,
+    ROUTES.profile.path,
     ROUTES.shop.path,
     `${ROUTES.shop.path}/purchase/[id]`,
 ] as const;

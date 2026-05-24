@@ -29,6 +29,11 @@ enum PromoType {
     FIXED
 }
 
+enum RoleKind {
+    ADMIN
+    CLIENT
+}
+
 // ── Models ──
 
 model Unit {
@@ -42,14 +47,19 @@ model Unit {
 
 model User {
     id         Int          @id @default(autoincrement())
-    telegramId String       @unique
+    telegramId String?      @unique
+    vkId       String?      @unique
     username   String?
     firstName  String
     lastName   String?
+    avatarUrl       String?
+    vkAvatarUrl     String?
+    telegramAvatarUrl String?
     phone      String?
     createdAt  DateTime     @default(now())
     orderLines OrderLine[]
     payments   Payment[]
+    userRole   UserRole?
 
     @@index([createdAt])
 }
@@ -174,4 +184,19 @@ model PromoCode {
     usages      Payment[]
 
     @@index([purchaseId])
+}
+
+model Role {
+    id   Int      @id @default(autoincrement())
+    kind RoleKind @unique
+    users UserRole[]
+}
+
+model UserRole {
+    id        Int      @id @default(autoincrement())
+    userId    Int      @unique
+    roleId    Int
+    createdAt DateTime @default(now())
+    user      User     @relation(fields: [userId], references: [id])
+    role      Role     @relation(fields: [roleId], references: [id])
 }

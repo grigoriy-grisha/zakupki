@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth-provider';
 import { TrpcProvider } from '@/lib/client/trpc-provider';
 import { VkAuthProvider } from '@/lib/vk-auth-provider';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
     title: 'Закупки',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                         <TrpcProvider>{children}</TrpcProvider>
                     </VkAuthProvider>
                 </AuthProvider>
+                <Toaster />
             </body>
         </html>
     );

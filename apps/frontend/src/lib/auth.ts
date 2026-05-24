@@ -5,7 +5,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 
 import { ROUTES, VK_USER_INFO_URL } from '@/lib/constants';
 
-async function verifyVk(rawData: string) {
+export async function verifyVk(rawData: string) {
     const appId = process.env.NEXT_PUBLIC_VK_APP_ID;
     if (!appId) throw new Error('NEXT_PUBLIC_VK_APP_ID is not set');
 
@@ -32,7 +32,7 @@ async function verifyVk(rawData: string) {
     };
 }
 
-async function verifyTelegram(rawData: string) {
+export async function verifyTelegram(rawData: string) {
     const botToken = process.env.BOT_TOKEN;
     if (!botToken) throw new Error('BOT_TOKEN is not set');
 
@@ -71,8 +71,8 @@ export const authOptions: NextAuthOptions = {
                 const lastName = rest.join(' ') || undefined;
                 const user = await dbClient.user.upsert({
                     where: { vkId: verified.providerAccountId },
-                    update: { firstName, lastName, avatarUrl: verified.avatar },
-                    create: { vkId: verified.providerAccountId, firstName, lastName, avatarUrl: verified.avatar },
+                    update: { firstName, lastName, avatarUrl: verified.avatar, vkAvatarUrl: verified.avatar },
+                    create: { vkId: verified.providerAccountId, firstName, lastName, avatarUrl: verified.avatar, vkAvatarUrl: verified.avatar },
                 });
                 await ensureClientRole(user.id);
                 const role = await getUserRoleKind(user.id);
@@ -92,12 +92,13 @@ export const authOptions: NextAuthOptions = {
                 const lastName = rest.join(' ') || undefined;
                 const user = await dbClient.user.upsert({
                     where: { telegramId: verified.providerAccountId },
-                    update: { firstName, lastName, avatarUrl: verified.avatar, username: verified.username ?? undefined },
+                    update: { firstName, lastName, avatarUrl: verified.avatar, telegramAvatarUrl: verified.avatar, username: verified.username ?? undefined },
                     create: {
                         telegramId: verified.providerAccountId,
                         firstName,
                         lastName,
                         avatarUrl: verified.avatar,
+                        telegramAvatarUrl: verified.avatar,
                         username: verified.username ?? undefined,
                     },
                 });
