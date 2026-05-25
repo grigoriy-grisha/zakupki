@@ -3,20 +3,10 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { STATUS_LABELS, STATUS_VARIANT } from '../lib/constants';
+import { STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
+import type { AdminPurchaseListCardProps } from '../../lib/types';
 
-interface PurchaseCardProps {
-    purchase: {
-        id: number;
-        tag: string;
-        title: string;
-        status: string;
-        deadline: string;
-        items: { orderLines: { amountDue: unknown }[] }[];
-    };
-}
-
-export function PurchaseCard({ purchase }: PurchaseCardProps) {
+export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
     const deadline = new Date(purchase.deadline);
     const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     const totalOrders = purchase.items.reduce((sum, item) => sum + item.orderLines.length, 0);

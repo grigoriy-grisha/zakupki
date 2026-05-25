@@ -9,10 +9,7 @@ import { paymentTotal } from '../../lib/utils';
 import { ParticipantRow } from './participant-row';
 import { PaymentDetailDialog } from './payment-detail-dialog';
 import { AddPaymentDialog } from './add-payment-dialog';
-
-interface ParticipantsTabProps {
-    purchaseId: number;
-}
+import type { ParticipantsTabProps } from '../../../lib/types';
 
 export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
     const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);

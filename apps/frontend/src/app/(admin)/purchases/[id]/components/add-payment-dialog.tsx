@@ -7,10 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAddManualPayment } from '../hooks';
-
-interface AddPaymentDialogProps {
-    purchaseId: number;
-}
+import type { AddPaymentDialogProps } from '../../../lib/types';
 
 export function AddPaymentDialog({ purchaseId }: AddPaymentDialogProps) {
     const [open, setOpen] = useState(false);

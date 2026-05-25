@@ -1,3 +1,4 @@
-export { STATUS_LABELS, STATUS_VARIANT, PAYMENT_STATUS } from './constants';
+export { PAYMENT_STATUS, STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
 export { paymentTotal } from './utils';
-export { newPurchaseSchema, addPaymentSchema, type NewPurchaseValues, type AddPaymentValues } from './schema';
+export { newPurchaseSchema, addPaymentSchema } from './schema';
+export type { AddPaymentValues, NewPurchaseValues } from '../../lib/types';

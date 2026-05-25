@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { newPurchaseSchema, type NewPurchaseValues } from '../../lib/schema';
+import { newPurchaseSchema, type NewPurchaseValues } from '../../lib';
 
 export function PurchaseForm() {
     const router = useRouter();

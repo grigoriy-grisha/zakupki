@@ -6,14 +6,8 @@ import { CircleCheck, Clock, CircleX, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
-import type { usePurchasePaymentDetail } from '../../../hooks';
 
-type PaymentDetail = ReturnType<typeof usePurchasePaymentDetail>;
-
-interface OrdersSummaryCardProps {
-    paymentDetail: PaymentDetail;
-    paymentDialog: React.ReactNode;
-}
+import type { OrdersSummaryCardProps } from '../../../../lib/types';
 
 export function OrdersSummaryCard({ paymentDetail, paymentDialog }: OrdersSummaryCardProps) {
     const {

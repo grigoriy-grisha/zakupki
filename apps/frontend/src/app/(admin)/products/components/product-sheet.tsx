@@ -3,12 +3,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useProduct } from '../hooks';
 import { ProductForm } from './product-form';
-
-interface ProductSheetProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    editId: number | null;
-}
+import type { ProductSheetProps } from '../../lib/types';
 
 export function ProductSheet({ open, onOpenChange, editId }: ProductSheetProps) {
     const { data: existing } = useProduct(editId, open);

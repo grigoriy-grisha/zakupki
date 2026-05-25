@@ -5,5 +5,3 @@ export const unitSchema = z.object({
     shortName: z.string().min(1, 'Краткое название обязательно'),
     multiplicity: z.number().positive('Кратность должна быть положительной'),
 });
-
-export type UnitFormValues = z.infer<typeof unitSchema>;

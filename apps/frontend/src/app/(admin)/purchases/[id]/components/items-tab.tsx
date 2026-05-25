@@ -8,11 +8,7 @@ import { Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { useRemovePurchaseItem } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
-
-interface ItemsTabProps {
-    purchaseId: number;
-    onEditSupplement?: () => void;
-}
+import type { ItemsTabProps } from '../../../lib/types';
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });

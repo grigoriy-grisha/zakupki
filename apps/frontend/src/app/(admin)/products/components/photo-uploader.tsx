@@ -4,12 +4,7 @@ import { useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface PhotoUploaderProps {
-    photoIds: number[];
-    onPhotoIdsChange: (ids: number[]) => void;
-    productId: number;
-    onDeletePhoto: (id: number) => Promise<void>;
-}
+import type { PhotoUploaderProps } from '../../lib/types';
 
 export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeletePhoto }: PhotoUploaderProps) {
     const [uploading, setUploading] = useState(false);

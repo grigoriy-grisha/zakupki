@@ -7,11 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAddPurchaseItems } from '../hooks';
-
-interface ProductPickerDialogProps {
-    purchaseId: number;
-    existingProductIds: Set<number>;
-}
+import type { ProductPickerDialogProps } from '../../../lib/types';
 
 export function ProductPickerDialog({ purchaseId, existingProductIds }: ProductPickerDialogProps) {
     const [open, setOpen] = useState(false);

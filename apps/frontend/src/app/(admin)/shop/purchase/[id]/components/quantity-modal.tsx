@@ -7,12 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Loader2, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface QuantityModalProps {
-    purchaseItemId: number;
-    purchaseId: number;
-    currentQuantity?: number;
-    onClose: () => void;
-}
+import type { QuantityModalProps } from '../../../../lib/types';
 
 export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onClose }: QuantityModalProps) {
     const utils = trpc.useUtils();

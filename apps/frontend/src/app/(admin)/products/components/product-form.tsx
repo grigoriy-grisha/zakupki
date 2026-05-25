@@ -11,23 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SheetFooter } from '@/components/ui/sheet';
 import { toast } from 'sonner';
-import { productSchema, type ProductFormValues } from '../lib/schema';
+import { productSchema, type ProductFormValues } from '../lib';
 import { useUnits, useCreateProduct, useUpdateProduct, useDeletePhoto } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
-
-interface ProductFormProps {
-    editId: number | null;
-    existing: {
-        name: string;
-        description: string | null;
-        unitId: number;
-        pricePerUnit: string | number;
-        brand: string | null;
-        sku: string | null;
-        photos: { id: number }[];
-    } | null | undefined;
-    onSuccess: () => void;
-}
+import type { ProductFormProps } from '../../lib/types';
 
 export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);

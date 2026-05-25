@@ -4,19 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package } from 'lucide-react';
 
-interface ProductCardProps {
-    product: {
-        id: number;
-        name: string;
-        brand: string | null;
-        pricePerUnit: string | number;
-        unit: { shortName: string } | null;
-        photos: { id: number }[];
-    };
-    onClick: () => void;
-}
+import type { CatalogProductCardProps } from '../../lib/types';
 
-export function ProductCard({ product, onClick }: ProductCardProps) {
+export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const photo = product.photos?.[0];
     const price = Number(product.pricePerUnit);
 

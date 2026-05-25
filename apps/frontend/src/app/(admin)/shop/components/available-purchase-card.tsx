@@ -7,17 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, Package, Users, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface AvailablePurchaseCardProps {
-    purchase: {
-        id: number;
-        title: string;
-        tag: string;
-        status: string;
-        deadline: string | Date;
-        minAmount: string | number;
-        items: { orderLines: { amountDue: unknown }[] }[];
-    };
-}
+import type { AvailablePurchaseCardProps } from '../../lib/types';
 
 export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) {
     const deadline = new Date(purchase.deadline);

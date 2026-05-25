@@ -10,11 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Plus, Pencil, Loader2 } from 'lucide-react';
 import { useCreateUnit, useUpdateUnit } from '../hooks';
 import { unitSchema, type UnitFormValues } from '../lib';
-
-interface UnitFormDialogProps {
-    mode: 'create' | 'edit';
-    unit?: { id: number; name: string; shortName: string; multiplicity: string | number };
-}
+import type { UnitFormDialogProps } from '../../../lib/types';
 
 export function UnitFormDialog({ mode, unit }: UnitFormDialogProps) {
     const [open, setOpen] = useState(false);

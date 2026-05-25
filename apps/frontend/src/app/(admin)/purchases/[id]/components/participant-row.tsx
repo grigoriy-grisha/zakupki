@@ -5,36 +5,9 @@ import { Eye, ChevronDown, ChevronRight, CircleCheck, CircleX, Clock } from 'luc
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { PAYMENT_STATUS } from '../../lib/constants';
+import { PAYMENT_STATUS } from '../../../lib/constants';
 import { paymentTotal } from '../../lib/utils';
-
-interface ParticipantRowProps {
-    name: string;
-    username?: string;
-    orders: {
-        id: number;
-        purchaseItemId: number;
-        quantity: unknown;
-        amountDue: unknown;
-        purchaseItem?: {
-            product?: { name?: string; unit?: { shortName: string }; pricePerUnit: unknown };
-            priceOverride?: unknown;
-        };
-    }[];
-    payments: {
-        id: number;
-        amount: unknown;
-        paidAt: string;
-        status: string;
-        userComment?: string | null;
-        proofData?: unknown;
-        children?: { amount: unknown; promoCode: { code: string } | null }[];
-    }[];
-    due: number;
-    paid: number;
-    pending: number;
-    onPaymentClick: (id: number) => void;
-}
+import type { ParticipantRowProps } from '../../../lib/types';
 
 export function ParticipantRow({
     name,

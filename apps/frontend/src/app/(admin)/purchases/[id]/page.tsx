@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { STATUS_LABELS } from '../lib/constants';
+import { STATUS_LABELS } from '../../lib/constants';
 import { useUpdatePurchaseStatus } from './hooks';
 import { ItemsTab, ParticipantsTab, SupplementDialog } from './components';
 

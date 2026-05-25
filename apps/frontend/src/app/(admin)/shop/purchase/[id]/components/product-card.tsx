@@ -5,26 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Plus, Check } from 'lucide-react';
 
-interface ProductCardProps {
-    item: {
-        id: number;
-        priceOverride: string | null;
-        availableQty: string | number | null;
-        minQty: string | number | null;
-        product: {
-            name: string;
-            brand: string | null;
-            pricePerUnit: string | number;
-            unit: { shortName: string; multiplicity: string | number } | null;
-            photos: { id: number }[];
-        };
-    };
-    isOrdered: boolean;
-    isSupplement: boolean;
-    onSelect: (itemId: number) => void;
-}
+import type { ShopPurchaseItemProductCardProps } from '../../../../lib/types';
 
-export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ProductCardProps) {
+export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPurchaseItemProductCardProps) {
     const price = Number(item.priceOverride ?? item.product.pricePerUnit);
     const photo = item.product.photos?.[0];
     const shortName = item.product.unit?.shortName ?? '';

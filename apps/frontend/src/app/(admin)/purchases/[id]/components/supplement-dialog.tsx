@@ -8,11 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface SupplementDialogProps {
-    purchaseId: number;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-}
+import type { SupplementDialogProps } from '../../../lib/types';
 
 export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementDialogProps) {
     const utils = trpc.useUtils();

@@ -10,11 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { CreditCard, Upload, Loader2, X, AlertCircle, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface PaymentDialogProps {
-    purchaseId: number;
-    remaining: number;
-    hasPending: boolean;
-}
+import type { PaymentDialogProps } from '../../../../lib/types';
 
 export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDialogProps) {
     const [open, setOpen] = useState(false);

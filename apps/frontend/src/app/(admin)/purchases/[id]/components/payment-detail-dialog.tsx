@@ -8,27 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { PAYMENT_STATUS } from '../../lib/constants';
+import { PAYMENT_STATUS } from '../../../lib/constants';
 import { useConfirmPayment, useRejectPayment } from '../hooks';
-
-interface PaymentDetailDialogProps {
-    payment: {
-        id: number;
-        userId: number;
-        amount: unknown;
-        status: string;
-        paidAt: string;
-        userComment?: string;
-        adminNote?: string;
-        proofData?: unknown;
-        proofMimeType?: string;
-        user?: { firstName: string; lastName?: string | null };
-        children?: { amount: unknown; promoCode: { code: string } | null }[];
-    };
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    purchaseId: number;
-}
+import type { PaymentDetailDialogProps } from '../../../lib/types';
 
 export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }: PaymentDetailDialogProps) {
     const status = payment.status;

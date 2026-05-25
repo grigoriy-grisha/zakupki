@@ -8,5 +8,3 @@ export const productSchema = z.object({
     brand: z.string().optional(),
     sku: z.string().optional(),
 });
-
-export type ProductFormValues = z.infer<typeof productSchema>;

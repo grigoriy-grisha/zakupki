@@ -1,11 +1,8 @@
 import { trpc } from '@/lib/client/trpc';
 
-export type PurchasePaymentInfo = {
-    due: number;
-    paid: number;
-    hasPending: boolean;
-    remaining: number;
-};
+import type { PurchasePaymentInfo } from '../../lib/types';
+
+export type { PurchasePaymentInfo } from '../../lib/types';
 
 /**
  * Builds a map of purchaseId → payment summary across all purchases.

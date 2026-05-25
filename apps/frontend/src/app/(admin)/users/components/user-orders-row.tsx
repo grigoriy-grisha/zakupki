@@ -7,10 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-interface UserOrdersRowProps {
-    userId: number;
-    userName: string;
-}
+import type { UserOrdersRowProps } from '../../lib/types';
 
 export function UserOrdersRow({ userId, userName }: UserOrdersRowProps) {
     const [open, setOpen] = useState(false);
