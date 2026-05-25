@@ -1,9 +1,10 @@
 import { AuthDataValidator } from '@telegram-auth/server';
-import { dbClient, ensureClientRole, getUserRoleKind, RoleKind } from '@zakupki/database';
+import { getUserRoleKind, RoleKind } from '@zakupki/database';
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 import { ROUTES, VK_USER_INFO_URL } from '@/lib/constants';
+import { createUserService } from '@/server/lib/create-user-service';
 
 export async function verifyVk(rawData: string) {
     const appId = process.env.NEXT_PUBLIC_VK_APP_ID;
@@ -66,17 +67,7 @@ export const authOptions: NextAuthOptions = {
                 if (!credentials?.data) return null;
                 const verified = await verifyVk(credentials.data);
                 if (!verified) return null;
-
-                const [firstName, ...rest] = verified.name.split(' ');
-                const lastName = rest.join(' ') || undefined;
-                const user = await dbClient.user.upsert({
-                    where: { vkId: verified.providerAccountId },
-                    update: { firstName, lastName, avatarUrl: verified.avatar, vkAvatarUrl: verified.avatar },
-                    create: { vkId: verified.providerAccountId, firstName, lastName, avatarUrl: verified.avatar, vkAvatarUrl: verified.avatar },
-                });
-                await ensureClientRole(user.id);
-                const role = await getUserRoleKind(user.id);
-                return { id: String(user.id), name: verified.name, image: verified.avatar, role };
+                return createUserService().signInWithVk(verified);
             },
         }),
         CredentialsProvider({
@@ -87,24 +78,7 @@ export const authOptions: NextAuthOptions = {
                 if (!credentials?.data) return null;
                 const verified = await verifyTelegram(credentials.data);
                 if (!verified) return null;
-
-                const [firstName, ...rest] = verified.name.split(' ');
-                const lastName = rest.join(' ') || undefined;
-                const user = await dbClient.user.upsert({
-                    where: { telegramId: verified.providerAccountId },
-                    update: { firstName, lastName, avatarUrl: verified.avatar, telegramAvatarUrl: verified.avatar, username: verified.username ?? undefined },
-                    create: {
-                        telegramId: verified.providerAccountId,
-                        firstName,
-                        lastName,
-                        avatarUrl: verified.avatar,
-                        telegramAvatarUrl: verified.avatar,
-                        username: verified.username ?? undefined,
-                    },
-                });
-                await ensureClientRole(user.id);
-                const role = await getUserRoleKind(user.id);
-                return { id: String(user.id), name: verified.name, image: verified.avatar, role };
+                return createUserService().signInWithTelegram(verified);
             },
         }),
     ],

@@ -46,22 +46,41 @@ model Unit {
 }
 
 model User {
-    id         Int          @id @default(autoincrement())
-    telegramId String?      @unique
-    vkId       String?      @unique
-    username   String?
-    firstName  String
-    lastName   String?
-    avatarUrl       String?
-    vkAvatarUrl     String?
-    telegramAvatarUrl String?
-    phone      String?
-    createdAt  DateTime     @default(now())
-    orderLines OrderLine[]
-    payments   Payment[]
-    userRole   UserRole?
+    id                 Int                 @id @default(autoincrement())
+    username           String?
+    firstName          String
+    lastName           String?
+    avatarUrl          String?
+    phone              String?
+    createdAt          DateTime            @default(now())
+    orderLines         OrderLine[]
+    payments           Payment[]
+    userRole           UserRole?
+    telegramCredential TelegramCredential?
+    vkCredential       VkCredential?
 
     @@index([createdAt])
+}
+
+model TelegramCredential {
+    id         Int      @id @default(autoincrement())
+    userId     Int      @unique
+    telegramId String   @unique
+    username   String?
+    avatarUrl  String?
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+    user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VkCredential {
+    id        Int      @id @default(autoincrement())
+    userId    Int      @unique
+    vkId      String   @unique
+    avatarUrl String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Product {

@@ -1,60 +1,13 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
-import { useCallback, useEffect, useState } from 'react';
-
 import { TelegramIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/lib/constants';
 
-declare global {
-    interface Window {
-        Telegram?: {
-            Login?: {
-                auth: (options: { bot_id: number; request_access: boolean }, callback: (user: unknown) => void) => void;
-            };
-        };
-    }
-}
+import { useTgLogin, useVkLogin } from './hooks';
 
 export default function LoginPage() {
-    const [tgLoading, setTgLoading] = useState(false);
-
-    useEffect(() => {
-        const script = document.createElement('script');
-        script.src = 'https://telegram.org/js/telegram-widget.js';
-        script.async = true;
-        document.head.appendChild(script);
-    }, []);
-
-    const handleTgLogin = useCallback(() => {
-        if (!window.Telegram?.Login) return;
-        setTgLoading(true);
-
-        window.Telegram.Login.auth(
-            { bot_id: Number(process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID), request_access: true },
-            async (user: unknown) => {
-                if (!user) {
-                    setTgLoading(false);
-                    return;
-                }
-
-                try {
-                    const result = await signIn('telegram', {
-                        data: JSON.stringify(user),
-                        redirect: false,
-                    });
-
-                    if (result?.ok) {
-                        window.location.href = ROUTES.home.path;
-                    }
-                } catch {
-                    // ignore
-                }
-                setTgLoading(false);
-            },
-        );
-    }, []);
+    useVkLogin();
+    const tg = useTgLogin();
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
@@ -67,9 +20,9 @@ export default function LoginPage() {
                 <div className="flex flex-col items-center gap-4">
                     <div id="vk-widget" className="w-full min-h-[44px]" />
 
-                    <Button onClick={handleTgLogin} disabled={tgLoading} variant="outline" size="lg" className="w-full">
+                    <Button onClick={tg.login} disabled={tg.loading} variant="outline" size="lg" className="w-full">
                         <TelegramIcon className="mr-2 h-5 w-5" />
-                        {tgLoading ? 'Авторизация...' : 'Войти через Telegram'}
+                        {tg.loading ? 'Авторизация...' : 'Войти через Telegram'}
                     </Button>
                 </div>
             </div>

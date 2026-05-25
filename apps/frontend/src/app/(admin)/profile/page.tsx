@@ -16,8 +16,8 @@ export default function ProfilePage() {
 
     if (!user) return null;
 
-    const canUnlinkVk = !!user.telegramId;
-    const canUnlinkTg = !!user.vkId;
+    const canUnlinkVk = !!user.telegramCredential;
+    const canUnlinkTg = !!user.vkCredential;
 
     return (
         <div className="space-y-6">
@@ -46,11 +46,11 @@ export default function ProfilePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {user.vkId ? (
+                        {user.vkCredential ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    {user.vkAvatarUrl ? (
-                                        <img src={user.vkAvatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                                    {user.vkCredential.avatarUrl ? (
+                                        <img src={user.vkCredential.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
                                     ) : (
                                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0077FF]/10 text-[#0077FF] text-sm font-medium">
                                             VK
@@ -83,11 +83,11 @@ export default function ProfilePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {user.telegramId ? (
+                        {user.telegramCredential ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    {user.telegramAvatarUrl ? (
-                                        <img src={user.telegramAvatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                                    {user.telegramCredential.avatarUrl ? (
+                                        <img src={user.telegramCredential.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
                                     ) : (
                                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26A5E4]/10 text-[#26A5E4] text-sm font-medium">
                                             TG
@@ -98,7 +98,11 @@ export default function ProfilePage() {
                                             <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
                                             <span className="text-sm">Привязан</span>
                                         </div>
-                                        {user.username && <span className="text-xs text-muted-foreground">@{user.username}</span>}
+                                        {(user.telegramCredential.username ?? user.username) && (
+                                            <span className="text-xs text-muted-foreground">
+                                                @{user.telegramCredential.username ?? user.username}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <Button variant="outline" size="sm" onClick={tg.unlinkTg} disabled={tg.loading || !canUnlinkTg}>

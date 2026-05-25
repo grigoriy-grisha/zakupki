@@ -4,9 +4,8 @@ import { PaymentRepository } from '../domain/payment.repository';
 import { PromoCodeRepository } from '../domain/promo-code.repository';
 import { PaymentService } from '../services/payment.service';
 import { PromoCodeService } from '../services/promo-code.service';
-import { adminProcedure, publicProcedure, router } from '../trpc';
+import { adminProcedure, protectedProcedure, router } from '../trpc';
 import type { PrismaClient } from '@zakupki/database';
-import { getDemoUser } from '../lib/get-demo-user';
 
 function services(db: PrismaClient) {
     return {
@@ -16,7 +15,7 @@ function services(db: PrismaClient) {
 }
 
 export const paymentsRouter = router({
-    submit: publicProcedure
+    submit: protectedProcedure
         .input(
             z.object({
                 purchaseId: z.number(),
@@ -28,8 +27,6 @@ export const paymentsRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const demoUser = await getDemoUser(ctx.db);
-
             const proofData = input.proofBase64 ? Buffer.from(input.proofBase64, 'base64') : undefined;
 
             let promoCodeId: number | undefined;
@@ -46,7 +43,7 @@ export const paymentsRouter = router({
 
             const { payment } = services(ctx.db);
             return payment.submitPayment({
-                userId: demoUser.id,
+                userId: ctx.userId,
                 purchaseId: input.purchaseId,
                 amount: finalAmount,
                 userComment: input.userComment,
@@ -57,10 +54,9 @@ export const paymentsRouter = router({
             });
         }),
 
-    getMyPayments: publicProcedure.query(async ({ ctx }) => {
-        const demoUser = await getDemoUser(ctx.db);
+    getMyPayments: protectedProcedure.query(async ({ ctx }) => {
         const { payment } = services(ctx.db);
-        return payment.getByUser(demoUser.id);
+        return payment.getByUser(ctx.userId);
     }),
 
     addPayment: adminProcedure
@@ -82,7 +78,7 @@ export const paymentsRouter = router({
         return payment.getByPurchase(input.purchaseId);
     }),
 
-    update: publicProcedure
+    update: protectedProcedure
         .input(z.object({
             id: z.number(),
             amount: z.number().positive().optional(),
@@ -101,7 +97,7 @@ export const paymentsRouter = router({
             });
         }),
 
-    cancel: publicProcedure
+    cancel: protectedProcedure
         .input(z.object({ id: z.number() }))
         .mutation(async ({ ctx, input }) => {
             const { payment } = services(ctx.db);

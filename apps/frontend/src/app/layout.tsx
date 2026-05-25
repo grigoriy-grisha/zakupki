@@ -5,7 +5,6 @@ import Script from 'next/script';
 
 import { AuthProvider } from '@/lib/auth-provider';
 import { TrpcProvider } from '@/lib/client/trpc-provider';
-import { VkAuthProvider } from '@/lib/vk-auth-provider';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
@@ -19,9 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <body className="antialiased">
                 <Script src="https://telegram.org/js/telegram-widget.js" strategy="lazyOnload" />
                 <AuthProvider>
-                    <VkAuthProvider>
-                        <TrpcProvider>{children}</TrpcProvider>
-                    </VkAuthProvider>
+                    <TrpcProvider>{children}</TrpcProvider>
                 </AuthProvider>
                 <Toaster />
             </body>

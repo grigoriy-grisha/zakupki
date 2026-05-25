@@ -8,7 +8,13 @@ if (!Number.isFinite(userId)) {
 
 const user = await dbClient.user.findUnique({
     where: { id: userId },
-    select: { id: true, firstName: true, lastName: true, vkId: true, telegramId: true },
+    select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        vkCredential: { select: { vkId: true } },
+        telegramCredential: { select: { telegramId: true } },
+    },
 });
 
 if (!user) {

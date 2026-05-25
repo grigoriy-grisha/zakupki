@@ -6,21 +6,38 @@ export function initMiddleware(db: PrismaClient) {
         ctx.db = db;
 
         if (ctx.from) {
-            // Upsert user from Telegram data
-            const user = await db.user.upsert({
-                where: { telegramId: String(ctx.from.id) },
-                update: {
-                    firstName: ctx.from.first_name,
-                    lastName: ctx.from.last_name,
-                    username: ctx.from.username,
-                },
-                create: {
-                    telegramId: String(ctx.from.id),
-                    firstName: ctx.from.first_name,
-                    lastName: ctx.from.last_name,
-                    username: ctx.from.username,
-                },
+            const telegramId = String(ctx.from.id);
+            const existing = await db.telegramCredential.findUnique({
+                where: { telegramId },
+                select: { userId: true },
             });
+
+            const user = existing
+                ? await db.user.update({
+                      where: { id: existing.userId },
+                      data: {
+                          firstName: ctx.from.first_name,
+                          lastName: ctx.from.last_name,
+                          username: ctx.from.username,
+                          telegramCredential: {
+                              update: { username: ctx.from.username },
+                          },
+                      },
+                  })
+                : await db.user.create({
+                      data: {
+                          firstName: ctx.from.first_name,
+                          lastName: ctx.from.last_name,
+                          username: ctx.from.username,
+                          telegramCredential: {
+                              create: {
+                                  telegramId,
+                                  username: ctx.from.username,
+                              },
+                          },
+                      },
+                  });
+
             ctx.session.userId = user.id;
             ctx.session.telegramId = ctx.from.id;
         }

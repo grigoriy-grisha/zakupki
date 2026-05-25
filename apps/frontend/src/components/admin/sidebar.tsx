@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { LayoutDashboard, Package, ShoppingCart, Users, ShoppingBag, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ADMIN_NAV_ITEMS, CLIENT_NAV_ITEMS, ROUTES } from '@/lib/constants';
 
@@ -80,40 +82,33 @@ export function Sidebar() {
             </nav>
 
             <Separator />
-            <div className="p-3">
-                {session?.user ? (
+            {session?.user && (
+                <div className="p-3">
                     <div className="flex items-center gap-3 rounded-lg px-2 py-2">
                         <Link href={ROUTES.profile.path} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
-                            {session.user.image ? (
-                                <img src={session.user.image} alt="" className="h-8 w-8 rounded-full object-cover" />
-                            ) : (
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                                    {session.user.name?.[0] ?? 'U'}
-                                </div>
-                            )}
+                            <Avatar>
+                                <AvatarImage src={session.user.image ?? undefined} alt="" />
+                                <AvatarFallback>{session.user.name?.[0] ?? 'U'}</AvatarFallback>
+                            </Avatar>
                             <p className="text-sm font-medium truncate">{session.user.name}</p>
                         </Link>
-                        <button
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="shrink-0 text-muted-foreground"
                             onClick={() => {
                                 const base =
                                     process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
                                     window.location.origin;
                                 void signOut({ callbackUrl: `${base}${ROUTES.login.path}` });
                             }}
-                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <LogOut className="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
-                ) : (
-                    <div className="rounded-lg bg-primary/5 p-3">
-                        <p className="text-xs font-medium text-primary">Совет</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Создайте закупку, добавьте товары и поделитесь ссылкой
-                        </p>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
         </aside>
     );
 }

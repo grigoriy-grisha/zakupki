@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { trpc } from '@/lib/client/trpc';
+import { exchangeVkCode, initVkId } from '@/lib/vk-id';
 
 export function useVkAuthorization() {
     const utils = trpc.useUtils();
@@ -15,25 +16,18 @@ export function useVkAuthorization() {
     const linkVk = useCallback(async () => {
         setLoading(true);
         try {
-            VKID.Config.init({
-                app: Number(process.env.NEXT_PUBLIC_VK_APP_ID),
-                redirectUrl: process.env.NEXT_PUBLIC_VK_REDIRECT_URL || window.location.origin,
-                responseMode: VKID.ConfigResponseMode.Callback,
-                source: VKID.ConfigSource.LOWCODE,
-                scope: '',
-            });
+            initVkId();
 
             const floating = new VKID.FloatingOneTap();
             floating
                 .render({ appName: 'Закупки', showAlternativeLogin: true })
                 .on(VKID.WidgetEvents.ERROR, () => setLoading(false))
                 .on(VKID.FloatingOneTapInternalEvents.LOGIN_SUCCESS, async (payload: unknown) => {
-                    const { code, device_id } = payload as { code: string; device_id: string };
-                    const vkData = await VKID.Auth.exchangeCode(code, device_id);
+                    const accessToken = await exchangeVkCode(payload);
                     floating.close();
 
                     linkProvider.mutate(
-                        { provider: 'vk', data: JSON.stringify({ accessToken: vkData.access_token }) },
+                        { provider: 'vk', data: JSON.stringify({ accessToken }) },
                         {
                             onSuccess: () => utils.users.me.invalidate(),
                             onError: (err) => toast.error(err.message),

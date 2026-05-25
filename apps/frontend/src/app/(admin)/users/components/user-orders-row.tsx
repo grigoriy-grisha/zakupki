@@ -11,10 +11,7 @@ import type { UserOrdersRowProps } from '../../lib/types';
 
 export function UserOrdersRow({ userId, userName }: UserOrdersRowProps) {
     const [open, setOpen] = useState(false);
-    const { data: orders, isLoading } = trpc.orders.getMyOrders.useQuery(
-        { _userId: userId },
-        { enabled: open },
-    );
+    const { data: orders, isLoading } = trpc.orders.getByUser.useQuery({ userId }, { enabled: open });
 
     return (
         <>

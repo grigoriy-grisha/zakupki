@@ -92,19 +92,41 @@ async function main() {
     // Users
     const users = await Promise.all([
         prisma.user.create({
-            data: { telegramId: '100000001', firstName: 'Анна', username: 'anna_beads' },
+            data: {
+                firstName: 'Анна',
+                username: 'anna_beads',
+                telegramCredential: { create: { telegramId: '100000001', username: 'anna_beads' } },
+            },
         }),
         prisma.user.create({
-            data: { telegramId: '100000002', firstName: 'Мария', lastName: 'Иванова', username: 'maria_craft' },
+            data: {
+                firstName: 'Мария',
+                lastName: 'Иванова',
+                username: 'maria_craft',
+                telegramCredential: { create: { telegramId: '100000002', username: 'maria_craft' } },
+            },
         }),
         prisma.user.create({
-            data: { telegramId: '100000003', firstName: 'Ольга', username: 'olga_jewelry' },
+            data: {
+                firstName: 'Ольга',
+                username: 'olga_jewelry',
+                telegramCredential: { create: { telegramId: '100000003', username: 'olga_jewelry' } },
+            },
         }),
         prisma.user.create({
-            data: { telegramId: '100000004', firstName: 'Елена', lastName: 'Петрова', username: 'elena_art' },
+            data: {
+                firstName: 'Елена',
+                lastName: 'Петрова',
+                username: 'elena_art',
+                telegramCredential: { create: { telegramId: '100000004', username: 'elena_art' } },
+            },
         }),
         prisma.user.create({
-            data: { telegramId: '100000005', firstName: 'Наталья', username: 'nat_beads' },
+            data: {
+                firstName: 'Наталья',
+                username: 'nat_beads',
+                telegramCredential: { create: { telegramId: '100000005', username: 'nat_beads' } },
+            },
         }),
     ]);
 
