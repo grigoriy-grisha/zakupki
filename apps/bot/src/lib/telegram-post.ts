@@ -62,6 +62,37 @@ export interface PostProduct {
     unit: { shortName: string } | null;
 }
 
+const TELEGRAM_CAPTION_MAX = 1024;
+const TELEGRAM_MESSAGE_MAX = 4096;
+
+export type ChannelPostPhoto = {
+    data: Buffer;
+    mimeType: string;
+};
+
+export function productPhotoToAttachment(photo: {
+    data: Uint8Array | Buffer;
+    mimeType: string;
+}): ChannelPostPhoto {
+    return {
+        data: Buffer.isBuffer(photo.data) ? photo.data : Buffer.from(photo.data),
+        mimeType: photo.mimeType || 'image/jpeg',
+    };
+}
+
+function photoFilename(mimeType: string): string {
+    switch (mimeType) {
+        case 'image/png':
+            return 'photo.png';
+        case 'image/webp':
+            return 'photo.webp';
+        case 'image/gif':
+            return 'photo.gif';
+        default:
+            return 'photo.jpg';
+    }
+}
+
 export function buildProductPostText(product: PostProduct, purchaseTag: string): string {
     const rawTag = purchaseTag.replace(/^#/, '');
     const hashtag = `#${escapeHtml(rawTag)}`;
@@ -91,17 +122,15 @@ export async function sendChannelPost(
     api: Api,
     chatId: string,
     text: string,
-    photo?: { data: Buffer; mimeType: string },
+    photo?: ChannelPostPhoto,
 ): Promise<{ messageId: number }> {
-    const htmlText = text.slice(0, 4096);
-
-    if (photo) {
-        const file = new InputFile(photo.data, 'photo.jpg');
+    if (photo?.data.length) {
+        const caption = text.slice(0, TELEGRAM_CAPTION_MAX);
+        const file = new InputFile(photo.data, photoFilename(photo.mimeType));
         try {
             const msg = await api.sendPhoto(chatId, file, {
-                caption: htmlText,
+                caption,
                 parse_mode: 'HTML',
-                link_preview_options: { is_disabled: true },
             });
             return { messageId: msg.message_id };
         } catch (e) {
@@ -110,15 +139,13 @@ export async function sendChannelPost(
             if (!description.includes("can't parse entities")) {
                 throw e;
             }
-            const plain = htmlText.replace(/<[^>]+>/g, '');
-            const msg = await api.sendPhoto(chatId, file, {
-                caption: plain,
-                link_preview_options: { is_disabled: true },
-            });
+            const plain = caption.replace(/<[^>]+>/g, '');
+            const msg = await api.sendPhoto(chatId, file, { caption: plain });
             return { messageId: msg.message_id };
         }
     }
 
+    const htmlText = text.slice(0, TELEGRAM_MESSAGE_MAX);
     try {
         const msg = await api.sendMessage(chatId, htmlText, {
             parse_mode: 'HTML',

@@ -1,10 +1,15 @@
 import type { PrismaClient } from '@zakupki/database';
 import type { Bot } from 'grammy';
-import { GrammyError, InputFile } from 'grammy';
+import { GrammyError } from 'grammy';
 import { TelegramChannelPostQueue, UnrecoverableError, type RedisClient } from '@zakupki/queue';
 
 import type { CustomContext } from '../types';
-import { buildProductPostText, getChannelIdFromEnv, sendChannelPost } from '../lib/telegram-post';
+import {
+    buildProductPostText,
+    getChannelIdFromEnv,
+    productPhotoToAttachment,
+    sendChannelPost,
+} from '../lib/telegram-post';
 
 interface PurchaseChannelPostHandlerOptions {
     redis: RedisClient;
@@ -36,7 +41,16 @@ export function setupPurchaseChannelPostHandler(
             const item = await db.purchaseItem.findUnique({
                 where: { id: purchaseItemId },
                 include: {
-                    product: { include: { unit: true, photos: { orderBy: { sortOrder: 'asc' }, take: 1 } } },
+                    product: {
+                        include: {
+                            unit: true,
+                            photos: {
+                                orderBy: { sortOrder: 'asc' },
+                                take: 1,
+                                select: { data: true, mimeType: true },
+                            },
+                        },
+                    },
                     purchase: { select: { tag: true } },
                 },
             });
@@ -46,9 +60,10 @@ export function setupPurchaseChannelPostHandler(
             }
 
             const firstPhoto = item.product.photos[0];
-            const photo = firstPhoto
-                ? { data: Buffer.from(firstPhoto.data as Uint8Array), mimeType: firstPhoto.mimeType }
-                : undefined;
+            const photo =
+                firstPhoto && firstPhoto.data.byteLength > 0
+                    ? productPhotoToAttachment(firstPhoto)
+                    : undefined;
 
             const text = buildProductPostText(item.product, item.purchase.tag);
 
