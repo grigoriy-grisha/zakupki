@@ -1,2 +1,2 @@
-export { productSchema } from './schema';
-export type { ProductFormValues } from '../../lib/types';
+export { productSchema, categorySchema } from './schema';
+export type { ProductFormValues, CategoryFormValues } from '../../lib/types';

@@ -3,8 +3,8 @@ import { ProductRepository } from '../domain/product.repository';
 export class ProductService {
     constructor(private repo: ProductRepository) {}
 
-    async list(search?: string) {
-        return this.repo.list(search);
+    async list(search?: string, categoryId?: number | null) {
+        return this.repo.list(search, categoryId);
     }
 
     async getById(id: number) {
@@ -20,6 +20,7 @@ export class ProductService {
         pricePerUnit: number;
         brand?: string;
         sku?: string;
+        categoryId?: number | null;
     }) {
         return this.repo.create(data);
     }
@@ -33,6 +34,7 @@ export class ProductService {
             pricePerUnit?: number;
             brand?: string;
             sku?: string;
+            categoryId?: number | null;
         },
     ) {
         return this.repo.update(id, data);

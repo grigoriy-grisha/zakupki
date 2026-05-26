@@ -5,7 +5,7 @@ import { useProduct } from '../hooks';
 import { ProductForm } from './product-form';
 import type { ProductSheetProps } from '../../lib/types';
 
-export function ProductSheet({ open, onOpenChange, editId }: ProductSheetProps) {
+export function ProductSheet({ open, onOpenChange, editId, defaultCategoryId }: ProductSheetProps & { defaultCategoryId?: number | null }) {
     const { data: existing } = useProduct(editId, open);
 
     return (
@@ -22,6 +22,7 @@ export function ProductSheet({ open, onOpenChange, editId }: ProductSheetProps) 
                     editId={editId}
                     existing={existing}
                     onSuccess={() => onOpenChange(false)}
+                    defaultCategoryId={defaultCategoryId}
                 />
             </SheetContent>
         </Sheet>

@@ -1,4 +1,5 @@
 import { router } from '../trpc';
+import { categoriesRouter } from './categories';
 import { ordersRouter } from './orders';
 import { paymentsRouter } from './payments';
 import { promoCodesRouter } from './promoCodes';
@@ -8,6 +9,7 @@ import { unitsRouter } from './units';
 import { usersRouter } from './users';
 
 export const appRouter = router({
+    categories: categoriesRouter,
     products: productsRouter,
     purchases: purchasesRouter,
     orders: ordersRouter,

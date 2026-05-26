@@ -10,7 +10,7 @@ export async function paymentsCommand(ctx: CustomContext) {
     const payments = await ctx.db.payment.findMany({
         where: { userId, parentId: null },
         include: {
-            purchase: { select: { tag: true, title: true } },
+            purchase: { select: { tag: true, supplier: true } },
             children: { include: { promoCode: true } },
         },
         orderBy: { paidAt: 'desc' },

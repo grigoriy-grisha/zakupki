@@ -48,7 +48,7 @@ export class PurchaseRepository {
         });
     }
 
-    async create(data: { tag: string; title: string; minAmount: number; deadline: Date }) {
+    async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {
         return this.db.purchase.create({ data });
     }
 

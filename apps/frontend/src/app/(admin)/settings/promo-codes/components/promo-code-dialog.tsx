@@ -149,7 +149,7 @@ export function PromoCodeDialog() {
                                         <SelectItem value="all">Любая закупка</SelectItem>
                                         {purchases?.map((p) => (
                                             <SelectItem key={p.id} value={String(p.id)}>
-                                                {p.tag} — {p.title}
+                                                {p.tag} — {p.supplier}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

@@ -121,7 +121,7 @@ export default function DashboardPage() {
                                             {purchase.status === 'ACTIVE' ? 'Активна' : 'Черновик'}
                                         </Badge>
                                     </div>
-                                    <p className="mt-1 text-sm font-medium group-hover:text-primary transition-colors">{purchase.title}</p>
+                                    <p className="mt-1 text-sm font-medium group-hover:text-primary transition-colors">{purchase.supplier}</p>
                                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                                         <span className="flex items-center gap-1">
                                             <Clock className="h-3 w-3" />

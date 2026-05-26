@@ -34,7 +34,7 @@ export const purchasesRouter = router({
         .input(
             z.object({
                 tag: z.string().min(1),
-                title: z.string().min(1),
+                supplier: z.string().min(1),
                 minAmount: z.number().positive(),
                 deadline: z.string().transform((v) => new Date(v)),
             }),

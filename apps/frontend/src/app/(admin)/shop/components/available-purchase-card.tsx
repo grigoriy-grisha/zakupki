@@ -29,7 +29,7 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
                                 {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                             </Badge>
                             <h3 className="mt-2 text-lg font-semibold group-hover:text-primary transition-colors">
-                                {purchase.title}
+                                {purchase.supplier}
                             </h3>
                             <p className="text-sm text-muted-foreground">{purchase.tag}</p>
                         </div>

@@ -10,9 +10,9 @@ function services(db: PrismaClient) {
 }
 
 export const productsRouter = router({
-    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    list: publicProcedure.input(z.object({ search: z.string().optional(), categoryId: z.number().nullable().optional() }).optional()).query(async ({ ctx, input }) => {
         const { product } = services(ctx.db);
-        return product.list(input?.search);
+        return product.list(input?.search, input?.categoryId);
     }),
 
     getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
@@ -29,6 +29,7 @@ export const productsRouter = router({
                 pricePerUnit: z.number().positive(),
                 brand: z.string().optional(),
                 sku: z.string().optional(),
+                categoryId: z.number().nullable().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -46,6 +47,7 @@ export const productsRouter = router({
                 pricePerUnit: z.number().positive().optional(),
                 brand: z.string().optional(),
                 sku: z.string().optional(),
+                categoryId: z.number().nullable().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {

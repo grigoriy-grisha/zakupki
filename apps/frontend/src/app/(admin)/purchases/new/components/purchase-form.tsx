@@ -24,7 +24,7 @@ export function PurchaseForm() {
         formState: { errors },
     } = useForm<NewPurchaseValues>({
         resolver: zodResolver(newPurchaseSchema),
-        defaultValues: { tag: '', title: '', minAmount: undefined, deadline: undefined },
+        defaultValues: { tag: '', supplier: '', minAmount: undefined, deadline: undefined },
     });
 
     const deadline = watch('deadline');
@@ -40,7 +40,7 @@ export function PurchaseForm() {
     function onSubmit(values: NewPurchaseValues) {
         createMutation.mutate({
             tag: values.tag,
-            title: values.title,
+            supplier: values.supplier,
             minAmount: values.minAmount,
             deadline: values.deadline.toISOString(),
         });
@@ -61,9 +61,9 @@ export function PurchaseForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="title">Название</Label>
-                        <Input id="title" placeholder="Бисер TOHO" {...register('title')} />
-                        {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+                        <Label htmlFor="supplier">Поставщик</Label>
+                        <Input id="supplier" placeholder="Поставщик №1" {...register('supplier')} />
+                        {errors.supplier && <p className="text-xs text-destructive">{errors.supplier.message}</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

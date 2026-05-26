@@ -3,14 +3,15 @@ import type { PrismaClient } from '@zakupki/database';
 export class ProductRepository {
     constructor(private db: PrismaClient) {}
 
-    async list(search?: string) {
+    async list(search?: string, categoryId?: number | null) {
         return this.db.product.findMany({
-            where: search
-                ? {
-                      OR: [{ name: { contains: search, mode: 'insensitive' } }, { brand: { contains: search, mode: 'insensitive' } }],
-                  }
-                : undefined,
-            include: { photos: { select: { id: true, sortOrder: true } }, unit: true },
+            where: {
+                ...(search
+                    ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { brand: { contains: search, mode: 'insensitive' } }] }
+                    : {}),
+                ...(categoryId != null ? { categoryId } : {}),
+            },
+            include: { photos: { select: { id: true, sortOrder: true } }, unit: true, category: true },
             orderBy: { createdAt: 'desc' },
         });
     }
@@ -29,8 +30,13 @@ export class ProductRepository {
         pricePerUnit: number;
         brand?: string;
         sku?: string;
+        categoryId?: number | null;
     }) {
-        return this.db.product.create({ data, include: { unit: true } });
+        const { categoryId, ...rest } = data;
+        return this.db.product.create({
+            data: { ...rest, categoryId: categoryId ?? null },
+            include: { unit: true, category: true },
+        });
     }
 
     async update(
@@ -42,9 +48,10 @@ export class ProductRepository {
             pricePerUnit?: number;
             brand?: string;
             sku?: string;
+            categoryId?: number | null;
         },
     ) {
-        return this.db.product.update({ where: { id }, data, include: { unit: true } });
+        return this.db.product.update({ where: { id }, data, include: { unit: true, category: true } });
     }
 
     async delete(id: number) {

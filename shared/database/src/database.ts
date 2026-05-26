@@ -24,4 +24,3 @@ const { DATABASE_URL = '' } = process.env;
 const adapter = new PrismaPg({ connectionString: DATABASE_URL });
 export const dbClient = globalForPrisma.db ?? (globalForPrisma.db = new PrismaClient({ adapter }));
 
-export { RoleKind, assignAdminRole, ensureClientRole, getUserRoleKind } from './roles';

@@ -14,8 +14,29 @@ async function main() {
     await prisma.purchase.deleteMany();
     await prisma.productPhoto.deleteMany();
     await prisma.product.deleteMany();
+    await prisma.category.deleteMany();
     await prisma.user.deleteMany();
     await prisma.unit.deleteMany();
+
+    // Categories
+    const furniture = await prisma.category.create({
+        data: { name: 'Фурнитура' },
+    });
+    const miyuli = await prisma.category.create({
+        data: { name: 'Miyuli', parentId: furniture.id },
+    });
+    const miyuki11 = await prisma.category.create({
+        data: { name: '11/0 Miyuki', parentId: furniture.id },
+    });
+    const miyuki15 = await prisma.category.create({
+        data: { name: '15/0 Miyuki', parentId: furniture.id },
+    });
+    const toho = await prisma.category.create({
+        data: { name: 'TOHO', parentId: furniture.id },
+    });
+    const toho8 = await prisma.category.create({
+        data: { name: '8/0', parentId: toho.id },
+    });
 
     // Units
     const gramUnit = await prisma.unit.create({
@@ -34,6 +55,7 @@ async function main() {
             pricePerUnit: 120,
             brand: 'MIYUKI',
             sku: 'MIY-11-BLK',
+            categoryId: miyuki11.id,
         },
     });
 
@@ -45,6 +67,7 @@ async function main() {
             pricePerUnit: 95,
             brand: 'TOHO',
             sku: 'TOH-8-SLV',
+            categoryId: toho8.id,
         },
     });
 
@@ -56,6 +79,7 @@ async function main() {
             pricePerUnit: 45,
             brand: 'Generic',
             sku: 'FUR-MAG-S',
+            categoryId: furniture.id,
         },
     });
 
@@ -63,7 +87,7 @@ async function main() {
     const purchase = await prisma.purchase.create({
         data: {
             tag: 'СЗ7',
-            title: 'Закупка бисера #7',
+            supplier: 'Miyuki',
             status: 'ACTIVE',
             minAmount: 5000,
             deadline: new Date('2026-06-15'),

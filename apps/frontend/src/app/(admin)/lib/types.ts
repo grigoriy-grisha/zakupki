@@ -3,13 +3,14 @@ import type { z } from 'zod';
 
 import type { usePurchasePaymentDetail } from '../shop/hooks/use-purchase-payment-map';
 import type { addPaymentSchema, newPurchaseSchema } from '../purchases/lib/schema';
-import type { productSchema } from '../products/lib/schema';
+import type { productSchema, categorySchema } from '../products/lib/schema';
 import type { unitSchema } from '../settings/units/lib/schema';
 import type { promoCodeSchema } from '../settings/promo-codes/lib/schema';
 
 export type NewPurchaseValues = z.infer<typeof newPurchaseSchema>;
 export type AddPaymentValues = z.infer<typeof addPaymentSchema>;
 export type ProductFormValues = z.infer<typeof productSchema>;
+export type CategoryFormValues = z.infer<typeof categorySchema>;
 export type UnitFormValues = z.infer<typeof unitSchema>;
 export type PromoCodeFormValues = z.infer<typeof promoCodeSchema>;
 
@@ -25,7 +26,7 @@ export type PurchasePaymentDetail = ReturnType<typeof usePurchasePaymentDetail>;
 
 export interface ShopPurchaseSummary {
     id: number;
-    title: string;
+    supplier: string;
     tag: string;
     status: string;
     deadline: string | Date;
@@ -84,7 +85,7 @@ export interface AdminPurchaseListCardProps {
     purchase: {
         id: number;
         tag: string;
-        title: string;
+        supplier: string;
         status: string;
         deadline: string;
         items: { orderLines: { amountDue: unknown }[] }[];
@@ -190,6 +191,7 @@ export interface ProductFormProps {
         pricePerUnit: string | number;
         brand: string | null;
         sku: string | null;
+        categoryId: number | null;
         photos: { id: number }[];
     } | null | undefined;
     onSuccess: () => void;

@@ -59,7 +59,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 </Button>
                 <div>
                     <div className="flex items-center gap-2">
-                        <h1 className="text-2xl font-semibold tracking-tight">{purchase.title}</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight">{purchase.supplier}</h1>
                         <Badge className={purchase.status === 'SUPPLEMENT' ? 'bg-warning-50 text-warning' : 'bg-success-50 text-success'}>
                             {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                         </Badge>

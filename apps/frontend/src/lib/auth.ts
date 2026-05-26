@@ -1,10 +1,11 @@
 import { AuthDataValidator } from '@telegram-auth/server';
-import { getUserRoleKind, RoleKind } from '@zakupki/database';
+import { RoleKind } from '@zakupki/database';
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 import { ROUTES, VK_USER_INFO_URL } from '@/lib/constants';
-import { createUserService } from '@/server/lib/create-user-service';
+import { buildRbac, type RbacConfig } from '@/lib/rbac-config';
+import { createRoleService, createUserService } from '@/server/lib/create-user-service';
 
 export async function verifyVk(rawData: string) {
     const appId = process.env.NEXT_PUBLIC_VK_APP_ID;
@@ -87,17 +88,20 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 token.avatar = user.image;
-                token.role = 'role' in user && user.role === RoleKind.ADMIN ? RoleKind.ADMIN : RoleKind.CLIENT;
-            } else if (token.id && !token.role) {
-                token.role = await getUserRoleKind(Number(token.id));
             }
+
+            if (token.id) {
+                token.role = await createRoleService().getUserRoleKind(Number(token.id));
+            }
+
             return token;
         },
         async session({ session, token }) {
             if (session.user) {
                 session.user.id = token.id as string;
                 session.user.image = token.avatar as string | null;
-                session.user.role = token.role === RoleKind.ADMIN ? RoleKind.ADMIN : RoleKind.CLIENT;
+                session.user.role = token.role ?? RoleKind.CLIENT;
+                session.user.rbac = buildRbac(session.user.role);
             }
             return session;
         },
@@ -112,6 +116,7 @@ declare module 'next-auth' {
             email?: string | null;
             image?: string | null;
             role: RoleKind;
+            rbac: RbacConfig;
         };
     }
     interface User { role?: RoleKind; }

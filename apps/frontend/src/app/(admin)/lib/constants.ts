@@ -57,7 +57,7 @@ export const DASHBOARD_RECENT_PURCHASES = [
     {
         id: 1,
         tag: '#СЗ7',
-        title: 'Бисер MIYUKI',
+        supplier: 'Бисер MIYUKI',
         status: 'ACTIVE',
         deadline: '15 июня',
         progress: 85,
@@ -69,7 +69,7 @@ export const DASHBOARD_RECENT_PURCHASES = [
     {
         id: 2,
         tag: '#СЗ8',
-        title: 'Чешские кристаллы',
+        supplier: 'Чешские кристаллы',
         status: 'ACTIVE',
         deadline: '20 июня',
         progress: 62,
@@ -81,7 +81,7 @@ export const DASHBOARD_RECENT_PURCHASES = [
     {
         id: 3,
         tag: '#СЗ9',
-        title: 'Нити и леска',
+        supplier: 'Нити и леска',
         status: 'DRAFT',
         deadline: '25 июня',
         progress: 0,

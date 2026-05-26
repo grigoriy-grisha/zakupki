@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const newPurchaseSchema = z.object({
     tag: z.string().min(1, 'Тег обязателен'),
-    title: z.string().min(1, 'Название обязательно'),
+    supplier: z.string().min(1, 'Поставщик обязателен'),
     minAmount: z.number().positive('Мин. сумма должна быть положительной'),
     deadline: z.date({ required_error: 'Выберите дедлайн' }),
 });

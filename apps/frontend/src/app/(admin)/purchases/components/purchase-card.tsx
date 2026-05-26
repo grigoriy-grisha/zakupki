@@ -27,7 +27,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <p className="font-medium">{purchase.title}</p>
+                    <p className="font-medium">{purchase.supplier}</p>
                     <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
                         <span>
                             До {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}

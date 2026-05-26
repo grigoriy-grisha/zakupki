@@ -15,10 +15,12 @@ import { productSchema, type ProductFormValues } from '../lib';
 import { useUnits, useCreateProduct, useUpdateProduct, useDeletePhoto } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
 import type { ProductFormProps } from '../../lib/types';
+import { trpc } from '@/lib/client/trpc';
 
-export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
+export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: ProductFormProps & { defaultCategoryId?: number | null }) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
     const { data: units } = useUnits(true);
+    const { data: categories } = trpc.categories.list.useQuery();
     const createMutation = useCreateProduct();
     const updateMutation = useUpdateProduct();
     const deletePhotoMutation = useDeletePhoto();
@@ -32,7 +34,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
         formState: { errors },
     } = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema),
-        defaultValues: { name: '', unitId: units?.[0]?.id ?? 0, pricePerUnit: 0 },
+        defaultValues: { name: '', unitId: units?.[0]?.id ?? 0, pricePerUnit: 0, categoryId: defaultCategoryId ?? null },
     });
 
     const currentUnitId = watch('unitId');
@@ -46,6 +48,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 pricePerUnit: Number(existing.pricePerUnit),
                 brand: existing.brand ?? '',
                 sku: existing.sku ?? '',
+                categoryId: existing.categoryId ?? null,
             });
             setPhotoIds(existing.photos.map((p) => p.id));
         } else if (!editId) {
@@ -56,6 +59,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 description: '',
                 brand: '',
                 sku: '',
+                categoryId: defaultCategoryId ?? null,
             });
             setPhotoIds([]);
         }
@@ -151,6 +155,26 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
             <div className="space-y-2">
                 <Label htmlFor="sku">SKU</Label>
                 <Input id="sku" {...register('sku')} />
+            </div>
+
+            <div className="space-y-2">
+                <Label>Категория</Label>
+                <Select
+                    value={watch('categoryId') ? String(watch('categoryId')) : 'none'}
+                    onValueChange={(v) => setValue('categoryId', v === 'none' ? null : Number(v))}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Без категории" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">Без категории</SelectItem>
+                        {categories?.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                                {c.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             {/* Photos — only in edit mode */}

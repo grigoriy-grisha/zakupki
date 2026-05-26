@@ -1,8 +1,8 @@
-import { ensureClientRole, getUserRoleKind } from '@zakupki/database';
 import { TRPCError } from '@trpc/server';
 
 import type { VerifiedAccount } from '../domain/user.types';
 import { UserRepository } from '../domain/user.repository';
+import { RoleService } from './role.service';
 
 function splitName(name: string) {
     const [firstName, ...rest] = name.split(' ');
@@ -10,7 +10,7 @@ function splitName(name: string) {
 }
 
 export class UserService {
-    constructor(private repo: UserRepository) {}
+    constructor(private repo: UserRepository, private roleService: RoleService) {}
 
     async list() {
         return this.repo.list();
@@ -38,8 +38,8 @@ export class UserService {
             lastName,
             avatarUrl: verified.avatar,
         });
-        await ensureClientRole(user.id);
-        const role = await getUserRoleKind(user.id);
+        await this.roleService.ensureClientRole(user.id);
+        const role = await this.roleService.getUserRoleKind(user.id);
         return { id: String(user.id), name: verified.name, image: verified.avatar, role };
     }
 
@@ -51,8 +51,8 @@ export class UserService {
             avatarUrl: verified.avatar,
             username: verified.username ?? undefined,
         });
-        await ensureClientRole(user.id);
-        const role = await getUserRoleKind(user.id);
+        await this.roleService.ensureClientRole(user.id);
+        const role = await this.roleService.getUserRoleKind(user.id);
         return { id: String(user.id), name: verified.name, image: verified.avatar, role };
     }
 

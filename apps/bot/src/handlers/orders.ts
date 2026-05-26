@@ -13,7 +13,7 @@ export async function ordersCommand(ctx: CustomContext) {
             purchaseItem: {
                 include: {
                     product: { include: { unit: true } },
-                    purchase: { select: { tag: true, title: true } },
+                    purchase: { select: { tag: true, supplier: true } },
                 },
             },
         },

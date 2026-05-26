@@ -1,8 +1,11 @@
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
 
-export function useProductList(search?: string) {
-    return trpc.products.list.useQuery({ search: search || undefined });
+export function useProductList(search?: string, categoryId?: number | null) {
+    return trpc.products.list.useQuery({
+        search: search || undefined,
+        categoryId: categoryId ?? undefined,
+    });
 }
 
 export function useProduct(id: number | null, enabled: boolean) {

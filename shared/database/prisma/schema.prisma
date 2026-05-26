@@ -36,6 +36,18 @@ enum RoleKind {
 
 // ── Models ──
 
+model Category {
+    id        Int        @id @default(autoincrement())
+    name      String
+    parentId  Int?
+    parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Cascade)
+    children  Category[] @relation("CategoryTree")
+    products  Product[]
+    createdAt DateTime   @default(now())
+
+    @@index([parentId])
+}
+
 model Unit {
     id           Int       @id @default(autoincrement())
     name         String
@@ -91,13 +103,16 @@ model Product {
     pricePerUnit  Decimal        @db.Decimal(10, 2)
     brand         String?
     sku           String?        @unique
+    categoryId    Int?
     createdAt     DateTime       @default(now())
     photos        ProductPhoto[]
     purchaseItems PurchaseItem[]
     unit          Unit           @relation(fields: [unitId], references: [id])
+    category      Category?      @relation(fields: [categoryId], references: [id])
 
     @@index([createdAt])
     @@index([unitId])
+    @@index([categoryId])
 }
 
 model ProductPhoto {
@@ -114,7 +129,7 @@ model ProductPhoto {
 model Purchase {
     id        Int            @id @default(autoincrement())
     tag       String         @unique
-    title     String
+    supplier  String
     status    PurchaseStatus @default(DRAFT)
     minAmount Decimal        @db.Decimal(10, 2)
     deadline  DateTime

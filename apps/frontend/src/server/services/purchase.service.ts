@@ -17,7 +17,7 @@ export class PurchaseService {
         return purchase;
     }
 
-    async create(data: { tag: string; title: string; minAmount: number; deadline: Date }) {
+    async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {
         return this.repo.create(data);
     }
 

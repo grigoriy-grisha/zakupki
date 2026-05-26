@@ -49,7 +49,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         <h1 className="text-2xl font-semibold tracking-tight">{purchase.tag}</h1>
                         <Badge>{STATUS_LABELS[purchase.status] ?? purchase.status}</Badge>
                     </div>
-                    <p className="mt-1 text-muted-foreground">{purchase.title}</p>
+                    <p className="mt-1 text-muted-foreground">{purchase.supplier}</p>
                     <p className="text-sm text-muted-foreground">
                         Мин. сумма: {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽ · До{' '}
                         {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
