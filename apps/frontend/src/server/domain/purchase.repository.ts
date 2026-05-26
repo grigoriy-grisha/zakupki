@@ -56,6 +56,15 @@ export class PurchaseRepository {
         return this.db.purchase.update({ where: { id }, data: { status: status as any } });
     }
 
+    async findProductIdsInPurchase(purchaseId: number, productIds: number[]) {
+        if (productIds.length === 0) return [];
+        const rows = await this.db.purchaseItem.findMany({
+            where: { purchaseId, productId: { in: productIds } },
+            select: { productId: true },
+        });
+        return rows.map((row) => row.productId);
+    }
+
     async addItem(purchaseId: number, productId: number, priceOverride?: number, minQty?: number) {
         return this.db.purchaseItem.create({
             data: { purchaseId, productId, priceOverride, minQty },
@@ -63,7 +72,10 @@ export class PurchaseRepository {
     }
 
     async removeItem(id: number) {
-        return this.db.purchaseItem.delete({ where: { id } });
+        return this.db.$transaction(async (tx) => {
+            await tx.orderLine.deleteMany({ where: { purchaseItemId: id } });
+            return tx.purchaseItem.delete({ where: { id } });
+        });
     }
 
     async updateTgMessage(purchaseItemId: number, tgMessageId: string, tgChannelId: string) {

@@ -26,12 +26,21 @@ export class PurchaseService {
     }
 
     async addItems(purchaseId: number, productIds: number[]) {
+        const uniqueIds = [...new Set(productIds)];
+        const alreadyInPurchase = await this.repo.findProductIdsInPurchase(purchaseId, uniqueIds);
+        const alreadySet = new Set(alreadyInPurchase);
+        const newProductIds = uniqueIds.filter((id) => !alreadySet.has(id));
+
+        if (newProductIds.length === 0) {
+            return { items: [], skippedCount: uniqueIds.length };
+        }
+
         const items = [];
-        for (const productId of productIds) {
+        for (const productId of newProductIds) {
             const item = await this.repo.addItem(purchaseId, productId);
             items.push(item);
         }
-        return items;
+        return { items, skippedCount: uniqueIds.length - newProductIds.length };
     }
 
     async removeItem(id: number) {

@@ -108,23 +108,39 @@ interface TgSendResult {
 }
 
 async function sendTelegramPost(botToken: string, chatId: string, text: string): Promise<TgSendResult> {
+    const payload = {
+        chat_id: chatId,
+        text: text.slice(0, 4096),
+        parse_mode: 'HTML' as const,
+        disable_web_page_preview: true,
+    };
+
     try {
-        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        let res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: text.slice(0, 4096),
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-            }),
+            body: JSON.stringify(payload),
         });
 
-        const data = (await res.json()) as {
+        let data = (await res.json()) as {
             ok: boolean;
             description?: string;
             result?: { message_id: number };
         };
+
+        // Невалидный HTML в описании — повтор без parse_mode
+        if (!data.ok && data.description?.includes("can't parse entities")) {
+            res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: payload.text.replace(/<[^>]+>/g, ''),
+                    disable_web_page_preview: true,
+                }),
+            });
+            data = (await res.json()) as typeof data;
+        }
 
         if (!data.ok || !data.result?.message_id) {
             const detail = data.description ?? `HTTP ${res.status}`;
@@ -212,7 +228,14 @@ export const purchasesRouter = router({
         }))
         .mutation(async ({ ctx, input }) => {
             const { purchase } = services(ctx.db);
-            const items = await purchase.addItems(input.purchaseId, input.productIds);
+            const { items, skippedCount } = await purchase.addItems(input.purchaseId, input.productIds);
+
+            if (items.length === 0) {
+                throw new TRPCError({
+                    code: 'CONFLICT',
+                    message: 'Выбранные товары уже добавлены в эту закупку',
+                });
+            }
 
             const tgOutcomes: TgPublishOutcome[] = [];
 
@@ -289,7 +312,11 @@ export const purchasesRouter = router({
                 }
             }
 
-            return { items, tgPublish: input.publishToTg ? tgOutcomes : null };
+            return {
+                items,
+                skippedCount,
+                tgPublish: input.publishToTg ? tgOutcomes : null,
+            };
         }),
 
     publishItemToTg: adminProcedure

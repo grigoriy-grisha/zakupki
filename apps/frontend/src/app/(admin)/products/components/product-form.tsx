@@ -177,7 +177,7 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
 
             <div className="space-y-2">
                 <Label htmlFor="sku">Артикул (SKU)</Label>
-                <Input id="sku" {...register('sku')} placeholder="DB1872" />
+                <Input id="sku" {...register('sku')} placeholder="Артикул" />
             </div>
 
             <div className="space-y-2">

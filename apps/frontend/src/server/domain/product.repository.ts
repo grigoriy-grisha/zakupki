@@ -70,7 +70,18 @@ export class ProductRepository {
     }
 
     async delete(id: number) {
-        return this.db.product.delete({ where: { id } });
+        return this.db.$transaction(async (tx) => {
+            const purchaseItems = await tx.purchaseItem.findMany({
+                where: { productId: id },
+                select: { id: true },
+            });
+            const purchaseItemIds = purchaseItems.map((item) => item.id);
+            if (purchaseItemIds.length > 0) {
+                await tx.orderLine.deleteMany({ where: { purchaseItemId: { in: purchaseItemIds } } });
+                await tx.purchaseItem.deleteMany({ where: { productId: id } });
+            }
+            return tx.product.delete({ where: { id } });
+        });
     }
 
     async addPhoto(productId: number, data: Uint8Array, mimeType: string, sortOrder: number) {

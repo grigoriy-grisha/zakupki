@@ -38,7 +38,15 @@ export function useAddPurchaseItems(purchaseId: number) {
     return trpc.purchases.addItems.useMutation({
         onSuccess: (data) => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('Товары добавлены');
+            const added = data?.items?.length ?? 0;
+            const skipped = data?.skippedCount ?? 0;
+            if (added > 0) {
+                toast.success(
+                    skipped > 0
+                        ? `Добавлено: ${added}. Пропущено (уже в закупке): ${skipped}`
+                        : 'Товары добавлены',
+                );
+            }
             showTgPublishToasts(data?.tgPublish);
         },
         onError: (err) => toast.error(err.message),

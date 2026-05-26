@@ -1,6 +1,0 @@
--- AlterTable
-ALTER TABLE "PurchaseItem" ALTER COLUMN "tgMessageId" SET DATA TYPE TEXT,
-ALTER COLUMN "tgChannelId" SET DATA TYPE TEXT;
-
--- AlterTable
-ALTER TABLE "User" ALTER COLUMN "telegramId" SET DATA TYPE TEXT;

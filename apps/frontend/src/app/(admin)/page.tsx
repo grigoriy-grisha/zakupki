@@ -2,151 +2,101 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Clock, LayoutDashboard, TrendingUp } from 'lucide-react';
-
-import {
-    DASHBOARD_ORDER_STATUS_CONFIG,
-    DASHBOARD_RECENT_ORDERS,
-    DASHBOARD_RECENT_PURCHASES,
-    DASHBOARD_STATS,
-} from './lib/constants';
+import { ArrowRight, LayoutDashboard, Package, Plus, ShoppingCart } from 'lucide-react';
+import { trpc } from '@/lib/client/trpc';
 
 export default function DashboardPage() {
+    const { data: purchases } = trpc.purchases.list.useQuery({ status: 'ACTIVE' });
+    const { data: products } = trpc.products.list.useQuery({});
+
+    const activeCount = purchases?.length ?? 0;
+    const productCount = products?.length ?? 0;
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                        <LayoutDashboard className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-                        <p className="text-sm text-muted-foreground">Обзор ваших закупок</p>
-                    </div>
+            <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                    <LayoutDashboard className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+                    <p className="text-sm text-muted-foreground">Обзор ваших закупок</p>
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {DASHBOARD_STATS.map((stat) => (
-                    <Card key={stat.title} className="p-4 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                                <stat.icon className="h-4 w-4 text-primary" />
-                            </div>
-                        </div>
-                        <p className="mt-2 text-3xl font-bold">{stat.value}</p>
-                        <p className="mt-1 text-xs font-medium text-muted-foreground">
-                            <TrendingUp className="mr-1 inline h-3 w-3" />
-                            {stat.change}
-                        </p>
-                    </Card>
-                ))}
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card className="p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-muted-foreground">Активных закупок</p>
+                        <ShoppingCart className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="mt-2 text-3xl font-bold">{activeCount}</p>
+                    <Button variant="link" className="mt-2 h-auto p-0" asChild>
+                        <Link href="/purchases">Перейти к закупкам</Link>
+                    </Button>
+                </Card>
+                <Card className="p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-muted-foreground">Товаров в каталоге</p>
+                        <Package className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="mt-2 text-3xl font-bold">{productCount}</p>
+                    <Button variant="link" className="mt-2 h-auto p-0" asChild>
+                        <Link href="/products">Перейти к каталогу</Link>
+                    </Button>
+                </Card>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-5">
-                <Card className="lg:col-span-3">
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Последние заказы</CardTitle>
-                            <p className="text-sm text-muted-foreground">Новые заказы участников</p>
-                        </div>
+                        <CardTitle>Активные закупки</CardTitle>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href="/purchases">
-                                Все заказы
-                                <ArrowRight className="ml-2 h-4 w-4" />
+                            <Link href="/purchases/new">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Новая
                             </Link>
                         </Button>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Пользователь</TableHead>
-                                    <TableHead>Товар</TableHead>
-                                    <TableHead>Кол-во</TableHead>
-                                    <TableHead>Сумма</TableHead>
-                                    <TableHead>Статус</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {DASHBOARD_RECENT_ORDERS.map((order) => {
-                                    const sc = DASHBOARD_ORDER_STATUS_CONFIG[order.status];
-                                    return (
-                                        <TableRow key={order.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                                                        {order.user.charAt(0)}
-                                                    </div>
-                                                    <span className="font-medium">{order.user}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-sm">{order.product}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{order.quantity}</TableCell>
-                                            <TableCell className="font-medium">{order.amount}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={sc.variant}>{sc.label}</Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
+                        {activeCount === 0 ? (
+                            <p className="py-8 text-center text-sm text-muted-foreground">Нет активных закупок</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {purchases?.map((p) => (
+                                    <li key={p.id}>
+                                        <Link
+                                            href={`/purchases/${p.id}`}
+                                            className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-accent/50"
+                                        >
+                                            <span className="font-medium">{p.tag}</span>
+                                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-2">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Активные закупки</CardTitle>
-                        <p className="text-sm text-muted-foreground">Текущие закупки и их прогресс</p>
+                        <CardTitle>Быстрые действия</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
-                        {DASHBOARD_RECENT_PURCHASES.map((purchase) => (
-                            <Link key={purchase.id} href={`/purchases/${purchase.id}`}>
-                                <div className="group rounded-xl border p-4 transition-colors hover:border-primary/30">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`h-2.5 w-2.5 rounded-full ${purchase.color}`} />
-                                            <span className="font-semibold">{purchase.tag}</span>
-                                        </div>
-                                        <Badge
-                                            variant={purchase.status === 'ACTIVE' ? 'default' : 'secondary'}
-                                            className={purchase.status === 'ACTIVE' ? 'bg-success-50 text-success pointer-events-none' : 'pointer-events-none'}
-                                        >
-                                            {purchase.status === 'ACTIVE' ? 'Активна' : 'Черновик'}
-                                        </Badge>
-                                    </div>
-                                    <p className="mt-1 text-sm font-medium group-hover:text-primary transition-colors">{purchase.supplier}</p>
-                                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            До {purchase.deadline}
-                                        </span>
-                                        <span>{purchase.items} тов.</span>
-                                        <span>{purchase.orders} заказов</span>
-                                    </div>
-                                    {purchase.progress > 0 && (
-                                        <>
-                                            <div className="mt-3 h-2 rounded-full bg-secondary">
-                                                <div
-                                                    className={`h-2 rounded-full transition-all ${purchase.progress >= 80 ? 'bg-success' : purchase.progress >= 50 ? 'bg-primary' : 'bg-warning'}`}
-                                                    style={{ width: `${purchase.progress}%` }}
-                                                />
-                                            </div>
-                                            <div className="mt-1 flex items-center justify-between text-xs">
-                                                <span className="text-muted-foreground">Прогресс</span>
-                                                <span className="font-medium">{purchase.progress}%</span>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
+                    <CardContent className="flex flex-col gap-2">
+                        <Button variant="outline" asChild className="justify-start">
+                            <Link href="/products">
+                                <Package className="mr-2 h-4 w-4" />
+                                Каталог товаров
                             </Link>
-                        ))}
+                        </Button>
+                        <Button variant="outline" asChild className="justify-start">
+                            <Link href="/shop">
+                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                Мои закупки (участник)
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
             </div>

@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 
 import { ProductRepository } from '../domain/product.repository';
 import { ProductService } from '../services/product.service';
-import type { PrismaClient } from '@zakupki/database';
+import { Prisma, type PrismaClient } from '@zakupki/database';
 import { adminProcedure, publicProcedure, router } from '../trpc';
 
 export interface ProductCreateInput {
@@ -100,7 +101,14 @@ export const productsRouter = router({
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         const { product } = services(ctx.db);
-        return product.delete(input.id);
+        try {
+            return await product.delete(input.id);
+        } catch (err) {
+            if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+            }
+            throw err;
+        }
     }),
 
     uploadPhoto: adminProcedure
