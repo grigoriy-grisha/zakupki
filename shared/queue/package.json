@@ -1,0 +1,24 @@
+{
+    "name": "@zakupki/queue",
+    "version": "1.0.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/main.ts",
+            "source": "./src/main.ts",
+            "default": "./src/main.ts"
+        }
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
+    "license": "ISC",
+    "dependencies": {
+        "bullmq": "^5.47.2",
+        "ioredis": "^5.6.0",
+        "typescript": "^6.0.3"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.2"
+    }
+}

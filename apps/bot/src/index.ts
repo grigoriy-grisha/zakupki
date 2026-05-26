@@ -1,9 +1,15 @@
+import 'dotenv/config';
+
 import { dbClient } from '@zakupki/database';
+import { getRedisConnection } from '@zakupki/queue';
 
 import { createBot } from './create-bot';
+import { setupPurchaseChannelPostHandler } from './notifications/purchase-channel-post.handler';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN is required');
+
+const TELEGRAM_PROXY = process.env.TELEGRAM_PROXY;
 
 // BOT_TOKEN is guaranteed to be defined after the check above
 
@@ -11,7 +17,13 @@ async function main() {
     await dbClient.$connect();
     console.log('Database connected');
 
-    const bot = createBot({ db: dbClient, token: BOT_TOKEN! });
+    const bot = createBot({
+        db: dbClient,
+        token: BOT_TOKEN!,
+        proxyUrl: TELEGRAM_PROXY,
+    });
+
+    setupPurchaseChannelPostHandler(bot, { redis: getRedisConnection(), db: dbClient });
 
     // Set bot commands for Telegram menu
     await bot.api.setMyCommands([

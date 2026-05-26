@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@zakupki/database';
-import { Bot, GrammyError, HttpError, session } from 'grammy';
+import { Bot, GrammyError, HttpError, session, type BotConfig } from 'grammy';
 import { autoRetry } from '@grammyjs/auto-retry';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 import type { CustomContext } from './types';
 import { initMiddleware } from './middlewares';
@@ -9,10 +10,27 @@ import { startCommand, helpCommand, ordersCommand, paymentsCommand } from './han
 interface CreateBotOptions {
     db: PrismaClient;
     token: string;
+    proxyUrl?: string;
 }
 
-export function createBot({ db, token }: CreateBotOptions) {
-    const bot = new Bot<CustomContext>(token);
+function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
+    return {
+        client: {
+            baseFetchConfig: {
+                agent: new HttpsProxyAgent(proxyUrl),
+                compress: true,
+            },
+        },
+    };
+}
+
+export function createBot({ db, token, proxyUrl }: CreateBotOptions) {
+    const proxy = proxyUrl?.trim();
+    if (proxy) {
+        console.log('[bot] Telegram API via proxy');
+    }
+
+    const bot = new Bot<CustomContext>(token, proxy ? botConfigWithProxy(proxy) : undefined);
 
     // Auto-retry on 429 flood errors
     bot.api.config.use(autoRetry());
@@ -40,6 +58,7 @@ export function createBot({ db, token }: CreateBotOptions) {
 
     // Error handling
     bot.catch((err) => {
+        console.error(err);
         const ctx = err.ctx;
         console.error(`Error while handling update ${ctx.update.update_id}:`);
         const e = err.error;
