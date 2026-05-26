@@ -1,4 +1,4 @@
-import type { CustomContext } from '../types';
+import type { CustomContext } from '../lib/types';
 
 export async function startCommand(ctx: CustomContext) {
     const name = ctx.from?.first_name ?? 'Друг';

@@ -1,0 +1,42 @@
+import type { Context, SessionFlavor } from 'grammy';
+import type { PrismaClient } from '@zakupki/database';
+import type { RedisClient } from '@zakupki/queue';
+
+export interface SessionData {
+    userId?: number;
+    telegramId?: number;
+}
+
+export type CustomContext = Context & SessionFlavor<SessionData> & {
+    db: PrismaClient;
+};
+
+export interface CreateBotOptions {
+    db: PrismaClient;
+    token: string;
+    proxyUrl?: string;
+}
+
+export interface PurchaseChannelPostHandlerOptions {
+    redis: RedisClient;
+    db: PrismaClient;
+}
+
+export interface PostProduct {
+    name: string;
+    description: string | null;
+    pricePerUnit: unknown;
+    minPackageAmount: unknown;
+    minPackageUnit: string | null;
+    unit: { shortName: string } | null;
+}
+
+export type ChannelPostPhoto = {
+    data: Buffer;
+    mimeType: string;
+};
+
+export type ProductPhotoInput = {
+    data: Uint8Array | Buffer;
+    mimeType: string;
+};

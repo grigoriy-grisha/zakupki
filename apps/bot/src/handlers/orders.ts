@@ -1,4 +1,4 @@
-import type { CustomContext } from '../types';
+import type { CustomContext } from '../lib/types';
 
 export async function ordersCommand(ctx: CustomContext) {
     const userId = ctx.session.userId;

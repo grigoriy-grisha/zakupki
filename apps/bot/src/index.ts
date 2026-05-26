@@ -11,8 +11,6 @@ if (!BOT_TOKEN) throw new Error('BOT_TOKEN is required');
 
 const TELEGRAM_PROXY = process.env.TELEGRAM_PROXY;
 
-// BOT_TOKEN is guaranteed to be defined after the check above
-
 async function main() {
     await dbClient.$connect();
     console.log('Database connected');
@@ -25,7 +23,6 @@ async function main() {
 
     setupPurchaseChannelPostHandler(bot, { redis: getRedisConnection(), db: dbClient });
 
-    // Set bot commands for Telegram menu
     await bot.api.setMyCommands([
         { command: 'start', description: 'Открыть магазин' },
         { command: 'help', description: 'Справка' },

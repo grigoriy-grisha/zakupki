@@ -1,6 +1,8 @@
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
 
+import type { ChannelPostPhoto, PostProduct, ProductPhotoInput } from './types';
+
 export function normalizeChatId(raw: string): string {
     const trimmed = raw.trim();
     if (trimmed.startsWith('@') || trimmed.startsWith('-')) return trimmed;
@@ -53,27 +55,10 @@ function htmlToTelegramHtml(html: string): string {
     return s;
 }
 
-export interface PostProduct {
-    name: string;
-    description: string | null;
-    pricePerUnit: unknown;
-    minPackageAmount: unknown;
-    minPackageUnit: string | null;
-    unit: { shortName: string } | null;
-}
-
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MESSAGE_MAX = 4096;
 
-export type ChannelPostPhoto = {
-    data: Buffer;
-    mimeType: string;
-};
-
-export function productPhotoToAttachment(photo: {
-    data: Uint8Array | Buffer;
-    mimeType: string;
-}): ChannelPostPhoto {
+export function productPhotoToAttachment(photo: ProductPhotoInput): ChannelPostPhoto {
     return {
         data: Buffer.isBuffer(photo.data) ? photo.data : Buffer.from(photo.data),
         mimeType: photo.mimeType || 'image/jpeg',

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@zakupki/database';
-import type { CustomContext } from '../types';
+import type { CustomContext } from '../lib/types';
 
 export function initMiddleware(db: PrismaClient) {
     return async (ctx: CustomContext, next: () => Promise<void>) => {
