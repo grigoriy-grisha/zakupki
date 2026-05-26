@@ -204,7 +204,7 @@ function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: {
                     published={published}
                     purchaseItemId={purchaseItemId!}
                     onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
-                    onDeletePhoto={(photoId) => deletePhotoMutation.mutateAsync({ id: photoId })}
+                    onDeletePhoto={async (photoId) => { await deletePhotoMutation.mutateAsync({ id: photoId }); }}
                     isSaving={updateMutation.isPending}
                 />
             </SheetContent>

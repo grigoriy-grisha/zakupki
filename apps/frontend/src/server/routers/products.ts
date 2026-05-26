@@ -108,12 +108,6 @@ export const productsRouter = router({
         }
     }),
 
-    uploadPhoto: adminProcedure
-        .input(z.object({ productId: z.number(), sortOrder: z.number().default(0) }))
-        .mutation(async () => {
-            return { ok: true };
-        }),
-
     deletePhoto: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         const { product } = services(ctx.db);
         return product.deletePhoto(input.id);

@@ -129,7 +129,7 @@ export function ProductPickerDialog({ purchaseId, existingProductIds }: ProductP
                             <Button
                                 className="w-full"
                                 disabled={selectedIds.size === 0 || addItems.isPending}
-                                onClick={handleAdd}
+                                onClick={() => handleAdd()}
                             >
                                 {addItems.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Добавить {selectedIds.size > 0 && `(${selectedIds.size})`}
@@ -154,7 +154,7 @@ function ProductDetail({
     productId: number;
     isSelected: boolean;
     onToggle: () => void;
-    onAdd: () => void;
+    onAdd: (productIds?: number[]) => void;
     onBack: () => void;
     shouldPublish: boolean;
     onPublishChange: (v: boolean) => void;
@@ -222,7 +222,7 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
     shouldPublish: boolean;
     onSave: (fields: { name: string; priceTiers: { amount: number; unit: string; price: number }[]; minPackageAmount: number | null; minPackageUnit: string | null; supplierPackageAmount: number | null; supplierPackageUnit: string | null; supplierPackagePrice: number | null }) => void;
     onToggle: () => void;
-    onAdd: () => void;
+    onAdd: (productIds?: number[]) => void;
     onBack: () => void;
     onPublishChange: (v: boolean) => void;
     isSaving: boolean;

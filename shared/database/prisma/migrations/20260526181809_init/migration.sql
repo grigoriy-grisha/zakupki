@@ -1,6 +1,3 @@
--- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "public";
-
 -- CreateEnum
 CREATE TYPE "PurchaseStatus" AS ENUM ('DRAFT', 'ACTIVE', 'SUPPLEMENT', 'CLOSED', 'ARRIVED', 'DONE');
 
@@ -219,7 +216,6 @@ CREATE UNIQUE INDEX "VkCredential_userId_key" ON "VkCredential"("userId");
 -- CreateIndex
 CREATE UNIQUE INDEX "VkCredential_vkId_key" ON "VkCredential"("vkId");
 
-
 -- CreateIndex
 CREATE INDEX "Product_createdAt_idx" ON "Product"("createdAt");
 
@@ -327,4 +323,3 @@ ALTER TABLE "UserRole" ADD CONSTRAINT "UserRole_userId_fkey" FOREIGN KEY ("userI
 
 -- AddForeignKey
 ALTER TABLE "UserRole" ADD CONSTRAINT "UserRole_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
