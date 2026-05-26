@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { NovelEditor } from '@/components/ui/novel-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SheetFooter } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -16,6 +16,16 @@ import { useUnits, useCreateProduct, useUpdateProduct, useDeletePhoto } from '..
 import { PhotoUploader } from './photo-uploader';
 import type { ProductFormProps } from '../../lib/types';
 import { trpc } from '@/lib/client/trpc';
+
+function sanitizeDescription(html: string | undefined | null): string | undefined {
+    if (!html) return undefined;
+    const stripped = html
+        .replace(/<p>\s*<\/p>/g, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+    return stripped.length === 0 ? undefined : html.trim();
+}
 
 export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: ProductFormProps & { defaultCategoryId?: number | null }) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
@@ -26,6 +36,7 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
     const deletePhotoMutation = useDeletePhoto();
 
     const {
+        control,
         register,
         handleSubmit,
         reset,
@@ -66,11 +77,12 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
     }, [existing, editId, reset, units]);
 
     async function onSubmit(data: ProductFormValues) {
+        const cleanedDescription = sanitizeDescription(data.description);
         const cleaned = {
             ...data,
             sku: data.sku?.trim() || undefined,
             brand: data.brand?.trim() || undefined,
-            description: data.description?.trim() || undefined,
+            description: cleanedDescription,
         };
         if (editId) {
             await updateMutation.mutateAsync({ id: editId, ...cleaned });
@@ -115,7 +127,17 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
 
             <div className="space-y-2">
                 <Label htmlFor="description">Описание</Label>
-                <Textarea id="description" {...register('description')} />
+                <Controller
+                    control={control}
+                    name="description"
+                    render={({ field }) => (
+                        <NovelEditor
+                            value={field.value ?? ''}
+                            onChange={field.onChange}
+                            placeholder="Опишите товар..."
+                        />
+                    )}
+                />
             </div>
 
             <div className="space-y-2">
