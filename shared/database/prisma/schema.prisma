@@ -101,7 +101,6 @@ model Product {
     description           String?
     unitId                Int
     pricePerUnit          Decimal        @db.Decimal(10, 2)
-    sku                   String?        @unique
     categoryId            Int?
     minPackageAmount      Decimal?       @db.Decimal(10, 3)
     minPackageUnit        String?
@@ -159,6 +158,7 @@ model PurchaseItem {
     tgMessageId   String?
     tgChannelId   String?
     isActive      Boolean       @default(true)
+    shouldPublish Boolean       @default(false)
     purchase      Purchase      @relation(fields: [purchaseId], references: [id])
     product       Product       @relation(fields: [productId], references: [id])
     orderLines    OrderLine[]

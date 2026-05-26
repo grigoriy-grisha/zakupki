@@ -45,3 +45,25 @@ export function useRemovePurchaseItem(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 }
+
+export function useActivateAndPublish(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.activateAndPublish.useMutation({
+        onSuccess: (data) => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            toast.success(`Закупка активирована. ${data.queued} товаров опубликовано.`);
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}
+
+export function useToggleShouldPublish(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.toggleShouldPublish.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+        },
+    });
+}

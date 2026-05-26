@@ -1,24 +1,35 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Loader2, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
-import { usePublishItemToTg, useRemovePurchaseItem } from '../hooks';
+import { toast } from 'sonner';
+import { useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
+import { PhotoUploader } from '../../../products/components/photo-uploader';
+import { PACKAGE_UNITS } from '../../../products/lib';
 import type { ItemsTabProps } from '../../../lib/types';
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const removeItem = useRemovePurchaseItem(purchaseId);
-    const publishToTg = usePublishItemToTg(purchaseId);
+    const togglePublish = useToggleShouldPublish(purchaseId);
+
+    const [editItem, setEditItem] = useState<number | null>(null);
 
     if (isLoading || !purchase) {
         return <Skeleton className="h-64" />;
     }
 
+    const isDraft = purchase.status === 'DRAFT';
     const isSupplement = purchase.status === 'SUPPLEMENT';
     const existingProductIds = new Set(purchase.items.map((item) => item.productId));
 
@@ -60,8 +71,13 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         )}
                         {purchase.items.map((item) => {
                             const shortName = item.product.unit?.shortName ?? '';
+                            const published = !!item.tgMessageId;
                             return (
-                                <TableRow key={item.id}>
+                                <TableRow
+                                    key={item.id}
+                                    className="cursor-pointer hover:bg-accent/50"
+                                    onClick={() => setEditItem(item.id)}
+                                >
                                     <TableCell>
                                         {item.product.photos?.[0] ? (
                                             <img
@@ -87,20 +103,19 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                     <TableCell>
                                         <Badge variant="secondary">{item.orderLines.length}</Badge>
                                     </TableCell>
-                                    <TableCell className="text-center">
-                                        {item.tgMessageId ? (
+                                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                                        {published ? (
                                             <Badge variant="outline">✓</Badge>
                                         ) : (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8"
-                                                title="Опубликовать в Telegram"
-                                                disabled={publishToTg.isPending}
-                                                onClick={() => publishToTg.mutate({ purchaseItemId: item.id })}
-                                            >
-                                                <Send className="h-4 w-4" />
-                                            </Button>
+                                            <Checkbox
+                                                checked={item.shouldPublish}
+                                                disabled={!isDraft || togglePublish.isPending}
+                                                onCheckedChange={(v) => {
+                                                    if (typeof v === 'boolean') {
+                                                        togglePublish.mutate({ purchaseItemId: item.id, value: v });
+                                                    }
+                                                }}
+                                            />
                                         )}
                                     </TableCell>
                                     {isSupplement && (
@@ -117,7 +132,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                             )}
                                         </TableCell>
                                     )}
-                                    <TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -133,6 +148,216 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                     </TableBody>
                 </Table>
             </div>
+
+            <ItemEditSheet
+                purchaseItemId={editItem}
+                open={editItem !== null}
+                onClose={() => setEditItem(null)}
+                purchaseId={purchaseId}
+            />
         </div>
     );
+}
+
+function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: {
+    purchaseItemId: number | null;
+    open: boolean;
+    onClose: () => void;
+    purchaseId: number;
+}) {
+    const utils = trpc.useUtils();
+    const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
+    const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
+
+    const updateMutation = trpc.purchases.updateItemProduct.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            void utils.products.list.invalidate();
+            toast.success('Товар обновлён');
+            onClose();
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const deletePhotoMutation = trpc.products.deletePhoto.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            void utils.products.list.invalidate();
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    if (!item) return null;
+    const product = item.product;
+    const tiers = Array.isArray(product.priceTiers) ? product.priceTiers as { amount: number; unit: string; price: number }[] : [];
+    const published = !!item.tgMessageId;
+
+    return (
+        <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+            <SheetContent className="sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                    <SheetTitle>Редактировать товар {published && '· Пост в TG обновится'}</SheetTitle>
+                </SheetHeader>
+                <ItemEditForm
+                    product={product}
+                    initialTiers={tiers}
+                    published={published}
+                    purchaseItemId={purchaseItemId!}
+                    onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
+                    onDeletePhoto={(photoId) => deletePhotoMutation.mutateAsync({ id: photoId })}
+                    isSaving={updateMutation.isPending}
+                />
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave, onDeletePhoto, isSaving }: {
+    product: any;
+    initialTiers: { amount: number; unit: string; price: number }[];
+    published: boolean;
+    purchaseItemId: number;
+    onSave: (data: any) => void;
+    onDeletePhoto: (photoId: number) => Promise<void>;
+    isSaving: boolean;
+}) {
+    const [name, setName] = useState(product.name);
+    const [tiers, setTiers] = useState(initialTiers.length > 0 ? initialTiers : [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }]);
+    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(product.minPackageAmount ? Number(product.minPackageAmount) : null);
+    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(product.minPackageUnit ?? PACKAGE_UNITS[0]);
+    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(product.supplierPackageAmount ? Number(product.supplierPackageAmount) : null);
+    const [supPkgUnit, setSupPkgUnit] = useState<string | null>(product.supplierPackageUnit ?? PACKAGE_UNITS[0]);
+    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(product.supplierPackagePrice ? Number(product.supplierPackagePrice) : null);
+    const [photoIds, setPhotoIds] = useState<number[]>((product.photos ?? []).map((p: any) => p.id));
+
+    function handleSave() {
+        const firstTier = tiers[0];
+        if (!firstTier) return;
+        const pricePerUnit = firstTier.price / firstTier.amount;
+
+        // Build description locally to update it
+        const desc = buildLocalDescription({
+            name,
+            minPackageAmount: minPkgAmount,
+            minPackageUnit: minPkgUnit,
+            tiers,
+            supplierPackageAmount: supPkgAmount,
+            supplierPackageUnit: supPkgUnit,
+            supplierPackagePrice: supPkgPrice,
+        });
+
+        onSave({
+            name,
+            description: desc,
+            pricePerUnit,
+            priceTiers: tiers,
+            minPackageAmount: minPkgAmount,
+            minPackageUnit: minPkgUnit,
+            supplierPackageAmount: supPkgAmount,
+            supplierPackageUnit: supPkgUnit,
+            supplierPackagePrice: supPkgPrice,
+        });
+    }
+
+    return (
+        <div className="space-y-4 px-4">
+            <div className="space-y-1">
+                <Label>Название</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+
+            <div className="space-y-1">
+                <Label>Минимальная фасовка</Label>
+                <div className="flex gap-2">
+                    <Input type="number" step="0.001" className="flex-1" value={minPkgAmount ?? ''} onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)} />
+                    <select className="border rounded-md px-2 text-sm" value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={(e) => setMinPkgUnit(e.target.value)}>
+                        {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                </div>
+            </div>
+
+            <div className="space-y-1">
+                <Label>Цены</Label>
+                {tiers.map((tier, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                        <Input type="number" step="0.001" className="w-20" value={tier.amount} onChange={(e) => {
+                            const next = [...tiers]; next[i] = { ...next[i], amount: Number(e.target.value) }; setTiers(next);
+                        }} />
+                        <select className="border rounded-md px-2 text-sm" value={tier.unit} onChange={(e) => {
+                            const next = [...tiers]; next[i] = { ...next[i], unit: e.target.value }; setTiers(next);
+                        }}>
+                            {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                        <span className="text-muted-foreground">—</span>
+                        <Input type="number" step="0.01" className="flex-1" value={tier.price} onChange={(e) => {
+                            const next = [...tiers]; next[i] = { ...next[i], price: Number(e.target.value) }; setTiers(next);
+                        }} />
+                        <span className="text-sm text-muted-foreground">₽</span>
+                    </div>
+                ))}
+            </div>
+
+            <div className="space-y-1">
+                <Label>Фасовка поставщика</Label>
+                <div className="flex items-center gap-2">
+                    <Input type="number" step="0.001" className="w-24" value={supPkgAmount ?? ''} onChange={(e) => setSupPkgAmount(e.target.value ? Number(e.target.value) : null)} />
+                    <select className="border rounded-md px-2 text-sm" value={supPkgUnit ?? PACKAGE_UNITS[0]} onChange={(e) => setSupPkgUnit(e.target.value)}>
+                        {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                    <span className="text-muted-foreground">—</span>
+                    <Input type="number" step="0.01" className="flex-1" value={supPkgPrice ?? ''} onChange={(e) => setSupPkgPrice(e.target.value ? Number(e.target.value) : null)} />
+                    <span className="text-sm text-muted-foreground">₽</span>
+                </div>
+            </div>
+
+            <PhotoUploader
+                photoIds={photoIds}
+                onPhotoIdsChange={setPhotoIds}
+                productId={product.id}
+                onDeletePhoto={onDeletePhoto}
+            />
+
+            <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Сохранить {published && 'и обновить пост в TG'}
+            </Button>
+        </div>
+    );
+}
+
+function buildLocalDescription(input: {
+    name: string;
+    minPackageAmount: number | null;
+    minPackageUnit: string | null;
+    tiers: { amount: number; unit: string; price: number }[];
+    supplierPackageAmount: number | null;
+    supplierPackageUnit: string | null;
+    supplierPackagePrice: number | null;
+}): string {
+    const lines: string[] = [];
+    const name = input.name.trim();
+    if (name) lines.push(`<p><strong>${esc(name)}</strong></p>`);
+
+    if (input.minPackageAmount && input.minPackageAmount > 0 && input.minPackageUnit) {
+        lines.push(`<p><strong>Минимальная фасовка - ${input.minPackageAmount} ${esc(input.minPackageUnit)}</strong></p>`);
+    }
+
+    const valid = input.tiers.filter((t) => t.amount > 0 && t.price > 0);
+    if (valid.length > 0) {
+        lines.push('<p></p>');
+        for (const t of valid) {
+            lines.push(`<p>${t.amount} ${esc(t.unit)} - ${t.price} руб</p>`);
+        }
+    }
+
+    if (input.supplierPackageAmount && input.supplierPackageAmount > 0 && input.supplierPackageUnit && input.supplierPackagePrice && input.supplierPackagePrice > 0) {
+        lines.push('<p></p>');
+        lines.push(`<p><strong>Фасовка поставщика:</strong><br/>${input.supplierPackageAmount} ${esc(input.supplierPackageUnit!)} - ${input.supplierPackagePrice} руб</p>`);
+    }
+
+    return lines.join('');
+}
+
+function esc(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

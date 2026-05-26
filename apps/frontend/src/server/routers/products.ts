@@ -11,7 +11,6 @@ export interface ProductCreateInput {
     unitId: number;
     pricePerUnit: number;
     description?: string;
-    sku?: string;
     categoryId?: number;
     minPackageAmount?: number;
     minPackageUnit?: string;
@@ -41,7 +40,6 @@ const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     unitId: z.number(),
     pricePerUnit: z.number(),
     description: z.string().optional(),
-    sku: z.string().optional(),
     categoryId: z.number().optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
@@ -59,7 +57,6 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
-    sku: z.string().optional(),
     categoryId: z.number().optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),

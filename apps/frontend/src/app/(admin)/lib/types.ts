@@ -191,7 +191,6 @@ export interface ProductFormProps {
         description: string | null;
         unitId: number;
         pricePerUnit: string | number;
-        sku: string | null;
         categoryId: number | null;
         minPackageAmount: string | number | null;
         minPackageUnit: string | null;
@@ -203,7 +202,7 @@ export interface ProductFormProps {
         availableUnit: string | null;
         photos: { id: number }[];
     } | null | undefined;
-    onSuccess: () => void;
+    onSuccess: (newId?: number) => void;
 }
 
 export interface ProductSheetProps {

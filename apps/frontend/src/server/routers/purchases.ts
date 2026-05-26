@@ -92,6 +92,30 @@ export const purchasesRouter = router({
 
         }),
 
+    activateAndPublish: adminProcedure
+        .input(z.object({
+            purchaseId: z.number(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
+            await purchase.updateStatus(input.purchaseId, 'ACTIVE');
+            const items = await ctx.db.purchaseItem.findMany({
+                where: { purchaseId: input.purchaseId, shouldPublish: true, tgMessageId: null },
+                select: { id: true },
+            });
+            const queued = await telegramPublish.enqueuePurchaseItems(items.map((i) => i.id));
+            return { queued };
+        }),
+
+    toggleShouldPublish: adminProcedure
+        .input(z.object({ purchaseItemId: z.number(), value: z.boolean() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.db.purchaseItem.update({
+                where: { id: input.purchaseItemId },
+                data: { shouldPublish: input.value },
+            });
+        }),
+
 
 
     setAvailableQuantities: adminProcedure
@@ -132,7 +156,7 @@ export const purchasesRouter = router({
 
             productIds: z.array(z.number()).min(1, 'Выберите хотя бы один товар'),
 
-            publishToTg: z.boolean().optional(),
+            shouldPublish: z.boolean().optional(),
 
         }))
 
@@ -140,7 +164,7 @@ export const purchasesRouter = router({
 
             const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
 
-            const { items, skippedCount } = await purchase.addItems(input.purchaseId, input.productIds);
+            const { items, skippedCount } = await purchase.addItems(input.purchaseId, input.productIds, input.shouldPublish ?? false);
 
 
 
@@ -160,7 +184,7 @@ export const purchasesRouter = router({
 
             const tgPublish = await telegramPublish.enqueueAfterAddItems(
 
-                input.publishToTg,
+                false,
 
                 items.map((i) => i.id),
 
@@ -211,6 +235,41 @@ export const purchasesRouter = router({
         return purchase.removeItem(input.purchaseItemId);
 
     }),
+
+    updateItemProduct: adminProcedure
+        .input(z.object({
+            purchaseItemId: z.number(),
+            product: z.object({
+                name: z.string().min(1),
+                description: z.string().optional(),
+                pricePerUnit: z.number(),
+                minPackageAmount: z.number().nullable().optional(),
+                minPackageUnit: z.string().nullable().optional(),
+                priceTiers: z.array(z.object({ amount: z.number(), unit: z.string(), price: z.number() })).optional(),
+                supplierPackageAmount: z.number().nullable().optional(),
+                supplierPackageUnit: z.string().nullable().optional(),
+                supplierPackagePrice: z.number().nullable().optional(),
+            }),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const item = await ctx.db.purchaseItem.findUnique({
+                where: { id: input.purchaseItemId },
+                select: { productId: true, tgMessageId: true, tgChannelId: true },
+            });
+            if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+
+            await ctx.db.product.update({
+                where: { id: item.productId },
+                data: input.product,
+            });
+
+            if (item.tgMessageId) {
+                const { telegramPublish } = createPurchaseServices(ctx.db);
+                await telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);
+            }
+
+            return { ok: true };
+        }),
 
 });
 

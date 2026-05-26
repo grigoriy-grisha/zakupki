@@ -14,7 +14,6 @@ export const productSchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
     description: z.string().optional(),
     unitId: z.coerce.number().positive('Выберите единицу'),
-    sku: z.string().optional(),
     categoryId: z.number().nullable(),
     minPackageAmount: z.number().positive('Укажите фасовку').nullable(),
     minPackageUnit: z.string().nullable(),

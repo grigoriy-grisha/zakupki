@@ -8,7 +8,6 @@ export interface ProductWriteData {
     description?: string;
     unitId?: number;
     pricePerUnit?: number;
-    sku?: string;
     categoryId?: number | null;
     minPackageAmount?: number | null;
     minPackageUnit?: string | null;
@@ -36,7 +35,6 @@ export class ProductRepository {
                     ? {
                           OR: [
                               { name: { contains: search, mode: 'insensitive' } },
-                              { sku: { contains: search, mode: 'insensitive' } },
                           ],
                       }
                     : {}),

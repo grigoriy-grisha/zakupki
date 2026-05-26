@@ -79,7 +79,6 @@ CREATE TABLE "Product" (
     "description" TEXT,
     "unitId" INTEGER NOT NULL,
     "pricePerUnit" DECIMAL(10,2) NOT NULL,
-    "sku" TEXT,
     "categoryId" INTEGER,
     "minPackageAmount" DECIMAL(10,3),
     "minPackageUnit" TEXT,
@@ -129,6 +128,7 @@ CREATE TABLE "PurchaseItem" (
     "tgMessageId" TEXT,
     "tgChannelId" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "shouldPublish" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "PurchaseItem_pkey" PRIMARY KEY ("id")
 );
@@ -219,8 +219,6 @@ CREATE UNIQUE INDEX "VkCredential_userId_key" ON "VkCredential"("userId");
 -- CreateIndex
 CREATE UNIQUE INDEX "VkCredential_vkId_key" ON "VkCredential"("vkId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "Product_sku_key" ON "Product"("sku");
 
 -- CreateIndex
 CREATE INDEX "Product_createdAt_idx" ON "Product"("createdAt");

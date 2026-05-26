@@ -65,9 +65,9 @@ export class PurchaseRepository {
         return rows.map((row) => row.productId);
     }
 
-    async addItem(purchaseId: number, productId: number, priceOverride?: number, minQty?: number) {
+    async addItem(purchaseId: number, productId: number, shouldPublish = false) {
         return this.db.purchaseItem.create({
-            data: { purchaseId, productId, priceOverride, minQty },
+            data: { purchaseId, productId, shouldPublish },
         });
     }
 

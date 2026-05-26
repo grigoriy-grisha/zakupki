@@ -1,5 +1,5 @@
 import type { Api } from 'grammy';
-import { GrammyError } from 'grammy';
+import { GrammyError, InputFile } from 'grammy';
 
 export function normalizeChatId(raw: string): string {
     const trimmed = raw.trim();
@@ -55,7 +55,6 @@ function htmlToTelegramHtml(html: string): string {
 
 export interface PostProduct {
     name: string;
-    sku: string | null;
     description: string | null;
     pricePerUnit: unknown;
     minPackageAmount: unknown;
@@ -64,19 +63,18 @@ export interface PostProduct {
 }
 
 export function buildProductPostText(product: PostProduct, purchaseTag: string): string {
-    const header = `📦 <b>Закупка ${escapeHtml(purchaseTag)}</b>\n\n`;
-
+    const rawTag = purchaseTag.replace(/^#/, '');
+    const hashtag = `#${escapeHtml(rawTag)}`;
     const desc = product.description?.trim();
     if (desc) {
-        return header + htmlToTelegramHtml(desc);
+        return htmlToTelegramHtml(desc) + '\n\n' + hashtag;
     }
 
     const lines: string[] = [`<b>${escapeHtml(product.name)}</b>`];
-    if (product.sku?.trim()) lines.push(escapeHtml(product.sku.trim()));
 
     if (product.minPackageAmount != null && product.minPackageUnit) {
         lines.push(
-            `Минимальная фасовка — ${Number(product.minPackageAmount)} ${escapeHtml(product.minPackageUnit)}`,
+            `<b>Минимальная фасовка - ${Number(product.minPackageAmount)} ${escapeHtml(product.minPackageUnit)}</b>`,
         );
     }
 
@@ -86,15 +84,40 @@ export function buildProductPostText(product: PostProduct, purchaseTag: string):
         lines.push(`${price.toLocaleString('ru-RU')} ₽/${escapeHtml(shortName)}`);
     }
 
-    return header + lines.join('\n');
+    return lines.join('\n') + '\n\n' + hashtag;
 }
 
 export async function sendChannelPost(
     api: Api,
     chatId: string,
     text: string,
+    photo?: { data: Buffer; mimeType: string },
 ): Promise<{ messageId: number }> {
     const htmlText = text.slice(0, 4096);
+
+    if (photo) {
+        const file = new InputFile(photo.data, 'photo.jpg');
+        try {
+            const msg = await api.sendPhoto(chatId, file, {
+                caption: htmlText,
+                parse_mode: 'HTML',
+                link_preview_options: { is_disabled: true },
+            });
+            return { messageId: msg.message_id };
+        } catch (e) {
+            const description =
+                e instanceof GrammyError ? e.description : e instanceof Error ? e.message : String(e);
+            if (!description.includes("can't parse entities")) {
+                throw e;
+            }
+            const plain = htmlText.replace(/<[^>]+>/g, '');
+            const msg = await api.sendPhoto(chatId, file, {
+                caption: plain,
+                link_preview_options: { is_disabled: true },
+            });
+            return { messageId: msg.message_id };
+        }
+    }
 
     try {
         const msg = await api.sendMessage(chatId, htmlText, {

@@ -24,6 +24,7 @@ type ExistingProduct = NonNullable<ProductFormProps['existing']>;
 
 export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: ProductFormProps & { defaultCategoryId?: number | null }) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
+    const [pendingFiles, setPendingFiles] = useState<{ file: File; preview: string }[]>([]);
     const utils = trpc.useUtils();
     const { data: units } = useUnits(true);
     const { data: categories } = trpc.categories.list.useQuery();
@@ -44,7 +45,6 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
         defaultValues: {
             name: '',
             description: '',
-            sku: '',
             unitId: 0,
             categoryId: defaultCategoryId ?? null,
             minPackageAmount: null,
@@ -68,7 +68,6 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                 name: existing.name,
                 description: existing.description ?? '',
                 unitId: existing.unitId,
-                sku: existing.sku ?? '',
                 categoryId: existing.categoryId ?? null,
                 minPackageAmount: nullableNumber(existing.minPackageAmount),
                 minPackageUnit: existing.minPackageUnit ?? PACKAGE_UNITS[0],
@@ -80,11 +79,11 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                 availableUnit: existing.availableUnit ?? PACKAGE_UNITS[0],
             });
             setPhotoIds(existing.photos.map((p) => p.id));
+            setPendingFiles([]);
         } else if (!editId) {
             reset({
                 name: '',
                 description: '',
-                sku: '',
                 unitId: units?.[0]?.id ?? 0,
                 categoryId: defaultCategoryId ?? null,
                 minPackageAmount: null,
@@ -97,10 +96,12 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                 availableUnit: PACKAGE_UNITS[0],
             });
             setPhotoIds([]);
+            setPendingFiles([]);
         }
     }, [existing, editId, reset, units, defaultCategoryId]);
 
-    useAutoDescription(control, setValue);
+    const currentCategoryName = categories?.find((c) => c.id === currentCategoryId)?.name;
+    useAutoDescription(control, setValue, currentCategoryName);
 
     async function onSubmit(data: ProductFormValues) {
         const firstTier = data.priceTiers?.[0];
@@ -118,7 +119,6 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
         const payload = {
             name: data.name,
             description: data.description?.trim() || undefined,
-            sku: data.sku?.trim() || undefined,
             unitId: data.unitId,
             pricePerUnit,
             categoryId: data.categoryId ?? undefined,
@@ -140,10 +140,26 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
             } else {
                 const result = await createMutation.mutateAsync(payload);
                 await utils.products.list.invalidate();
-                toast.success('Товар создан');
-                if (photoIds.length === 0) {
-                    toast.info('Теперь можно загрузить фото.');
+
+                // Upload pending photos
+                if (pendingFiles.length > 0) {
+                    for (let i = 0; i < pendingFiles.length; i++) {
+                        const formData = new FormData();
+                        formData.append('file', pendingFiles[i].file);
+                        formData.append('productId', String(result.id));
+                        formData.append('sortOrder', String(i));
+                        try {
+                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                            if (res.ok) {
+                                const { id } = await res.json();
+                                setPhotoIds((prev) => [...prev, id]);
+                            }
+                        } catch { /* skip failed photo */ }
+                    }
+                    setPendingFiles([]);
                 }
+
+                toast.success('Товар создан');
                 return result.id;
             }
             onSuccess();
@@ -157,7 +173,7 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
         e.preventDefault();
         handleSubmit(async (data) => {
             const newId = await onSubmit(data);
-            if (newId) onSuccess();
+            if (newId) onSuccess(newId);
         })();
     }
 
@@ -173,11 +189,6 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                 <Label htmlFor="name">Название</Label>
                 <Input id="name" {...register('name')} />
                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="sku">Артикул (SKU)</Label>
-                <Input id="sku" {...register('sku')} placeholder="Артикул" />
             </div>
 
             <div className="space-y-2">
@@ -368,13 +379,49 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                 </div>
             </div>
 
-            {editId && (
+            {editId ? (
                 <PhotoUploader
                     photoIds={photoIds}
                     onPhotoIdsChange={setPhotoIds}
                     productId={editId}
                     onDeletePhoto={handleDeletePhoto}
                 />
+            ) : (
+                <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">Фото</label>
+                    <div className="flex flex-wrap gap-2">
+                        {pendingFiles.map((f, i) => (
+                            <div key={i} className="relative">
+                                <img src={f.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
+                                    className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-destructive-foreground"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                        <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                    const files = Array.from(e.target.files ?? []);
+                                    const withPreviews = files.map((file) => ({
+                                        file,
+                                        preview: URL.createObjectURL(file),
+                                    }));
+                                    setPendingFiles((prev) => [...prev, ...withPreviews]);
+                                    e.target.value = '';
+                                }}
+                            />
+                            <Plus className="h-5 w-5" />
+                        </label>
+                    </div>
+                </div>
             )}
 
             <SheetFooter>
@@ -407,12 +454,12 @@ function UnitSelect({ value, onValueChange }: { value: string; onValueChange: (v
 function useAutoDescription(
     control: import('react-hook-form').Control<ProductFormValues>,
     setValue: import('react-hook-form').UseFormSetValue<ProductFormValues>,
+    categoryName?: string,
 ) {
     const watched = useWatch({
         control,
         name: [
             'name',
-            'sku',
             'minPackageAmount',
             'minPackageUnit',
             'priceTiers',
@@ -425,12 +472,11 @@ function useAutoDescription(
     });
 
     const lastGeneratedRef = useRef<string>('');
-    const stableKey = useMemo(() => JSON.stringify(watched), [watched]);
+    const stableKey = useMemo(() => JSON.stringify([watched, categoryName]), [watched, categoryName]);
 
     useEffect(() => {
         const [
             name,
-            sku,
             minPackageAmount,
             minPackageUnit,
             priceTiers,
@@ -443,7 +489,7 @@ function useAutoDescription(
 
         const html = buildDescriptionHtml({
             name,
-            sku,
+            categoryName,
             minPackageAmount,
             minPackageUnit,
             priceTiers,
@@ -463,7 +509,7 @@ function useAutoDescription(
 
 interface DescriptionInput {
     name?: string;
-    sku?: string;
+    categoryName?: string;
     minPackageAmount?: number | null;
     minPackageUnit?: string | null;
     priceTiers?: { amount?: number; unit?: string; price?: number }[];
@@ -476,16 +522,16 @@ interface DescriptionInput {
 
 function buildDescriptionHtml(input: DescriptionInput): string {
     const lines: string[] = [];
+    const cat = (input.categoryName ?? '').trim();
     const name = (input.name ?? '').trim();
-    const sku = (input.sku ?? '').trim();
 
-    if (name) lines.push(`<p><strong>${escapeHtml(name)}</strong></p>`);
-    if (sku) lines.push(`<p>${escapeHtml(sku)}</p>`);
+    if (cat) lines.push(`<p><strong>${escapeHtml(cat)}</strong><br/><strong>${escapeHtml(name)}</strong></p>`);
+    else if (name) lines.push(`<p><strong>${escapeHtml(name)}</strong></p>`);
 
     if (isPositive(input.minPackageAmount) && input.minPackageUnit) {
         if (lines.length) lines.push('<p></p>');
         lines.push(
-            `<p>Минимальная фасовка — ${formatNumber(input.minPackageAmount)} ${escapeHtml(input.minPackageUnit)}</p>`,
+            `<p><strong>Минимальная фасовка - ${formatNumber(input.minPackageAmount)} ${escapeHtml(input.minPackageUnit)}</strong></p>`,
         );
     }
 
@@ -498,7 +544,7 @@ function buildDescriptionHtml(input: DescriptionInput): string {
         if (lines.length) lines.push('<p></p>');
         for (const tier of validTiers) {
             lines.push(
-                `<p>${formatNumber(tier.amount!)} ${escapeHtml(tier.unit!)} — ${formatNumber(tier.price!)} руб</p>`,
+                `<p>${formatNumber(tier.amount!)} ${escapeHtml(tier.unit!)} - ${formatNumber(tier.price!)} руб</p>`,
             );
         }
     }
@@ -509,16 +555,15 @@ function buildDescriptionHtml(input: DescriptionInput): string {
         isPositive(input.supplierPackagePrice)
     ) {
         if (lines.length) lines.push('<p></p>');
-        lines.push('<p>Фасовка поставщика:</p>');
         lines.push(
-            `<p>${formatNumber(input.supplierPackageAmount)} ${escapeHtml(input.supplierPackageUnit)} — ${formatNumber(input.supplierPackagePrice)} руб.</p>`,
+            `<p><strong>Фасовка поставщика:</strong><br/>${formatNumber(input.supplierPackageAmount)} ${escapeHtml(input.supplierPackageUnit)} - ${formatNumber(input.supplierPackagePrice)} руб</p>`,
         );
     }
 
     if (input.availableAmount != null && Number(input.availableAmount) >= 0 && input.availableUnit) {
         if (lines.length) lines.push('<p></p>');
         lines.push(
-            `<p><strong>СВОБОДНО:</strong> ${formatNumber(input.availableAmount)} ${escapeHtml(input.availableUnit)}.</p>`,
+            `<p><strong>СВОБОДНО:</strong> ${formatNumber(input.availableAmount)} ${escapeHtml(input.availableUnit)}</p>`,
         );
     }
 

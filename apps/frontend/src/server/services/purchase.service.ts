@@ -25,7 +25,7 @@ export class PurchaseService {
         return this.repo.updateStatus(id, status);
     }
 
-    async addItems(purchaseId: number, productIds: number[]) {
+    async addItems(purchaseId: number, productIds: number[], shouldPublish = false) {
         const uniqueIds = [...new Set(productIds)];
         const alreadyInPurchase = await this.repo.findProductIdsInPurchase(purchaseId, uniqueIds);
         const alreadySet = new Set(alreadyInPurchase);
@@ -37,7 +37,7 @@ export class PurchaseService {
 
         const items = [];
         for (const productId of newProductIds) {
-            const item = await this.repo.addItem(purchaseId, productId);
+            const item = await this.repo.addItem(purchaseId, productId, shouldPublish);
             items.push(item);
         }
         return { items, skippedCount: uniqueIds.length - newProductIds.length };

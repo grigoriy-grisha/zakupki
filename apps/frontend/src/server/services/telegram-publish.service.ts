@@ -69,6 +69,15 @@ export class TelegramPublishService {
         }
     }
 
+    async enqueueEditPurchaseItem(purchaseItemId: number) {
+        this.assertChannelConfigured();
+        await this.queue.addPurchaseItemPost({
+            type: 'PURCHASE_ITEM_CHANNEL_POST_EDIT',
+            purchaseItemId,
+        });
+        console.log(`[TG queue] Enqueued edit for purchase item ${purchaseItemId}`);
+    }
+
     async publishPurchaseItem(purchaseItemId: number): Promise<{ queued: boolean }> {
         const queued = await this.enqueuePurchaseItems([purchaseItemId]);
         return { queued: queued > 0 };

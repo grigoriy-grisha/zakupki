@@ -4,20 +4,22 @@ import { use, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Loader2, Rocket } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
-import { useUpdatePurchaseStatus } from './hooks';
+import { useActivateAndPublish } from './hooks';
 import { ItemsTab, ParticipantsTab, SupplementDialog } from './components';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
     const id = Number(idStr);
     const [supplementOpen, setSupplementOpen] = useState(false);
+    const [activateOpen, setActivateOpen] = useState(false);
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
-    const updateStatus = useUpdatePurchaseStatus(id);
+    const activateAndPublish = useActivateAndPublish(id);
 
     if (isLoading) {
         return (
@@ -33,13 +35,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     }
 
     const deadline = new Date(purchase.deadline);
-
-    function handleStatusChange(status: string) {
-        updateStatus.mutate({ id, status: status as never });
-        if (status === 'SUPPLEMENT') {
-            setSupplementOpen(true);
-        }
-    }
+    const isDraft = purchase.status === 'DRAFT';
+    const publishCount = purchase.items.filter((i: any) => i.shouldPublish && !i.tgMessageId).length;
 
     return (
         <div className="space-y-6">
@@ -57,6 +54,15 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {isDraft && (
+                        <Button
+                            size="lg"
+                            onClick={() => setActivateOpen(true)}
+                        >
+                            <Rocket className="mr-2 h-5 w-5" />
+                            Активировать закупку
+                        </Button>
+                    )}
                     {purchase.status === 'SUPPLEMENT' && (
                         <Button
                             variant="outline"
@@ -66,21 +72,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             Остатки
                         </Button>
                     )}
-                    <Select
-                        value={purchase.status}
-                        onValueChange={handleStatusChange}
-                    >
-                        <SelectTrigger className="w-40">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                                <SelectItem key={value} value={value}>
-                                    {label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
             </div>
 
@@ -91,7 +82,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 </TabsList>
 
                 <TabsContent value="items" className="mt-4">
-                    <ItemsTab purchaseId={id} onEditSupplement={() => setSupplementOpen(true)} />
+                    <ItemsTab
+                        purchaseId={id}
+                        onEditSupplement={() => setSupplementOpen(true)}
+                    />
                 </TabsContent>
 
                 <TabsContent value="participants" className="mt-4">
@@ -104,6 +98,36 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 open={supplementOpen}
                 onOpenChange={setSupplementOpen}
             />
+
+            <Dialog open={activateOpen} onOpenChange={setActivateOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Активировать закупку?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        {publishCount > 0
+                            ? `${publishCount} товаров будет опубликовано в Telegram.`
+                            : 'Ни один товар не отмечен для публикации в Telegram.'}
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setActivateOpen(false)}>
+                            Отмена
+                        </Button>
+                        <Button
+                            disabled={activateAndPublish.isPending}
+                            onClick={() => {
+                                activateAndPublish.mutate(
+                                    { purchaseId: id },
+                                    { onSuccess: () => setActivateOpen(false) },
+                                );
+                            }}
+                        >
+                            {activateAndPublish.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Активировать
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
