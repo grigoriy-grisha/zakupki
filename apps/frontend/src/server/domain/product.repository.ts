@@ -1,4 +1,30 @@
+import { Prisma } from '@zakupki/database';
 import type { PrismaClient } from '@zakupki/database';
+
+export type PriceTier = { amount: number; unit: string; price: number };
+
+export interface ProductWriteData {
+    name?: string;
+    description?: string;
+    unitId?: number;
+    pricePerUnit?: number;
+    sku?: string;
+    categoryId?: number | null;
+    minPackageAmount?: number | null;
+    minPackageUnit?: string | null;
+    priceTiers?: PriceTier[] | null;
+    supplierPackageAmount?: number | null;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: number | null;
+    availableAmount?: number | null;
+    availableUnit?: string | null;
+}
+
+export interface ProductCreateData extends ProductWriteData {
+    name: string;
+    unitId: number;
+    pricePerUnit: number;
+}
 
 export class ProductRepository {
     constructor(private db: PrismaClient) {}
@@ -7,7 +33,12 @@ export class ProductRepository {
         return this.db.product.findMany({
             where: {
                 ...(search
-                    ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { brand: { contains: search, mode: 'insensitive' } }] }
+                    ? {
+                          OR: [
+                              { name: { contains: search, mode: 'insensitive' } },
+                              { sku: { contains: search, mode: 'insensitive' } },
+                          ],
+                      }
                     : {}),
                 ...(categoryId != null ? { categoryId } : {}),
             },
@@ -23,35 +54,19 @@ export class ProductRepository {
         });
     }
 
-    async create(data: {
-        name: string;
-        description?: string;
-        unitId: number;
-        pricePerUnit: number;
-        brand?: string;
-        sku?: string;
-        categoryId?: number | null;
-    }) {
-        const { categoryId, ...rest } = data;
+    async create(data: ProductCreateData) {
         return this.db.product.create({
-            data: { ...rest, categoryId: categoryId ?? null },
+            data: toPrismaCreate(data),
             include: { unit: true, category: true },
         });
     }
 
-    async update(
-        id: number,
-        data: {
-            name?: string;
-            description?: string;
-            unitId?: number;
-            pricePerUnit?: number;
-            brand?: string;
-            sku?: string;
-            categoryId?: number | null;
-        },
-    ) {
-        return this.db.product.update({ where: { id }, data, include: { unit: true, category: true } });
+    async update(id: number, data: ProductWriteData) {
+        return this.db.product.update({
+            where: { id },
+            data: toPrismaUpdate(data),
+            include: { unit: true, category: true },
+        });
     }
 
     async delete(id: number) {
@@ -79,4 +94,29 @@ export class ProductRepository {
             orderBy: { sortOrder: 'asc' },
         });
     }
+}
+
+function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
+    const { categoryId, unitId, priceTiers, ...rest } = data;
+    return {
+        ...rest,
+        priceTiers: priceTiers ?? Prisma.JsonNull,
+        unit: { connect: { id: unitId } },
+        ...(categoryId != null ? { category: { connect: { id: categoryId } } } : {}),
+    };
+}
+
+function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
+    const { categoryId, unitId, priceTiers, ...rest } = data;
+    const update: Prisma.ProductUpdateInput = { ...rest };
+    if (priceTiers !== undefined) {
+        update.priceTiers = priceTiers ?? Prisma.JsonNull;
+    }
+    if (unitId !== undefined) {
+        update.unit = { connect: { id: unitId } };
+    }
+    if (categoryId !== undefined) {
+        update.category = categoryId == null ? { disconnect: true } : { connect: { id: categoryId } };
+    }
+    return update;
 }

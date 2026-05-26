@@ -20,40 +20,17 @@ export function useUnits(enabled: boolean) {
 }
 
 export function useCreateProduct() {
-    const utils = trpc.useUtils();
-    return trpc.products.create.useMutation({
-        onSuccess: async () => {
-            await utils.products.list.invalidate();
-            toast.success('Товар создан');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    return trpc.products.create.useMutation();
 }
 
 export function useUpdateProduct() {
-    const utils = trpc.useUtils();
-    return trpc.products.update.useMutation({
-        onSuccess: async () => {
-            await utils.products.list.invalidate();
-            toast.success('Товар обновлён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    return trpc.products.update.useMutation();
 }
 
 export function useDeleteProduct() {
-    const utils = trpc.useUtils();
-    return trpc.products.delete.useMutation({
-        onSuccess: async () => {
-            await utils.products.list.invalidate();
-            toast.success('Товар удалён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    return trpc.products.delete.useMutation();
 }
 
 export function useDeletePhoto() {
-    return trpc.products.deletePhoto.useMutation({
-        onError: (err) => toast.error(err.message),
-    });
+    return trpc.products.deletePhoto.useMutation();
 }

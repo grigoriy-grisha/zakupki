@@ -1,4 +1,8 @@
-import { ProductRepository } from '../domain/product.repository';
+import {
+    ProductRepository,
+    type ProductCreateData,
+    type ProductWriteData,
+} from '../domain/product.repository';
 
 export class ProductService {
     constructor(private repo: ProductRepository) {}
@@ -13,30 +17,11 @@ export class ProductService {
         return product;
     }
 
-    async create(data: {
-        name: string;
-        description?: string;
-        unitId: number;
-        pricePerUnit: number;
-        brand?: string;
-        sku?: string;
-        categoryId?: number | null;
-    }) {
+    async create(data: ProductCreateData) {
         return this.repo.create(data);
     }
 
-    async update(
-        id: number,
-        data: {
-            name?: string;
-            description?: string;
-            unitId?: number;
-            pricePerUnit?: number;
-            brand?: string;
-            sku?: string;
-            categoryId?: number | null;
-        },
-    ) {
+    async update(id: number, data: ProductWriteData) {
         return this.repo.update(id, data);
     }
 

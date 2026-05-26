@@ -34,8 +34,10 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
 
             <CardContent className="p-4">
                 <h3 className="font-semibold leading-tight line-clamp-1">{product.name}</h3>
-                {product.brand && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">{product.brand}</p>
+                {product.minPackageAmount != null && product.minPackageUnit && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                        Мин. фасовка: {Number(product.minPackageAmount)} {product.minPackageUnit}
+                    </p>
                 )}
                 <div className="mt-2 flex items-center justify-between">
                     <span className="text-lg font-bold text-primary">

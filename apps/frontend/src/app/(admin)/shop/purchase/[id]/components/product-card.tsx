@@ -41,8 +41,10 @@ export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPur
                 <div className="flex items-start justify-between gap-2">
                     <div>
                         <h3 className="font-semibold leading-tight">{item.product.name}</h3>
-                        {item.product.brand && (
-                            <p className="mt-0.5 text-xs text-muted-foreground">{item.product.brand}</p>
+                        {item.product.minPackageAmount != null && item.product.minPackageUnit && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                Мин. фасовка: {Number(item.product.minPackageAmount)} {item.product.minPackageUnit}
+                            </p>
                         )}
                     </div>
                 </div>

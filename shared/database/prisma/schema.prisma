@@ -96,19 +96,26 @@ model VkCredential {
 }
 
 model Product {
-    id            Int            @id @default(autoincrement())
-    name          String
-    description   String?
-    unitId        Int
-    pricePerUnit  Decimal        @db.Decimal(10, 2)
-    brand         String?
-    sku           String?        @unique
-    categoryId    Int?
-    createdAt     DateTime       @default(now())
-    photos        ProductPhoto[]
-    purchaseItems PurchaseItem[]
-    unit          Unit           @relation(fields: [unitId], references: [id])
-    category      Category?      @relation(fields: [categoryId], references: [id])
+    id                    Int            @id @default(autoincrement())
+    name                  String
+    description           String?
+    unitId                Int
+    pricePerUnit          Decimal        @db.Decimal(10, 2)
+    sku                   String?        @unique
+    categoryId            Int?
+    minPackageAmount      Decimal?       @db.Decimal(10, 3)
+    minPackageUnit        String?
+    priceTiers            Json?
+    supplierPackageAmount Decimal?       @db.Decimal(10, 3)
+    supplierPackageUnit   String?
+    supplierPackagePrice  Decimal?       @db.Decimal(10, 2)
+    availableAmount       Decimal?       @db.Decimal(10, 3)
+    availableUnit         String?
+    createdAt             DateTime       @default(now())
+    photos                ProductPhoto[]
+    purchaseItems         PurchaseItem[]
+    unit                  Unit           @relation(fields: [unitId], references: [id])
+    category              Category?      @relation(fields: [categoryId], references: [id])
 
     @@index([createdAt])
     @@index([unitId])

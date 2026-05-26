@@ -52,9 +52,10 @@ export interface ShopPurchaseItemProductCardProps {
         minQty: string | number | null;
         product: {
             name: string;
-            brand: string | null;
             pricePerUnit: string | number;
             unit: { shortName: string; multiplicity: string | number } | null;
+            minPackageAmount: string | number | null;
+            minPackageUnit: string | null;
             photos: { id: number }[];
         };
     };
@@ -167,9 +168,10 @@ export interface CatalogProductCardProps {
     product: {
         id: number;
         name: string;
-        brand: string | null;
         pricePerUnit: string | number;
         unit: { shortName: string } | null;
+        minPackageAmount: string | number | null;
+        minPackageUnit: string | null;
         photos: { id: number }[];
     };
     onClick: () => void;
@@ -189,9 +191,16 @@ export interface ProductFormProps {
         description: string | null;
         unitId: number;
         pricePerUnit: string | number;
-        brand: string | null;
         sku: string | null;
         categoryId: number | null;
+        minPackageAmount: string | number | null;
+        minPackageUnit: string | null;
+        priceTiers: unknown;
+        supplierPackageAmount: string | number | null;
+        supplierPackageUnit: string | null;
+        supplierPackagePrice: string | number | null;
+        availableAmount: string | number | null;
+        availableUnit: string | null;
         photos: { id: number }[];
     } | null | undefined;
     onSuccess: () => void;

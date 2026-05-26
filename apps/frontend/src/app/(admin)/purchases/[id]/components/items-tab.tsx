@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trash2 } from 'lucide-react';
+import { Send, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
-import { useRemovePurchaseItem } from '../hooks';
+import { usePublishItemToTg, useRemovePurchaseItem } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import type { ItemsTabProps } from '../../../lib/types';
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const removeItem = useRemovePurchaseItem(purchaseId);
+    const publishToTg = usePublishItemToTg(purchaseId);
 
     if (isLoading || !purchase) {
         return <Skeleton className="h-64" />;
@@ -41,9 +42,10 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         <TableRow>
                             <TableHead>Фото</TableHead>
                             <TableHead>Название</TableHead>
-                            <TableHead>Бренд</TableHead>
+                            <TableHead>Мин. фасовка</TableHead>
                             <TableHead>Цена/ед</TableHead>
                             <TableHead>Заказов</TableHead>
+                            <TableHead className="text-center">TG</TableHead>
                             {isSupplement && <TableHead className="text-center">Доступно</TableHead>}
                             <TableHead className="w-16" />
                         </TableRow>
@@ -51,7 +53,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                     <TableBody>
                         {purchase.items.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={isSupplement ? 7 : 6} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={isSupplement ? 8 : 7} className="h-24 text-center text-muted-foreground">
                                     Нет товаров
                                 </TableCell>
                             </TableRow>
@@ -74,12 +76,32 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                         )}
                                     </TableCell>
                                     <TableCell className="font-medium">{item.product.name}</TableCell>
-                                    <TableCell className="text-muted-foreground">{item.product.brand ?? '—'}</TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                        {item.product.minPackageAmount != null && item.product.minPackageUnit
+                                            ? `${Number(item.product.minPackageAmount)} ${item.product.minPackageUnit}`
+                                            : '—'}
+                                    </TableCell>
                                     <TableCell>
                                         {Number(item.priceOverride ?? item.product.pricePerUnit).toLocaleString('ru-RU')} ₽
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">{item.orderLines.length}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        {item.tgMessageId ? (
+                                            <Badge variant="outline">✓</Badge>
+                                        ) : (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                title="Опубликовать в Telegram"
+                                                disabled={publishToTg.isPending}
+                                                onClick={() => publishToTg.mutate({ purchaseItemId: item.id })}
+                                            >
+                                                <Send className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </TableCell>
                                     {isSupplement && (
                                         <TableCell className="text-center">

@@ -67,7 +67,8 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                 <DialogHeader>
                     <DialogTitle>{item.product.name}</DialogTitle>
                     <DialogDescription>
-                        {item.product.brand && `${item.product.brand} · `}
+                        {item.product.minPackageAmount != null && item.product.minPackageUnit &&
+                            `Мин. фасовка: ${Number(item.product.minPackageAmount)} ${item.product.minPackageUnit} · `}
                         {price.toLocaleString('ru-RU')} ₽/{shortName}
                     </DialogDescription>
                 </DialogHeader>
