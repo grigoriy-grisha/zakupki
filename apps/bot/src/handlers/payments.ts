@@ -1,11 +1,13 @@
 import type { CustomContext } from '../lib/types';
 
+const PAYMENT_STATUS: Record<string, { emoji: string; label: string }> = {
+    PENDING:  { emoji: '⏳', label: 'Ожидает проверки' },
+    CONFIRMED: { emoji: '✅', label: 'Подтверждено' },
+    REJECTED: { emoji: '❌', label: 'Отклонено' },
+};
+
 export async function paymentsCommand(ctx: CustomContext) {
-    const userId = ctx.session.userId;
-    if (!userId) {
-        await ctx.reply('Сначала нажмите /start');
-        return;
-    }
+    const userId = ctx.session.userId!;
 
     const payments = await ctx.db.payment.findMany({
         where: { userId, parentId: null },
@@ -22,26 +24,13 @@ export async function paymentsCommand(ctx: CustomContext) {
         return;
     }
 
-    const statusEmoji: Record<string, string> = {
-        PENDING: '⏳',
-        CONFIRMED: '✅',
-        REJECTED: '❌',
-    };
-
-    const statusLabel: Record<string, string> = {
-        PENDING: 'Ожидает проверки',
-        CONFIRMED: 'Подтверждено',
-        REJECTED: 'Отклонено',
-    };
-
     const lines = payments.map((p) => {
         const childAmount = (p.children ?? []).reduce((s, c) => s + Number(c.amount), 0);
         const total = Number(p.amount) + childAmount;
-        const emoji = statusEmoji[p.status] ?? '❓';
-        const status = statusLabel[p.status] ?? p.status;
+        const { emoji = '❓', label = p.status } = PAYMENT_STATUS[p.status] ?? {};
         return (
             `${emoji} ${total.toLocaleString('ru-RU')} ₽ — ${p.purchase?.tag ?? '—'}\n` +
-            `   ${status} · ${new Date(p.paidAt).toLocaleDateString('ru-RU')}`
+            `   ${label} · ${new Date(p.paidAt).toLocaleDateString('ru-RU')}`
         );
     });
 

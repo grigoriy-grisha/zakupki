@@ -1,8 +1,9 @@
+import type { PrismaClient } from '@zakupki/database';
 import type { Bot } from 'grammy';
 import { GrammyError } from 'grammy';
-import { TelegramChannelPostQueue, UnrecoverableError } from '@zakupki/queue';
+import { TelegramChannelPostQueue, UnrecoverableError, type RedisClient } from '@zakupki/queue';
 
-import type { CustomContext, PurchaseChannelPostHandlerOptions } from '../lib/types';
+import type { CustomContext } from '../lib/types';
 import {
     buildProductPostText,
     getChannelIdFromEnv,
@@ -12,7 +13,7 @@ import {
 
 export function setupPurchaseChannelPostHandler(
     bot: Bot<CustomContext>,
-    { redis, db }: PurchaseChannelPostHandlerOptions,
+    { redis, db }: { redis: RedisClient; db: PrismaClient },
 ) {
     const queue = new TelegramChannelPostQueue(redis);
     const channelId = getChannelIdFromEnv();

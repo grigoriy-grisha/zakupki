@@ -1,10 +1,10 @@
 import type { Context, SessionFlavor } from 'grammy';
 import type { PrismaClient } from '@zakupki/database';
-import type { RedisClient } from '@zakupki/queue';
 
 export interface SessionData {
     userId?: number;
     telegramId?: number;
+    profileRefreshedAt?: number;
 }
 
 export type CustomContext = Context & SessionFlavor<SessionData> & {
@@ -15,11 +15,6 @@ export interface CreateBotOptions {
     db: PrismaClient;
     token: string;
     proxyUrl?: string;
-}
-
-export interface PurchaseChannelPostHandlerOptions {
-    redis: RedisClient;
-    db: PrismaClient;
 }
 
 export interface PostProduct {

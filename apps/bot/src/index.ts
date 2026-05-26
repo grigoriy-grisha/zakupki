@@ -30,8 +30,20 @@ async function main() {
         { command: 'payments', description: 'Мои оплаты' },
     ]);
 
-    bot.start();
-    console.log('Bot started');
+    await bot.start({
+        onStart: (info) => console.log(`Bot @${info.username} started`),
+    });
+
+    // Graceful shutdown
+    const shutdown = async (signal: string) => {
+        console.log(`\n${signal} received, shutting down...`);
+        await bot.stop();
+        await dbClient.$disconnect();
+        process.exit(0);
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 main().catch((err) => {

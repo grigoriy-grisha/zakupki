@@ -1,11 +1,7 @@
 import type { CustomContext } from '../lib/types';
 
 export async function ordersCommand(ctx: CustomContext) {
-    const userId = ctx.session.userId;
-    if (!userId) {
-        await ctx.reply('Сначала нажмите /start');
-        return;
-    }
+    const userId = ctx.session.userId!;
 
     const orders = await ctx.db.orderLine.findMany({
         where: { userId },

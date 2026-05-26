@@ -58,24 +58,20 @@ function htmlToTelegramHtml(html: string): string {
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MESSAGE_MAX = 4096;
 
+function photoFilename(mimeType: string): string {
+    switch (mimeType) {
+        case 'image/png': return 'photo.png';
+        case 'image/webp': return 'photo.webp';
+        case 'image/gif': return 'photo.gif';
+        default: return 'photo.jpg';
+    }
+}
+
 export function productPhotoToAttachment(photo: ProductPhotoInput): ChannelPostPhoto {
     return {
         data: Buffer.isBuffer(photo.data) ? photo.data : Buffer.from(photo.data),
         mimeType: photo.mimeType || 'image/jpeg',
     };
-}
-
-function photoFilename(mimeType: string): string {
-    switch (mimeType) {
-        case 'image/png':
-            return 'photo.png';
-        case 'image/webp':
-            return 'photo.webp';
-        case 'image/gif':
-            return 'photo.gif';
-        default:
-            return 'photo.jpg';
-    }
 }
 
 export function buildProductPostText(product: PostProduct, purchaseTag: string): string {
@@ -103,6 +99,17 @@ export function buildProductPostText(product: PostProduct, purchaseTag: string):
     return lines.join('\n') + '\n\n' + hashtag;
 }
 
+/** Strip all HTML tags as fallback when Telegram can't parse entities */
+function stripHtml(html: string): string {
+    return html.replace(/<[^>]+>/g, '');
+}
+
+function isEntityParseError(e: unknown): boolean {
+    const description =
+        e instanceof GrammyError ? e.description : e instanceof Error ? e.message : String(e);
+    return description.includes("can't parse entities");
+}
+
 export async function sendChannelPost(
     api: Api,
     chatId: string,
@@ -112,20 +119,14 @@ export async function sendChannelPost(
     if (photo?.data.length) {
         const caption = text.slice(0, TELEGRAM_CAPTION_MAX);
         const file = new InputFile(photo.data, photoFilename(photo.mimeType));
+
         try {
-            const msg = await api.sendPhoto(chatId, file, {
-                caption,
-                parse_mode: 'HTML',
-            });
+            const msg = await api.sendPhoto(chatId, file, { caption, parse_mode: 'HTML' });
             return { messageId: msg.message_id };
         } catch (e) {
-            const description =
-                e instanceof GrammyError ? e.description : e instanceof Error ? e.message : String(e);
-            if (!description.includes("can't parse entities")) {
-                throw e;
-            }
-            const plain = caption.replace(/<[^>]+>/g, '');
-            const msg = await api.sendPhoto(chatId, file, { caption: plain });
+            if (!isEntityParseError(e)) throw e;
+            console.warn('[TG] HTML parse failed in sendPhoto, sending plain text');
+            const msg = await api.sendPhoto(chatId, file, { caption: stripHtml(caption) });
             return { messageId: msg.message_id };
         }
     }
@@ -138,14 +139,9 @@ export async function sendChannelPost(
         });
         return { messageId: msg.message_id };
     } catch (e) {
-        const description =
-            e instanceof GrammyError ? e.description : e instanceof Error ? e.message : String(e);
-        if (!description.includes("can't parse entities")) {
-            throw e;
-        }
-
-        const plain = htmlText.replace(/<[^>]+>/g, '');
-        const msg = await api.sendMessage(chatId, plain, {
+        if (!isEntityParseError(e)) throw e;
+        console.warn('[TG] HTML parse failed in sendMessage, sending plain text');
+        const msg = await api.sendMessage(chatId, stripHtml(htmlText), {
             link_preview_options: { is_disabled: true },
         });
         return { messageId: msg.message_id };

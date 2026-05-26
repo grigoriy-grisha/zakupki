@@ -3,7 +3,7 @@ import { autoRetry } from '@grammyjs/auto-retry';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 import type { CreateBotOptions, CustomContext, SessionData } from './lib/types';
-import { initMiddleware } from './middlewares';
+import { initMiddleware, requireAuth } from './middlewares';
 import { startCommand, helpCommand, ordersCommand, paymentsCommand } from './handlers';
 
 function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
@@ -37,8 +37,10 @@ export function createBot({ db, token, proxyUrl }: CreateBotOptions) {
 
     bot.command('start', startCommand);
     bot.command('help', helpCommand);
-    bot.command('orders', ordersCommand);
-    bot.command('payments', paymentsCommand);
+
+    const auth = requireAuth();
+    bot.command('orders', auth, ordersCommand);
+    bot.command('payments', auth, paymentsCommand);
 
     bot.on('message:text', async (ctx) => {
         await ctx.reply('Используйте /start чтобы открыть магазин.');
