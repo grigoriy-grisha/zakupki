@@ -7,7 +7,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { paymentTotal } from '../../lib/utils';
-import type { ParticipantRowProps } from '../../../lib/types';
+interface ParticipantRowProps {
+    name: string;
+    username?: string;
+    orders: {
+        id: number;
+        purchaseItemId: number;
+        quantity: unknown;
+        amountDue: unknown;
+        purchaseItem?: {
+            product?: { name?: string; unit?: { shortName: string }; pricePerUnit: unknown };
+            priceOverride?: unknown;
+        };
+    }[];
+    payments: {
+        id: number;
+        amount: unknown;
+        paidAt: string;
+        status: string;
+        userComment?: string | null;
+        proofData?: unknown;
+        children?: { amount: unknown; promoCode: { code: string } | null }[];
+    }[];
+    due: number;
+    paid: number;
+    pending: number;
+    onPaymentClick: (id: number) => void;
+}
 
 export function ParticipantRow({
     name,
@@ -25,12 +51,13 @@ export function ParticipantRow({
 
     return (
         <>
-            <TableRow
-                className="cursor-pointer hover:bg-accent/50 transition-colors"
-                onClick={() => setOpen(!open)}
-            >
+            <TableRow className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setOpen(!open)}>
                 <TableCell>
-                    {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                    {open ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
                 </TableCell>
                 <TableCell>
                     <div className="flex items-center gap-2">
@@ -44,7 +71,9 @@ export function ParticipantRow({
                     </div>
                 </TableCell>
                 <TableCell className="text-center">
-                    <Badge variant="secondary" className="font-normal">{orders.length}</Badge>
+                    <Badge variant="secondary" className="font-normal">
+                        {orders.length}
+                    </Badge>
                 </TableCell>
                 <TableCell className="text-right font-medium">{due.toLocaleString('ru-RU')} ₽</TableCell>
                 <TableCell className="text-right">
@@ -94,7 +123,8 @@ export function ParticipantRow({
                                                 {orders.map((order) => (
                                                     <TableRow key={order.id}>
                                                         <TableCell className="font-medium">
-                                                            {order.purchaseItem?.product?.name ?? `Товар #${order.purchaseItemId}`}
+                                                            {order.purchaseItem?.product?.name ??
+                                                                `Товар #${order.purchaseItemId}`}
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             {Number(order.quantity).toLocaleString('ru-RU')}{' '}
@@ -107,7 +137,9 @@ export function ParticipantRow({
                                                 ))}
                                                 <TableRow className="font-bold bg-muted/50">
                                                     <TableCell colSpan={2}>Итого</TableCell>
-                                                    <TableCell className="text-right">{due.toLocaleString('ru-RU')} ₽</TableCell>
+                                                    <TableCell className="text-right">
+                                                        {due.toLocaleString('ru-RU')} ₽
+                                                    </TableCell>
                                                 </TableRow>
                                             </TableBody>
                                         </Table>
@@ -140,21 +172,31 @@ export function ParticipantRow({
                                                             'flex items-center justify-between rounded-lg border bg-background px-3 py-2 cursor-pointer transition-colors hover:bg-accent/50',
                                                             status === 'PENDING' && 'border-warning/30',
                                                         )}
-                                                        onClick={(e) => { e.stopPropagation(); onPaymentClick(p.id); }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onPaymentClick(p.id);
+                                                        }}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <div>
-                                                                <span className="text-sm font-medium">{total.toLocaleString('ru-RU')} ₽</span>
+                                                                <span className="text-sm font-medium">
+                                                                    {total.toLocaleString('ru-RU')} ₽
+                                                                </span>
                                                                 {childAmount > 0 && (
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        {Number(p.amount).toLocaleString('ru-RU')} + промокод {promoCode?.code}
+                                                                        {Number(p.amount).toLocaleString('ru-RU')} +
+                                                                        промокод {promoCode?.code}
                                                                     </p>
                                                                 )}
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
-                                                            {hasProof && <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
-                                                            <Badge className={cn('text-xs', cfg.className)}>{cfg.label}</Badge>
+                                                            {hasProof && (
+                                                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            )}
+                                                            <Badge className={cn('text-xs', cfg.className)}>
+                                                                {cfg.label}
+                                                            </Badge>
                                                         </div>
                                                     </div>
                                                 );

@@ -9,14 +9,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
+import { NovelEditor } from '@/components/ui/novel-editor';
 import { toast } from 'sonner';
 import { useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { PhotoUploader } from '../../../products/components/photo-uploader';
 import { PACKAGE_UNITS } from '../../../products/lib';
-import type { ItemsTabProps } from '../../../lib/types';
+interface ItemsTabProps {
+    purchaseId: number;
+    onEditSupplement?: () => void;
+}
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
@@ -64,7 +68,10 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                     <TableBody>
                         {purchase.items.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={isSupplement ? 8 : 7} className="h-24 text-center text-muted-foreground">
+                                <TableCell
+                                    colSpan={isSupplement ? 8 : 7}
+                                    className="h-24 text-center text-muted-foreground"
+                                >
                                     Нет товаров
                                 </TableCell>
                             </TableRow>
@@ -98,7 +105,10 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                             : '—'}
                                     </TableCell>
                                     <TableCell>
-                                        {Number(item.priceOverride ?? item.product.pricePerUnit).toLocaleString('ru-RU')} ₽
+                                        {Number(item.priceOverride ?? item.product.pricePerUnit).toLocaleString(
+                                            'ru-RU',
+                                        )}{' '}
+                                        ₽
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">{item.orderLines.length}</Badge>
@@ -159,7 +169,12 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     );
 }
 
-function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: {
+function ItemEditSheet({
+    purchaseItemId,
+    open,
+    onClose,
+    purchaseId,
+}: {
     purchaseItemId: number | null;
     open: boolean;
     onClose: () => void;
@@ -188,12 +203,19 @@ function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: {
     });
 
     if (!item) return null;
-    const product = item.product;
-    const tiers = Array.isArray(product.priceTiers) ? product.priceTiers as { amount: number; unit: string; price: number }[] : [];
+    const product: Record<string, any> = item.product;
+    const tiers: { amount: number; unit: string; price: number }[] = Array.isArray(product.priceTiers)
+        ? product.priceTiers
+        : [];
     const published = !!item.tgMessageId;
 
     return (
-        <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+        <Sheet
+            open={open}
+            onOpenChange={(v) => {
+                if (!v) onClose();
+            }}
+        >
             <SheetContent className="sm:max-w-lg overflow-y-auto">
                 <SheetHeader>
                     <SheetTitle>Редактировать товар {published && '· Пост в TG обновится'}</SheetTitle>
@@ -204,7 +226,9 @@ function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: {
                     published={published}
                     purchaseItemId={purchaseItemId!}
                     onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
-                    onDeletePhoto={async (photoId) => { await deletePhotoMutation.mutateAsync({ id: photoId }); }}
+                    onDeletePhoto={async (photoId) => {
+                        await deletePhotoMutation.mutateAsync({ id: photoId });
+                    }}
                     isSaving={updateMutation.isPending}
                 />
             </SheetContent>
@@ -212,7 +236,15 @@ function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: {
     );
 }
 
-function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave, onDeletePhoto, isSaving }: {
+function ItemEditForm({
+    product,
+    initialTiers,
+    published,
+    purchaseItemId,
+    onSave,
+    onDeletePhoto,
+    isSaving,
+}: {
     product: any;
     initialTiers: { amount: number; unit: string; price: number }[];
     published: boolean;
@@ -222,12 +254,25 @@ function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave
     isSaving: boolean;
 }) {
     const [name, setName] = useState(product.name);
-    const [tiers, setTiers] = useState(initialTiers.length > 0 ? initialTiers : [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }]);
-    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(product.minPackageAmount ? Number(product.minPackageAmount) : null);
+    const [description, setDescription] = useState(product.description ?? '');
+    const [tiers, setTiers] = useState(
+        initialTiers.length > 0 ? initialTiers : [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }],
+    );
+    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(
+        product.minPackageAmount ? Number(product.minPackageAmount) : null,
+    );
     const [minPkgUnit, setMinPkgUnit] = useState<string | null>(product.minPackageUnit ?? PACKAGE_UNITS[0]);
-    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(product.supplierPackageAmount ? Number(product.supplierPackageAmount) : null);
+    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(
+        product.supplierPackageAmount ? Number(product.supplierPackageAmount) : null,
+    );
     const [supPkgUnit, setSupPkgUnit] = useState<string | null>(product.supplierPackageUnit ?? PACKAGE_UNITS[0]);
-    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(product.supplierPackagePrice ? Number(product.supplierPackagePrice) : null);
+    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(
+        product.supplierPackagePrice ? Number(product.supplierPackagePrice) : null,
+    );
+    const [availAmount, setAvailAmount] = useState<number | null>(
+        product.availableAmount ? Number(product.availableAmount) : null,
+    );
+    const [availUnit, setAvailUnit] = useState<string | null>(product.availableUnit ?? PACKAGE_UNITS[0]);
     const [photoIds, setPhotoIds] = useState<number[]>((product.photos ?? []).map((p: any) => p.id));
 
     function handleSave() {
@@ -235,20 +280,9 @@ function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave
         if (!firstTier) return;
         const pricePerUnit = firstTier.price / firstTier.amount;
 
-        // Build description locally to update it
-        const desc = buildLocalDescription({
-            name,
-            minPackageAmount: minPkgAmount,
-            minPackageUnit: minPkgUnit,
-            tiers,
-            supplierPackageAmount: supPkgAmount,
-            supplierPackageUnit: supPkgUnit,
-            supplierPackagePrice: supPkgPrice,
-        });
-
         onSave({
             name,
-            description: desc,
+            description: description || undefined,
             pricePerUnit,
             priceTiers: tiers,
             minPackageAmount: minPkgAmount,
@@ -256,6 +290,8 @@ function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave
             supplierPackageAmount: supPkgAmount,
             supplierPackageUnit: supPkgUnit,
             supplierPackagePrice: supPkgPrice,
+            availableAmount: availAmount,
+            availableUnit: availUnit,
         });
     }
 
@@ -267,32 +303,99 @@ function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave
             </div>
 
             <div className="space-y-1">
+                <Label>Описание</Label>
+                <NovelEditor value={description} onChange={setDescription} placeholder="Описание товара..." />
+            </div>
+
+            <div className="space-y-1">
                 <Label>Минимальная фасовка</Label>
                 <div className="flex gap-2">
-                    <Input type="number" step="0.001" className="flex-1" value={minPkgAmount ?? ''} onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)} />
-                    <select className="border rounded-md px-2 text-sm" value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={(e) => setMinPkgUnit(e.target.value)}>
-                        {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                    <Input
+                        type="number"
+                        step="0.001"
+                        className="flex-1"
+                        value={minPkgAmount ?? ''}
+                        onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)}
+                    />
+                    <select
+                        className="border rounded-md px-2 text-sm"
+                        value={minPkgUnit ?? PACKAGE_UNITS[0]}
+                        onChange={(e) => setMinPkgUnit(e.target.value)}
+                    >
+                        {PACKAGE_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                                {u}
+                            </option>
+                        ))}
                     </select>
                 </div>
             </div>
 
             <div className="space-y-1">
-                <Label>Цены</Label>
+                <div className="flex items-center justify-between">
+                    <Label>Цены</Label>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTiers((prev) => [...prev, { amount: 1, unit: PACKAGE_UNITS[0], price: 0 }])}
+                    >
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Добавить
+                    </Button>
+                </div>
                 {tiers.map((tier, i) => (
                     <div key={i} className="flex items-center gap-2">
-                        <Input type="number" step="0.001" className="w-20" value={tier.amount} onChange={(e) => {
-                            const next = [...tiers]; next[i] = { ...next[i], amount: Number(e.target.value) }; setTiers(next);
-                        }} />
-                        <select className="border rounded-md px-2 text-sm" value={tier.unit} onChange={(e) => {
-                            const next = [...tiers]; next[i] = { ...next[i], unit: e.target.value }; setTiers(next);
-                        }}>
-                            {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        <Input
+                            type="number"
+                            step="0.001"
+                            className="w-20"
+                            value={tier.amount}
+                            onChange={(e) => {
+                                const next = [...tiers];
+                                next[i] = { ...next[i], amount: Number(e.target.value) };
+                                setTiers(next);
+                            }}
+                        />
+                        <select
+                            className="border rounded-md px-2 text-sm"
+                            value={tier.unit}
+                            onChange={(e) => {
+                                const next = [...tiers];
+                                next[i] = { ...next[i], unit: e.target.value };
+                                setTiers(next);
+                            }}
+                        >
+                            {PACKAGE_UNITS.map((u) => (
+                                <option key={u} value={u}>
+                                    {u}
+                                </option>
+                            ))}
                         </select>
                         <span className="text-muted-foreground">—</span>
-                        <Input type="number" step="0.01" className="flex-1" value={tier.price} onChange={(e) => {
-                            const next = [...tiers]; next[i] = { ...next[i], price: Number(e.target.value) }; setTiers(next);
-                        }} />
+                        <Input
+                            type="number"
+                            step="0.01"
+                            className="flex-1"
+                            value={tier.price}
+                            onChange={(e) => {
+                                const next = [...tiers];
+                                next[i] = { ...next[i], price: Number(e.target.value) };
+                                setTiers(next);
+                            }}
+                        />
                         <span className="text-sm text-muted-foreground">₽</span>
+                        {tiers.length > 1 && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => setTiers((prev) => prev.filter((_, j) => j !== i))}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
                 ))}
             </div>
@@ -300,13 +403,57 @@ function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave
             <div className="space-y-1">
                 <Label>Фасовка поставщика</Label>
                 <div className="flex items-center gap-2">
-                    <Input type="number" step="0.001" className="w-24" value={supPkgAmount ?? ''} onChange={(e) => setSupPkgAmount(e.target.value ? Number(e.target.value) : null)} />
-                    <select className="border rounded-md px-2 text-sm" value={supPkgUnit ?? PACKAGE_UNITS[0]} onChange={(e) => setSupPkgUnit(e.target.value)}>
-                        {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                    <Input
+                        type="number"
+                        step="0.001"
+                        className="w-24"
+                        value={supPkgAmount ?? ''}
+                        onChange={(e) => setSupPkgAmount(e.target.value ? Number(e.target.value) : null)}
+                    />
+                    <select
+                        className="border rounded-md px-2 text-sm"
+                        value={supPkgUnit ?? PACKAGE_UNITS[0]}
+                        onChange={(e) => setSupPkgUnit(e.target.value)}
+                    >
+                        {PACKAGE_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                                {u}
+                            </option>
+                        ))}
                     </select>
                     <span className="text-muted-foreground">—</span>
-                    <Input type="number" step="0.01" className="flex-1" value={supPkgPrice ?? ''} onChange={(e) => setSupPkgPrice(e.target.value ? Number(e.target.value) : null)} />
+                    <Input
+                        type="number"
+                        step="0.01"
+                        className="flex-1"
+                        value={supPkgPrice ?? ''}
+                        onChange={(e) => setSupPkgPrice(e.target.value ? Number(e.target.value) : null)}
+                    />
                     <span className="text-sm text-muted-foreground">₽</span>
+                </div>
+            </div>
+
+            <div className="space-y-1">
+                <Label>Свободно</Label>
+                <div className="flex gap-2">
+                    <Input
+                        type="number"
+                        step="0.001"
+                        className="flex-1"
+                        value={availAmount ?? ''}
+                        onChange={(e) => setAvailAmount(e.target.value ? Number(e.target.value) : null)}
+                    />
+                    <select
+                        className="border rounded-md px-2 text-sm"
+                        value={availUnit ?? PACKAGE_UNITS[0]}
+                        onChange={(e) => setAvailUnit(e.target.value)}
+                    >
+                        {PACKAGE_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                                {u}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -323,41 +470,4 @@ function ItemEditForm({ product, initialTiers, published, purchaseItemId, onSave
             </Button>
         </div>
     );
-}
-
-function buildLocalDescription(input: {
-    name: string;
-    minPackageAmount: number | null;
-    minPackageUnit: string | null;
-    tiers: { amount: number; unit: string; price: number }[];
-    supplierPackageAmount: number | null;
-    supplierPackageUnit: string | null;
-    supplierPackagePrice: number | null;
-}): string {
-    const lines: string[] = [];
-    const name = input.name.trim();
-    if (name) lines.push(`<p><strong>${esc(name)}</strong></p>`);
-
-    if (input.minPackageAmount && input.minPackageAmount > 0 && input.minPackageUnit) {
-        lines.push(`<p><strong>Минимальная фасовка - ${input.minPackageAmount} ${esc(input.minPackageUnit)}</strong></p>`);
-    }
-
-    const valid = input.tiers.filter((t) => t.amount > 0 && t.price > 0);
-    if (valid.length > 0) {
-        lines.push('<p></p>');
-        for (const t of valid) {
-            lines.push(`<p>${t.amount} ${esc(t.unit)} - ${t.price} руб</p>`);
-        }
-    }
-
-    if (input.supplierPackageAmount && input.supplierPackageAmount > 0 && input.supplierPackageUnit && input.supplierPackagePrice && input.supplierPackagePrice > 0) {
-        lines.push('<p></p>');
-        lines.push(`<p><strong>Фасовка поставщика:</strong><br/>${input.supplierPackageAmount} ${esc(input.supplierPackageUnit!)} - ${input.supplierPackagePrice} руб</p>`);
-    }
-
-    return lines.join('');
-}
-
-function esc(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

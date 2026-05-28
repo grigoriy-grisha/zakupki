@@ -3,7 +3,6 @@ import { RoleKind } from '@zakupki/database';
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-import { ROUTES, VK_USER_INFO_URL } from '@/lib/constants';
 import { buildRbac, type RbacConfig } from '@/lib/rbac-config';
 import { createRoleService, createUserService } from '@/server/lib/create-user-service';
 
@@ -14,7 +13,7 @@ export async function verifyVk(rawData: string) {
     const { accessToken } = JSON.parse(rawData);
     if (!accessToken) return null;
 
-    const userInfoResponse = await fetch(VK_USER_INFO_URL, {
+    const userInfoResponse = await fetch('https://id.vk.com/oauth2/user_info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -58,7 +57,7 @@ export async function verifyTelegram(rawData: string) {
 
 export const authOptions: NextAuthOptions = {
     session: { strategy: 'jwt' },
-    pages: { signIn: ROUTES.login.path },
+    pages: { signIn: '/login' },
     providers: [
         CredentialsProvider({
             id: 'vk',
@@ -119,7 +118,9 @@ declare module 'next-auth' {
             rbac: RbacConfig;
         };
     }
-    interface User { role?: RoleKind; }
+    interface User {
+        role?: RoleKind;
+    }
 }
 
 declare module 'next-auth/jwt' {

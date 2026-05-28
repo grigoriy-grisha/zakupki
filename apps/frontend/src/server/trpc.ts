@@ -10,16 +10,17 @@ import { createRoleService } from '@/server/lib/create-user-service';
 
 export const createTRPCContext = async () => {
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id ? Number(session.user.id) : null;
+    const rawId = Number(session?.user?.id);
+    const userId = rawId && !Number.isNaN(rawId) ? rawId : null;
     const role =
         session?.user?.role ??
-        (userId != null && !Number.isNaN(userId) ? await createRoleService().getUserRoleKind(userId) : null);
+        (userId ? await createRoleService().getUserRoleKind(userId) : null);
     const rbac = role ? buildRbac(role) : undefined;
 
     return {
         db: dbClient,
         session,
-        userId: userId != null && !Number.isNaN(userId) ? userId : null,
+        userId,
         role,
         rbac,
     };

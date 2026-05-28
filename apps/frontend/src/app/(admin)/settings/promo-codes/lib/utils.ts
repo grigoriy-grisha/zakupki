@@ -1,4 +1,4 @@
-import type { PromoStatus, PromoWithDates } from '../../../lib/types';
+import type { PromoStatus, PromoWithDates } from './types';
 
 export function getPromoStatus(promo: PromoWithDates): PromoStatus {
     const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date();

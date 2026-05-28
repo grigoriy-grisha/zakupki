@@ -1,8 +1,4 @@
-import {
-    ProductRepository,
-    type ProductCreateData,
-    type ProductWriteData,
-} from '../domain/product.repository';
+import { ProductRepository, type ProductCreateData, type ProductWriteData } from '../domain/product.repository';
 
 export class ProductService {
     constructor(private repo: ProductRepository) {}

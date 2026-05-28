@@ -8,38 +8,23 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ADMIN_NAV_ITEMS, CLIENT_NAV_ITEMS, ROUTES } from '@/lib/constants';
-
-const navIcons = {
-    [ROUTES.home.path]: LayoutDashboard,
-    [ROUTES.purchases.path]: ShoppingCart,
-    [ROUTES.products.path]: Package,
-    [ROUTES.users.path]: Users,
-    [ROUTES.settings.path]: Settings,
-    [ROUTES.shop.path]: ShoppingBag,
-} as const;
-
-const adminNav = ADMIN_NAV_ITEMS.map((item) => ({
-    href: item.path,
-    label: item.label,
-    icon: navIcons[item.path as keyof typeof navIcons],
-}));
-
-const userNav = CLIENT_NAV_ITEMS.map((item) => ({
-    href: item.path,
-    label: item.label,
-    icon: ShoppingBag,
-    exact: false as const,
-}));
+const navItems = [
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, admin: true },
+    { href: '/purchases', label: 'Закупки', icon: ShoppingCart, admin: true },
+    { href: '/products', label: 'Каталог товаров', icon: Package, admin: true },
+    { href: '/users', label: 'Участники', icon: Users, admin: true },
+    { href: '/settings', label: 'Настройки', icon: Settings, admin: true },
+    { href: '/shop', label: 'Мои закупки', icon: ShoppingBag, admin: false },
+];
 
 export function Sidebar() {
     const pathname = usePathname();
     const { data: session } = useSession();
     const isAdmin = session?.user?.role === 'ADMIN';
+    const items = isAdmin ? navItems : navItems.filter((n) => !n.admin);
 
-    function isActive(href: string, exact?: boolean) {
-        if (href === ROUTES.home.path) return pathname === ROUTES.home.path;
-        if (exact) return pathname === href;
+    function isActive(href: string) {
+        if (href === '/') return pathname === '/';
         return pathname === href || pathname.startsWith(href + '/');
     }
 
@@ -60,8 +45,8 @@ export function Sidebar() {
                 <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {isAdmin ? 'Навигация' : 'Меню'}
                 </p>
-                {(isAdmin ? adminNav : userNav).map((item) => {
-                    const active = isActive(item.href, 'exact' in item ? (item.exact as boolean | undefined) : undefined);
+                {items.map((item) => {
+                    const active = isActive(item.href);
                     return (
                         <Link
                             key={item.href}
@@ -85,7 +70,10 @@ export function Sidebar() {
             {session?.user && (
                 <div className="p-3">
                     <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-                        <Link href={ROUTES.profile.path} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+                        <Link
+                            href="/profile"
+                            className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity"
+                        >
                             <Avatar>
                                 <AvatarImage src={session.user.image ?? undefined} alt="" />
                                 <AvatarFallback>{session.user.name?.[0] ?? 'U'}</AvatarFallback>
@@ -101,7 +89,7 @@ export function Sidebar() {
                                 const base =
                                     process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
                                     window.location.origin;
-                                void signOut({ callbackUrl: `${base}${ROUTES.login.path}` });
+                                void signOut({ callbackUrl: `${base}/login` });
                             }}
                         >
                             <LogOut className="h-4 w-4" />

@@ -1,11 +1,28 @@
 import { OrderRepository } from '../domain/order.repository';
+import { PurchaseRepository } from '../domain/purchase.repository';
 
 export class OrderService {
-    constructor(private repo: OrderRepository) {}
+    constructor(
+        private repo: OrderRepository,
+        private purchaseRepo: PurchaseRepository,
+    ) {}
 
     async upsert(purchaseItemId: number, userId: number, quantity: number, pricePerUnit: number) {
         const amountDue = quantity * pricePerUnit;
         return this.repo.upsert(purchaseItemId, userId, quantity, amountDue);
+    }
+
+    async upsertOrder(purchaseItemId: number, userId: number, quantity: number) {
+        const purchaseItem = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
+        if (!purchaseItem) throw new Error('Purchase item not found');
+
+        const status = purchaseItem.purchase.status as string;
+        if (status !== 'ACTIVE' && status !== 'SUPPLEMENT') {
+            throw new Error('Закупка неактивна, заказы не принимаются');
+        }
+
+        const price = Number(purchaseItem.priceOverride ?? purchaseItem.product.pricePerUnit);
+        return this.upsertWithStock(purchaseItemId, userId, quantity, price);
     }
 
     async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, pricePerUnit: number) {

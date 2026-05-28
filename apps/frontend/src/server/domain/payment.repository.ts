@@ -86,7 +86,17 @@ export class PaymentRepository {
         });
     }
 
-    async update(id: number, data: { amount?: number; userComment?: string; proofData?: Buffer; proofMimeType?: string; status?: string; adminNote?: string | null }) {
+    async update(
+        id: number,
+        data: {
+            amount?: number;
+            userComment?: string;
+            proofData?: Buffer;
+            proofMimeType?: string;
+            status?: string;
+            adminNote?: string | null;
+        },
+    ) {
         const updateData: Record<string, unknown> = {};
         if (data.amount !== undefined) updateData.amount = data.amount;
         if (data.userComment !== undefined) updateData.userComment = data.userComment;

@@ -4,12 +4,12 @@ import { TRPCError } from '@trpc/server';
 import { ProductRepository } from '../domain/product.repository';
 import { ProductService } from '../services/product.service';
 import { Prisma, type PrismaClient } from '@zakupki/database';
-import { adminProcedure, publicProcedure, router } from '../trpc';
+import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 export interface ProductCreateInput {
     name: string;
-    unitId: number;
-    pricePerUnit: number;
+    unitId?: number;
+    pricePerUnit?: number;
     description?: string;
     categoryId?: number;
     minPackageAmount?: number;
@@ -37,8 +37,8 @@ const priceTierSchema = z.object({
 
 const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     name: z.string().min(1),
-    unitId: z.number(),
-    pricePerUnit: z.number(),
+    unitId: z.number().optional(),
+    pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     categoryId: z.number().optional(),
     minPackageAmount: z.number().optional(),
@@ -73,21 +73,23 @@ function services(db: PrismaClient) {
 }
 
 export const productsRouter = router({
-    list: publicProcedure
+    list: protectedProcedure
         .input(z.object({ search: z.string().optional(), categoryId: z.number().nullable().optional() }).optional())
         .query(async ({ ctx, input }) => {
             const { product } = services(ctx.db);
             return product.list(input?.search, input?.categoryId);
         }),
 
-    getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
         const { product } = services(ctx.db);
         return product.getById(input.id);
     }),
 
     create: adminProcedure.input(productCreateInput).mutation(async ({ ctx, input }) => {
         const { product } = services(ctx.db);
-        return product.create(input);
+        const unitId = input.unitId ?? (await ctx.db.unit.findFirst({ orderBy: { id: 'asc' } }))?.id;
+        if (!unitId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нет единиц учёта' });
+        return product.create({ ...input, unitId, pricePerUnit: input.pricePerUnit ?? 0 });
     }),
 
     update: adminProcedure.input(productUpdateInput).mutation(async ({ ctx, input }) => {

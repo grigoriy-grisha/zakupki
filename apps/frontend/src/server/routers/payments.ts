@@ -35,7 +35,11 @@ export const paymentsRouter = router({
 
             if (input.promoCode) {
                 const { promoCode } = services(ctx.db);
-                const promo = await promoCode.validate(input.promoCode.toUpperCase().trim(), input.purchaseId, input.amount);
+                const promo = await promoCode.validate(
+                    input.promoCode.toUpperCase().trim(),
+                    input.purchaseId,
+                    input.amount,
+                );
                 promoCodeId = promo.id;
                 discountAmount = promo.discount;
                 finalAmount = promo.finalAmount;
@@ -79,13 +83,15 @@ export const paymentsRouter = router({
     }),
 
     update: protectedProcedure
-        .input(z.object({
-            id: z.number(),
-            amount: z.number().positive().optional(),
-            userComment: z.string().optional(),
-            proofBase64: z.string().optional(),
-            proofMimeType: z.string().optional(),
-        }))
+        .input(
+            z.object({
+                id: z.number(),
+                amount: z.number().positive().optional(),
+                userComment: z.string().optional(),
+                proofBase64: z.string().optional(),
+                proofMimeType: z.string().optional(),
+            }),
+        )
         .mutation(async ({ ctx, input }) => {
             const proofData = input.proofBase64 ? Buffer.from(input.proofBase64, 'base64') : undefined;
             const { payment } = services(ctx.db);
@@ -97,12 +103,10 @@ export const paymentsRouter = router({
             });
         }),
 
-    cancel: protectedProcedure
-        .input(z.object({ id: z.number() }))
-        .mutation(async ({ ctx, input }) => {
-            const { payment } = services(ctx.db);
-            return payment.cancel(input.id);
-        }),
+    cancel: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        const { payment } = services(ctx.db);
+        return payment.cancel(input.id);
+    }),
 
     confirm: adminProcedure
         .input(z.object({ id: z.number(), adminNote: z.string().optional() }))

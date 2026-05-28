@@ -10,7 +10,18 @@ import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
 
-import type { CatalogProductCardProps } from '../../lib/types';
+interface CatalogProductCardProps {
+    product: {
+        id: number;
+        name: string;
+        pricePerUnit: string | number;
+        unit: { shortName: string } | null;
+        minPackageAmount: string | number | null;
+        minPackageUnit: string | null;
+        photos: { id: number }[];
+    };
+    onClick: () => void;
+}
 
 export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -49,14 +60,15 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                             <Package className="h-12 w-12 text-muted-foreground/30" />
                         </div>
                     )}
-                    <Badge className="absolute bottom-2 right-2">
-                        {product.unit?.shortName ?? ''}
-                    </Badge>
+                    <Badge className="absolute bottom-2 right-2">{product.unit?.shortName ?? ''}</Badge>
                     <Button
                         variant="destructive"
                         size="icon"
                         className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); setConfirmOpen(true); }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmOpen(true);
+                        }}
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -70,12 +82,8 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         </p>
                     )}
                     <div className="mt-2 flex items-center justify-between">
-                        <span className="text-lg font-bold text-primary">
-                            {price.toLocaleString('ru-RU')} ₽
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                            за {product.unit?.shortName ?? ''}
-                        </span>
+                        <span className="text-lg font-bold text-primary">{price.toLocaleString('ru-RU')} ₽</span>
+                        <span className="text-xs text-muted-foreground">за {product.unit?.shortName ?? ''}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -92,11 +100,7 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         <Button variant="outline" onClick={() => setConfirmOpen(false)}>
                             Отмена
                         </Button>
-                        <Button
-                            variant="destructive"
-                            disabled={deleteMutation.isPending}
-                            onClick={handleDelete}
-                        >
+                        <Button variant="destructive" disabled={deleteMutation.isPending} onClick={handleDelete}>
                             {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Удалить
                         </Button>

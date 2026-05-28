@@ -7,17 +7,16 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 
-import type { OrdersSummaryCardProps } from '../../../../lib/types';
+import type { ReactNode } from 'react';
+import type { usePurchasePaymentDetail } from '../../../hooks/use-purchase-payment-map';
+
+interface OrdersSummaryCardProps {
+    paymentDetail: ReturnType<typeof usePurchasePaymentDetail>;
+    paymentDialog: ReactNode;
+}
 
 export function OrdersSummaryCard({ paymentDetail, paymentDialog }: OrdersSummaryCardProps) {
-    const {
-        myOrdersInPurchase,
-        totalDue,
-        purchasePayments,
-        hasPending,
-        totalPaid,
-        remaining,
-    } = paymentDetail;
+    const { myOrdersInPurchase, totalDue, purchasePayments, hasPending, totalPaid, remaining } = paymentDetail;
 
     return (
         <Card>
@@ -26,11 +25,15 @@ export function OrdersSummaryCard({ paymentDetail, paymentDialog }: OrdersSummar
 
                 <div className="space-y-2">
                     {myOrdersInPurchase.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                        <div
+                            key={order.id}
+                            className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
+                        >
                             <span className="text-sm">{order.purchaseItem?.product?.name}</span>
                             <span className="text-sm font-medium">
                                 {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                {order.purchaseItem?.product?.unit?.shortName ?? ''} · {Number(order.amountDue).toLocaleString('ru-RU')} ₽
+                                {order.purchaseItem?.product?.unit?.shortName ?? ''} ·{' '}
+                                {Number(order.amountDue).toLocaleString('ru-RU')} ₽
                             </span>
                         </div>
                     ))}
@@ -106,7 +109,10 @@ function PaymentRow({ payment }: { payment: any }) {
                     {childAmount > 0 && (
                         <p className="text-xs text-muted-foreground">
                             Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽
-                            <span className="text-success"> + промокод {promoCode?.code ?? ''} {childAmount.toLocaleString('ru-RU')} ₽</span>
+                            <span className="text-success">
+                                {' '}
+                                + промокод {promoCode?.code ?? ''} {childAmount.toLocaleString('ru-RU')} ₽
+                            </span>
                         </p>
                     )}
                 </div>

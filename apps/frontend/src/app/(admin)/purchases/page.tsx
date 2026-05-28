@@ -12,9 +12,7 @@ import { PurchaseCard } from './components';
 export default function PurchasesPage() {
     const [tab, setTab] = useState('all');
 
-    const { data: purchases, isLoading } = trpc.purchases.list.useQuery(
-        tab === 'all' ? undefined : { status: tab },
-    );
+    const { data: purchases, isLoading } = trpc.purchases.list.useQuery(tab === 'all' ? undefined : { status: tab });
 
     return (
         <div className="space-y-6">
@@ -46,9 +44,7 @@ export default function PurchasesPage() {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {purchases?.length === 0 && (
-                                <p className="col-span-full py-12 text-center text-muted-foreground">
-                                    Нет закупок
-                                </p>
+                                <p className="col-span-full py-12 text-center text-muted-foreground">Нет закупок</p>
                             )}
                             {purchases?.map((purchase) => (
                                 <PurchaseCard key={purchase.id} purchase={purchase} />

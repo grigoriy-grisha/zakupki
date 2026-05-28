@@ -1,4 +1,4 @@
-import type { CustomContext } from '../lib/types';
+import type { CustomContext } from '../domain/types';
 
 /**
  * Middleware that requires an authenticated user (session.userId present).

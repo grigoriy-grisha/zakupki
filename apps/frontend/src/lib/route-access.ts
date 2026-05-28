@@ -1,8 +1,8 @@
-import { ADMIN_ONLY_PREFIXES, ROUTES } from '@/lib/constants';
+import { ADMIN_ONLY_PREFIXES } from '@/lib/constants';
 
 export function getHomePathForRole(role: string | undefined): string {
-    if (role === 'ADMIN') return ROUTES.home.path;
-    return ROUTES.shop.path;
+    if (role === 'ADMIN') return '/';
+    return '/shop';
 }
 
 export function isAdminOnlyRoute(pathname: string): boolean {

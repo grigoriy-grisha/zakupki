@@ -9,7 +9,9 @@ import { paymentTotal } from '../../lib/utils';
 import { ParticipantRow } from './participant-row';
 import { PaymentDetailDialog } from './payment-detail-dialog';
 import { AddPaymentDialog } from './add-payment-dialog';
-import type { ParticipantsTabProps } from '../../../lib/types';
+interface ParticipantsTabProps {
+    purchaseId: number;
+}
 
 export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
     const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
@@ -29,7 +31,10 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
     // User info map
     const userMap = new Map<number, { name: string; username?: string }>();
     orders.forEach((o) => {
-        if (!userMap.has(o.userId) && (o as { user?: { firstName: string; lastName?: string | null; username?: string } }).user) {
+        if (
+            !userMap.has(o.userId) &&
+            (o as { user?: { firstName: string; lastName?: string | null; username?: string } }).user
+        ) {
             const u = (o as { user: { firstName: string; lastName?: string | null; username?: string } }).user;
             userMap.set(o.userId, {
                 name: [u.firstName, u.lastName].filter(Boolean).join(' '),
@@ -68,10 +73,15 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
 
     // Global stats
     const totalDue = orders.reduce((sum, o) => sum + Number(o.amountDue), 0);
-    const totalPaid = payments?.reduce((sum, p) => sum + paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] }), 0) ?? 0;
-    const totalPending = payments
-        ?.filter((p) => (p as { status: string }).status === 'PENDING')
-        .reduce((sum, p) => sum + paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] }), 0) ?? 0;
+    const totalPaid =
+        payments?.reduce(
+            (sum, p) => sum + paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] }),
+            0,
+        ) ?? 0;
+    const totalPending =
+        payments
+            ?.filter((p) => (p as { status: string }).status === 'PENDING')
+            .reduce((sum, p) => sum + paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] }), 0) ?? 0;
 
     const userIds = Array.from(userOrders.keys());
 
@@ -97,16 +107,19 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                     <span className="text-lg font-medium text-foreground">Участники</span>
                     <span>{userIds.length} чел.</span>
                     <span>
-                        К оплате: <span className="font-medium text-foreground">{totalDue.toLocaleString('ru-RU')} ₽</span>
+                        К оплате:{' '}
+                        <span className="font-medium text-foreground">{totalDue.toLocaleString('ru-RU')} ₽</span>
                     </span>
                     <span>
-                        Покрыто: <span className={cn('font-medium', totalPaid >= totalDue ? 'text-success' : 'text-foreground')}>
+                        Покрыто:{' '}
+                        <span className={cn('font-medium', totalPaid >= totalDue ? 'text-success' : 'text-foreground')}>
                             {totalPaid.toLocaleString('ru-RU')} ₽
                         </span>
                     </span>
                     {totalPending > 0 && (
                         <span>
-                            Ожидает: <span className="font-medium text-warning">{totalPending.toLocaleString('ru-RU')} ₽</span>
+                            Ожидает:{' '}
+                            <span className="font-medium text-warning">{totalPending.toLocaleString('ru-RU')} ₽</span>
                         </span>
                     )}
                 </div>

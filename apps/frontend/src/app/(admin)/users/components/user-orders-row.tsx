@@ -7,7 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-import type { UserOrdersRowProps } from '../../lib/types';
+interface UserOrdersRowProps {
+    userId: number;
+    userName: string;
+}
 
 export function UserOrdersRow({ userId, userName }: UserOrdersRowProps) {
     const [open, setOpen] = useState(false);
@@ -15,10 +18,7 @@ export function UserOrdersRow({ userId, userName }: UserOrdersRowProps) {
 
     return (
         <>
-            <TableRow
-                className="cursor-pointer hover:bg-accent/50 transition-colors"
-                onClick={() => setOpen(!open)}
-            >
+            <TableRow className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setOpen(!open)}>
                 <TableCell>
                     <div className="flex items-center gap-1">
                         {open ? (
@@ -66,11 +66,10 @@ export function UserOrdersRow({ userId, userName }: UserOrdersRowProps) {
                                             {orders.map((order) => (
                                                 <TableRow key={order.id}>
                                                     <TableCell className="font-medium">
-                                                        {order.purchaseItem?.product?.name ?? `Товар #${order.purchaseItemId}`}
+                                                        {order.purchaseItem?.product?.name ??
+                                                            `Товар #${order.purchaseItemId}`}
                                                     </TableCell>
-                                                    <TableCell>
-                                                        {order.purchaseItem?.purchase?.tag ?? '—'}
-                                                    </TableCell>
+                                                    <TableCell>{order.purchaseItem?.purchase?.tag ?? '—'}</TableCell>
                                                     <TableCell>
                                                         {Number(order.quantity).toLocaleString('ru-RU')}{' '}
                                                         {order.purchaseItem?.product?.unit?.shortName ?? ''}

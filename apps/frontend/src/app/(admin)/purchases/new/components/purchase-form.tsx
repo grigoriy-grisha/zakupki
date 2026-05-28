@@ -83,7 +83,9 @@ export function PurchaseForm() {
                             <Label>Дедлайн</Label>
                             <DatePicker
                                 value={deadline}
-                                onChange={(d) => { if (d) setValue('deadline', d, { shouldValidate: true }); }}
+                                onChange={(d) => {
+                                    if (d) setValue('deadline', d, { shouldValidate: true });
+                                }}
                                 placeholder="Выберите дату"
                             />
                             {errors.deadline && <p className="text-xs text-destructive">{errors.deadline.message}</p>}

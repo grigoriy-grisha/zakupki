@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { PhotoUploaderProps } from '../../lib/types';
+interface PhotoUploaderProps {
+    photoIds: number[];
+    onPhotoIdsChange: (ids: number[]) => void;
+    productId: number;
+    onDeletePhoto: (id: number) => Promise<void>;
+}
 
 export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeletePhoto }: PhotoUploaderProps) {
     const [uploading, setUploading] = useState(false);
@@ -46,11 +51,7 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
             <div className="flex flex-wrap gap-2">
                 {photoIds.map((id) => (
                     <div key={id} className="relative">
-                        <img
-                            src={`/api/photos/${id}`}
-                            alt=""
-                            className="h-20 w-20 rounded-md object-cover"
-                        />
+                        <img src={`/api/photos/${id}`} alt="" className="h-20 w-20 rounded-md object-cover" />
                         <button
                             type="button"
                             onClick={() => handleRemovePhoto(id)}
@@ -61,7 +62,14 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
                     </div>
                 ))}
                 <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary">
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        disabled={uploading}
+                    />
                     {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
                 </label>
             </div>

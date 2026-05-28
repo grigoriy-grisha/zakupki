@@ -34,7 +34,8 @@ export class PromoCodeService {
         if (!promo.isActive) throw new Error('Промокод неактивен');
         if (promo.expiresAt && promo.expiresAt < new Date()) throw new Error('Срок действия промокода истёк');
         if (promo.maxUses !== null && promo.usedCount >= promo.maxUses) throw new Error('Промокод исчерпан');
-        if (promo.purchaseId && promo.purchaseId !== purchaseId) throw new Error('Промокод не подходит для этой закупки');
+        if (promo.purchaseId && promo.purchaseId !== purchaseId)
+            throw new Error('Промокод не подходит для этой закупки');
         if (promo.minAmount && orderAmount < Number(promo.minAmount)) {
             throw new Error(`Минимальная сумма заказа: ${Number(promo.minAmount).toLocaleString('ru-RU')} ₽`);
         }
@@ -54,7 +55,7 @@ export class PromoCodeService {
     calculateDiscount(value: number, type: string, amount: number): number {
         let discount: number;
         if (type === 'PERCENT') {
-            discount = Math.round(amount * value / 100 * 100) / 100;
+            discount = Math.round(((amount * value) / 100) * 100) / 100;
         } else {
             discount = value;
         }

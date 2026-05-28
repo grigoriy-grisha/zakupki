@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, CircleCheck, CircleX, CreditCard, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ShopMyPurchaseCardProps } from '../../lib/types';
+import type { ShopMyPurchaseCardProps } from '../lib/types';
 
 export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
     const isPaid = payment.remaining === 0;
@@ -15,14 +15,22 @@ export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
 
     return (
         <Link href={`/shop/purchase/${purchase.id}`}>
-            <Card className={cn(
-                'group h-full transition-all hover:shadow-md',
-                isPaid ? 'hover:border-success/30' : 'hover:border-primary/30',
-            )}>
+            <Card
+                className={cn(
+                    'group h-full transition-all hover:shadow-md',
+                    isPaid ? 'hover:border-success/30' : 'hover:border-primary/30',
+                )}
+            >
                 <CardContent className="p-5">
                     <div className="flex items-start justify-between">
                         <div>
-                            <Badge className={purchase.status === 'SUPPLEMENT' ? 'bg-warning-50 text-warning hover:bg-warning-50' : 'bg-success-50 text-success hover:bg-success-50'}>
+                            <Badge
+                                className={
+                                    purchase.status === 'SUPPLEMENT'
+                                        ? 'bg-warning-50 text-warning hover:bg-warning-50'
+                                        : 'bg-success-50 text-success hover:bg-success-50'
+                                }
+                            >
                                 {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                             </Badge>
                             <h3 className="mt-2 text-lg font-semibold group-hover:text-primary transition-colors">

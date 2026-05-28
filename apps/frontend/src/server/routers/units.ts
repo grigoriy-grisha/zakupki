@@ -3,14 +3,14 @@ import { z } from 'zod';
 import { UnitRepository } from '../domain/unit.repository';
 import { UnitService } from '../services/unit.service';
 import type { PrismaClient } from '@zakupki/database';
-import { adminProcedure, publicProcedure, router } from '../trpc';
+import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 function services(db: PrismaClient) {
     return { unit: new UnitService(new UnitRepository(db)) };
 }
 
 export const unitsRouter = router({
-    list: publicProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.query(async ({ ctx }) => {
         const { unit } = services(ctx.db);
         return unit.list();
     }),

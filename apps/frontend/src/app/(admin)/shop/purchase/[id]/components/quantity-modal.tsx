@@ -3,11 +3,23 @@
 import { useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
 import { Loader2, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { QuantityModalProps } from '../../../../lib/types';
+interface QuantityModalProps {
+    purchaseItemId: number;
+    purchaseId: number;
+    currentQuantity?: number;
+    onClose: () => void;
+}
 
 export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onClose }: QuantityModalProps) {
     const utils = trpc.useUtils();
@@ -18,7 +30,8 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
     const unit = item?.product?.unit;
     const multiplicity = unit ? Number(unit.multiplicity) : 1;
     const minQty = item?.minQty ? Number(item.minQty) : multiplicity;
-    const availableQty = item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
+    const availableQty =
+        item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
 
     const startQty = Math.max(multiplicity, minQty);
     const roundedStart = Math.ceil(startQty / multiplicity) * multiplicity;
@@ -67,7 +80,8 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                 <DialogHeader>
                     <DialogTitle>{item.product.name}</DialogTitle>
                     <DialogDescription>
-                        {item.product.minPackageAmount != null && item.product.minPackageUnit &&
+                        {item.product.minPackageAmount != null &&
+                            item.product.minPackageUnit &&
                             `Мин. фасовка: ${Number(item.product.minPackageAmount)} ${item.product.minPackageUnit} · `}
                         {price.toLocaleString('ru-RU')} ₽/{shortName}
                     </DialogDescription>
@@ -75,18 +89,26 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
 
                 <div className="space-y-6 py-4">
                     {/* Available stock indicator */}
-                    {remainingLabel !== null && (() => {
-                        const afterConfirm = maxQty !== null ? maxQty - quantity : remainingLabel;
-                        return (
-                            <div className={`rounded-lg p-3 text-center text-sm ${afterConfirm <= 0 ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}>
-                                {afterConfirm > 0 ? (
-                                    <>Доступно ещё: <strong>{afterConfirm} {shortName}</strong></>
-                                ) : (
-                                    <strong>Весь остаток выбран</strong>
-                                )}
-                            </div>
-                        );
-                    })()}
+                    {remainingLabel !== null &&
+                        (() => {
+                            const afterConfirm = maxQty !== null ? maxQty - quantity : remainingLabel;
+                            return (
+                                <div
+                                    className={`rounded-lg p-3 text-center text-sm ${afterConfirm <= 0 ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
+                                >
+                                    {afterConfirm > 0 ? (
+                                        <>
+                                            Доступно ещё:{' '}
+                                            <strong>
+                                                {afterConfirm} {shortName}
+                                            </strong>
+                                        </>
+                                    ) : (
+                                        <strong>Весь остаток выбран</strong>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                     {/* Quantity Selector */}
                     <div className="flex items-center justify-center gap-4">
@@ -139,9 +161,7 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                     {/* Total */}
                     <div className="rounded-xl bg-primary/5 p-4 text-center">
                         <p className="text-sm text-muted-foreground">Итого</p>
-                        <p className="mt-1 text-3xl font-bold text-primary">
-                            {total.toLocaleString('ru-RU')} ₽
-                        </p>
+                        <p className="mt-1 text-3xl font-bold text-primary">{total.toLocaleString('ru-RU')} ₽</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                             {quantity} {shortName} × {price.toLocaleString('ru-RU')} ₽
                         </p>

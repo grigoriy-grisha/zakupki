@@ -135,13 +135,11 @@ export function PackageEditor({
 
 function UnitSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
     return (
-        <select
-            className="border rounded-md px-2 text-sm"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-        >
+        <select className="border rounded-md px-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}>
             {PACKAGE_UNITS.map((u) => (
-                <option key={u} value={u}>{u}</option>
+                <option key={u} value={u}>
+                    {u}
+                </option>
             ))}
         </select>
     );

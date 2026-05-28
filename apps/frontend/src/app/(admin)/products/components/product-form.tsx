@@ -14,15 +14,42 @@ import { SheetFooter } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 
-import { PACKAGE_UNITS, productSchema, type ProductFormValues } from '../lib';
+import { PACKAGE_UNITS, productCreateSchema, productSchema, type ProductCreateFormValues, type ProductFormValues } from '../lib';
 import { useCreateProduct, useDeletePhoto, useUnits, useUpdateProduct } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
 
-import type { ProductFormProps } from '../../lib/types';
+interface ProductFormProps {
+    editId: number | null;
+    existing:
+        | {
+              name: string;
+              description: string | null;
+              unitId: number;
+              pricePerUnit: string | number;
+              categoryId: number | null;
+              minPackageAmount: string | number | null;
+              minPackageUnit: string | null;
+              priceTiers: unknown;
+              supplierPackageAmount: string | number | null;
+              supplierPackageUnit: string | null;
+              supplierPackagePrice: string | number | null;
+              availableAmount: string | number | null;
+              availableUnit: string | null;
+              photos: { id: number }[];
+          }
+        | null
+        | undefined;
+    onSuccess: (newId?: number) => void;
+}
 
 type ExistingProduct = NonNullable<ProductFormProps['existing']>;
 
-export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: ProductFormProps & { defaultCategoryId?: number | null }) {
+export function ProductForm({
+    editId,
+    existing,
+    onSuccess,
+    defaultCategoryId,
+}: ProductFormProps & { defaultCategoryId?: number | null }) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
     const [pendingFiles, setPendingFiles] = useState<{ file: File; preview: string }[]>([]);
     const utils = trpc.useUtils();
@@ -32,15 +59,19 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
     const updateMutation = useUpdateProduct();
     const deletePhotoMutation = useDeletePhoto();
 
-    const {
-        control,
-        register,
-        handleSubmit,
-        reset,
-        setValue,
-        watch,
-        formState: { errors },
-    } = useForm<ProductFormValues>({
+    const isCreating = !editId;
+
+    // ─── Create form (name + category + photo only) ───
+    const createForm = useForm<ProductCreateFormValues>({
+        resolver: zodResolver(productCreateSchema),
+        defaultValues: {
+            name: '',
+            categoryId: defaultCategoryId ?? null,
+        },
+    });
+
+    // ─── Edit form (full fields) ───
+    const editForm = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema),
         defaultValues: {
             name: '',
@@ -58,13 +89,13 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
         },
     });
 
-    const tiers = useFieldArray({ control, name: 'priceTiers' });
-    const currentUnitId = watch('unitId');
-    const currentCategoryId = watch('categoryId');
+    const tiers = useFieldArray({ control: editForm.control, name: 'priceTiers' });
+    const currentUnitId = editForm.watch('unitId');
+    const currentCategoryId = isCreating ? createForm.watch('categoryId') : editForm.watch('categoryId');
 
     useEffect(() => {
         if (existing && editId) {
-            reset({
+            editForm.reset({
                 name: existing.name,
                 description: existing.description ?? '',
                 unitId: existing.unitId,
@@ -81,37 +112,65 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
             setPhotoIds(existing.photos.map((p) => p.id));
             setPendingFiles([]);
         } else if (!editId) {
-            reset({
+            createForm.reset({
                 name: '',
-                description: '',
-                unitId: units?.[0]?.id ?? 0,
                 categoryId: defaultCategoryId ?? null,
-                minPackageAmount: null,
-                minPackageUnit: PACKAGE_UNITS[0],
-                priceTiers: [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }],
-                supplierPackageAmount: null,
-                supplierPackageUnit: PACKAGE_UNITS[0],
-                supplierPackagePrice: null,
-                availableAmount: null,
-                availableUnit: PACKAGE_UNITS[0],
             });
             setPhotoIds([]);
             setPendingFiles([]);
         }
-    }, [existing, editId, reset, units, defaultCategoryId]);
+    }, [existing, editId, editForm, createForm, defaultCategoryId]);
 
     const currentCategoryName = categories?.find((c) => c.id === currentCategoryId)?.name;
-    useAutoDescription(control, setValue, currentCategoryName);
+    useAutoDescription(editForm.control, editForm.setValue, currentCategoryName);
 
-    async function onSubmit(data: ProductFormValues) {
+    // ─── Create submit ───
+    async function handleCreate(data: ProductCreateFormValues) {
+        try {
+            const result = await createMutation.mutateAsync({
+                name: data.name,
+                categoryId: data.categoryId ?? undefined,
+            });
+            await utils.products.list.invalidate();
+
+            // Upload pending photos
+            if (pendingFiles.length > 0) {
+                for (let i = 0; i < pendingFiles.length; i++) {
+                    const formData = new FormData();
+                    formData.append('file', pendingFiles[i].file);
+                    formData.append('productId', String(result.id));
+                    formData.append('sortOrder', String(i));
+                    try {
+                        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                        if (res.ok) {
+                            const { id } = await res.json();
+                            setPhotoIds((prev) => [...prev, id]);
+                        }
+                    } catch {
+                        /* skip failed photo */
+                    }
+                }
+                setPendingFiles([]);
+            }
+
+            toast.success('Товар создан');
+            return result.id;
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Ошибка сохранения');
+            return undefined;
+        }
+    }
+
+    // ─── Edit submit ───
+    async function handleEdit(data: ProductFormValues) {
         const firstTier = data.priceTiers?.[0];
         if (!firstTier || !firstTier.amount || firstTier.price <= 0) {
             toast.error('Укажите хотя бы одну цену');
-            return undefined;
+            return;
         }
         if (!data.unitId) {
             toast.error('Выберите единицу учёта');
-            return undefined;
+            return;
         }
 
         const pricePerUnit = firstTier.price / firstTier.amount;
@@ -137,44 +196,25 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                 await updateMutation.mutateAsync({ id: editId, ...payload });
                 await utils.products.list.invalidate();
                 toast.success('Товар обновлён');
-            } else {
-                const result = await createMutation.mutateAsync(payload);
-                await utils.products.list.invalidate();
-
-                // Upload pending photos
-                if (pendingFiles.length > 0) {
-                    for (let i = 0; i < pendingFiles.length; i++) {
-                        const formData = new FormData();
-                        formData.append('file', pendingFiles[i].file);
-                        formData.append('productId', String(result.id));
-                        formData.append('sortOrder', String(i));
-                        try {
-                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                            if (res.ok) {
-                                const { id } = await res.json();
-                                setPhotoIds((prev) => [...prev, id]);
-                            }
-                        } catch { /* skip failed photo */ }
-                    }
-                    setPendingFiles([]);
-                }
-
-                toast.success('Товар создан');
-                return result.id;
             }
             onSuccess();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Ошибка сохранения');
         }
-        return undefined;
     }
 
     function handleFormSubmit(e: React.FormEvent) {
         e.preventDefault();
-        handleSubmit(async (data) => {
-            const newId = await onSubmit(data);
-            if (newId) onSuccess(newId);
-        })();
+        if (isCreating) {
+            createForm.handleSubmit(async (data) => {
+                const newId = await handleCreate(data);
+                if (newId) onSuccess(newId);
+            })();
+        } else {
+            editForm.handleSubmit(async (data) => {
+                await handleEdit(data);
+            })();
+        }
     }
 
     const isPending = createMutation.isPending || updateMutation.isPending;
@@ -182,6 +222,95 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
     async function handleDeletePhoto(id: number) {
         await deletePhotoMutation.mutateAsync({ id });
     }
+
+    // ─── Category selector (shared) ───
+    const categorySelect = (
+        <div className="space-y-2">
+            <Label>Категория</Label>
+            <Select
+                value={currentCategoryId ? String(currentCategoryId) : 'none'}
+                onValueChange={(v) => {
+                    const val = v === 'none' ? null : Number(v);
+                    if (isCreating) createForm.setValue('categoryId', val, { shouldDirty: true });
+                    else editForm.setValue('categoryId', val, { shouldDirty: true });
+                }}
+            >
+                <SelectTrigger>
+                    <SelectValue placeholder="Без категории" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="none">Без категории</SelectItem>
+                    {categories?.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                            {c.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+
+    // ─── CREATE mode: minimal form ───
+    if (isCreating) {
+        const createErrors = createForm.formState.errors;
+        return (
+            <form onSubmit={handleFormSubmit} className="space-y-4 px-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Название</Label>
+                    <Input id="name" {...createForm.register('name')} />
+                    {createErrors.name && <p className="text-xs text-destructive">{createErrors.name.message}</p>}
+                </div>
+
+                {categorySelect}
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">Фото</label>
+                    <div className="flex flex-wrap gap-2">
+                        {pendingFiles.map((f, i) => (
+                            <div key={i} className="relative">
+                                <img src={f.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
+                                    className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-destructive-foreground"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                        <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                    const files = Array.from(e.target.files ?? []);
+                                    const withPreviews = files.map((file) => ({
+                                        file,
+                                        preview: URL.createObjectURL(file),
+                                    }));
+                                    setPendingFiles((prev) => [...prev, ...withPreviews]);
+                                    e.target.value = '';
+                                }}
+                            />
+                            <Plus className="h-5 w-5" />
+                        </label>
+                    </div>
+                </div>
+
+                <SheetFooter>
+                    <Button type="submit" disabled={isPending} className="w-full">
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Создать
+                    </Button>
+                </SheetFooter>
+            </form>
+        );
+    }
+
+    // ─── EDIT mode: full form ───
+    const { control, register, setValue, watch, formState: { errors } } = editForm;
 
     return (
         <form onSubmit={handleFormSubmit} className="space-y-4 px-4">
@@ -258,9 +387,7 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                             />
                             <UnitSelect
                                 value={watch(`priceTiers.${index}.unit`) ?? PACKAGE_UNITS[0]}
-                                onValueChange={(v) =>
-                                    setValue(`priceTiers.${index}.unit`, v, { shouldDirty: true })
-                                }
+                                onValueChange={(v) => setValue(`priceTiers.${index}.unit`, v, { shouldDirty: true })}
                             />
                             <span className="text-muted-foreground">—</span>
                             <Input
@@ -285,9 +412,7 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                         </div>
                     ))}
                 </div>
-                {errors.priceTiers && (
-                    <p className="text-xs text-destructive">{errors.priceTiers.message}</p>
-                )}
+                {errors.priceTiers && <p className="text-xs text-destructive">{errors.priceTiers.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -351,83 +476,23 @@ export function ProductForm({ editId, existing, onSuccess, defaultCategoryId }: 
                             ))}
                         </SelectContent>
                     </Select>
-                    {errors.unitId && (
-                        <p className="text-xs text-destructive">{errors.unitId.message}</p>
-                    )}
+                    {errors.unitId && <p className="text-xs text-destructive">{errors.unitId.message}</p>}
                 </div>
 
-                <div className="space-y-2">
-                    <Label>Категория</Label>
-                    <Select
-                        value={currentCategoryId ? String(currentCategoryId) : 'none'}
-                        onValueChange={(v) =>
-                            setValue('categoryId', v === 'none' ? null : Number(v), { shouldDirty: true })
-                        }
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Без категории" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">Без категории</SelectItem>
-                            {categories?.map((c) => (
-                                <SelectItem key={c.id} value={String(c.id)}>
-                                    {c.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                {categorySelect}
             </div>
 
-            {editId ? (
-                <PhotoUploader
-                    photoIds={photoIds}
-                    onPhotoIdsChange={setPhotoIds}
-                    productId={editId}
-                    onDeletePhoto={handleDeletePhoto}
-                />
-            ) : (
-                <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">Фото</label>
-                    <div className="flex flex-wrap gap-2">
-                        {pendingFiles.map((f, i) => (
-                            <div key={i} className="relative">
-                                <img src={f.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
-                                    className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-destructive-foreground"
-                                >
-                                    <X className="h-3 w-3" />
-                                </button>
-                            </div>
-                        ))}
-                        <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary">
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                className="hidden"
-                                onChange={(e) => {
-                                    const files = Array.from(e.target.files ?? []);
-                                    const withPreviews = files.map((file) => ({
-                                        file,
-                                        preview: URL.createObjectURL(file),
-                                    }));
-                                    setPendingFiles((prev) => [...prev, ...withPreviews]);
-                                    e.target.value = '';
-                                }}
-                            />
-                            <Plus className="h-5 w-5" />
-                        </label>
-                    </div>
-                </div>
-            )}
+            <PhotoUploader
+                photoIds={photoIds}
+                onPhotoIdsChange={setPhotoIds}
+                productId={editId!}
+                onDeletePhoto={handleDeletePhoto}
+            />
 
             <SheetFooter>
                 <Button type="submit" disabled={isPending} className="w-full">
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editId ? 'Сохранить' : 'Создать'}
+                    Сохранить
                 </Button>
             </SheetFooter>
         </form>
@@ -536,9 +601,7 @@ function buildDescriptionHtml(input: DescriptionInput): string {
     }
 
     const validTiers =
-        input.priceTiers?.filter(
-            (t) => t && isPositive(t.amount) && t.unit && isPositive(t.price),
-        ) ?? [];
+        input.priceTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
 
     if (validTiers.length > 0) {
         if (lines.length) lines.push('<p></p>');
@@ -582,11 +645,7 @@ function formatNumber(v: number | null | undefined): string {
 }
 
 function escapeHtml(s: string): string {
-    return s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function emptyAsNull(v: unknown): number | null {

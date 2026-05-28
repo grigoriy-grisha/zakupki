@@ -1,2 +1,2 @@
 export { unitSchema } from './schema';
-export type { UnitFormValues } from '../../../lib/types';
+export type { UnitFormValues } from './schema';

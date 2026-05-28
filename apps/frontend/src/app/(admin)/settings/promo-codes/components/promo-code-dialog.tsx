@@ -141,7 +141,9 @@ export function PromoCodeDialog() {
                         <div className="space-y-3">
                             <div className="space-y-2">
                                 <Label>Закупка</Label>
-                                <Select onValueChange={(v) => setValue('purchaseId', v === 'all' ? undefined : Number(v))}>
+                                <Select
+                                    onValueChange={(v) => setValue('purchaseId', v === 'all' ? undefined : Number(v))}
+                                >
                                     <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Любая закупка" />
                                     </SelectTrigger>

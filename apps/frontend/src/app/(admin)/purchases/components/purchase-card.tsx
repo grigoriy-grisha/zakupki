@@ -4,7 +4,17 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
-import type { AdminPurchaseListCardProps } from '../../lib/types';
+
+interface AdminPurchaseListCardProps {
+    purchase: {
+        id: number;
+        tag: string;
+        supplier: string;
+        status: string;
+        deadline: string;
+        items: { orderLines: { amountDue: unknown }[] }[];
+    };
+}
 
 export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
     const deadline = new Date(purchase.deadline);
@@ -29,9 +39,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                 <CardContent>
                     <p className="font-medium">{purchase.supplier}</p>
                     <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>
-                            До {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                        </span>
+                        <span>До {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
                         {purchase.status === 'ACTIVE' && (
                             <span className={daysLeft <= 3 ? 'text-destructive font-medium' : ''}>
                                 {daysLeft > 0 ? `${daysLeft} дн.` : 'Просрочено'}

@@ -82,8 +82,7 @@ export function NovelEditor({
             TaskItem.configure({ nested: true }),
             HighlightExtension.configure({ multicolor: false }),
             Placeholder.configure({
-                placeholder: ({ node }) =>
-                    node.type.name === 'heading' ? 'Заголовок' : placeholder,
+                placeholder: ({ node }) => (node.type.name === 'heading' ? 'Заголовок' : placeholder),
                 includeChildren: true,
             }),
         ],
@@ -213,12 +212,7 @@ function EditorToolbar() {
     useEditorRerender(editor);
 
     if (!editor) {
-        return (
-            <div
-                aria-hidden
-                className="flex h-9 items-center border-b border-input px-1.5"
-            />
-        );
+        return <div aria-hidden className="flex h-9 items-center border-b border-input px-1.5" />;
     }
 
     return (
@@ -313,11 +307,7 @@ function EditorToolbar() {
             >
                 <Highlighter className="h-4 w-4" />
             </ToolbarButton>
-            <ToolbarButton
-                title="Ссылка"
-                active={editor.isActive('link')}
-                onClick={() => toggleLink(editor)}
-            >
+            <ToolbarButton title="Ссылка" active={editor.isActive('link')} onClick={() => toggleLink(editor)}>
                 <LinkIcon className="h-4 w-4" />
             </ToolbarButton>
 

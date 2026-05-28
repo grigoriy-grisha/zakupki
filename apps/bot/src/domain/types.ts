@@ -7,9 +7,10 @@ export interface SessionData {
     profileRefreshedAt?: number;
 }
 
-export type CustomContext = Context & SessionFlavor<SessionData> & {
-    db: PrismaClient;
-};
+export type CustomContext = Context &
+    SessionFlavor<SessionData> & {
+        db: PrismaClient;
+    };
 
 export interface CreateBotOptions {
     db: PrismaClient;

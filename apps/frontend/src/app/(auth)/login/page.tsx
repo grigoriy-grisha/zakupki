@@ -1,13 +1,19 @@
 'use client';
 
+import { useEffect } from 'react';
 import { TelegramIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 
-import { useTgLogin, useVkLogin } from './hooks';
+import { useTgAuth } from '@/lib/hooks/use-tg-auth';
+import { useVkAuth } from '@/lib/hooks/use-vk-auth';
 
 export default function LoginPage() {
-    useVkLogin();
-    const tg = useTgLogin();
+    const vk = useVkAuth();
+    const tg = useTgAuth();
+
+    useEffect(() => {
+        vk.initWidget();
+    }, [vk.initWidget]);
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">

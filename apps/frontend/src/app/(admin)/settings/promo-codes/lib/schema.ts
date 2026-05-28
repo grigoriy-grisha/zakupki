@@ -10,3 +10,5 @@ export const promoCodeSchema = z.object({
     minAmount: z.number().positive().optional(),
     expiresAt: z.string().optional(),
 });
+
+export type PromoCodeFormValues = z.infer<typeof promoCodeSchema>;

@@ -10,7 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { CreditCard, Upload, Loader2, X, AlertCircle, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { PaymentDialogProps } from '../../../../lib/types';
+interface PaymentDialogProps {
+    purchaseId: number;
+    remaining: number;
+    hasPending: boolean;
+}
 
 export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDialogProps) {
     const [open, setOpen] = useState(false);
@@ -19,7 +23,12 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
     const [preview, setPreview] = useState<string | null>(null);
     const [fileData, setFileData] = useState<{ base64: string; mimeType: string } | null>(null);
     const [promoInput, setPromoInput] = useState('');
-    const [appliedPromo, setAppliedPromo] = useState<{ id: number; code: string; discount: number; label?: string } | null>(null);
+    const [appliedPromo, setAppliedPromo] = useState<{
+        id: number;
+        code: string;
+        discount: number;
+        label?: string;
+    } | null>(null);
     const [promoError, setPromoError] = useState('');
     const [promoLoading, setPromoLoading] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
@@ -59,7 +68,12 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                 purchaseId,
                 orderAmount: currentAmount,
             });
-            setAppliedPromo({ id: result.id, code: result.code, discount: result.discount, label: result.label ?? undefined });
+            setAppliedPromo({
+                id: result.id,
+                code: result.code,
+                discount: result.discount,
+                label: result.label ?? undefined,
+            });
         } catch (err: unknown) {
             setPromoError(err instanceof Error ? err.message : 'Ошибка');
             setAppliedPromo(null);
@@ -97,7 +111,13 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setAmount(String(remaining)); }}>
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                setOpen(v);
+                if (v) setAmount(String(remaining));
+            }}
+        >
             <Button size="sm" className="w-full" onClick={() => setOpen(true)} disabled={hasPending}>
                 <CreditCard className="h-4 w-4" />
                 {hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`}
@@ -108,7 +128,9 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                 </DialogHeader>
                 <div className="rounded-lg bg-warning-50 p-3 flex items-center gap-2 text-warning text-sm">
                     <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>Осталось оплатить: <strong>{remaining.toLocaleString('ru-RU')} ₽</strong></span>
+                    <span>
+                        Осталось оплатить: <strong>{remaining.toLocaleString('ru-RU')} ₽</strong>
+                    </span>
                 </div>
                 <form
                     onSubmit={(e) => {
@@ -138,7 +160,13 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                                     <span className="text-sm font-medium">{appliedPromo.code}</span>
                                     <span className="text-xs">−{appliedPromo.discount.toLocaleString('ru-RU')} ₽</span>
                                 </div>
-                                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={removePromo}>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={removePromo}
+                                >
                                     <X className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -147,10 +175,23 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                                 <Input
                                     placeholder="Введите промокод"
                                     value={promoInput}
-                                    onChange={(e) => { setPromoInput(e.target.value); setPromoError(''); }}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }}
+                                    onChange={(e) => {
+                                        setPromoInput(e.target.value);
+                                        setPromoError('');
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            applyPromo();
+                                        }
+                                    }}
                                 />
-                                <Button type="button" variant="outline" onClick={applyPromo} disabled={!promoInput.trim() || promoLoading}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={applyPromo}
+                                    disabled={!promoInput.trim() || promoLoading}
+                                >
                                     {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Применить'}
                                 </Button>
                             </div>
@@ -172,21 +213,28 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                         {appliedPromo && (
                             <div className="rounded-lg border border-success/30 bg-success-50 p-2 space-y-1">
                                 <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground">Сумма: {numAmount.toLocaleString('ru-RU')} ₽</span>
-                                    <span className="text-success">Скидка: −{appliedPromo.discount.toLocaleString('ru-RU')} ₽</span>
+                                    <span className="text-muted-foreground">
+                                        Сумма: {numAmount.toLocaleString('ru-RU')} ₽
+                                    </span>
+                                    <span className="text-success">
+                                        Скидка: −{appliedPromo.discount.toLocaleString('ru-RU')} ₽
+                                    </span>
                                 </div>
                                 <p className="text-xs font-medium text-success">
                                     К оплате: {(numAmount - appliedPromo.discount).toLocaleString('ru-RU')} ₽
                                 </p>
                             </div>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                            Максимум: {remaining.toLocaleString('ru-RU')} ₽
-                        </p>
+                        <p className="text-xs text-muted-foreground">Максимум: {remaining.toLocaleString('ru-RU')} ₽</p>
                     </div>
                     <div className="space-y-2">
                         <Label>Комментарий</Label>
-                        <Textarea placeholder="Примечание к оплате..." value={comment} onChange={(e) => setComment(e.target.value)} rows={2} />
+                        <Textarea
+                            placeholder="Примечание к оплате..."
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            rows={2}
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label>
@@ -220,10 +268,14 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                                 <span className="text-xs">Обязательно · PNG, JPG, PDF до 5 МБ</span>
                             </div>
                         )}
-                        <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={handleFile} className="hidden" />
-                        {!fileData && (
-                            <p className="text-xs text-destructive">Прикрепите подтверждение оплаты</p>
-                        )}
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={handleFile}
+                            className="hidden"
+                        />
+                        {!fileData && <p className="text-xs text-destructive">Прикрепите подтверждение оплаты</p>}
                     </div>
                     <Button type="submit" disabled={!canSubmit || mutation.isPending} className="w-full">
                         {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}

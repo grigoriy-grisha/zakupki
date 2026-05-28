@@ -10,6 +10,15 @@ export const priceTierSchema = z.object({
 });
 export type PriceTierValues = z.infer<typeof priceTierSchema>;
 
+/** Schema for creating a product — only name + category */
+export const productCreateSchema = z.object({
+    name: z.string().min(1, 'Название обязательно'),
+    categoryId: z.number().nullable(),
+});
+
+export type ProductCreateFormValues = z.infer<typeof productCreateSchema>;
+
+/** Schema for editing a product — full fields */
 export const productSchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
     description: z.string().optional(),
@@ -25,7 +34,11 @@ export const productSchema = z.object({
     availableUnit: z.string().nullable(),
 });
 
+export type ProductFormValues = z.infer<typeof productSchema>;
+
 export const categorySchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
     parentId: z.number().nullable().optional(),
 });
+
+export type CategoryFormValues = z.infer<typeof categorySchema>;

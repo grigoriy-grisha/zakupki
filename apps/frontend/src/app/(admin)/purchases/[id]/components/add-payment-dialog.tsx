@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAddManualPayment } from '../hooks';
-import type { AddPaymentDialogProps } from '../../../lib/types';
+interface AddPaymentDialogProps {
+    purchaseId: number;
+}
 
 export function AddPaymentDialog({ purchaseId }: AddPaymentDialogProps) {
     const [open, setOpen] = useState(false);
@@ -56,7 +58,13 @@ export function AddPaymentDialog({ purchaseId }: AddPaymentDialogProps) {
                     </div>
                     <div className="space-y-2">
                         <Label>Сумма (₽)</Label>
-                        <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                        <Input
+                            type="number"
+                            step="0.01"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            required
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label>Примечание</Label>

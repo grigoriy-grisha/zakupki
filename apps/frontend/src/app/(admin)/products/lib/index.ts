@@ -1,3 +1,3 @@
-export { productSchema, categorySchema, priceTierSchema, PACKAGE_UNITS } from './schema';
-export type { PackageUnit, PriceTierValues } from './schema';
-export type { ProductFormValues, CategoryFormValues } from '../../lib/types';
+export { productCreateSchema, productSchema, categorySchema, priceTierSchema, PACKAGE_UNITS } from './schema';
+export type { PackageUnit, PriceTierValues, ProductCreateFormValues } from './schema';
+export type { ProductFormValues, CategoryFormValues } from './schema';

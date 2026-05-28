@@ -40,8 +40,18 @@ export class PaymentService {
         return this.repo.updateStatus(id, 'REJECTED');
     }
 
-    async updatePayment(id: number, data: { amount?: number; userComment?: string; proofData?: Buffer; proofMimeType?: string }) {
-        const updateData: { amount?: number; userComment?: string; proofData?: Buffer; proofMimeType?: string; status: string; adminNote: null } = {
+    async updatePayment(
+        id: number,
+        data: { amount?: number; userComment?: string; proofData?: Buffer; proofMimeType?: string },
+    ) {
+        const updateData: {
+            amount?: number;
+            userComment?: string;
+            proofData?: Buffer;
+            proofMimeType?: string;
+            status: string;
+            adminNote: null;
+        } = {
             status: 'PENDING',
             adminNote: null,
         };

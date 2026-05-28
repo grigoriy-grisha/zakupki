@@ -9,10 +9,7 @@ export function useProductList(search?: string, categoryId?: number | null) {
 }
 
 export function useProduct(id: number | null, enabled: boolean) {
-    return trpc.products.getById.useQuery(
-        { id: id! },
-        { enabled: !!id && enabled },
-    );
+    return trpc.products.getById.useQuery({ id: id! }, { enabled: !!id && enabled });
 }
 
 export function useUnits(enabled: boolean) {

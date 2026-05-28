@@ -83,32 +83,32 @@
 :root {
     --radius: 0.5rem;
     --claude-orange: oklch(0.62 0.14 39.04);
-    --claude-terracotta: oklch(0.56 0.13 43.00);
-    --claude-cream: oklch(0.98 0.01 95.10);
+    --claude-terracotta: oklch(0.56 0.13 43);
+    --claude-cream: oklch(0.98 0.01 95.1);
     --claude-purple: oklch(0.69 0.16 290.41);
     --claude-lavender: oklch(0.88 0.04 298.18);
     --claude-sand: oklch(0.88 0.03 93.13);
     --claude-rose: oklch(0.56 0.13 42.06);
     --claude-warm: oklch(0.92 0.01 92.99);
-    --background: oklch(1.00 0 0);
+    --background: oklch(1 0 0);
     --foreground: oklch(0.34 0.03 95.72);
-    --card: oklch(1.00 0 0);
-    --card-foreground: oklch(0.19 0.00 106.59);
-    --popover: oklch(1.00 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.19 0 106.59);
+    --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.27 0.02 98.94);
     --primary: oklch(0.62 0.14 39.04);
-    --primary-foreground: oklch(1.00 0 0);
+    --primary-foreground: oklch(1 0 0);
     --secondary: oklch(0.92 0.01 92.99);
-    --secondary-foreground: oklch(0.43 0.02 98.60);
+    --secondary-foreground: oklch(0.43 0.02 98.6);
     --muted: oklch(0.93 0.02 90.24);
     --muted-foreground: oklch(0.61 0.01 97.42);
     --accent: oklch(0.92 0.01 92.99);
     --accent-foreground: oklch(0.27 0.02 98.94);
-    --destructive: oklch(0.19 0.00 106.59);
+    --destructive: oklch(0.19 0 106.59);
     --border: oklch(0.88 0.01 97.36);
     --input: oklch(0.76 0.02 98.35);
     --ring: oklch(0.59 0.17 253.06);
-    --chart-1: oklch(0.56 0.13 43.00);
+    --chart-1: oklch(0.56 0.13 43);
     --chart-2: oklch(0.69 0.16 290.41);
     --chart-3: oklch(0.88 0.03 93.13);
     --chart-4: oklch(0.88 0.04 298.18);
@@ -121,48 +121,48 @@
     --sidebar-accent-foreground: oklch(0.33 0 0);
     --sidebar-border: oklch(0.94 0 0);
     --sidebar-ring: oklch(0.77 0 0);
-    --destructive-foreground: oklch(1.0000 0 0);
+    --destructive-foreground: oklch(1 0 0);
     --success: oklch(0.63 0.15 150);
-    --success-foreground: oklch(1.00 0 0);
+    --success-foreground: oklch(1 0 0);
     --success-50: oklch(0.97 0.03 150);
     --warning: oklch(0.68 0.15 85);
     --warning-foreground: oklch(0.25 0.05 85);
     --warning-50: oklch(0.96 0.03 85);
-    --error: oklch(0.55 0.20 25);
-    --error-foreground: oklch(1.00 0 0);
+    --error: oklch(0.55 0.2 25);
+    --error-foreground: oklch(1 0 0);
     --error-50: oklch(0.96 0.03 25);
-    --accent-teal: oklch(0.65 0.10 180);
+    --accent-teal: oklch(0.65 0.1 180);
     --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-    --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-    --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
-    --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
-    --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+    --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
+    --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 4px 6px -2px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 8px 10px -2px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
     --tracking-normal: 0em;
 }
 
 .dark {
     --claude-orange: oklch(0.67 0.13 38.76);
-    --claude-terracotta: oklch(0.56 0.13 43.00);
-    --claude-cream: oklch(0.27 0.00 106.64);
+    --claude-terracotta: oklch(0.56 0.13 43);
+    --claude-cream: oklch(0.27 0 106.64);
     --claude-purple: oklch(0.69 0.16 290.41);
     --claude-lavender: oklch(0.31 0.05 289.32);
     --claude-sand: oklch(0.21 0.01 95.42);
     --claude-rose: oklch(0.56 0.13 42.06);
     --claude-warm: oklch(0.21 0.01 95.42);
-    --background: oklch(0.27 0.00 106.64);
+    --background: oklch(0.27 0 106.64);
     --foreground: oklch(0.81 0.01 93.01);
-    --card: oklch(0.27 0.00 106.64);
-    --card-foreground: oklch(0.98 0.01 95.10);
-    --popover: oklch(0.31 0.00 106.60);
-    --popover-foreground: oklch(0.92 0.00 106.48);
+    --card: oklch(0.27 0 106.64);
+    --card-foreground: oklch(0.98 0.01 95.1);
+    --popover: oklch(0.31 0 106.6);
+    --popover-foreground: oklch(0.92 0 106.48);
     --primary: oklch(0.67 0.13 38.76);
-    --primary-foreground: oklch(1.00 0 0);
-    --secondary: oklch(0.98 0.01 95.10);
-    --secondary-foreground: oklch(0.31 0.00 106.60);
-    --muted: oklch(0.22 0.00 106.71);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.98 0.01 95.1);
+    --secondary-foreground: oklch(0.31 0 106.6);
+    --muted: oklch(0.22 0 106.71);
     --muted-foreground: oklch(0.77 0.02 99.07);
     --accent: oklch(0.21 0.01 95.42);
     --accent-foreground: oklch(0.97 0.01 98.88);
@@ -170,38 +170,38 @@
     --border: oklch(0.36 0.01 106.89);
     --input: oklch(0.43 0.01 100.22);
     --ring: oklch(0.59 0.17 253.06);
-    --chart-1: oklch(0.56 0.13 43.00);
+    --chart-1: oklch(0.56 0.13 43);
     --chart-2: oklch(0.69 0.16 290.41);
     --chart-3: oklch(0.21 0.01 95.42);
     --chart-4: oklch(0.31 0.05 289.32);
     --chart-5: oklch(0.56 0.13 42.06);
-    --sidebar: oklch(0.24 0.00 67.71);
+    --sidebar: oklch(0.24 0 67.71);
     --sidebar-foreground: oklch(0.81 0.01 93.01);
     --sidebar-primary: oklch(0.33 0 0);
     --sidebar-primary-foreground: oklch(0.99 0 0);
-    --sidebar-accent: oklch(0.17 0.00 106.62);
+    --sidebar-accent: oklch(0.17 0 106.62);
     --sidebar-accent-foreground: oklch(0.81 0.01 93.01);
     --sidebar-border: oklch(0.94 0 0);
     --sidebar-ring: oklch(0.77 0 0);
-    --destructive-foreground: oklch(1.0000 0 0);
+    --destructive-foreground: oklch(1 0 0);
     --success: oklch(0.63 0.15 150);
-    --success-foreground: oklch(1.00 0 0);
+    --success-foreground: oklch(1 0 0);
     --success-50: oklch(0.25 0.03 150);
     --warning: oklch(0.68 0.15 85);
-    --warning-foreground: oklch(0.20 0.05 85);
+    --warning-foreground: oklch(0.2 0.05 85);
     --warning-50: oklch(0.25 0.03 85);
-    --error: oklch(0.60 0.22 25);
-    --error-foreground: oklch(1.00 0 0);
+    --error: oklch(0.6 0.22 25);
+    --error-foreground: oklch(1 0 0);
     --error-50: oklch(0.25 0.03 25);
-    --accent-teal: oklch(0.65 0.10 180);
+    --accent-teal: oklch(0.65 0.1 180);
     --radius: 0.5rem;
     --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-    --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
-    --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
-    --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
-    --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+    --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
+    --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 1px 2px -2px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 4px 6px -2px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.1), 0px 8px 10px -2px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
 }
 
@@ -211,10 +211,10 @@
     }
     body {
         @apply bg-background text-foreground;
-    letter-spacing: var(--tracking-normal);
+        letter-spacing: var(--tracking-normal);
     }
     button,
-    [role="button"],
+    [role='button'],
     a {
         cursor: pointer;
     }
@@ -324,31 +324,31 @@
     background: oklch(0.7 0.13 100);
     color: var(--background);
 }
-.novel-editor ul[data-type="taskList"] {
+.novel-editor ul[data-type='taskList'] {
     list-style: none;
     padding-left: 0;
 }
-.novel-editor ul[data-type="taskList"] li {
+.novel-editor ul[data-type='taskList'] li {
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
 }
-.novel-editor ul[data-type="taskList"] li > label {
+.novel-editor ul[data-type='taskList'] li > label {
     display: inline-flex;
     align-items: center;
     margin-top: 0.15rem;
     user-select: none;
 }
-.novel-editor ul[data-type="taskList"] li > label > input[type="checkbox"] {
+.novel-editor ul[data-type='taskList'] li > label > input[type='checkbox'] {
     width: 1rem;
     height: 1rem;
     accent-color: var(--primary);
     cursor: pointer;
 }
-.novel-editor ul[data-type="taskList"] li > div {
+.novel-editor ul[data-type='taskList'] li > div {
     flex: 1;
 }
-.novel-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+.novel-editor ul[data-type='taskList'] li[data-checked='true'] > div {
     color: var(--muted-foreground);
     text-decoration: line-through;
 }
@@ -364,48 +364,108 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* Staggered children animation inside main content */
 main > div > div > * {
     animation: slideUp 0.4s ease-out both;
 }
-main > div > div > *:nth-child(1) { animation-delay: 0ms; }
-main > div > div > *:nth-child(2) { animation-delay: 60ms; }
-main > div > div > *:nth-child(3) { animation-delay: 120ms; }
-main > div > div > *:nth-child(4) { animation-delay: 180ms; }
-main > div > div > *:nth-child(5) { animation-delay: 240ms; }
-main > div > div > *:nth-child(6) { animation-delay: 300ms; }
-main > div > div > *:nth-child(7) { animation-delay: 360ms; }
-main > div > div > *:nth-child(8) { animation-delay: 420ms; }
-main > div > div > *:nth-child(9) { animation-delay: 480ms; }
-main > div > div > *:nth-child(10) { animation-delay: 540ms; }
+main > div > div > *:nth-child(1) {
+    animation-delay: 0ms;
+}
+main > div > div > *:nth-child(2) {
+    animation-delay: 60ms;
+}
+main > div > div > *:nth-child(3) {
+    animation-delay: 120ms;
+}
+main > div > div > *:nth-child(4) {
+    animation-delay: 180ms;
+}
+main > div > div > *:nth-child(5) {
+    animation-delay: 240ms;
+}
+main > div > div > *:nth-child(6) {
+    animation-delay: 300ms;
+}
+main > div > div > *:nth-child(7) {
+    animation-delay: 360ms;
+}
+main > div > div > *:nth-child(8) {
+    animation-delay: 420ms;
+}
+main > div > div > *:nth-child(9) {
+    animation-delay: 480ms;
+}
+main > div > div > *:nth-child(10) {
+    animation-delay: 540ms;
+}
 
 /* Cards in grid get stagger too */
 .grid > * {
     animation: scaleIn 0.35s ease-out both;
 }
-.grid > *:nth-child(1) { animation-delay: 80ms; }
-.grid > *:nth-child(2) { animation-delay: 140ms; }
-.grid > *:nth-child(3) { animation-delay: 200ms; }
-.grid > *:nth-child(4) { animation-delay: 260ms; }
-.grid > *:nth-child(5) { animation-delay: 320ms; }
-.grid > *:nth-child(6) { animation-delay: 380ms; }
-.grid > *:nth-child(7) { animation-delay: 440ms; }
-.grid > *:nth-child(8) { animation-delay: 500ms; }
-.grid > *:nth-child(9) { animation-delay: 560ms; }
-.grid > *:nth-child(10) { animation-delay: 620ms; }
-.grid > *:nth-child(11) { animation-delay: 680ms; }
-.grid > *:nth-child(12) { animation-delay: 740ms; }
+.grid > *:nth-child(1) {
+    animation-delay: 80ms;
+}
+.grid > *:nth-child(2) {
+    animation-delay: 140ms;
+}
+.grid > *:nth-child(3) {
+    animation-delay: 200ms;
+}
+.grid > *:nth-child(4) {
+    animation-delay: 260ms;
+}
+.grid > *:nth-child(5) {
+    animation-delay: 320ms;
+}
+.grid > *:nth-child(6) {
+    animation-delay: 380ms;
+}
+.grid > *:nth-child(7) {
+    animation-delay: 440ms;
+}
+.grid > *:nth-child(8) {
+    animation-delay: 500ms;
+}
+.grid > *:nth-child(9) {
+    animation-delay: 560ms;
+}
+.grid > *:nth-child(10) {
+    animation-delay: 620ms;
+}
+.grid > *:nth-child(11) {
+    animation-delay: 680ms;
+}
+.grid > *:nth-child(12) {
+    animation-delay: 740ms;
+}

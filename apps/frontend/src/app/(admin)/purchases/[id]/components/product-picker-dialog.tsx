@@ -12,7 +12,10 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAddPurchaseItems } from '../hooks';
 import { PACKAGE_UNITS } from '../../../products/lib';
-import type { ProductPickerDialogProps } from '../../../lib/types';
+interface ProductPickerDialogProps {
+    purchaseId: number;
+    existingProductIds: Set<number>;
+}
 
 type ProductItem = {
     id: number;
@@ -32,7 +35,9 @@ export function ProductPickerDialog({ purchaseId, existingProductIds }: ProductP
     const { data: allProducts } = trpc.products.list.useQuery(undefined, { enabled: open });
     const addItems = useAddPurchaseItems(purchaseId);
 
-    const availableProducts = ((allProducts ?? []) as unknown as ProductItem[]).filter((p) => !existingProductIds.has(p.id));
+    const availableProducts = ((allProducts ?? []) as unknown as ProductItem[]).filter(
+        (p) => !existingProductIds.has(p.id),
+    );
 
     function toggleProduct(id: number) {
         setSelectedIds((prev) => {
@@ -60,7 +65,13 @@ export function ProductPickerDialog({ purchaseId, existingProductIds }: ProductP
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setDetailProduct(null); }}>
+        <Dialog
+            open={open}
+            onOpenChange={(v) => {
+                setOpen(v);
+                if (!v) setDetailProduct(null);
+            }}
+        >
             <DialogTrigger asChild>
                 <Button size="sm">
                     <Plus className="mr-2 h-4 w-4" />
@@ -95,23 +106,26 @@ export function ProductPickerDialog({ purchaseId, existingProductIds }: ProductP
                                     key={product.id}
                                     className="flex cursor-pointer items-center gap-3 rounded-md border p-3 hover:bg-accent"
                                 >
-                                    <div onClick={(e) => { e.stopPropagation(); toggleProduct(product.id); }}>
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleProduct(product.id);
+                                        }}
+                                    >
                                         <Checkbox
                                             checked={selectedIds.has(product.id)}
                                             onCheckedChange={() => toggleProduct(product.id)}
                                         />
                                     </div>
-                                    <div
-                                        className="flex-1"
-                                        onClick={() => setDetailProduct(product.id)}
-                                    >
+                                    <div className="flex-1" onClick={() => setDetailProduct(product.id)}>
                                         <p className="text-sm font-medium">{product.name}</p>
                                         <p className="text-xs text-muted-foreground">
                                             {product.minPackageAmount != null && product.minPackageUnit
                                                 ? `${Number(product.minPackageAmount)} ${product.minPackageUnit}`
                                                 : '—'}
                                             {' · '}
-                                            {Number(product.pricePerUnit).toLocaleString('ru-RU')} ₽/{product.unit?.shortName ?? ''}
+                                            {Number(product.pricePerUnit).toLocaleString('ru-RU')} ₽/
+                                            {product.unit?.shortName ?? ''}
                                         </p>
                                     </div>
                                 </div>
@@ -178,9 +192,19 @@ function ProductDetail({
         return <div className="py-8 text-center text-sm text-muted-foreground">Товар не найден</div>;
     }
 
-    const priceTiers = Array.isArray(product.priceTiers) ? product.priceTiers as { amount: number; unit: string; price: number }[] : [];
+    const priceTiers = Array.isArray(product.priceTiers)
+        ? (product.priceTiers as { amount: number; unit: string; price: number }[])
+        : [];
 
-    function handleSave(fields: { name: string; priceTiers: { amount: number; unit: string; price: number }[]; minPackageAmount: number | null; minPackageUnit: string | null; supplierPackageAmount: number | null; supplierPackageUnit: string | null; supplierPackagePrice: number | null }) {
+    function handleSave(fields: {
+        name: string;
+        priceTiers: { amount: number; unit: string; price: number }[];
+        minPackageAmount: number | null;
+        minPackageUnit: string | null;
+        supplierPackageAmount: number | null;
+        supplierPackageUnit: string | null;
+        supplierPackagePrice: number | null;
+    }) {
         const firstTier = fields.priceTiers[0];
         if (!firstTier) return;
         const pricePerUnit = firstTier.price / firstTier.amount;
@@ -214,13 +238,33 @@ function ProductDetail({
     );
 }
 
-function EditableProductView({ productId, product, priceTiers: initialTiers, isSelected, shouldPublish, onSave, onToggle, onAdd, onBack, onPublishChange, isSaving }: {
+function EditableProductView({
+    productId,
+    product,
+    priceTiers: initialTiers,
+    isSelected,
+    shouldPublish,
+    onSave,
+    onToggle,
+    onAdd,
+    onBack,
+    onPublishChange,
+    isSaving,
+}: {
     productId: number;
     product: any;
     priceTiers: { amount: number; unit: string; price: number }[];
     isSelected: boolean;
     shouldPublish: boolean;
-    onSave: (fields: { name: string; priceTiers: { amount: number; unit: string; price: number }[]; minPackageAmount: number | null; minPackageUnit: string | null; supplierPackageAmount: number | null; supplierPackageUnit: string | null; supplierPackagePrice: number | null }) => void;
+    onSave: (fields: {
+        name: string;
+        priceTiers: { amount: number; unit: string; price: number }[];
+        minPackageAmount: number | null;
+        minPackageUnit: string | null;
+        supplierPackageAmount: number | null;
+        supplierPackageUnit: string | null;
+        supplierPackagePrice: number | null;
+    }) => void;
     onToggle: () => void;
     onAdd: (productIds?: number[]) => void;
     onBack: () => void;
@@ -228,12 +272,20 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
     isSaving: boolean;
 }) {
     const [name, setName] = useState(product.name);
-    const [tiers, setTiers] = useState(initialTiers.length > 0 ? initialTiers : [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }]);
-    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(product.minPackageAmount ? Number(product.minPackageAmount) : null);
+    const [tiers, setTiers] = useState(
+        initialTiers.length > 0 ? initialTiers : [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }],
+    );
+    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(
+        product.minPackageAmount ? Number(product.minPackageAmount) : null,
+    );
     const [minPkgUnit, setMinPkgUnit] = useState<string | null>(product.minPackageUnit ?? PACKAGE_UNITS[0]);
-    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(product.supplierPackageAmount ? Number(product.supplierPackageAmount) : null);
+    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(
+        product.supplierPackageAmount ? Number(product.supplierPackageAmount) : null,
+    );
     const [supPkgUnit, setSupPkgUnit] = useState<string | null>(product.supplierPackageUnit ?? PACKAGE_UNITS[0]);
-    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(product.supplierPackagePrice ? Number(product.supplierPackagePrice) : null);
+    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(
+        product.supplierPackagePrice ? Number(product.supplierPackagePrice) : null,
+    );
 
     return (
         <div className="space-y-4">
@@ -250,9 +302,23 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
                 <div className="space-y-1">
                     <Label>Минимальная фасовка</Label>
                     <div className="flex gap-2">
-                        <Input type="number" step="0.001" className="flex-1" value={minPkgAmount ?? ''} onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)} />
-                        <select className="border rounded-md px-2 text-sm" value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={(e) => setMinPkgUnit(e.target.value)}>
-                            {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        <Input
+                            type="number"
+                            step="0.001"
+                            className="flex-1"
+                            value={minPkgAmount ?? ''}
+                            onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)}
+                        />
+                        <select
+                            className="border rounded-md px-2 text-sm"
+                            value={minPkgUnit ?? PACKAGE_UNITS[0]}
+                            onChange={(e) => setMinPkgUnit(e.target.value)}
+                        >
+                            {PACKAGE_UNITS.map((u) => (
+                                <option key={u} value={u}>
+                                    {u}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -261,24 +327,44 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
                     <Label>Цены</Label>
                     {tiers.map((tier, i) => (
                         <div key={i} className="flex items-center gap-2">
-                            <Input type="number" step="0.001" className="w-20" value={tier.amount} onChange={(e) => {
-                                const next = [...tiers];
-                                next[i] = { ...next[i], amount: Number(e.target.value) };
-                                setTiers(next);
-                            }} />
-                            <select className="border rounded-md px-2 text-sm" value={tier.unit} onChange={(e) => {
-                                const next = [...tiers];
-                                next[i] = { ...next[i], unit: e.target.value };
-                                setTiers(next);
-                            }}>
-                                {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                            <Input
+                                type="number"
+                                step="0.001"
+                                className="w-20"
+                                value={tier.amount}
+                                onChange={(e) => {
+                                    const next = [...tiers];
+                                    next[i] = { ...next[i], amount: Number(e.target.value) };
+                                    setTiers(next);
+                                }}
+                            />
+                            <select
+                                className="border rounded-md px-2 text-sm"
+                                value={tier.unit}
+                                onChange={(e) => {
+                                    const next = [...tiers];
+                                    next[i] = { ...next[i], unit: e.target.value };
+                                    setTiers(next);
+                                }}
+                            >
+                                {PACKAGE_UNITS.map((u) => (
+                                    <option key={u} value={u}>
+                                        {u}
+                                    </option>
+                                ))}
                             </select>
                             <span className="text-muted-foreground">—</span>
-                            <Input type="number" step="0.01" className="flex-1" value={tier.price} onChange={(e) => {
-                                const next = [...tiers];
-                                next[i] = { ...next[i], price: Number(e.target.value) };
-                                setTiers(next);
-                            }} />
+                            <Input
+                                type="number"
+                                step="0.01"
+                                className="flex-1"
+                                value={tier.price}
+                                onChange={(e) => {
+                                    const next = [...tiers];
+                                    next[i] = { ...next[i], price: Number(e.target.value) };
+                                    setTiers(next);
+                                }}
+                            />
                             <span className="text-sm text-muted-foreground">₽</span>
                         </div>
                     ))}
@@ -287,12 +373,32 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
                 <div className="space-y-1">
                     <Label>Фасовка поставщика</Label>
                     <div className="flex items-center gap-2">
-                        <Input type="number" step="0.001" className="w-24" value={supPkgAmount ?? ''} onChange={(e) => setSupPkgAmount(e.target.value ? Number(e.target.value) : null)} />
-                        <select className="border rounded-md px-2 text-sm" value={supPkgUnit ?? PACKAGE_UNITS[0]} onChange={(e) => setSupPkgUnit(e.target.value)}>
-                            {PACKAGE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        <Input
+                            type="number"
+                            step="0.001"
+                            className="w-24"
+                            value={supPkgAmount ?? ''}
+                            onChange={(e) => setSupPkgAmount(e.target.value ? Number(e.target.value) : null)}
+                        />
+                        <select
+                            className="border rounded-md px-2 text-sm"
+                            value={supPkgUnit ?? PACKAGE_UNITS[0]}
+                            onChange={(e) => setSupPkgUnit(e.target.value)}
+                        >
+                            {PACKAGE_UNITS.map((u) => (
+                                <option key={u} value={u}>
+                                    {u}
+                                </option>
+                            ))}
                         </select>
                         <span className="text-muted-foreground">—</span>
-                        <Input type="number" step="0.01" className="flex-1" value={supPkgPrice ?? ''} onChange={(e) => setSupPkgPrice(e.target.value ? Number(e.target.value) : null)} />
+                        <Input
+                            type="number"
+                            step="0.01"
+                            className="flex-1"
+                            value={supPkgPrice ?? ''}
+                            onChange={(e) => setSupPkgPrice(e.target.value ? Number(e.target.value) : null)}
+                        />
                         <span className="text-sm text-muted-foreground">₽</span>
                     </div>
                 </div>
@@ -303,7 +409,15 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
                     <Button
                         className="flex-1"
                         onClick={() => {
-                            onSave({ name, priceTiers: tiers, minPackageAmount: minPkgAmount, minPackageUnit: minPkgUnit, supplierPackageAmount: supPkgAmount, supplierPackageUnit: supPkgUnit, supplierPackagePrice: supPkgPrice });
+                            onSave({
+                                name,
+                                priceTiers: tiers,
+                                minPackageAmount: minPkgAmount,
+                                minPackageUnit: minPkgUnit,
+                                supplierPackageAmount: supPkgAmount,
+                                supplierPackageUnit: supPkgUnit,
+                                supplierPackagePrice: supPkgPrice,
+                            });
                             onAdd([productId]);
                         }}
                         disabled={isSaving}
@@ -313,10 +427,7 @@ function EditableProductView({ productId, product, priceTiers: initialTiers, isS
                     </Button>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer text-sm">
-                    <Checkbox
-                        checked={shouldPublish}
-                        onCheckedChange={(v) => onPublishChange(v === true)}
-                    />
+                    <Checkbox checked={shouldPublish} onCheckedChange={(v) => onPublishChange(v === true)} />
                     <Send className="h-4 w-4 text-muted-foreground" />
                     Опубликовать в Telegram
                 </label>

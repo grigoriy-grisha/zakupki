@@ -1,4 +1,5 @@
 # План для Claude Code — Закупки
+
 ## Next.js 14 · tRPC · Prisma · shadcn/ui · Grammy
 
 ---
@@ -16,6 +17,7 @@
 ## Шаг 1 — Monorepo scaffold
 
 **Prompt для Claude Code:**
+
 ```
 Создай Turborepo monorepo с pnpm workspaces.
 
@@ -54,6 +56,7 @@ WEBHOOK_SECRET=
 ## Шаг 2 — Prisma schema
 
 **Prompt:**
+
 ```
 В packages/db/ создай Prisma schema и настрой клиент.
 
@@ -152,6 +155,7 @@ model Payment {
 ## Шаг 3 — tRPC setup в Next.js
 
 **Prompt:**
+
 ```
 В apps/web/ настрой tRPC v11 с Next.js App Router.
 
@@ -211,6 +215,7 @@ model Payment {
 ## Шаг 4 — shadcn/ui + Layout
 
 **Prompt:**
+
 ```
 В apps/web/ настрой shadcn/ui и создай layout для админки.
 
@@ -249,6 +254,7 @@ model Payment {
 ## Шаг 5 — Страницы каталога товаров
 
 **Prompt:**
+
 ```
 Создай страницы управления товарами в apps/web/src/app/(admin)/products/
 
@@ -280,6 +286,7 @@ model Payment {
 ## Шаг 6 — Страницы закупок
 
 **Prompt:**
+
 ```
 Создай страницы управления закупками в apps/web/src/app/(admin)/purchases/
 
@@ -328,6 +335,7 @@ model Payment {
 ## Шаг 7 — Grammy бот
 
 **Prompt:**
+
 ```
 Создай Telegram бота в apps/bot/
 
@@ -375,7 +383,7 @@ model Payment {
    - Обрабатывает callback_data: join_{purchaseItemId}
    - Проверяет что закупка ACTIVE
    - Запускает conversation addOrder
-   
+
 8. src/callbacks/myOrder.ts:
    - Обрабатывает callback_data: myorder_{purchaseItemId}
    - Показывает текущий заказ пользователя по этому товару
@@ -405,6 +413,7 @@ model Payment {
 ## Шаг 8 — Telegram Mini App (витрина)
 
 **Prompt:**
+
 ```
 Создай Telegram Mini App в apps/web/src/app/(miniapp)/
 
@@ -445,6 +454,7 @@ model Payment {
 ## Шаг 9 — Webhook + интеграция бота с Next.js
 
 **Prompt:**
+
 ```
 Подключи Grammy бота к Next.js через webhook.
 
@@ -482,6 +492,7 @@ model Payment {
 ## Шаг 10 — Финальная полировка
 
 **Prompt:**
+
 ```
 Финальные задачи перед деплоем.
 
@@ -520,7 +531,7 @@ model Payment {
 
 Финальная проверка:
 - pnpm build — 0 ошибок
-- pnpm typecheck — 0 ошибок  
+- pnpm typecheck — 0 ошибок
 - Создай закупку → добавь товары → опубликуй пост → участник нажимает кнопку в канале → заказ создаётся → пост обновляется → матрица в админке обновилась
 ```
 
@@ -608,6 +619,7 @@ zakupki/
 # CLAUDE.md
 
 ## Проект
+
 Система совместных закупок бисера.
 Web: Next.js 14 App Router + tRPC + shadcn/ui
 Bot: Grammy v1 + conversations
@@ -615,15 +627,17 @@ DB: Prisma 5 + PostgreSQL
 Monorepo: Turborepo + pnpm
 
 ## Команды
-pnpm install        — зависимости
-pnpm dev            — все сервисы
-pnpm db:migrate     — после изменений schema
-pnpm db:seed        — тестовые данные
-pnpm db:studio      — Prisma Studio
-pnpm typecheck      — ОБЯЗАТЕЛЬНО после изменений
-pnpm build          — проверка перед коммитом
+
+pnpm install — зависимости
+pnpm dev — все сервисы
+pnpm db:migrate — после изменений schema
+pnpm db:seed — тестовые данные
+pnpm db:studio — Prisma Studio
+pnpm typecheck — ОБЯЗАТЕЛЬНО после изменений
+pnpm build — проверка перед коммитом
 
 ## Архитектура
+
 - tRPC routers в apps/web/src/server/routers/
 - adminProcedure: проверяет X-Telegram-Id в ADMIN_TELEGRAM_IDS
 - telegramProcedure: проверяет Telegram WebApp initData
@@ -631,6 +645,7 @@ pnpm build          — проверка перед коммитом
 - S3 upload только через /api/upload route
 
 ## Правила
+
 - NEVER коммить .env
 - ALWAYS typecheck после изменений types/
 - Prisma schema изменилась → создай миграцию СРАЗУ
@@ -639,6 +654,7 @@ pnpm build          — проверка перед коммитом
 - BigInt для telegramId и tgMessageId (Telegram ID > 32 бит)
 
 ## Верификация
+
 После каждого шага: pnpm typecheck && pnpm lint
 Создай сущность → проверь в Prisma Studio → проверь в UI
 ```

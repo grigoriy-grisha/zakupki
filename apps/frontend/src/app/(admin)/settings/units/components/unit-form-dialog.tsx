@@ -10,7 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Plus, Pencil, Loader2 } from 'lucide-react';
 import { useCreateUnit, useUpdateUnit } from '../hooks';
 import { unitSchema, type UnitFormValues } from '../lib';
-import type { UnitFormDialogProps } from '../../../lib/types';
+interface UnitFormDialogProps {
+    mode: 'create' | 'edit';
+    unit?: { id: number; name: string; shortName: string; multiplicity: string | number };
+}
 
 export function UnitFormDialog({ mode, unit }: UnitFormDialogProps) {
     const [open, setOpen] = useState(false);
@@ -53,12 +56,7 @@ export function UnitFormDialog({ mode, unit }: UnitFormDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             {isEdit ? (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => setOpen(true)}
-                >
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setOpen(true)}>
                     <Pencil className="h-4 w-4" />
                 </Button>
             ) : (
@@ -94,7 +92,9 @@ export function UnitFormDialog({ mode, unit }: UnitFormDialogProps) {
                         <p className="text-xs text-muted-foreground">
                             Минимальный шаг при заказе. Например, 5 = можно заказать 5, 10, 15...
                         </p>
-                        {errors.multiplicity && <p className="text-xs text-destructive">{errors.multiplicity.message}</p>}
+                        {errors.multiplicity && (
+                            <p className="text-xs text-destructive">{errors.multiplicity.message}</p>
+                        )}
                     </div>
                     <Button type="submit" disabled={isPending} className="w-full">
                         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

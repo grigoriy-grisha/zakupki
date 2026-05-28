@@ -5,7 +5,25 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Plus, Check } from 'lucide-react';
 
-import type { ShopPurchaseItemProductCardProps } from '../../../../lib/types';
+interface ShopPurchaseItemProductCardProps {
+    item: {
+        id: number;
+        priceOverride: string | null;
+        availableQty: string | number | null;
+        minQty: string | number | null;
+        product: {
+            name: string;
+            pricePerUnit: string | number;
+            unit: { shortName: string; multiplicity: string | number } | null;
+            minPackageAmount: string | number | null;
+            minPackageUnit: string | null;
+            photos: { id: number }[];
+        };
+    };
+    isOrdered: boolean;
+    isSupplement: boolean;
+    onSelect: (itemId: number) => void;
+}
 
 export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPurchaseItemProductCardProps) {
     const price = Number(item.priceOverride ?? item.product.pricePerUnit);
@@ -19,7 +37,11 @@ export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPur
         >
             <div className="relative h-48 bg-muted">
                 {photo ? (
-                    <img src={`/api/photos/${photo.id}`} alt={item.product.name} className="h-full w-full object-cover" />
+                    <img
+                        src={`/api/photos/${photo.id}`}
+                        alt={item.product.name}
+                        className="h-full w-full object-cover"
+                    />
                 ) : (
                     <div className="flex h-full items-center justify-center">
                         <ShoppingCart className="h-12 w-12 text-muted-foreground/30" />
@@ -31,7 +53,9 @@ export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPur
                     </div>
                 )}
                 {isSupplement && item.availableQty !== null && item.availableQty !== undefined && (
-                    <Badge className={`absolute bottom-2 left-2 ${isSoldOut ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}>
+                    <Badge
+                        className={`absolute bottom-2 left-2 ${isSoldOut ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
+                    >
                         {isSoldOut ? 'Разобрано' : `Доступно: ${Number(item.availableQty)} ${shortName}`}
                     </Badge>
                 )}

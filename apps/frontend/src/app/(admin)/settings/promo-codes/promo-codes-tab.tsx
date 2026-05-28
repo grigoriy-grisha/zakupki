@@ -65,7 +65,8 @@ export function PromoCodesTab() {
                         Удалить промокод{' '}
                         <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">
                             {deleteTarget?.code}
-                        </code>?
+                        </code>
+                        ?
                     </>
                 }
                 onConfirm={() => deleteTarget && deleteMutation.mutate({ id: deleteTarget.id })}

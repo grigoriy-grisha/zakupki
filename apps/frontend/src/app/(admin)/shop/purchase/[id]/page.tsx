@@ -19,9 +19,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const paymentDetail = usePurchasePaymentDetail(id);
 
-    const orderedItems = new Set(
-        paymentDetail.myOrdersInPurchase.map((o) => o.purchaseItemId),
-    );
+    const orderedItems = new Set(paymentDetail.myOrdersInPurchase.map((o) => o.purchaseItemId));
 
     if (isLoading) {
         return (
@@ -60,20 +58,25 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <div>
                     <div className="flex items-center gap-2">
                         <h1 className="text-2xl font-semibold tracking-tight">{purchase.supplier}</h1>
-                        <Badge className={purchase.status === 'SUPPLEMENT' ? 'bg-warning-50 text-warning' : 'bg-success-50 text-success'}>
+                        <Badge
+                            className={
+                                purchase.status === 'SUPPLEMENT'
+                                    ? 'bg-warning-50 text-warning'
+                                    : 'bg-success-50 text-success'
+                            }
+                        >
                             {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                         </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        {purchase.tag} · До {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                        {purchase.tag} · До{' '}
+                        {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
                     </p>
                 </div>
             </div>
 
             <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                    Товаров: {purchase.items.length}
-                </p>
+                <p className="text-sm text-muted-foreground">Товаров: {purchase.items.length}</p>
                 {orderedItems.size > 0 && (
                     <Badge variant="secondary" className="bg-primary/10 text-primary">
                         <Check className="mr-1 h-3 w-3" />
@@ -113,7 +116,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <Card>
                     <CardContent className="flex flex-col items-center py-16">
                         <h2 className="text-lg font-medium">Пока нет товаров</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">Администратор ещё не добавил товары в эту закупку</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Администратор ещё не добавил товары в эту закупку
+                        </p>
                     </CardContent>
                 </Card>
             )}

@@ -60,10 +60,7 @@ export class UserRepository {
         return credential?.userId ?? null;
     }
 
-    async upsertFromTelegramBot(
-        telegramId: string,
-        data: { username?: string; firstName: string; lastName?: string },
-    ) {
+    async upsertFromTelegramBot(telegramId: string, data: { username?: string; firstName: string; lastName?: string }) {
         const existingUserId = await this.findUserIdByTelegramId(telegramId);
         if (existingUserId != null) {
             return this.db.user.update({
@@ -183,11 +180,7 @@ export class UserRepository {
         });
     }
 
-    async linkTelegram(
-        userId: number,
-        telegramId: string,
-        data: { username?: string; avatar: string | null },
-    ) {
+    async linkTelegram(userId: number, telegramId: string, data: { username?: string; avatar: string | null }) {
         return this.db.user.update({
             where: { id: userId },
             data: {

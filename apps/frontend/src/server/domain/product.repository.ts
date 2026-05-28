@@ -33,9 +33,7 @@ export class ProductRepository {
             where: {
                 ...(search
                     ? {
-                          OR: [
-                              { name: { contains: search, mode: 'insensitive' } },
-                          ],
+                          OR: [{ name: { contains: search, mode: 'insensitive' } }],
                       }
                     : {}),
                 ...(categoryId != null ? { categoryId } : {}),

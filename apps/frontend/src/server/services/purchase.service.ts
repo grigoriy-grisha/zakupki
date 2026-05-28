@@ -1,7 +1,12 @@
+import { TRPCError } from '@trpc/server';
 import { PurchaseRepository } from '../domain/purchase.repository';
+import { ProductRepository } from '../domain/product.repository';
 
 export class PurchaseService {
-    constructor(private repo: PurchaseRepository) {}
+    constructor(
+        private repo: PurchaseRepository,
+        private productRepo: ProductRepository,
+    ) {}
 
     async list(status?: string) {
         return this.repo.list(status);
@@ -23,6 +28,30 @@ export class PurchaseService {
 
     async updateStatus(id: number, status: string) {
         return this.repo.updateStatus(id, status);
+    }
+
+    async activateAndPublish(purchaseId: number) {
+        await this.repo.updateStatus(purchaseId, 'ACTIVE');
+        return this.repo.findUnpublishedItems(purchaseId);
+    }
+
+    async toggleShouldPublish(purchaseItemId: number, value: boolean) {
+        return this.repo.toggleShouldPublish(purchaseItemId, value);
+    }
+
+    async ensureItemExists(purchaseItemId: number) {
+        const item = await this.repo.findItemById(purchaseItemId);
+        if (!item) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+        }
+    }
+
+    async updateItemProduct(purchaseItemId: number, productData: Record<string, unknown>) {
+        const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
+        if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+
+        await this.productRepo.update(item.productId, productData as any);
+        return item;
     }
 
     async addItems(purchaseId: number, productIds: number[], shouldPublish = false) {
@@ -49,5 +78,9 @@ export class PurchaseService {
 
     async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; availableQty: number | null }[]) {
         return this.repo.setAvailableQuantities(purchaseId, items);
+    }
+
+    async findItemWithPrice(purchaseItemId: number) {
+        return this.repo.findItemWithPrice(purchaseItemId);
     }
 }

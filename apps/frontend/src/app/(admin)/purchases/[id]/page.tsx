@@ -55,20 +55,13 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
                 <div className="flex items-center gap-2">
                     {isDraft && (
-                        <Button
-                            size="lg"
-                            onClick={() => setActivateOpen(true)}
-                        >
+                        <Button size="lg" onClick={() => setActivateOpen(true)}>
                             <Rocket className="mr-2 h-5 w-5" />
                             Активировать закупку
                         </Button>
                     )}
                     {purchase.status === 'SUPPLEMENT' && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSupplementOpen(true)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setSupplementOpen(true)}>
                             Остатки
                         </Button>
                     )}
@@ -82,10 +75,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 </TabsList>
 
                 <TabsContent value="items" className="mt-4">
-                    <ItemsTab
-                        purchaseId={id}
-                        onEditSupplement={() => setSupplementOpen(true)}
-                    />
+                    <ItemsTab purchaseId={id} onEditSupplement={() => setSupplementOpen(true)} />
                 </TabsContent>
 
                 <TabsContent value="participants" className="mt-4">
@@ -93,11 +83,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 </TabsContent>
             </Tabs>
 
-            <SupplementDialog
-                purchaseId={id}
-                open={supplementOpen}
-                onOpenChange={setSupplementOpen}
-            />
+            <SupplementDialog purchaseId={id} open={supplementOpen} onOpenChange={setSupplementOpen} />
 
             <Dialog open={activateOpen} onOpenChange={setActivateOpen}>
                 <DialogContent>

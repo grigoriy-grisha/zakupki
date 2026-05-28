@@ -47,9 +47,7 @@ export default function ShopPage() {
         );
     }
 
-    const purchasesWithOrders = purchases.filter(
-        (p) => paymentMap.has(p.id) && (paymentMap.get(p.id)?.due ?? 0) > 0,
-    );
+    const purchasesWithOrders = purchases.filter((p) => paymentMap.has(p.id) && (paymentMap.get(p.id)?.due ?? 0) > 0);
     const purchasesWithoutOrders = purchases.filter(
         (p) => !paymentMap.has(p.id) || (paymentMap.get(p.id)?.due ?? 0) === 0,
     );
@@ -78,9 +76,7 @@ export default function ShopPage() {
 
             {purchasesWithoutOrders.length > 0 && (
                 <div className="space-y-4">
-                    {purchasesWithOrders.length > 0 && (
-                        <h2 className="text-lg font-medium">Другие закупки</h2>
-                    )}
+                    {purchasesWithOrders.length > 0 && <h2 className="text-lg font-medium">Другие закупки</h2>}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {purchasesWithoutOrders.map((purchase) => (
                             <AvailablePurchaseCard key={purchase.id} purchase={purchase} />

@@ -1,9 +1,11 @@
 'use client';
 
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
-import { toast } from 'sonner';
 
 import { trpc } from '@/lib/client/trpc';
+import { toast } from 'sonner';
 
 declare global {
     interface Window {
@@ -18,12 +20,46 @@ declare global {
     }
 }
 
-export function useTgAuthorization() {
+export function useTgAuth() {
+    const router = useRouter();
     const utils = trpc.useUtils();
     const linkProvider = trpc.users.linkProvider.useMutation();
     const unlinkProvider = trpc.users.unlinkProvider.useMutation();
     const [loading, setLoading] = useState(false);
 
+    /** Login via Telegram (auth page) */
+    const login = useCallback(() => {
+        if (!window.Telegram?.Login) return;
+        setLoading(true);
+
+        window.Telegram.Login.auth(
+            { bot_id: Number(process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID), request_access: true },
+            async (user: unknown) => {
+                if (!user) {
+                    setLoading(false);
+                    return;
+                }
+
+                try {
+                    const result = await signIn('telegram', {
+                        data: JSON.stringify(user),
+                        redirect: false,
+                    });
+
+                    if (result?.ok) {
+                        router.push('/');
+                        router.refresh();
+                        return;
+                    }
+                } catch {
+                    // ignore
+                }
+                setLoading(false);
+            },
+        );
+    }, [router]);
+
+    /** Link Telegram to existing account (profile page) */
     const linkTg = useCallback(() => {
         if (!window.Telegram?.Login) return;
         setLoading(true);
@@ -47,6 +83,7 @@ export function useTgAuthorization() {
         );
     }, [utils, linkProvider]);
 
+    /** Unlink Telegram from account */
     const unlinkTg = useCallback(async () => {
         setLoading(true);
         try {
@@ -59,5 +96,5 @@ export function useTgAuthorization() {
         }
     }, [utils, unlinkProvider]);
 
-    return { linkTg, unlinkTg, loading };
+    return { login, linkTg, unlinkTg, loading };
 }

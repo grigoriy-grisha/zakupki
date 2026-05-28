@@ -1,7 +1,7 @@
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
 
-import type { ChannelPostPhoto, PostProduct, ProductPhotoInput } from './types';
+import type { ChannelPostPhoto, PostProduct, ProductPhotoInput } from '../domain/types';
 
 export function normalizeChatId(raw: string): string {
     const trimmed = raw.trim();
@@ -55,15 +55,18 @@ function htmlToTelegramHtml(html: string): string {
     return s;
 }
 
-const TELEGRAM_CAPTION_MAX = 1024;
-const TELEGRAM_MESSAGE_MAX = 4096;
+import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
 
 function photoFilename(mimeType: string): string {
     switch (mimeType) {
-        case 'image/png': return 'photo.png';
-        case 'image/webp': return 'photo.webp';
-        case 'image/gif': return 'photo.gif';
-        default: return 'photo.jpg';
+        case 'image/png':
+            return 'photo.png';
+        case 'image/webp':
+            return 'photo.webp';
+        case 'image/gif':
+            return 'photo.gif';
+        default:
+            return 'photo.jpg';
     }
 }
 
@@ -105,8 +108,7 @@ function stripHtml(html: string): string {
 }
 
 function isEntityParseError(e: unknown): boolean {
-    const description =
-        e instanceof GrammyError ? e.description : e instanceof Error ? e.message : String(e);
+    const description = e instanceof GrammyError ? e.description : e instanceof Error ? e.message : String(e);
     return description.includes("can't parse entities");
 }
 

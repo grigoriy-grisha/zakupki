@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { trpc } from '@/lib/client/trpc';
 
-import { useTgAuthorization, useVkAuthorization } from './hooks';
-
+import { useTgAuth } from '@/lib/hooks/use-tg-auth';
+import { useVkAuth } from '@/lib/hooks/use-vk-auth';
 export default function ProfilePage() {
     const { data: user } = trpc.users.me.useQuery();
-    const vk = useVkAuthorization();
-    const tg = useTgAuthorization();
+    const vk = useVkAuth();
+    const tg = useTgAuth();
 
     if (!user) return null;
 
@@ -31,7 +31,9 @@ export default function ProfilePage() {
                         </div>
                     )}
                     <div>
-                        <p className="text-xl font-semibold">{user.firstName} {user.lastName ?? ''}</p>
+                        <p className="text-xl font-semibold">
+                            {user.firstName} {user.lastName ?? ''}
+                        </p>
                         {user.username && <p className="text-sm text-muted-foreground">@{user.username}</p>}
                     </div>
                 </CardContent>
@@ -50,7 +52,11 @@ export default function ProfilePage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     {user.vkCredential.avatarUrl ? (
-                                        <img src={user.vkCredential.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                                        <img
+                                            src={user.vkCredential.avatarUrl}
+                                            alt=""
+                                            className="h-9 w-9 rounded-full object-cover"
+                                        />
                                     ) : (
                                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0077FF]/10 text-[#0077FF] text-sm font-medium">
                                             VK
@@ -61,13 +67,22 @@ export default function ProfilePage() {
                                         <span className="text-sm">Привязан</span>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={vk.unlinkVk} disabled={vk.loading || !canUnlinkVk}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={vk.unlinkVk}
+                                    disabled={vk.loading || !canUnlinkVk}
+                                >
                                     <Unlink className="mr-1 h-3 w-3" />
                                     Отвязать
                                 </Button>
                             </div>
                         ) : (
-                            <Button onClick={vk.linkVk} disabled={vk.loading} className="w-full bg-[#0077FF] text-white hover:bg-[#0066DD]">
+                            <Button
+                                onClick={vk.linkVk}
+                                disabled={vk.loading}
+                                className="w-full bg-[#0077FF] text-white hover:bg-[#0066DD]"
+                            >
                                 <Link2 className="mr-2 h-4 w-4" />
                                 Привязать VK
                             </Button>
@@ -87,7 +102,11 @@ export default function ProfilePage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     {user.telegramCredential.avatarUrl ? (
-                                        <img src={user.telegramCredential.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                                        <img
+                                            src={user.telegramCredential.avatarUrl}
+                                            alt=""
+                                            className="h-9 w-9 rounded-full object-cover"
+                                        />
                                     ) : (
                                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26A5E4]/10 text-[#26A5E4] text-sm font-medium">
                                             TG
@@ -105,7 +124,12 @@ export default function ProfilePage() {
                                         )}
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={tg.unlinkTg} disabled={tg.loading || !canUnlinkTg}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={tg.unlinkTg}
+                                    disabled={tg.loading || !canUnlinkTg}
+                                >
                                     <Unlink className="mr-1 h-3 w-3" />
                                     Отвязать
                                 </Button>

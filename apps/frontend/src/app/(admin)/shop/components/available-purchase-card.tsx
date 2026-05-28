@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, Package, Users, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-import type { AvailablePurchaseCardProps } from '../../lib/types';
+import type { AvailablePurchaseCardProps } from '../lib/types';
 
 export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) {
     const deadline = new Date(purchase.deadline);
@@ -25,7 +25,13 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
                 <CardContent className="p-5">
                     <div className="flex items-start justify-between">
                         <div>
-                            <Badge className={purchase.status === 'SUPPLEMENT' ? 'bg-warning-50 text-warning hover:bg-warning-50' : 'bg-success-50 text-success hover:bg-success-50'}>
+                            <Badge
+                                className={
+                                    purchase.status === 'SUPPLEMENT'
+                                        ? 'bg-warning-50 text-warning hover:bg-warning-50'
+                                        : 'bg-success-50 text-success hover:bg-success-50'
+                                }
+                            >
                                 {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                             </Badge>
                             <h3 className="mt-2 text-lg font-semibold group-hover:text-primary transition-colors">
@@ -55,13 +61,17 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
                     <div className="mt-4">
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">
-                                Собрано {totalAmount.toLocaleString('ru-RU')} из {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽
+                                Собрано {totalAmount.toLocaleString('ru-RU')} из{' '}
+                                {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽
                             </span>
                             <span className="font-medium">{progress}%</span>
                         </div>
                         <div className="mt-1.5 h-2 rounded-full bg-secondary">
                             <div
-                                className={cn('h-2 rounded-full', progress >= 80 ? 'bg-success' : progress >= 50 ? 'bg-primary' : 'bg-warning')}
+                                className={cn(
+                                    'h-2 rounded-full',
+                                    progress >= 80 ? 'bg-success' : progress >= 50 ? 'bg-primary' : 'bg-warning',
+                                )}
                                 style={{ width: `${progress}%` }}
                             />
                         </div>

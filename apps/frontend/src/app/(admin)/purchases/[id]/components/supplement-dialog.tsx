@@ -4,18 +4,26 @@ import { useState, useEffect } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { SupplementDialogProps } from '../../../lib/types';
+interface SupplementDialogProps {
+    purchaseId: number;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
 
 export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementDialogProps) {
     const utils = trpc.useUtils();
-    const { data: purchase } = trpc.purchases.getById.useQuery(
-        { id: purchaseId },
-        { enabled: open },
-    );
+    const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId }, { enabled: open });
 
     const [quantities, setQuantities] = useState<Record<number, string>>({});
 
@@ -23,9 +31,10 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
         if (purchase && open) {
             const map: Record<number, string> = {};
             for (const item of purchase.items) {
-                map[item.id] = item.availableQty !== null && item.availableQty !== undefined
-                    ? String(Number(item.availableQty))
-                    : '';
+                map[item.id] =
+                    item.availableQty !== null && item.availableQty !== undefined
+                        ? String(Number(item.availableQty))
+                        : '';
             }
             setQuantities(map);
         }
@@ -66,10 +75,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
 
                 <div className="space-y-4 py-2">
                     {purchase.items.map((item) => {
-                        const orderedTotal = item.orderLines.reduce(
-                            (sum, ol) => sum + Number(ol.quantity),
-                            0,
-                        );
+                        const orderedTotal = item.orderLines.reduce((sum, ol) => sum + Number(ol.quantity), 0);
                         const shortName = item.product.unit?.shortName ?? '';
                         const val = quantities[item.id] ?? '';
 

@@ -92,8 +92,18 @@ function CategoryNodeItem({
                 style={{ paddingLeft: `${depth * 16 + 8}px` }}
             >
                 {hasChildren ? (
-                    <span onClick={(e) => { e.stopPropagation(); onToggle(category.id); }} className="cursor-pointer">
-                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    <span
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggle(category.id);
+                        }}
+                        className="cursor-pointer"
+                    >
+                        {isExpanded ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        )}
                     </span>
                 ) : (
                     <span className="w-3.5" />
@@ -101,17 +111,19 @@ function CategoryNodeItem({
                 <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="truncate">{category.name}</span>
             </button>
-            {hasChildren && isExpanded && category.children!.map((child) => (
-                <CategoryNodeItem
-                    key={child.id}
-                    category={child}
-                    selectedId={selectedId}
-                    onSelect={onSelect}
-                    expandedIds={expandedIds}
-                    onToggle={onToggle}
-                    depth={depth + 1}
-                />
-            ))}
+            {hasChildren &&
+                isExpanded &&
+                category.children!.map((child) => (
+                    <CategoryNodeItem
+                        key={child.id}
+                        category={child}
+                        selectedId={selectedId}
+                        onSelect={onSelect}
+                        expandedIds={expandedIds}
+                        onToggle={onToggle}
+                        depth={depth + 1}
+                    />
+                ))}
         </div>
     );
 }
@@ -314,10 +326,12 @@ export default function ProductsPage() {
                         </Button>
                         <Button
                             disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
-                            onClick={() => createCategoryMutation.mutate({
-                                name: newCategoryName.trim(),
-                                parentId: newCategoryParentId,
-                            })}
+                            onClick={() =>
+                                createCategoryMutation.mutate({
+                                    name: newCategoryName.trim(),
+                                    parentId: newCategoryParentId,
+                                })
+                            }
                         >
                             Создать
                         </Button>

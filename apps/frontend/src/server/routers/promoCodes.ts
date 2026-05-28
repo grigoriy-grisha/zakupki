@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { PromoCodeRepository } from '../domain/promo-code.repository';
 import { PromoCodeService } from '../services/promo-code.service';
 import type { PrismaClient } from '@zakupki/database';
-import { adminProcedure, publicProcedure, router } from '../trpc';
+import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 function services(db: PrismaClient) {
     return { promoCode: new PromoCodeService(new PromoCodeRepository(db)) };
@@ -56,14 +56,12 @@ export const promoCodesRouter = router({
             });
         }),
 
-    delete: adminProcedure
-        .input(z.object({ id: z.number() }))
-        .mutation(async ({ ctx, input }) => {
-            const { promoCode } = services(ctx.db);
-            return promoCode.delete(input.id);
-        }),
+    delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        const { promoCode } = services(ctx.db);
+        return promoCode.delete(input.id);
+    }),
 
-    validate: publicProcedure
+    validate: protectedProcedure
         .input(z.object({ code: z.string(), purchaseId: z.number(), orderAmount: z.number() }))
         .query(async ({ ctx, input }) => {
             const { promoCode } = services(ctx.db);

@@ -10,16 +10,16 @@ function splitName(name: string) {
 }
 
 export class UserService {
-    constructor(private repo: UserRepository, private roleService: RoleService) {}
+    constructor(
+        private repo: UserRepository,
+        private roleService: RoleService,
+    ) {}
 
     async list() {
         return this.repo.list();
     }
 
-    async upsertFromTelegramBot(
-        telegramId: string,
-        data: { username?: string; firstName: string; lastName?: string },
-    ) {
+    async upsertFromTelegramBot(telegramId: string, data: { username?: string; firstName: string; lastName?: string }) {
         return this.repo.upsertFromTelegramBot(telegramId, data);
     }
 
@@ -67,7 +67,10 @@ export class UserService {
     async linkTelegram(userId: number, verified: VerifiedAccount) {
         const ownerId = await this.repo.findUserIdByTelegramId(verified.providerAccountId);
         if (ownerId != null && ownerId !== userId) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'Этот Telegram-аккаунт уже привязан к другому пользователю' });
+            throw new TRPCError({
+                code: 'CONFLICT',
+                message: 'Этот Telegram-аккаунт уже привязан к другому пользователю',
+            });
         }
         await this.repo.linkTelegram(userId, verified.providerAccountId, {
             username: verified.username ?? undefined,

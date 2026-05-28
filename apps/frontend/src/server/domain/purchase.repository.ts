@@ -94,4 +94,39 @@ export class PurchaseRepository {
         );
         return Promise.all(updates);
     }
+
+    async findUnpublishedItems(purchaseId: number) {
+        return this.db.purchaseItem.findMany({
+            where: { purchaseId, shouldPublish: true, tgMessageId: null },
+            select: { id: true },
+        });
+    }
+
+    async toggleShouldPublish(purchaseItemId: number, value: boolean) {
+        return this.db.purchaseItem.update({
+            where: { id: purchaseItemId },
+            data: { shouldPublish: value },
+        });
+    }
+
+    async findItemById(id: number) {
+        return this.db.purchaseItem.findUnique({
+            where: { id },
+            select: { id: true },
+        });
+    }
+
+    async findItemWithProductAndTg(id: number) {
+        return this.db.purchaseItem.findUnique({
+            where: { id },
+            select: { productId: true, tgMessageId: true, tgChannelId: true },
+        });
+    }
+
+    async findItemWithPrice(id: number) {
+        return this.db.purchaseItem.findUnique({
+            where: { id },
+            include: { product: true, purchase: true },
+        });
+    }
 }

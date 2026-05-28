@@ -10,7 +10,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { useConfirmPayment, useRejectPayment } from '../hooks';
-import type { PaymentDetailDialogProps } from '../../../lib/types';
+interface PaymentDetailDialogProps {
+    payment: {
+        id: number;
+        userId: number;
+        amount: unknown;
+        status: string;
+        paidAt: string;
+        userComment?: string;
+        adminNote?: string;
+        proofData?: unknown;
+        proofMimeType?: string;
+        user?: { firstName: string; lastName?: string | null };
+        children?: { amount: unknown; promoCode: { code: string } | null }[];
+    };
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    purchaseId: number;
+}
 
 export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }: PaymentDetailDialogProps) {
     const status = payment.status;
@@ -36,14 +53,25 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
     function handleConfirm() {
         confirmMutation.mutate(
             { id: payment.id, adminNote: adminNote || undefined },
-            { onSuccess: () => { onOpenChange(false); setAdminNote(''); } },
+            {
+                onSuccess: () => {
+                    onOpenChange(false);
+                    setAdminNote('');
+                },
+            },
         );
     }
 
     function handleReject() {
         rejectMutation.mutate(
             { id: payment.id, adminNote: rejectNote },
-            { onSuccess: () => { onOpenChange(false); setRejectNote(''); setShowReject(false); } },
+            {
+                onSuccess: () => {
+                    onOpenChange(false);
+                    setRejectNote('');
+                    setShowReject(false);
+                },
+            },
         );
     }
 
@@ -64,7 +92,8 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                             <p className="text-xl font-bold">{totalAmount.toLocaleString('ru-RU')} ₽</p>
                             {childAmount > 0 && (
                                 <p className="text-xs text-success">
-                                    Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽ + промокод {promoCode?.code} {childAmount.toLocaleString('ru-RU')} ₽
+                                    Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽ + промокод{' '}
+                                    {promoCode?.code} {childAmount.toLocaleString('ru-RU')} ₽
                                 </p>
                             )}
                         </div>
@@ -74,7 +103,13 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Дата</p>
-                            <p>{new Date(payment.paidAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <p>
+                                {new Date(payment.paidAt).toLocaleDateString('ru-RU', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                })}
+                            </p>
                         </div>
                     </div>
 
@@ -109,7 +144,11 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                                     <Package className="h-8 w-8 text-muted-foreground" />
                                     <div>
                                         <p className="text-sm font-medium">Документ загружен</p>
-                                        <a href={`/api/payment-proof/${payment.id}`} target="_blank" className="text-sm text-primary underline">
+                                        <a
+                                            href={`/api/payment-proof/${payment.id}`}
+                                            target="_blank"
+                                            className="text-sm text-primary underline"
+                                        >
                                             Скачать файл
                                         </a>
                                     </div>
@@ -142,7 +181,11 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                                     </Button>
                                 )}
                                 {status !== 'REJECTED' && (
-                                    <Button variant="destructive" className="flex-1" onClick={() => setShowReject(true)}>
+                                    <Button
+                                        variant="destructive"
+                                        className="flex-1"
+                                        onClick={() => setShowReject(true)}
+                                    >
                                         <X className="h-4 w-4" />
                                         Отклонить
                                     </Button>
@@ -157,7 +200,9 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                                 Участник будет уведомлён, что оплата отклонена
                             </div>
                             <div className="space-y-2">
-                                <Label>Причина отклонения <span className="text-destructive">*</span></Label>
+                                <Label>
+                                    Причина отклонения <span className="text-destructive">*</span>
+                                </Label>
                                 <Textarea
                                     value={rejectNote}
                                     onChange={(e) => setRejectNote(e.target.value)}
@@ -167,7 +212,9 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => setShowReject(false)}>Назад</Button>
+                                <Button variant="outline" onClick={() => setShowReject(false)}>
+                                    Назад
+                                </Button>
                                 <Button
                                     variant="destructive"
                                     className="flex-1"

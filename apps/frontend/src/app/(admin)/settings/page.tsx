@@ -14,7 +14,9 @@ export default function SettingsPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">Настройки</h1>
-                    <p className="text-sm text-muted-foreground">Управление единицами, промокодами и другими параметрами</p>
+                    <p className="text-sm text-muted-foreground">
+                        Управление единицами, промокодами и другими параметрами
+                    </p>
                 </div>
             </div>
 

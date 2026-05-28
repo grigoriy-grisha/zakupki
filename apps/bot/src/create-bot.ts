@@ -2,7 +2,7 @@ import { Bot, GrammyError, HttpError, session, type BotConfig } from 'grammy';
 import { autoRetry } from '@grammyjs/auto-retry';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
-import type { CreateBotOptions, CustomContext, SessionData } from './lib/types';
+import type { CreateBotOptions, CustomContext, SessionData } from './domain/types';
 import { initMiddleware, requireAuth } from './middlewares';
 import { startCommand, helpCommand, ordersCommand, paymentsCommand } from './handlers';
 
