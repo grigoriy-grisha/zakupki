@@ -138,7 +138,7 @@ export const purchasesRouter = router({
             z.object({
                 purchaseItemId: z.number(),
                 product: z.object({
-                    name: z.string().min(1),
+                    name: z.string().min(1).optional(),
                     description: z.string().optional(),
                     pricePerUnit: z.number(),
                     minPackageAmount: z.number().nullable().optional(),

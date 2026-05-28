@@ -1,5 +1,14 @@
 import type { PrismaClient } from '@zakupki/database';
 
+const productWithAttributes = {
+    photos: { select: { id: true, sortOrder: true } },
+    unit: true,
+    manufacturer: true,
+    size: true,
+    form: true,
+    productLine: true,
+} as const;
+
 export class PurchaseRepository {
     constructor(private db: PrismaClient) {}
 
@@ -9,7 +18,7 @@ export class PurchaseRepository {
             include: {
                 items: {
                     include: {
-                        product: { include: { photos: { select: { id: true } }, unit: true } },
+                        product: { include: productWithAttributes },
                         orderLines: true,
                     },
                 },
@@ -24,7 +33,7 @@ export class PurchaseRepository {
             include: {
                 items: {
                     include: {
-                        product: { include: { photos: { select: { id: true } }, unit: true } },
+                        product: { include: productWithAttributes },
                         orderLines: true,
                     },
                 },
@@ -39,7 +48,7 @@ export class PurchaseRepository {
             include: {
                 items: {
                     include: {
-                        product: { include: { photos: { select: { id: true } }, unit: true } },
+                        product: { include: productWithAttributes },
                         orderLines: { include: { user: true } },
                     },
                 },
@@ -68,6 +77,13 @@ export class PurchaseRepository {
     async addItem(purchaseId: number, productId: number, shouldPublish = false) {
         return this.db.purchaseItem.create({
             data: { purchaseId, productId, shouldPublish },
+        });
+    }
+
+    async findItemWithPurchase(purchaseItemId: number) {
+        return this.db.purchaseItem.findUnique({
+            where: { id: purchaseItemId },
+            select: { id: true, purchase: { select: { status: true, tag: true } } },
         });
     }
 

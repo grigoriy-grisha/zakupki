@@ -34,6 +34,13 @@ enum RoleKind {
     CLIENT
 }
 
+enum ProductAttributeKind {
+    MANUFACTURER
+    SIZE
+    FORM
+    PRODUCT_LINE
+}
+
 // ── Models ──
 
 model Category {
@@ -46,6 +53,20 @@ model Category {
     createdAt DateTime   @default(now())
 
     @@index([parentId])
+}
+
+model ProductAttribute {
+    id                       Int                  @id @default(autoincrement())
+    kind                     ProductAttributeKind
+    name                     String
+    createdAt                DateTime             @default(now())
+    productsAsManufacturer   Product[]            @relation("ProductManufacturer")
+    productsAsSize           Product[]            @relation("ProductSize")
+    productsAsForm           Product[]            @relation("ProductForm")
+    productsAsProductLine    Product[]            @relation("ProductLine")
+
+    @@unique([kind, name])
+    @@index([kind])
 }
 
 model Unit {
@@ -98,10 +119,15 @@ model VkCredential {
 model Product {
     id                    Int            @id @default(autoincrement())
     name                  String
+    articleNumber         String?
     description           String?
     unitId                Int
     pricePerUnit          Decimal        @db.Decimal(10, 2)
     categoryId            Int?
+    manufacturerId        Int?
+    sizeId                Int?
+    formId                Int?
+    productLineId         Int?
     minPackageAmount      Decimal?       @db.Decimal(10, 3)
     minPackageUnit        String?
     priceTiers            Json?
@@ -115,10 +141,18 @@ model Product {
     purchaseItems         PurchaseItem[]
     unit                  Unit           @relation(fields: [unitId], references: [id])
     category              Category?      @relation(fields: [categoryId], references: [id])
+    manufacturer          ProductAttribute? @relation("ProductManufacturer", fields: [manufacturerId], references: [id])
+    size                  ProductAttribute? @relation("ProductSize", fields: [sizeId], references: [id])
+    form                  ProductAttribute? @relation("ProductForm", fields: [formId], references: [id])
+    productLine           ProductAttribute? @relation("ProductLine", fields: [productLineId], references: [id])
 
     @@index([createdAt])
     @@index([unitId])
     @@index([categoryId])
+    @@index([manufacturerId])
+    @@index([sizeId])
+    @@index([formId])
+    @@index([productLineId])
 }
 
 model ProductPhoto {

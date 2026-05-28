@@ -1,9 +1,10 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Ruler, Tag } from 'lucide-react';
+import { Settings, Ruler, Tag, Layers } from 'lucide-react';
 import { UnitsTab } from './units/units-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
+import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
 
 export default function SettingsPage() {
     return (
@@ -30,12 +31,19 @@ export default function SettingsPage() {
                         <Tag className="h-4 w-4" />
                         Промокоды
                     </TabsTrigger>
+                    <TabsTrigger value="attributes">
+                        <Layers className="h-4 w-4" />
+                        Справочники товаров
+                    </TabsTrigger>
                 </TabsList>
                 <TabsContent value="units">
                     <UnitsTab />
                 </TabsContent>
                 <TabsContent value="promocodes">
                     <PromoCodesTab />
+                </TabsContent>
+                <TabsContent value="attributes">
+                    <ProductAttributesTab />
                 </TabsContent>
             </Tabs>
         </div>

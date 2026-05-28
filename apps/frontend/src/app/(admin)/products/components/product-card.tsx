@@ -14,11 +14,11 @@ interface CatalogProductCardProps {
     product: {
         id: number;
         name: string;
-        pricePerUnit: string | number;
         unit: { shortName: string } | null;
         minPackageAmount: string | number | null;
         minPackageUnit: string | null;
         photos: { id: number }[];
+        inActivePurchase?: boolean;
     };
     onClick: () => void;
 }
@@ -29,7 +29,6 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const utils = trpc.useUtils();
 
     const photo = product.photos?.[0];
-    const price = Number(product.pricePerUnit);
 
     async function handleDelete() {
         try {
@@ -61,17 +60,19 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         </div>
                     )}
                     <Badge className="absolute bottom-2 right-2">{product.unit?.shortName ?? ''}</Badge>
-                    <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmOpen(true);
-                        }}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {!product.inActivePurchase && (
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmOpen(true);
+                            }}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
 
                 <CardContent className="p-4">
@@ -81,10 +82,6 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                             Мин. фасовка: {Number(product.minPackageAmount)} {product.minPackageUnit}
                         </p>
                     )}
-                    <div className="mt-2 flex items-center justify-between">
-                        <span className="text-lg font-bold text-primary">{price.toLocaleString('ru-RU')} ₽</span>
-                        <span className="text-xs text-muted-foreground">за {product.unit?.shortName ?? ''}</span>
-                    </div>
                 </CardContent>
             </Card>
 

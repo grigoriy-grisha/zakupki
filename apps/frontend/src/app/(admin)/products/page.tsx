@@ -280,7 +280,10 @@ export default function ProductsPage() {
 
             <ProductSheet
                 open={sheetOpen}
-                onOpenChange={setSheetOpen}
+                onOpenChange={(open) => {
+                    setSheetOpen(open);
+                    if (!open) setEditId(null);
+                }}
                 editId={editId}
                 defaultCategoryId={selectedCategoryId}
             />

@@ -1,14 +1,21 @@
 import { Prisma } from '@zakupki/database';
 import type { PrismaClient } from '@zakupki/database';
 
+import { assertProductNotInActivePurchase, findProductIdsInActivePurchases } from './product-purchase-lock';
+
 export type PriceTier = { amount: number; unit: string; price: number };
 
 export interface ProductWriteData {
     name?: string;
+    articleNumber?: string | null;
     description?: string;
     unitId?: number;
     pricePerUnit?: number;
     categoryId?: number | null;
+    manufacturerId?: number | null;
+    sizeId?: number | null;
+    formId?: number | null;
+    productLineId?: number | null;
     minPackageAmount?: number | null;
     minPackageUnit?: string | null;
     priceTiers?: PriceTier[] | null;
@@ -33,12 +40,19 @@ export class ProductRepository {
             where: {
                 ...(search
                     ? {
-                          OR: [{ name: { contains: search, mode: 'insensitive' } }],
+                          OR: [
+                              { name: { contains: search, mode: 'insensitive' } },
+                              { articleNumber: { contains: search, mode: 'insensitive' } },
+                              { manufacturer: { name: { contains: search, mode: 'insensitive' } } },
+                              { size: { name: { contains: search, mode: 'insensitive' } } },
+                              { form: { name: { contains: search, mode: 'insensitive' } } },
+                              { productLine: { name: { contains: search, mode: 'insensitive' } } },
+                          ],
                       }
                     : {}),
                 ...(categoryId != null ? { categoryId } : {}),
             },
-            include: { photos: { select: { id: true, sortOrder: true } }, unit: true, category: true },
+            include: productInclude,
             orderBy: { createdAt: 'desc' },
         });
     }
@@ -46,14 +60,14 @@ export class ProductRepository {
     async getById(id: number) {
         return this.db.product.findUnique({
             where: { id },
-            include: { photos: { select: { id: true, sortOrder: true } }, unit: true },
+            include: productInclude,
         });
     }
 
     async create(data: ProductCreateData) {
         return this.db.product.create({
             data: toPrismaCreate(data),
-            include: { unit: true, category: true },
+            include: productInclude,
         });
     }
 
@@ -61,8 +75,16 @@ export class ProductRepository {
         return this.db.product.update({
             where: { id },
             data: toPrismaUpdate(data),
-            include: { unit: true, category: true },
+            include: productInclude,
         });
+    }
+
+    async assertNotInActivePurchase(id: number) {
+        return assertProductNotInActivePurchase(this.db, id);
+    }
+
+    async findProductIdsInActivePurchases(productIds: number[]) {
+        return findProductIdsInActivePurchases(this.db, productIds);
     }
 
     async delete(id: number) {
@@ -103,18 +125,32 @@ export class ProductRepository {
     }
 }
 
+const productInclude = {
+    photos: { select: { id: true, sortOrder: true } },
+    unit: true,
+    category: true,
+    manufacturer: true,
+    size: true,
+    form: true,
+    productLine: true,
+} as const;
+
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { categoryId, unitId, priceTiers, ...rest } = data;
+    const { categoryId, unitId, priceTiers, manufacturerId, sizeId, formId, productLineId, ...rest } = data;
     return {
         ...rest,
         priceTiers: priceTiers ?? Prisma.JsonNull,
         unit: { connect: { id: unitId } },
-        ...(categoryId != null ? { category: { connect: { id: categoryId } } } : {}),
+        ...optionalRelation('category', categoryId),
+        ...optionalRelation('manufacturer', manufacturerId),
+        ...optionalRelation('size', sizeId),
+        ...optionalRelation('form', formId),
+        ...optionalRelation('productLine', productLineId),
     };
 }
 
 function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
-    const { categoryId, unitId, priceTiers, ...rest } = data;
+    const { categoryId, unitId, priceTiers, manufacturerId, sizeId, formId, productLineId, ...rest } = data;
     const update: Prisma.ProductUpdateInput = { ...rest };
     if (priceTiers !== undefined) {
         update.priceTiers = priceTiers ?? Prisma.JsonNull;
@@ -125,5 +161,30 @@ function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
     if (categoryId !== undefined) {
         update.category = categoryId == null ? { disconnect: true } : { connect: { id: categoryId } };
     }
+    if (manufacturerId !== undefined) {
+        update.manufacturer =
+            manufacturerId == null ? { disconnect: true } : { connect: { id: manufacturerId } };
+    }
+    if (sizeId !== undefined) {
+        update.size = sizeId == null ? { disconnect: true } : { connect: { id: sizeId } };
+    }
+    if (formId !== undefined) {
+        update.form = formId == null ? { disconnect: true } : { connect: { id: formId } };
+    }
+    if (productLineId !== undefined) {
+        update.productLine =
+            productLineId == null ? { disconnect: true } : { connect: { id: productLineId } };
+    }
     return update;
+}
+
+function optionalRelation(
+    field: 'category' | 'manufacturer' | 'size' | 'form' | 'productLine',
+    id: number | null | undefined,
+): Pick<Prisma.ProductCreateInput, 'category' | 'manufacturer' | 'size' | 'form' | 'productLine'> {
+    if (id == null) return {};
+    return { [field]: { connect: { id } } } as Pick<
+        Prisma.ProductCreateInput,
+        'category' | 'manufacturer' | 'size' | 'form' | 'productLine'
+    >;
 }

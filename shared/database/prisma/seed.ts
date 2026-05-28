@@ -14,6 +14,7 @@ async function main() {
     await prisma.promoCode.deleteMany();
     await prisma.productPhoto.deleteMany();
     await prisma.product.deleteMany();
+    await prisma.productAttribute.deleteMany();
     await prisma.category.deleteMany();
     await prisma.userRole.deleteMany();
     await prisma.telegramCredential.deleteMany();
@@ -34,7 +35,18 @@ async function main() {
         ],
     });
 
-    console.log('Seed completed: roles (2), units (3), no demo products or purchases');
+    await prisma.productAttribute.createMany({
+        data: [
+            { kind: 'MANUFACTURER', name: 'MIYUKI' },
+            { kind: 'MANUFACTURER', name: 'TOHO' },
+            { kind: 'SIZE', name: '11/0' },
+            { kind: 'SIZE', name: '8/0' },
+            { kind: 'FORM', name: 'Цилиндр' },
+            { kind: 'PRODUCT_LINE', name: 'Delica 11/0' },
+        ],
+    });
+
+    console.log('Seed completed: roles (2), units (3), product attributes (6)');
 }
 
 main()

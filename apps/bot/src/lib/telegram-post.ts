@@ -82,7 +82,11 @@ export function buildProductPostText(product: PostProduct, purchaseTag: string):
     const hashtag = `#${escapeHtml(rawTag)}`;
     const desc = product.description?.trim();
     if (desc) {
-        return htmlToTelegramHtml(desc) + '\n\n' + hashtag;
+        const normalized = htmlToTelegramHtml(desc);
+        if (normalized.includes(hashtag) || normalized.includes(rawTag)) {
+            return normalized;
+        }
+        return normalized + '\n\n' + hashtag;
     }
 
     const lines: string[] = [`<b>${escapeHtml(product.name)}</b>`];

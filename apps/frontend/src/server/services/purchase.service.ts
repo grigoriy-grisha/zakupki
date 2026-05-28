@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { PurchaseRepository } from '../domain/purchase.repository';
 import { ProductRepository } from '../domain/product.repository';
+import { assertCanRemoveFromActivePurchase } from '../domain/product-purchase-lock';
 
 export class PurchaseService {
     constructor(
@@ -73,6 +74,11 @@ export class PurchaseService {
     }
 
     async removeItem(id: number) {
+        const item = await this.repo.findItemWithPurchase(id);
+        if (!item) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Позиция не найдена' });
+        }
+        assertCanRemoveFromActivePurchase(item.purchase.status, item.purchase.tag);
         return this.repo.removeItem(id);
     }
 

@@ -43,10 +43,7 @@ export function ProductSheet({
                 <ProductForm
                     editId={editId}
                     existing={existing}
-                    onSuccess={(newId) => {
-                        if (newId) setEditId(newId);
-                        else onOpenChange(false);
-                    }}
+                    onSuccess={() => onOpenChange(false)}
                     defaultCategoryId={defaultCategoryId}
                 />
             </SheetContent>

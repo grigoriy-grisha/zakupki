@@ -8,10 +8,15 @@ import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 export interface ProductCreateInput {
     name: string;
+    articleNumber?: string | null;
     unitId?: number;
     pricePerUnit?: number;
     description?: string;
     categoryId?: number;
+    manufacturerId?: number | null;
+    sizeId?: number | null;
+    formId?: number | null;
+    productLineId?: number | null;
     minPackageAmount?: number;
     minPackageUnit?: string;
     priceTiers?: { amount: number; unit: string; price: number }[];
@@ -22,11 +27,26 @@ export interface ProductCreateInput {
     availableUnit?: string;
 }
 
-export interface ProductUpdateInput extends Partial<Omit<ProductCreateInput, 'name' | 'unitId' | 'pricePerUnit'>> {
+export interface ProductUpdateInput {
     id: number;
     name?: string;
+    articleNumber?: string | null;
     unitId?: number;
     pricePerUnit?: number;
+    description?: string;
+    categoryId?: number | null;
+    manufacturerId?: number | null;
+    sizeId?: number | null;
+    formId?: number | null;
+    productLineId?: number | null;
+    minPackageAmount?: number;
+    minPackageUnit?: string;
+    priceTiers?: { amount: number; unit: string; price: number }[];
+    supplierPackageAmount?: number;
+    supplierPackageUnit?: string;
+    supplierPackagePrice?: number;
+    availableAmount?: number;
+    availableUnit?: string;
 }
 
 const priceTierSchema = z.object({
@@ -37,10 +57,15 @@ const priceTierSchema = z.object({
 
 const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     name: z.string().min(1),
+    articleNumber: z.string().optional(),
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     categoryId: z.number().optional(),
+    manufacturerId: z.number().optional(),
+    sizeId: z.number().optional(),
+    formId: z.number().optional(),
+    productLineId: z.number().optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
     priceTiers: z.array(priceTierSchema).optional(),
@@ -54,10 +79,15 @@ const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
 const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     id: z.number(),
     name: z.string().optional(),
+    articleNumber: z.string().nullable().optional(),
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     categoryId: z.number().optional(),
+    manufacturerId: z.number().nullable().optional(),
+    sizeId: z.number().nullable().optional(),
+    formId: z.number().nullable().optional(),
+    productLineId: z.number().nullable().optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
     priceTiers: z.array(priceTierSchema).optional(),
@@ -103,6 +133,7 @@ export const productsRouter = router({
         try {
             return await product.delete(input.id);
         } catch (err) {
+            if (err instanceof TRPCError) throw err;
             if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
             }

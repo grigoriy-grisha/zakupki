@@ -4,13 +4,16 @@ export class ProductService {
     constructor(private repo: ProductRepository) {}
 
     async list(search?: string, categoryId?: number | null) {
-        return this.repo.list(search, categoryId);
+        const products = await this.repo.list(search, categoryId);
+        const lockedIds = await this.repo.findProductIdsInActivePurchases(products.map((p) => p.id));
+        return products.map((p) => ({ ...p, inActivePurchase: lockedIds.has(p.id) }));
     }
 
     async getById(id: number) {
         const product = await this.repo.getById(id);
         if (!product) throw new Error('Product not found');
-        return product;
+        const lockedIds = await this.repo.findProductIdsInActivePurchases([id]);
+        return { ...product, inActivePurchase: lockedIds.has(id) };
     }
 
     async create(data: ProductCreateData) {
@@ -22,6 +25,7 @@ export class ProductService {
     }
 
     async delete(id: number) {
+        await this.repo.assertNotInActivePurchase(id);
         return this.repo.delete(id);
     }
 
