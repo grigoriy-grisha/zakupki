@@ -1,7 +1,6 @@
 import { router } from '../trpc';
 import { attributeTypesRouter } from './attributeTypes';
 import { characteristicsRouter } from './characteristics';
-import { categoriesRouter } from './categories';
 import { ordersRouter } from './orders';
 import { paymentsRouter } from './payments';
 import { postTemplatesRouter } from './postTemplates';
@@ -16,7 +15,6 @@ import { usersRouter } from './users';
 export const appRouter = router({
     attributeTypes: attributeTypesRouter,
     characteristics: characteristicsRouter,
-    categories: categoriesRouter,
     productAttributes: productAttributesRouter,
     products: productsRouter,
     purchases: purchasesRouter,

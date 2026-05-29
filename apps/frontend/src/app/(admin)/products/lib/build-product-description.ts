@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useRef } from 'react';
 import type { ProductLabelSource } from './format-product-label';
 import {
     getProductAttributeNames,
@@ -149,7 +148,7 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         blocks.push(
             linesParagraph(
                 validTiers.map(
-                    (tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб.`,
+                    (tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб`,
                 ),
             ),
         );
@@ -164,7 +163,7 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         blocks.push(
             mixedParagraph(
                 'Фасовка поставщика:',
-                `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatNumber(input.supplierPackagePrice)} руб.`,
+                `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatNumber(input.supplierPackagePrice)} руб`,
             ),
         );
     }
@@ -220,17 +219,47 @@ function boldInline(text: string): string {
 }
 
 /** Подсказки для редактора шаблонов постов (вставляйте как {{ключ}}). */
-export const POST_TEMPLATE_PLACEHOLDERS: { key: string; label: string; example: string }[] = [
-    { key: 'название', label: 'Название товара', example: 'синий ирис' },
-    { key: 'номер', label: 'Номер (артикул)', example: 'DB-0002' },
-    { key: 'заголовок', label: 'Первая строка (атрибуты в шапке)', example: 'MIYUKI Delica 11/0' },
-    { key: 'атрибуты', label: 'Все атрибуты через ·', example: 'MIYUKI · Delica 11/0 · …' },
-    { key: 'характеристики', label: 'Блок характеристик', example: 'Цвет: …, Размер: …' },
-    { key: 'мин_фасовка', label: 'Минимальная фасовка', example: '5 гр' },
-    { key: 'цены', label: 'Список цен', example: '5 гр - 100 руб' },
-    { key: 'фасовка_поставщика', label: 'Фасовка поставщика', example: '111 гр - 111 руб' },
-    { key: 'свободно', label: 'Свободный остаток', example: 'СВОБОДНО: 10 гр' },
-    { key: 'тег', label: 'Тег закупки', example: '#закупка_май' },
+export const POST_TEMPLATE_PLACEHOLDERS: {
+    key: string;
+    label: string;
+    description: string;
+    example: string;
+}[] = [
+    { key: 'название', label: 'Название товара', description: 'Имя из карточки, без атрибутов', example: 'синий ирис' },
+    { key: 'номер', label: 'Номер (артикул)', description: 'Артикул / номер товара', example: 'DB-0002' },
+    {
+        key: 'заголовок',
+        label: 'Первая строка (атрибуты в шапке)',
+        description: 'Атрибуты с галочкой «в заголовок»',
+        example: 'MIYUKI Delica 11/0',
+    },
+    {
+        key: 'атрибуты',
+        label: 'Все атрибуты через ·',
+        description: 'Все значения справочников одной строкой',
+        example: 'MIYUKI · Delica 11/0 · …',
+    },
+    {
+        key: 'характеристики',
+        label: 'Блок характеристик',
+        description: 'Цвет, размер и др. из карточки товара',
+        example: 'Цвет: …, Размер: …',
+    },
+    {
+        key: 'мин_фасовка',
+        label: 'Минимальная фасовка',
+        description: 'Мин. фасовка из формы в закупке',
+        example: '5 гр',
+    },
+    { key: 'цены', label: 'Список цен', description: 'Все ценовые строки из закупки', example: '5 гр - 100 руб' },
+    {
+        key: 'фасовка_поставщика',
+        label: 'Фасовка поставщика',
+        description: 'Фасовка и цена у поставщика',
+        example: '111 гр - 111 руб',
+    },
+    { key: 'свободно', label: 'Свободный остаток', description: 'Строка «СВОБОДНО: …»', example: 'СВОБОДНО: 10 гр' },
+    { key: 'тег', label: 'Тег закупки', description: 'Тег текущей закупки (#…)', example: '#закупка_май' },
 ];
 
 const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
@@ -320,7 +349,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
                 ? linesInline(
                       validTiers.map(
                           (tier) =>
-                              `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб.`,
+                              `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб`,
                       ),
                   )
                 : '',
@@ -328,7 +357,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
             isPositive(fields.supplierPackageAmount) &&
             fields.supplierPackageUnit &&
             isPositive(fields.supplierPackagePrice)
-                ? `${boldInline('Фасовка поставщика:')}<br>${escapeHtml(`${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatNumber(fields.supplierPackagePrice)} руб.`)}`
+                ? `${boldInline('Фасовка поставщика:')}<br>${escapeHtml(`${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatNumber(fields.supplierPackagePrice)} руб`)}`
                 : '',
         свободно:
             fields.availableAmount != null &&
@@ -342,33 +371,6 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
 
 function escapeRegExp(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Обновляет описание только при выбранном шаблоне поста; без шаблона поле не трогает. */
-export function useAutoProductDescription(
-    fields: DescriptionFields,
-    setDescription: (html: string) => void,
-    templateHtml?: string | null,
-    opts?: { ready?: boolean },
-) {
-    const lastGeneratedRef = useRef('');
-    const stableKey = useMemo(
-        () => JSON.stringify({ fields, templateHtml: templateHtml ?? '' }),
-        [fields, templateHtml],
-    );
-    const ready = opts?.ready !== false;
-
-    useEffect(() => {
-        if (!ready || !templateHtml?.trim()) {
-            if (!templateHtml?.trim()) lastGeneratedRef.current = '';
-            return;
-        }
-        const html = applyPostTemplate(templateHtml, fields);
-        if (html === lastGeneratedRef.current) return;
-        lastGeneratedRef.current = html;
-        setDescription(html);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stableKey, ready]);
 }
 
 function isPositive(v: number | null | undefined): v is number {

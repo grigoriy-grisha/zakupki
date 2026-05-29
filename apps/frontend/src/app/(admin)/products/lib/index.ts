@@ -1,13 +1,12 @@
 export {
     productCreateSchema,
     productSchema,
-    categorySchema,
     productAttributeSchema,
     priceTierSchema,
     PACKAGE_UNITS,
 } from './schema';
 export type { PackageUnit, PriceTierValues, ProductCreateFormValues } from './schema';
-export type { ProductFormValues, CategoryFormValues, ProductAttributeFormValues } from './schema';
+export type { ProductFormValues, ProductAttributeFormValues } from './schema';
 export {
     formatProductAttributesLine,
     getProductDisplayName,
@@ -29,6 +28,5 @@ export {
     stripPlaceholderHintDebris,
     normalizeNovelHtml,
     POST_TEMPLATE_PLACEHOLDERS,
-    useAutoProductDescription,
     type DescriptionFields,
 } from './build-product-description';

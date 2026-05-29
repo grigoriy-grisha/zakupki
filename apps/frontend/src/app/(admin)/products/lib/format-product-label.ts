@@ -15,6 +15,7 @@ function attributeTypeId(v: ProductAttributeValueSource): number | undefined {
 
 export type AttributeTypeMeta = {
     id: number;
+    name: string;
     parentId: number | null;
     position: number;
     showInTitle?: boolean;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { NovelEditor } from '@/components/ui/novel-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
+import { PackageUnitSelect } from '../../../products/components/package-unit-select';
 import {
     PACKAGE_UNITS,
     applyPostTemplate,
@@ -16,6 +17,13 @@ import {
     productToDescriptionFields,
     type ProductLabelSource,
 } from '../../../products/lib';
+import {
+    emptyPurchaseFields,
+    persistTemplateChoice,
+    resolveDefaultTemplateId,
+    savedPurchaseFields,
+    type PurchaseProductFormState,
+} from '../lib/purchase-product-fields';
 
 export type PurchaseProductSaveData = {
     description?: string;
@@ -53,39 +61,26 @@ interface PurchaseProductEditFormProps {
     loadSavedDescription?: boolean;
 }
 
-const DEFAULT_TIER = { amount: 1, unit: PACKAGE_UNITS[0], price: 0 };
-
-function emptyPurchaseFields() {
-    return {
-        description: '',
-        tiers: [{ ...DEFAULT_TIER }],
-        minPkgAmount: null as number | null,
-        minPkgUnit: PACKAGE_UNITS[0],
-        supPkgAmount: null as number | null,
-        supPkgUnit: PACKAGE_UNITS[0],
-        supPkgPrice: null as number | null,
-        availAmount: null as number | null,
-        availUnit: PACKAGE_UNITS[0],
-        templateId: 'none',
-    };
-}
-
-function savedPurchaseFields(
-    product: PurchaseProductEditFormProps['product'],
-    initialTiers: { amount: number; unit: string; price: number }[],
-) {
-    return {
-        description: product.description ?? '',
-        tiers: initialTiers.length > 0 ? initialTiers : [{ ...DEFAULT_TIER }],
-        minPkgAmount: product.minPackageAmount != null ? Number(product.minPackageAmount) : null,
-        minPkgUnit: product.minPackageUnit ?? PACKAGE_UNITS[0],
-        supPkgAmount: product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null,
-        supPkgUnit: product.supplierPackageUnit ?? PACKAGE_UNITS[0],
-        supPkgPrice: product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
-        availAmount: product.availableAmount != null ? Number(product.availableAmount) : null,
-        availUnit: product.availableUnit ?? PACKAGE_UNITS[0],
-        templateId: 'none',
-    };
+function applyPurchaseFields(setters: {
+    setDescription: (v: string) => void;
+    setTiers: (v: PurchaseProductFormState['tiers']) => void;
+    setMinPkgAmount: (v: number | null) => void;
+    setMinPkgUnit: (v: string | null) => void;
+    setSupPkgAmount: (v: number | null) => void;
+    setSupPkgUnit: (v: string | null) => void;
+    setSupPkgPrice: (v: number | null) => void;
+    setAvailAmount: (v: number | null) => void;
+    setAvailUnit: (v: string | null) => void;
+}, next: PurchaseProductFormState) {
+    setters.setDescription(next.description);
+    setters.setTiers(next.tiers);
+    setters.setMinPkgAmount(next.minPkgAmount);
+    setters.setMinPkgUnit(next.minPkgUnit);
+    setters.setSupPkgAmount(next.supPkgAmount);
+    setters.setSupPkgUnit(next.supPkgUnit);
+    setters.setSupPkgPrice(next.supPkgPrice);
+    setters.setAvailAmount(next.availAmount);
+    setters.setAvailUnit(next.availUnit);
 }
 
 export function PurchaseProductEditForm({
@@ -111,26 +106,41 @@ export function PurchaseProductEditForm({
     const [supPkgPrice, setSupPkgPrice] = useState<number | null>(initial.supPkgPrice);
     const [availAmount, setAvailAmount] = useState<number | null>(initial.availAmount);
     const [availUnit, setAvailUnit] = useState<string | null>(initial.availUnit);
-    const [templateId, setTemplateId] = useState(initial.templateId);
+    const [templateId, setTemplateId] = useState('none');
+
+    const { data: postTemplates } = trpc.postTemplates.list.useQuery();
 
     useEffect(() => {
         const next = loadSavedDescription
             ? savedPurchaseFields(product, initialTiers)
             : emptyPurchaseFields();
-        setTemplateId(next.templateId);
-        setDescription(next.description);
-        setTiers(next.tiers);
-        setMinPkgAmount(next.minPkgAmount);
-        setMinPkgUnit(next.minPkgUnit);
-        setSupPkgAmount(next.supPkgAmount);
-        setSupPkgUnit(next.supPkgUnit);
-        setSupPkgPrice(next.supPkgPrice);
-        setAvailAmount(next.availAmount);
-        setAvailUnit(next.availUnit);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [product.id, loadSavedDescription]);
+        applyPurchaseFields(
+            {
+                setDescription,
+                setTiers,
+                setMinPkgAmount,
+                setMinPkgUnit,
+                setSupPkgAmount,
+                setSupPkgUnit,
+                setSupPkgPrice,
+                setAvailAmount,
+                setAvailUnit,
+            },
+            next,
+        );
 
-    const { data: postTemplates } = trpc.postTemplates.list.useQuery();
+        if (loadSavedDescription) {
+            const defaultTemplate = resolveDefaultTemplateId(product.id, postTemplates);
+            setTemplateId(defaultTemplate);
+            if (defaultTemplate !== 'none') {
+                persistTemplateChoice(product.id, defaultTemplate);
+            }
+        } else {
+            setTemplateId('none');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product.id, loadSavedDescription, postTemplates]);
+
     const { data: attributeTypes, isSuccess: attributeTypesReady } = trpc.attributeTypes.list.useQuery();
     const showInTitleByTypeId = useMemo(
         () => buildShowInTitleByTypeId(attributeTypes),
@@ -172,23 +182,40 @@ export function PurchaseProductEditForm({
         ],
     );
 
-    useEffect(() => {
-        if (templateId === 'none' || !attributeTypesReady) return;
+    const templatedHtml = useMemo(() => {
+        if (templateId === 'none' || !attributeTypesReady) return null;
         const body = selectedTemplateBody?.trim();
-        if (!body) return;
-        setDescription(applyPostTemplate(body, descriptionFields));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (!body) return null;
+        return applyPostTemplate(body, descriptionFields);
     }, [templateId, selectedTemplateBody, descriptionFields, attributeTypesReady]);
+
+    useEffect(() => {
+        if (templatedHtml != null) setDescription(templatedHtml);
+    }, [templatedHtml]);
+
+    const lastTemplatedHtmlRef = useRef('');
+    const [previewVersion, setPreviewVersion] = useState(0);
+    useEffect(() => {
+        lastTemplatedHtmlRef.current = '';
+        setPreviewVersion(0);
+    }, [templateId]);
+    useEffect(() => {
+        if (templatedHtml == null) return;
+        if (templatedHtml === lastTemplatedHtmlRef.current) return;
+        lastTemplatedHtmlRef.current = templatedHtml;
+        setPreviewVersion((v) => v + 1);
+    }, [templatedHtml]);
+
+    const editorValue = templatedHtml ?? description;
+
+    const editorKey =
+        templateId === 'none' ? `manual-${product.id}` : `tpl-${templateId}-v${previewVersion}`;
 
     function handleTemplateChange(value: string) {
         setTemplateId(value);
+        persistTemplateChoice(product.id, value);
         if (value === 'none') {
-            setDescription('');
-            return;
-        }
-        const body = postTemplates?.find((t: { id: number; body: string }) => t.id === Number(value))?.body;
-        if (body?.trim() && attributeTypesReady) {
-            setDescription(applyPostTemplate(body, descriptionFields));
+            setDescription(loadSavedDescription ? (product.description ?? '') : '');
         }
     }
 
@@ -198,7 +225,7 @@ export function PurchaseProductEditForm({
         const pricePerUnit = firstTier.price / firstTier.amount;
 
         onSave({
-            description: description || undefined,
+            description: (templatedHtml ?? description) || undefined,
             pricePerUnit,
             priceTiers: tiers,
             minPackageAmount: minPkgAmount,
@@ -231,21 +258,6 @@ export function PurchaseProductEditForm({
             </div>
 
             <div className="space-y-1">
-                <Label>Описание</Label>
-                <div className="max-h-[35vh] overflow-y-auto rounded-md border">
-                    <NovelEditor
-                        value={description}
-                        onChange={setDescription}
-                        placeholder={
-                            templateId === 'none'
-                                ? 'Текст описания для поста…'
-                                : 'Подставится из шаблона при изменении полей ниже…'
-                        }
-                    />
-                </div>
-            </div>
-
-            <div className="space-y-1">
                 <Label>Минимальная фасовка</Label>
                 <div className="flex gap-2">
                     <Input
@@ -255,7 +267,7 @@ export function PurchaseProductEditForm({
                         value={minPkgAmount ?? ''}
                         onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)}
                     />
-                    <UnitSelect value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={setMinPkgUnit} />
+                    <PackageUnitSelect value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={setMinPkgUnit} />
                 </div>
             </div>
 
@@ -280,6 +292,22 @@ export function PurchaseProductEditForm({
                 onUnitChange={setAvailUnit}
             />
 
+            <div className="space-y-1">
+                <Label>Описание</Label>
+                <div className="max-h-[35vh] overflow-y-auto rounded-md border">
+                    <NovelEditor
+                        key={editorKey}
+                        value={editorValue}
+                        onChange={setDescription}
+                        placeholder={
+                            templateId === 'none'
+                                ? 'Текст описания для поста…'
+                                : 'Обновляется из шаблона при изменении полей выше…'
+                        }
+                    />
+                </div>
+            </div>
+
             {footer}
 
             <Button className="w-full" onClick={handleSave} disabled={isSaving}>
@@ -287,21 +315,5 @@ export function PurchaseProductEditForm({
                 {submitLabel}
             </Button>
         </div>
-    );
-}
-
-function UnitSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    return (
-        <select
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-        >
-            {PACKAGE_UNITS.map((u) => (
-                <option key={u} value={u}>
-                    {u}
-                </option>
-            ))}
-        </select>
     );
 }

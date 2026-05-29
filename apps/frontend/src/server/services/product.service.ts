@@ -3,8 +3,8 @@ import { ProductRepository, type ProductCreateData, type ProductWriteData } from
 export class ProductService {
     constructor(private repo: ProductRepository) {}
 
-    async list(search?: string, categoryId?: number | null) {
-        const products = await this.repo.list(search, categoryId);
+    async list(search?: string) {
+        const products = await this.repo.list(search);
         const lockedIds = await this.repo.findProductIdsInActivePurchases(products.map((p) => p.id));
         return products.map((p) => ({ ...p, inActivePurchase: lockedIds.has(p.id) }));
     }

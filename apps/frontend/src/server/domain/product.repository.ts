@@ -12,7 +12,6 @@ export interface ProductWriteData {
     description?: string;
     unitId?: number;
     pricePerUnit?: number;
-    categoryId?: number | null;
     attributeIds?: number[];
     characteristics?: ProductCharacteristicInput[];
     minPackageAmount?: number | null;
@@ -34,7 +33,7 @@ export interface ProductCreateData extends ProductWriteData {
 export class ProductRepository {
     constructor(private db: PrismaClient) {}
 
-    async list(search?: string, categoryId?: number | null) {
+    async list(search?: string) {
         return this.db.product.findMany({
             where: {
                 ...(search
@@ -45,7 +44,6 @@ export class ProductRepository {
                           ],
                       }
                     : {}),
-                ...(categoryId != null ? { categoryId } : {}),
             },
             include: productInclude,
             orderBy: { createdAt: 'desc' },
@@ -123,7 +121,6 @@ export class ProductRepository {
 const productInclude = {
     photos: { select: { id: true, sortOrder: true } },
     unit: true,
-    category: true,
     attributeValues: {
         include: {
             attribute: {
@@ -138,12 +135,11 @@ const productInclude = {
 } as const;
 
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { categoryId, unitId, priceTiers, attributeIds, characteristics, ...rest } = data;
+    const { unitId, priceTiers, attributeIds, characteristics, ...rest } = data;
     return {
         ...rest,
         priceTiers: priceTiers ?? Prisma.JsonNull,
         unit: { connect: { id: unitId } },
-        ...optionalRelation('category', categoryId),
         ...(attributeIds && attributeIds.length > 0
             ? { attributeValues: { create: attributeIds.map((id) => ({ attribute: { connect: { id } } })) } }
             : {}),
@@ -152,16 +148,13 @@ function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
 }
 
 function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
-    const { categoryId, unitId, priceTiers, attributeIds, characteristics, ...rest } = data;
+    const { unitId, priceTiers, attributeIds, characteristics, ...rest } = data;
     const update: Prisma.ProductUpdateInput = { ...rest };
     if (priceTiers !== undefined) {
         update.priceTiers = priceTiers ?? Prisma.JsonNull;
     }
     if (unitId !== undefined) {
         update.unit = { connect: { id: unitId } };
-    }
-    if (categoryId !== undefined) {
-        update.category = categoryId == null ? { disconnect: true } : { connect: { id: categoryId } };
     }
     if (attributeIds !== undefined) {
         update.attributeValues = {
@@ -190,12 +183,4 @@ function characteristicValuesCreate(
     }));
     if (!rows.length) return {};
     return { characteristicValues: { create: rows } };
-}
-
-function optionalRelation(
-    field: 'category',
-    id: number | null | undefined,
-): Pick<Prisma.ProductCreateInput, 'category'> {
-    if (id == null) return {};
-    return { [field]: { connect: { id } } } as Pick<Prisma.ProductCreateInput, 'category'>;
 }

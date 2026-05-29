@@ -36,7 +36,6 @@ interface ProductFormProps {
               name: string;
               articleNumber: string | null;
               unitId: number;
-              categoryId: number | null;
               attributeValues?: ProductAttributeValueShape[];
               characteristicValues?: ProductCharacteristicValueShape[];
               photos: { id: number }[];
@@ -46,12 +45,7 @@ interface ProductFormProps {
     onSuccess: () => void;
 }
 
-export function ProductForm({
-    editId,
-    existing,
-    onSuccess,
-    defaultCategoryId,
-}: ProductFormProps & { defaultCategoryId?: number | null }) {
+export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef(pendingFiles);
@@ -78,7 +72,6 @@ export function ProductForm({
             name: '',
             articleNumber: '',
             unitId: 0,
-            categoryId: defaultCategoryId ?? null,
         },
     });
 
@@ -173,7 +166,6 @@ export function ProductForm({
             name: existing.name,
             articleNumber: existing.articleNumber ?? '',
             unitId: existing.unitId,
-            categoryId: existing.categoryId ?? null,
         });
         const map: Record<number, number | null> = {};
         for (const v of existing.attributeValues ?? []) {
@@ -211,7 +203,6 @@ export function ProductForm({
             name: '',
             articleNumber: '',
             unitId: units?.[0]?.id ?? 0,
-            categoryId: defaultCategoryId ?? null,
         });
         setSelectedAttrs({});
         setCharValues({});
@@ -221,7 +212,7 @@ export function ProductForm({
             revokePendingFiles(prev);
             return [];
         });
-    }, [editId, defaultCategoryId, form, units]);
+    }, [editId, form, units]);
 
     function selectedAttributeIds(): number[] {
         return Object.values(selectedAttrs).filter((id): id is number => typeof id === 'number');
@@ -239,10 +230,7 @@ export function ProductForm({
 
     async function handleCreate(data: ProductCreateFormValues) {
         try {
-            const result = await createMutation.mutateAsync({
-                ...basePayload(data),
-                categoryId: data.categoryId ?? undefined,
-            });
+            const result = await createMutation.mutateAsync(basePayload(data));
             await utils.products.list.invalidate();
 
             if (pendingFiles.length > 0) {
@@ -280,7 +268,6 @@ export function ProductForm({
             await updateMutation.mutateAsync({
                 id: editId,
                 ...basePayload(data),
-                categoryId: data.categoryId,
             });
             await utils.products.list.invalidate();
             toast.success('Товар обновлён');

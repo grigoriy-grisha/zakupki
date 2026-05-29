@@ -5,17 +5,6 @@ import { createPurchaseServices } from '../lib/create-purchase-services';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 export const purchasesRouter = router({
-    suppliers: adminProcedure.query(async ({ ctx }) => {
-        const rows = await ctx.db.purchase.findMany({
-            distinct: ['supplier'],
-            select: { supplier: true },
-        });
-
-        return rows
-            .map((r) => r.supplier?.trim())
-            .filter((s): s is string => Boolean(s && s.length > 0));
-    }),
-
     list: protectedProcedure
         .input(
             z

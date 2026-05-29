@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import { PACKAGE_UNITS } from '../lib';
+import { PackageUnitSelect } from './package-unit-select';
 
 /** Пустое поле вместо 0 — удобнее вводить цену с нуля. */
 function numInputValue(n: number, emptyWhenZero = true): string | number {
@@ -55,7 +56,7 @@ export function PriceTierEditor({
                                 onChange(next);
                             }}
                         />
-                        <UnitSelect
+                        <PackageUnitSelect
                             value={tier.unit}
                             onChange={(v) => {
                                 const next = [...tiers];
@@ -130,7 +131,7 @@ export function PackageEditor({
                     value={amount ?? ''}
                     onChange={(e) => onAmountChange(e.target.value ? Number(e.target.value) : null)}
                 />
-                <UnitSelect value={unit} onChange={onUnitChange} />
+                <PackageUnitSelect value={unit} onChange={onUnitChange} />
                 {showPrice && onPriceChange && (
                     <>
                         <span className="text-muted-foreground">—</span>
@@ -146,17 +147,5 @@ export function PackageEditor({
                 )}
             </div>
         </div>
-    );
-}
-
-function UnitSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    return (
-        <select className="border rounded-md px-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}>
-            {PACKAGE_UNITS.map((u) => (
-                <option key={u} value={u}>
-                    {u}
-                </option>
-            ))}
-        </select>
     );
 }

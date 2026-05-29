@@ -64,6 +64,7 @@ export function NovelEditor({
     minHeight = '10rem',
 }: NovelEditorProps) {
     const lastEmittedHtml = useRef<string>('');
+    const prevValueRef = useRef<string | undefined>(value);
     const editorRef = useRef<EditorInstance | null>(null);
 
     const extensions = useMemo(
@@ -95,10 +96,14 @@ export function NovelEditor({
         if (!editor) return;
 
         const incoming = normalizeNovelHtml(value ?? '');
-        if (incoming === lastEmittedHtml.current) return;
+        const prevIncoming = normalizeNovelHtml(prevValueRef.current ?? '');
+        const valueChangedFromParent = incoming !== prevIncoming;
+        prevValueRef.current = value;
+
+        if (!valueChangedFromParent && incoming === lastEmittedHtml.current) return;
 
         const currentHtml = editor.isEmpty ? '' : normalizeNovelHtml(editor.getHTML());
-        if (currentHtml === incoming) return;
+        if (!valueChangedFromParent && currentHtml === incoming) return;
 
         editor.commands.setContent(incoming, false);
         lastEmittedHtml.current = incoming;

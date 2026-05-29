@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
 import { trpc } from '@/lib/client/trpc';
+import { useProviderUnlink } from '@/lib/hooks/use-provider-unlink';
 import { toast } from 'sonner';
 
 declare global {
@@ -24,8 +25,7 @@ export function useTgAuth() {
     const router = useRouter();
     const utils = trpc.useUtils();
     const linkProvider = trpc.users.linkProvider.useMutation();
-    const unlinkProvider = trpc.users.unlinkProvider.useMutation();
-    const [loading, setLoading] = useState(false);
+    const { unlink: unlinkTg, loading, setLoading } = useProviderUnlink('telegram');
 
     /** Login via Telegram (auth page) */
     const login = useCallback(() => {
@@ -82,19 +82,6 @@ export function useTgAuth() {
             },
         );
     }, [utils, linkProvider]);
-
-    /** Unlink Telegram from account */
-    const unlinkTg = useCallback(async () => {
-        setLoading(true);
-        try {
-            await unlinkProvider.mutateAsync({ provider: 'telegram' });
-            await utils.users.me.invalidate();
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Ошибка');
-        } finally {
-            setLoading(false);
-        }
-    }, [utils, unlinkProvider]);
 
     return { login, linkTg, unlinkTg, loading };
 }

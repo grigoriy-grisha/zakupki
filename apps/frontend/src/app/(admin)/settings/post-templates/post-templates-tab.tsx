@@ -39,14 +39,8 @@ export function PostTemplatesTab() {
 
     return (
         <div className="space-y-4 pt-4">
-            <div className="flex items-start justify-between gap-4">
-                <p className="max-w-2xl text-sm text-muted-foreground">
-                    Шаблоны для постов в Telegram. При добавлении товара в закупку выберите шаблон — в текст подставятся
-                    данные товара по меткам вроде <code className="rounded bg-muted px-1">{'{{название}}'}</code>,{' '}
-                    <code className="rounded bg-muted px-1">{'{{номер}}'}</code>,{' '}
-                    <code className="rounded bg-muted px-1">{'{{заголовок}}'}</code> и др.
-                </p>
-                <Button size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
+            <div className="flex justify-end">
+                <Button size="sm" onClick={() => setCreateOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     Добавить шаблон
                 </Button>

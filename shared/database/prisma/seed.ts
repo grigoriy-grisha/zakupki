@@ -18,7 +18,6 @@ async function main() {
     await prisma.product.deleteMany();
     await prisma.productAttribute.deleteMany();
     await prisma.attributeType.deleteMany();
-    await prisma.category.deleteMany();
     await prisma.userRole.deleteMany();
     await prisma.telegramCredential.deleteMany();
     await prisma.vkCredential.deleteMany();

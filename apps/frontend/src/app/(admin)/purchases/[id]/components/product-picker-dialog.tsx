@@ -170,7 +170,6 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                     if (!v) void utils.products.list.invalidate();
                 }}
                 editId={null}
-                defaultCategoryId={null}
             />
         </Dialog>
     );

@@ -436,7 +436,6 @@ export default function ProductsPage() {
                     if (!open) setEditId(null);
                 }}
                 editId={editId}
-                defaultCategoryId={null}
             />
         </div>
     );

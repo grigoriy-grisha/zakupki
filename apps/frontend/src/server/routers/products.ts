@@ -13,7 +13,6 @@ export interface ProductCreateInput {
     unitId?: number;
     pricePerUnit?: number;
     description?: string;
-    categoryId?: number | null;
     attributeIds?: number[];
     characteristics?: { characteristicId: number; value: string }[];
     minPackageAmount?: number;
@@ -33,7 +32,6 @@ export interface ProductUpdateInput {
     unitId?: number;
     pricePerUnit?: number;
     description?: string;
-    categoryId?: number | null;
     attributeIds?: number[];
     characteristics?: { characteristicId: number; value: string }[];
     minPackageAmount?: number;
@@ -58,7 +56,6 @@ const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
-    categoryId: z.number().nullable().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z
         .array(z.object({ characteristicId: z.number(), value: z.string() }))
@@ -80,7 +77,6 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
-    categoryId: z.number().nullable().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z
         .array(z.object({ characteristicId: z.number(), value: z.string() }))
@@ -101,10 +97,10 @@ function services(db: PrismaClient) {
 
 export const productsRouter = router({
     list: protectedProcedure
-        .input(z.object({ search: z.string().optional(), categoryId: z.number().nullable().optional() }).optional())
+        .input(z.object({ search: z.string().optional() }).optional())
         .query(async ({ ctx, input }) => {
             const { product } = services(ctx.db);
-            return product.list(input?.search, input?.categoryId);
+            return product.list(input?.search);
         }),
 
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {

@@ -15,7 +15,6 @@ export const productCreateSchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
     articleNumber: z.string().optional(),
     unitId: z.coerce.number().positive('Выберите единицу учёта'),
-    categoryId: z.number().nullable(),
 });
 
 export type ProductCreateFormValues = z.infer<typeof productCreateSchema>;
@@ -26,7 +25,6 @@ export const productSchema = z.object({
     articleNumber: z.string().optional(),
     description: z.string().optional(),
     unitId: z.coerce.number().positive('Выберите единицу'),
-    categoryId: z.number().nullable(),
     minPackageAmount: z.number().positive('Укажите фасовку').nullable(),
     minPackageUnit: z.string().nullable(),
     priceTiers: z.array(priceTierSchema).min(1, 'Укажите хотя бы одну цену'),
@@ -38,13 +36,6 @@ export const productSchema = z.object({
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;
-
-export const categorySchema = z.object({
-    name: z.string().min(1, 'Название обязательно'),
-    parentId: z.number().nullable().optional(),
-});
-
-export type CategoryFormValues = z.infer<typeof categorySchema>;
 
 export const productAttributeSchema = z.object({
     name: z.string().trim().min(1, 'Название обязательно'),

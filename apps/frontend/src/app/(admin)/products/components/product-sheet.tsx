@@ -10,12 +10,7 @@ interface ProductSheetProps {
     editId: number | null;
 }
 
-export function ProductSheet({
-    open,
-    onOpenChange,
-    editId: propEditId,
-    defaultCategoryId,
-}: ProductSheetProps & { defaultCategoryId?: number | null }) {
+export function ProductSheet({ open, onOpenChange, editId: propEditId }: ProductSheetProps) {
     const [editId, setEditId] = useState<number | null>(propEditId);
 
     useEffect(() => {
@@ -40,12 +35,7 @@ export function ProductSheet({
                     </SheetDescription>
                 </SheetHeader>
 
-                <ProductForm
-                    editId={editId}
-                    existing={existing}
-                    onSuccess={() => onOpenChange(false)}
-                    defaultCategoryId={defaultCategoryId}
-                />
+                <ProductForm editId={editId} existing={existing} onSuccess={() => onOpenChange(false)} />
             </SheetContent>
         </Sheet>
     );

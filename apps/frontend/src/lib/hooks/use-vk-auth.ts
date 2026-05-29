@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { trpc } from '@/lib/client/trpc';
+import { useProviderUnlink } from '@/lib/hooks/use-provider-unlink';
 import { exchangeVkCode, initVkId } from '@/lib/vk-id';
 import { toast } from 'sonner';
 
@@ -13,8 +14,7 @@ export function useVkAuth() {
     const router = useRouter();
     const utils = trpc.useUtils();
     const linkProvider = trpc.users.linkProvider.useMutation();
-    const unlinkProvider = trpc.users.unlinkProvider.useMutation();
-    const [loading, setLoading] = useState(false);
+    const { unlink: unlinkVk, loading, setLoading } = useProviderUnlink('vk');
     const initialized = useRef(false);
 
     /** Render VK OneTap widget on login page */
@@ -85,19 +85,6 @@ export function useVkAuth() {
             setLoading(false);
         }
     }, [utils, linkProvider]);
-
-    /** Unlink VK from account */
-    const unlinkVk = useCallback(async () => {
-        setLoading(true);
-        try {
-            await unlinkProvider.mutateAsync({ provider: 'vk' });
-            await utils.users.me.invalidate();
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Ошибка');
-        } finally {
-            setLoading(false);
-        }
-    }, [utils, unlinkProvider]);
 
     return { initWidget, linkVk, unlinkVk, loading };
 }
