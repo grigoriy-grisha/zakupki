@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { normalizeNovelHtml } from '@/app/(admin)/products/lib';
 
 interface NovelEditorProps {
     value?: string;
@@ -93,10 +94,10 @@ export function NovelEditor({
         const editor = editorRef.current;
         if (!editor) return;
 
-        const incoming = value ?? '';
+        const incoming = normalizeNovelHtml(value ?? '');
         if (incoming === lastEmittedHtml.current) return;
 
-        const currentHtml = editor.isEmpty ? '' : editor.getHTML();
+        const currentHtml = editor.isEmpty ? '' : normalizeNovelHtml(editor.getHTML());
         if (currentHtml === incoming) return;
 
         editor.commands.setContent(incoming, false);
@@ -121,8 +122,9 @@ export function NovelEditor({
                     onCreate={({ editor }) => {
                         editorRef.current = editor;
                         if (value) {
-                            editor.commands.setContent(value, false);
-                            lastEmittedHtml.current = value;
+                            const normalized = normalizeNovelHtml(value);
+                            editor.commands.setContent(normalized, false);
+                            lastEmittedHtml.current = normalized;
                         }
                     }}
                     onUpdate={({ editor }) => {

@@ -5,37 +5,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import {
-    type ProductAttributeKind,
-    PRODUCT_ATTRIBUTE_KIND_LABELS,
-} from '@/app/(admin)/products/lib/schema';
-import { useProductAttributeList, useDeleteProductAttribute } from '../hooks';
-import { AttributeFormDialog } from './attribute-form-dialog';
 
-export function AttributeKindPanel({ kind }: { kind: ProductAttributeKind }) {
-    const { data: items, isLoading, isError, error } = useProductAttributeList(kind);
-    const deleteMutation = useDeleteProductAttribute();
+import { SupplierFormDialog } from './components';
+import { useDeleteSupplier, useSupplierList } from './hooks';
+
+export function SuppliersTab() {
+    const { data: items, isLoading } = useSupplierList();
+    const deleteMutation = useDeleteSupplier();
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
     if (isLoading) {
         return <div className="py-8 text-center text-muted-foreground">Загрузка...</div>;
     }
 
-    if (isError) {
-        return (
-            <div className="py-8 text-center text-destructive text-sm">
-                Не удалось загрузить справочник: {error.message}
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                    {items?.length ?? 0} значений · {PRODUCT_ATTRIBUTE_KIND_LABELS[kind]}
+        <div className="space-y-4 pt-4">
+            <div className="flex items-start justify-between gap-4">
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                    Справочник поставщиков для закупок. При создании СЗ можно выбрать поставщика из
+                    списка.
                 </p>
-                <AttributeFormDialog kind={kind} mode="create" />
+                <SupplierFormDialog mode="create" />
             </div>
 
             <div className="rounded-md border">
@@ -43,23 +33,23 @@ export function AttributeKindPanel({ kind }: { kind: ProductAttributeKind }) {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Название</TableHead>
-                            <TableHead className="w-28 text-center">Действия</TableHead>
+                            <TableHead className="w-24 text-center">Действия</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {items?.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
-                                    Пока нет значений
+                                    Поставщиков пока нет
                                 </TableCell>
                             </TableRow>
                         )}
-                        {items?.map((item) => (
+                        {((items ?? []) as { id: number; name: string }[]).map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
-                                <TableCell>
+                                <TableCell className="text-center">
                                     <div className="flex items-center justify-center gap-1">
-                                        <AttributeFormDialog kind={kind} mode="edit" item={item} />
+                                        <SupplierFormDialog mode="edit" item={item} />
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -79,7 +69,7 @@ export function AttributeKindPanel({ kind }: { kind: ProductAttributeKind }) {
             <ConfirmDialog
                 open={!!deleteTarget}
                 onOpenChange={(open) => !open && setDeleteTarget(null)}
-                title="Удалить значение"
+                title="Удалить поставщика"
                 description={
                     <>
                         Удалить <strong>{deleteTarget?.name}</strong>?
@@ -91,3 +81,4 @@ export function AttributeKindPanel({ kind }: { kind: ProductAttributeKind }) {
         </div>
     );
 }
+

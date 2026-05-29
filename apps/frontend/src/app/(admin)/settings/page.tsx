@@ -1,10 +1,12 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Ruler, Tag, Layers } from 'lucide-react';
-import { UnitsTab } from './units/units-tab';
+import { Settings, ListChecks, Tag, Layers, FileText, Truck } from 'lucide-react';
+import { CharacteristicsTab } from './characteristics/characteristics-tab';
+import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
+import { SuppliersTab } from './suppliers/suppliers-tab';
 
 export default function SettingsPage() {
     return (
@@ -16,34 +18,48 @@ export default function SettingsPage() {
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">Настройки</h1>
                     <p className="text-sm text-muted-foreground">
-                        Управление единицами, промокодами и другими параметрами
+                        Управление характеристиками, поставщиками, промокодами и другими параметрами
                     </p>
                 </div>
             </div>
 
-            <Tabs defaultValue="units">
+            <Tabs defaultValue="attributes">
                 <TabsList>
-                    <TabsTrigger value="units">
-                        <Ruler className="h-4 w-4" />
-                        Единицы
+                    <TabsTrigger value="attributes">
+                        <Layers className="h-4 w-4" />
+                        Справочники товаров
+                    </TabsTrigger>
+                    <TabsTrigger value="characteristics">
+                        <ListChecks className="h-4 w-4" />
+                        Характеристики
+                    </TabsTrigger>
+                    <TabsTrigger value="suppliers">
+                        <Truck className="h-4 w-4" />
+                        Поставщики
+                    </TabsTrigger>
+                    <TabsTrigger value="templates">
+                        <FileText className="h-4 w-4" />
+                        Шаблоны постов
                     </TabsTrigger>
                     <TabsTrigger value="promocodes">
                         <Tag className="h-4 w-4" />
                         Промокоды
                     </TabsTrigger>
-                    <TabsTrigger value="attributes">
-                        <Layers className="h-4 w-4" />
-                        Справочники товаров
-                    </TabsTrigger>
                 </TabsList>
-                <TabsContent value="units">
-                    <UnitsTab />
+                <TabsContent value="attributes">
+                    <ProductAttributesTab />
+                </TabsContent>
+                <TabsContent value="characteristics">
+                    <CharacteristicsTab />
+                </TabsContent>
+                <TabsContent value="suppliers">
+                    <SuppliersTab />
+                </TabsContent>
+                <TabsContent value="templates">
+                    <PostTemplatesTab />
                 </TabsContent>
                 <TabsContent value="promocodes">
                     <PromoCodesTab />
-                </TabsContent>
-                <TabsContent value="attributes">
-                    <ProductAttributesTab />
                 </TabsContent>
             </Tabs>
         </div>

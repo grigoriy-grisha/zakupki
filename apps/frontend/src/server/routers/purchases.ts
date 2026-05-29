@@ -5,6 +5,17 @@ import { createPurchaseServices } from '../lib/create-purchase-services';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 export const purchasesRouter = router({
+    suppliers: adminProcedure.query(async ({ ctx }) => {
+        const rows = await ctx.db.purchase.findMany({
+            distinct: ['supplier'],
+            select: { supplier: true },
+        });
+
+        return rows
+            .map((r) => r.supplier?.trim())
+            .filter((s): s is string => Boolean(s && s.length > 0));
+    }),
+
     list: protectedProcedure
         .input(
             z
@@ -63,6 +74,16 @@ export const purchasesRouter = router({
             const queued = await telegramPublish.enqueuePurchaseItems(unpublishedItems.map((i) => i.id));
             return { queued };
         }),
+
+    complete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        const { purchase } = createPurchaseServices(ctx.db);
+        return purchase.complete(input.id);
+    }),
+
+    deleteDraft: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        const { purchase } = createPurchaseServices(ctx.db);
+        return purchase.deleteDraft(input.id);
+    }),
 
     toggleShouldPublish: adminProcedure
         .input(z.object({ purchaseItemId: z.number(), value: z.boolean() }))

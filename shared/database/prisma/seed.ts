@@ -12,15 +12,21 @@ async function main() {
     await prisma.purchaseItem.deleteMany();
     await prisma.purchase.deleteMany();
     await prisma.promoCode.deleteMany();
+    await prisma.productAttributeCharacteristic.deleteMany();
+    await prisma.productAttributeValue.deleteMany();
     await prisma.productPhoto.deleteMany();
     await prisma.product.deleteMany();
     await prisma.productAttribute.deleteMany();
+    await prisma.attributeType.deleteMany();
     await prisma.category.deleteMany();
     await prisma.userRole.deleteMany();
     await prisma.telegramCredential.deleteMany();
     await prisma.vkCredential.deleteMany();
     await prisma.user.deleteMany();
     await prisma.role.deleteMany();
+    await prisma.postTemplate.deleteMany();
+    await prisma.productCharacteristicValue.deleteMany();
+    await prisma.characteristic.deleteMany();
     await prisma.unit.deleteMany();
 
     await prisma.role.createMany({
@@ -35,18 +41,18 @@ async function main() {
         ],
     });
 
-    await prisma.productAttribute.createMany({
+    await prisma.characteristic.createMany({
         data: [
-            { kind: 'MANUFACTURER', name: 'MIYUKI' },
-            { kind: 'MANUFACTURER', name: 'TOHO' },
-            { kind: 'SIZE', name: '11/0' },
-            { kind: 'SIZE', name: '8/0' },
-            { kind: 'FORM', name: 'Цилиндр' },
-            { kind: 'PRODUCT_LINE', name: 'Delica 11/0' },
+            { name: 'Цвет', position: 0 },
+            { name: 'Размер', position: 1 },
+            { name: 'Длина', position: 2 },
+            { name: 'Упаковка', position: 3 },
+            { name: 'Страна производитель', position: 4 },
         ],
     });
 
-    console.log('Seed completed: roles (2), units (3), product attributes (6)');
+    // Структура каталога (типы атрибутов) задаётся пользователем в настройках.
+    console.log('Seed completed: roles (2), units (3), characteristics (5)');
 }
 
 main()

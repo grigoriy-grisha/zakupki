@@ -3,10 +3,17 @@ import type { PrismaClient } from '@zakupki/database';
 const productWithAttributes = {
     photos: { select: { id: true, sortOrder: true } },
     unit: true,
-    manufacturer: true,
-    size: true,
-    form: true,
-    productLine: true,
+    attributeValues: {
+        include: {
+            attribute: {
+                include: {
+                    type: true,
+                    characteristics: { include: { characteristic: true } },
+                },
+            },
+        },
+    },
+    characteristicValues: { include: { characteristic: true }, orderBy: { characteristic: { position: 'asc' } } },
 } as const;
 
 export class PurchaseRepository {
@@ -63,6 +70,36 @@ export class PurchaseRepository {
 
     async updateStatus(id: number, status: string) {
         return this.db.purchase.update({ where: { id }, data: { status: status as any } });
+    }
+
+    async deleteDraft(id: number) {
+        return this.db.$transaction(async (tx) => {
+            const purchase = await tx.purchase.findUnique({ where: { id }, select: { status: true } });
+            if (!purchase) return null;
+
+            const items = await tx.purchaseItem.findMany({
+                where: { purchaseId: id },
+                select: { id: true },
+            });
+            const itemIds = items.map((i) => i.id);
+            if (itemIds.length > 0) {
+                await tx.orderLine.deleteMany({ where: { purchaseItemId: { in: itemIds } } });
+                await tx.purchaseItem.deleteMany({ where: { purchaseId: id } });
+            }
+
+            const payments = await tx.payment.findMany({
+                where: { purchaseId: id },
+                select: { id: true },
+            });
+            const paymentIds = payments.map((p) => p.id);
+            if (paymentIds.length > 0) {
+                await tx.payment.deleteMany({ where: { parentId: { in: paymentIds } } });
+                await tx.payment.deleteMany({ where: { purchaseId: id } });
+            }
+
+            await tx.promoCode.updateMany({ where: { purchaseId: id }, data: { purchaseId: null } });
+            return tx.purchase.delete({ where: { id } });
+        });
     }
 
     async findProductIdsInPurchase(purchaseId: number, productIds: number[]) {

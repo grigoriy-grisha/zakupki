@@ -9,21 +9,18 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-    productAttributeSchema,
-    type ProductAttributeFormValues,
-    type ProductAttributeKind,
-    PRODUCT_ATTRIBUTE_KIND_LABELS,
-} from '@/app/(admin)/products/lib/schema';
+import { productAttributeSchema, type ProductAttributeFormValues } from '@/app/(admin)/products/lib';
 import { useCreateProductAttribute, useUpdateProductAttribute } from '../hooks';
 
 interface AttributeFormDialogProps {
-    kind: ProductAttributeKind;
+    typeId: number;
+    typeName: string;
     mode: 'create' | 'edit';
     item?: { id: number; name: string };
+    trigger?: React.ReactNode;
 }
 
-export function AttributeFormDialog({ kind, mode, item }: AttributeFormDialogProps) {
+export function AttributeFormDialog({ typeId, typeName, mode, item, trigger }: AttributeFormDialogProps) {
     const [open, setOpen] = useState(false);
     const createMutation = useCreateProductAttribute();
     const updateMutation = useUpdateProductAttribute();
@@ -48,47 +45,36 @@ export function AttributeFormDialog({ kind, mode, item }: AttributeFormDialogPro
 
     function onSubmit(data: ProductAttributeFormValues) {
         if (mode === 'edit' && item) {
-            updateMutation.mutate(
-                { id: item.id, name: data.name },
-                { onSuccess: () => setOpen(false) },
-            );
+            updateMutation.mutate({ id: item.id, name: data.name }, { onSuccess: () => setOpen(false) });
         } else {
-            createMutation.mutate(
-                { kind, name: data.name },
-                { onSuccess: () => setOpen(false) },
-            );
+            createMutation.mutate({ typeId, name: data.name }, { onSuccess: () => setOpen(false) });
         }
     }
 
     const isPending = createMutation.isPending || updateMutation.isPending;
     const isEdit = mode === 'edit' && item;
-    const kindLabel = PRODUCT_ATTRIBUTE_KIND_LABELS[kind];
 
     return (
         <>
-            {isEdit ? (
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => setOpen(true)}
-                >
+            {trigger ? (
+                <span className="contents" onClick={() => setOpen(true)}>
+                    {trigger}
+                </span>
+            ) : isEdit ? (
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setOpen(true)}>
                     <Pencil className="h-4 w-4" />
                 </Button>
             ) : (
-                <Button type="button" size="sm" onClick={() => setOpen(true)}>
+                <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
                     <Plus className="h-4 w-4" />
-                    Добавить
+                    Значение
                 </Button>
             )}
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>
-                            {isEdit ? `Редактировать: ${kindLabel}` : `Новый: ${kindLabel}`}
-                        </DialogTitle>
+                        <DialogTitle>{isEdit ? `Редактировать: ${typeName}` : `Новое значение: ${typeName}`}</DialogTitle>
                     </DialogHeader>
                     <form
                         onSubmit={handleSubmit(onSubmit, () => {
@@ -97,16 +83,14 @@ export function AttributeFormDialog({ kind, mode, item }: AttributeFormDialogPro
                         className="space-y-4"
                     >
                         <div className="space-y-2">
-                            <Label htmlFor={`attr-name-${kind}-${mode}`}>Название</Label>
+                            <Label htmlFor={`attr-name-${typeId}-${mode}`}>Название</Label>
                             <Input
-                                id={`attr-name-${kind}-${mode}`}
-                                placeholder={kindLabel}
+                                id={`attr-name-${typeId}-${mode}`}
+                                placeholder={typeName}
                                 autoFocus
                                 {...register('name')}
                             />
-                            {errors.name && (
-                                <p className="text-xs text-destructive">{errors.name.message}</p>
-                            )}
+                            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                         </div>
                         <Button type="submit" disabled={isPending} className="w-full">
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

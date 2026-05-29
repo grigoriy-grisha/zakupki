@@ -34,13 +34,6 @@ enum RoleKind {
     CLIENT
 }
 
-enum ProductAttributeKind {
-    MANUFACTURER
-    SIZE
-    FORM
-    PRODUCT_LINE
-}
-
 // ── Models ──
 
 model Category {
@@ -55,18 +48,87 @@ model Category {
     @@index([parentId])
 }
 
-model ProductAttribute {
-    id                       Int                  @id @default(autoincrement())
-    kind                     ProductAttributeKind
-    name                     String
-    createdAt                DateTime             @default(now())
-    productsAsManufacturer   Product[]            @relation("ProductManufacturer")
-    productsAsSize           Product[]            @relation("ProductSize")
-    productsAsForm           Product[]            @relation("ProductForm")
-    productsAsProductLine    Product[]            @relation("ProductLine")
+model Supplier {
+    id        Int      @id @default(autoincrement())
+    name      String   @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
 
-    @@unique([kind, name])
-    @@index([kind])
+// Тип атрибута каталога (Производитель, Размер, ...) — задаётся в настройках.
+// position = уровень вложенности в дереве каталога.
+model Characteristic {
+    id        Int                         @id @default(autoincrement())
+    name      String                      @unique
+    position  Int                         @default(0)
+    createdAt DateTime                    @default(now())
+    attributeLinks ProductAttributeCharacteristic[]
+    products       ProductCharacteristicValue[]
+}
+
+model AttributeType {
+    id          Int                @id @default(autoincrement())
+    name        String             @unique
+    parentId    Int?
+    position    Int                @default(0)
+    showInTree  Boolean            @default(true)
+    showInTitle Boolean            @default(true)
+    createdAt   DateTime           @default(now())
+    parent      AttributeType?     @relation("AttributeTypeTree", fields: [parentId], references: [id], onDelete: Cascade)
+    children    AttributeType[]    @relation("AttributeTypeTree")
+    attributes  ProductAttribute[]
+
+    @@index([position])
+    @@index([parentId])
+}
+
+// Значение справочника, принадлежит типу (например, тип "Производитель" → "MIYUKI").
+model ProductAttribute {
+    id             Int                              @id @default(autoincrement())
+    typeId         Int
+    name           String
+    position       Int                              @default(0)
+    createdAt      DateTime                         @default(now())
+    type           AttributeType                    @relation(fields: [typeId], references: [id], onDelete: Cascade)
+    characteristics ProductAttributeCharacteristic[]
+    values         ProductAttributeValue[]
+
+    @@unique([typeId, name])
+    @@index([typeId])
+}
+
+// Характеристики, привязанные к значению справочника (можно несколько).
+model ProductAttributeCharacteristic {
+    attributeId      Int
+    characteristicId Int
+    attribute        ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+    characteristic   Characteristic   @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
+
+    @@id([attributeId, characteristicId])
+    @@index([characteristicId])
+}
+
+// Связь товар ↔ значение атрибута (many-to-many).
+model ProductAttributeValue {
+    productId   Int
+    attributeId Int
+    product     Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+    attribute   ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+    @@id([productId, attributeId])
+    @@index([attributeId])
+}
+
+// Текстовое значение характеристики у товара (Цвет: Темно-зеленый).
+model ProductCharacteristicValue {
+    productId        Int
+    characteristicId Int
+    value            String
+    product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+    characteristic   Characteristic @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
+
+    @@id([productId, characteristicId])
+    @@index([characteristicId])
 }
 
 model Unit {
@@ -124,10 +186,6 @@ model Product {
     unitId                Int
     pricePerUnit          Decimal        @db.Decimal(10, 2)
     categoryId            Int?
-    manufacturerId        Int?
-    sizeId                Int?
-    formId                Int?
-    productLineId         Int?
     minPackageAmount      Decimal?       @db.Decimal(10, 3)
     minPackageUnit        String?
     priceTiers            Json?
@@ -139,20 +197,14 @@ model Product {
     createdAt             DateTime       @default(now())
     photos                ProductPhoto[]
     purchaseItems         PurchaseItem[]
+    attributeValues       ProductAttributeValue[]
+    characteristicValues ProductCharacteristicValue[]
     unit                  Unit           @relation(fields: [unitId], references: [id])
     category              Category?      @relation(fields: [categoryId], references: [id])
-    manufacturer          ProductAttribute? @relation("ProductManufacturer", fields: [manufacturerId], references: [id])
-    size                  ProductAttribute? @relation("ProductSize", fields: [sizeId], references: [id])
-    form                  ProductAttribute? @relation("ProductForm", fields: [formId], references: [id])
-    productLine           ProductAttribute? @relation("ProductLine", fields: [productLineId], references: [id])
 
     @@index([createdAt])
     @@index([unitId])
     @@index([categoryId])
-    @@index([manufacturerId])
-    @@index([sizeId])
-    @@index([formId])
-    @@index([productLineId])
 }
 
 model ProductPhoto {
@@ -240,6 +292,15 @@ model Payment {
 
     @@index([userId])
     @@index([purchaseId])
+}
+
+// Шаблон поста для Telegram (текст с редактором, подставляется при добавлении в закупку).
+model PostTemplate {
+    id        Int      @id @default(autoincrement())
+    name      String
+    body      String   @db.Text
+    position  Int      @default(0)
+    createdAt DateTime @default(now())
 }
 
 model PromoCode {

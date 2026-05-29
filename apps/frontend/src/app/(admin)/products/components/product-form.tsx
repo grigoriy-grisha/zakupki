@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, X } from 'lucide-react';
@@ -8,16 +8,26 @@ import { Loader2, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SheetFooter } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 
 import { productCreateSchema, type ProductCreateFormValues } from '../lib';
-import { useCreateProduct, useDeletePhoto, useUpdateProduct } from '../hooks';
+import { useCreateProduct, useDeletePhoto, useUpdateProduct, useUnits } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
-import { ProductAttributeSelect } from './product-attribute-select';
-import type { ProductAttributeKind } from '../lib/schema';
+import { AttributeTreePicker } from './attribute-tree-picker';
+import { ProductCharacteristicsFields } from './product-characteristics-fields';
+
+type ProductAttributeValueShape = {
+    attribute: { id: number; typeId: number };
+};
+
+type ProductCharacteristicValueShape = {
+    characteristicId: number;
+    value: string;
+    characteristic: { id: number; name: string };
+};
 
 interface ProductFormProps {
     editId: number | null;
@@ -25,11 +35,10 @@ interface ProductFormProps {
         | {
               name: string;
               articleNumber: string | null;
+              unitId: number;
               categoryId: number | null;
-              manufacturerId: number | null;
-              sizeId: number | null;
-              formId: number | null;
-              productLineId: number | null;
+              attributeValues?: ProductAttributeValueShape[];
+              characteristicValues?: ProductCharacteristicValueShape[];
               photos: { id: number }[];
           }
         | null
@@ -44,10 +53,19 @@ export function ProductForm({
     defaultCategoryId,
 }: ProductFormProps & { defaultCategoryId?: number | null }) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
-    const [pendingFiles, setPendingFiles] = useState<{ file: File; preview: string }[]>([]);
+    const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+    const pendingFilesRef = useRef(pendingFiles);
+    const prevEditIdRef = useRef<number | null | undefined>(undefined);
+    pendingFilesRef.current = pendingFiles;
+    // typeId -> attributeId (выбранное значение для каждого типа)
+    const [selectedAttrs, setSelectedAttrs] = useState<Record<number, number | null>>({});
+    const [charValues, setCharValues] = useState<Record<number, string>>({});
+    const [manualCharIds, setManualCharIds] = useState<number[]>([]);
     const utils = trpc.useUtils();
-    const { data: categories } = trpc.categories.list.useQuery();
+    const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
     const { data: allAttributes } = trpc.productAttributes.list.useQuery();
+    const { data: allCharacteristics } = trpc.characteristics.list.useQuery();
+    const { data: units } = useUnits(true);
     const createMutation = useCreateProduct();
     const updateMutation = useUpdateProduct();
     const deletePhotoMutation = useDeletePhoto();
@@ -59,61 +77,172 @@ export function ProductForm({
         defaultValues: {
             name: '',
             articleNumber: '',
+            unitId: 0,
             categoryId: defaultCategoryId ?? null,
-            manufacturerId: null,
-            sizeId: null,
-            formId: null,
-            productLineId: null,
         },
     });
 
-    const currentCategoryId = form.watch('categoryId');
-    const attrsByKind = useMemo(() => groupAttributesByKind(allAttributes), [allAttributes]);
+    const unitId = form.watch('unitId');
 
     useEffect(() => {
-        if (existing && editId) {
-            form.reset({
-                name: existing.name,
-                articleNumber: existing.articleNumber ?? '',
-                categoryId: existing.categoryId ?? null,
-                manufacturerId: existing.manufacturerId ?? null,
-                sizeId: existing.sizeId ?? null,
-                formId: existing.formId ?? null,
-                productLineId: existing.productLineId ?? null,
-            });
-            setPhotoIds(existing.photos.map((p) => p.id));
-            setPendingFiles([]);
-        } else if (!editId) {
-            form.reset({
-                name: '',
-                articleNumber: '',
-                categoryId: defaultCategoryId ?? null,
-                manufacturerId: null,
-                sizeId: null,
-                formId: null,
-                productLineId: null,
-            });
-            setPhotoIds([]);
-            setPendingFiles([]);
+        if (editId || !units?.length) return;
+        if (!unitId || unitId <= 0) {
+            form.setValue('unitId', units[0].id, { shouldValidate: true });
         }
-    }, [existing, editId, form, defaultCategoryId]);
+    }, [editId, units, unitId, form]);
 
-    function catalogPayload(data: ProductCreateFormValues, mode: 'create' | 'update') {
-        const opt = (id: number | null) => (mode === 'create' ? (id ?? undefined) : id);
+    const attrsByType = useMemo(() => groupAttributesByType(allAttributes), [allAttributes]);
+
+    // Типы по родителю — для иерархического выбора (как в дереве каталога).
+    const typesByParent = useMemo(() => {
+        const map = new Map<number | null, { id: number; name: string; parentId: number | null; position: number }[]>();
+        for (const t of attributeTypes ?? []) {
+            const key = t.parentId ?? null;
+            const list = map.get(key) ?? [];
+            list.push(t);
+            map.set(key, list);
+        }
+        for (const list of map.values()) list.sort((a, b) => a.position - b.position || a.id - b.id);
+        return map;
+    }, [attributeTypes]);
+
+    const childrenOfType = (parentId: number | null) => typesByParent.get(parentId) ?? [];
+
+    function descendantTypeIds(typeId: number): number[] {
+        return childrenOfType(typeId).flatMap((child) => [child.id, ...descendantTypeIds(child.id)]);
+    }
+
+    function handleSelectType(typeId: number, attributeId: number | null) {
+        setSelectedAttrs((prev) => {
+            const next = { ...prev, [typeId]: attributeId };
+            // При смене/сбросе родителя очищаем выбранные значения подтипов.
+            for (const id of descendantTypeIds(typeId)) delete next[id];
+            return next;
+        });
+    }
+
+    const linkedCharIds = useMemo(() => {
+        const ids = new Set<number>();
+        for (const attrId of Object.values(selectedAttrs)) {
+            if (attrId == null) continue;
+            const attr = allAttributes?.find((a) => a.id === attrId);
+            for (const cid of getAttributeCharacteristicIds(attr)) ids.add(cid);
+        }
+        return ids;
+    }, [selectedAttrs, allAttributes]);
+
+    const activeCharIds = useMemo(
+        () => [...new Set([...linkedCharIds, ...manualCharIds])],
+        [linkedCharIds, manualCharIds],
+    );
+
+    const activeCharFields = useMemo(() => {
+        const ids = new Set(activeCharIds);
+        return (allCharacteristics ?? [])
+            .filter((c) => ids.has(c.id))
+            .map((c) => ({ id: c.id, name: c.name }));
+    }, [activeCharIds, allCharacteristics]);
+
+    function handleActiveCharIdsChange(ids: number[]) {
+        const manual = ids.filter((id) => !linkedCharIds.has(id));
+        setManualCharIds(manual);
+        setCharValues((prev) => {
+            const next = { ...prev };
+            const keep = new Set(ids);
+            for (const key of Object.keys(next)) {
+                if (!keep.has(Number(key))) delete next[Number(key)];
+            }
+            return next;
+        });
+    }
+
+    function characteristicsPayload() {
+        return activeCharFields
+            .map((f) => ({ characteristicId: f.id, value: (charValues[f.id] ?? '').trim() }))
+            .filter((c) => c.value);
+    }
+
+    useEffect(() => {
+        return () => revokePendingFiles(pendingFilesRef.current);
+    }, []);
+
+    useEffect(() => {
+        if (!editId || !existing) return;
+
+        form.reset({
+            name: existing.name,
+            articleNumber: existing.articleNumber ?? '',
+            unitId: existing.unitId,
+            categoryId: existing.categoryId ?? null,
+        });
+        const map: Record<number, number | null> = {};
+        for (const v of existing.attributeValues ?? []) {
+            map[v.attribute.typeId] = v.attribute.id;
+        }
+        setSelectedAttrs(map);
+        const chars: Record<number, string> = {};
+        const manual: number[] = [];
+        const linked = new Set<number>();
+        for (const attrId of Object.values(map)) {
+            if (attrId == null) continue;
+            const attr = allAttributes?.find((a) => a.id === attrId);
+            for (const cid of getAttributeCharacteristicIds(attr)) linked.add(cid);
+        }
+        for (const cv of existing.characteristicValues ?? []) {
+            chars[cv.characteristicId] = cv.value;
+            if (!linked.has(cv.characteristicId)) manual.push(cv.characteristicId);
+        }
+        setCharValues(chars);
+        setManualCharIds(manual);
+        setPhotoIds(existing.photos.map((p) => p.id));
+        setPendingFiles((prev) => {
+            revokePendingFiles(prev);
+            return [];
+        });
+    }, [editId, existing, form, allAttributes]);
+
+    useEffect(() => {
+        const prev = prevEditIdRef.current;
+        prevEditIdRef.current = editId;
+        if (editId != null) return;
+        if (prev === editId) return;
+
+        form.reset({
+            name: '',
+            articleNumber: '',
+            unitId: units?.[0]?.id ?? 0,
+            categoryId: defaultCategoryId ?? null,
+        });
+        setSelectedAttrs({});
+        setCharValues({});
+        setManualCharIds([]);
+        setPhotoIds([]);
+        setPendingFiles((prev) => {
+            revokePendingFiles(prev);
+            return [];
+        });
+    }, [editId, defaultCategoryId, form, units]);
+
+    function selectedAttributeIds(): number[] {
+        return Object.values(selectedAttrs).filter((id): id is number => typeof id === 'number');
+    }
+
+    function basePayload(data: ProductCreateFormValues) {
         return {
             name: data.name,
             articleNumber: data.articleNumber?.trim() || null,
-            categoryId: mode === 'create' ? (data.categoryId ?? undefined) : data.categoryId,
-            manufacturerId: opt(data.manufacturerId),
-            sizeId: opt(data.sizeId),
-            formId: opt(data.formId),
-            productLineId: opt(data.productLineId),
+            unitId: data.unitId,
+            attributeIds: selectedAttributeIds(),
+            characteristics: characteristicsPayload(),
         };
     }
 
     async function handleCreate(data: ProductCreateFormValues) {
         try {
-            const result = await createMutation.mutateAsync(catalogPayload(data, 'create'));
+            const result = await createMutation.mutateAsync({
+                ...basePayload(data),
+                categoryId: data.categoryId ?? undefined,
+            });
             await utils.products.list.invalidate();
 
             if (pendingFiles.length > 0) {
@@ -133,6 +262,8 @@ export function ProductForm({
                     }
                 }
                 setPendingFiles([]);
+                await utils.products.getById.invalidate({ id: result.id });
+                await utils.products.list.invalidate();
             }
 
             toast.success('Товар создан');
@@ -146,7 +277,11 @@ export function ProductForm({
     async function handleUpdate(data: ProductCreateFormValues) {
         if (!editId) return false;
         try {
-            await updateMutation.mutateAsync({ id: editId, ...catalogPayload(data, 'update') });
+            await updateMutation.mutateAsync({
+                id: editId,
+                ...basePayload(data),
+                categoryId: data.categoryId,
+            });
             await utils.products.list.invalidate();
             toast.success('Товар обновлён');
             return true;
@@ -171,80 +306,81 @@ export function ProductForm({
         await deletePhotoMutation.mutateAsync({ id });
     }
 
-    function renderAttributeSelect(
-        kind: ProductAttributeKind,
-        field: 'manufacturerId' | 'sizeId' | 'formId' | 'productLineId',
-    ) {
-        return (
-            <ProductAttributeSelect
-                kind={kind}
-                value={form.watch(field)}
-                options={attrsByKind[kind]}
-                onChange={(id) => form.setValue(field, id, { shouldDirty: true })}
-            />
-        );
-    }
-
-    const folderSelect = (
-        <div className="space-y-2">
-            <Label>Папка в каталоге</Label>
-            <Select
-                value={currentCategoryId ? String(currentCategoryId) : 'none'}
-                onValueChange={(v) => {
-                    const val = v === 'none' ? null : Number(v);
-                    form.setValue('categoryId', val, { shouldDirty: true });
-                }}
-            >
-                <SelectTrigger>
-                    <SelectValue placeholder="Без папки" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="none">Без папки</SelectItem>
-                    {categories?.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                            {c.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-    );
-
     return (
         <form onSubmit={handleFormSubmit} className="space-y-4 px-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="articleNumber">Номер</Label>
-                    <Input id="articleNumber" placeholder="DB-0002" {...form.register('articleNumber')} />
+                    <Input id="articleNumber" {...form.register('articleNumber')} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="name">Название</Label>
-                    <Input id="name" placeholder="синий ирис" {...form.register('name')} />
+                    <Input id="name" {...form.register('name')} />
                     {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                {renderAttributeSelect('MANUFACTURER', 'manufacturerId')}
-                {renderAttributeSelect('SIZE', 'sizeId')}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                {renderAttributeSelect('FORM', 'formId')}
-                {renderAttributeSelect('PRODUCT_LINE', 'productLineId')}
+            <div className="space-y-2">
+                <Label>Единица учёта</Label>
+                <Select
+                    value={unitId > 0 ? String(unitId) : undefined}
+                    onValueChange={(v) => form.setValue('unitId', Number(v), { shouldValidate: true })}
+                    disabled={!units?.length}
+                >
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {units?.map((u) => (
+                            <SelectItem key={u.id} value={String(u.id)}>
+                                {u.name} ({u.shortName})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {errors.unitId && <p className="text-xs text-destructive">{errors.unitId.message}</p>}
             </div>
 
-            {folderSelect}
+            {(attributeTypes?.length ?? 0) > 0 && (
+                <AttributeTreePicker
+                    rootTypes={childrenOfType(null)}
+                    childrenOfType={childrenOfType}
+                    attrsByType={attrsByType}
+                    selectedAttrs={selectedAttrs}
+                    onSelect={handleSelectType}
+                />
+            )}
+
+            {(allCharacteristics?.length ?? 0) > 0 && (
+                <ProductCharacteristicsFields
+                    fields={activeCharFields}
+                    values={charValues}
+                    onChange={(id, value) => setCharValues((prev) => ({ ...prev, [id]: value }))}
+                    onRemove={(id) => handleActiveCharIdsChange(activeCharIds.filter((x) => x !== id))}
+                    canRemove={(id) => !linkedCharIds.has(id)}
+                    allCharacteristics={(allCharacteristics ?? []).map((c) => ({ id: c.id, name: c.name }))}
+                    activeIds={activeCharIds}
+                    lockedIds={linkedCharIds}
+                    onActiveIdsChange={handleActiveCharIdsChange}
+                />
+            )}
 
             <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">Фото</label>
                 {isCreating ? (
                     <div className="flex flex-wrap gap-2">
-                        {pendingFiles.map((f, i) => (
-                            <div key={i} className="relative">
+                        {pendingFiles.map((f) => (
+                            <div key={f.id} className="relative">
                                 <img src={f.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
                                 <button
                                     type="button"
-                                    onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
+                                    onClick={() =>
+                                        setPendingFiles((prev) => {
+                                            const item = prev.find((x) => x.id === f.id);
+                                            if (item) URL.revokeObjectURL(item.preview);
+                                            return prev.filter((x) => x.id !== f.id);
+                                        })
+                                    }
                                     className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-destructive-foreground"
                                 >
                                     <X className="h-3 w-3" />
@@ -260,6 +396,7 @@ export function ProductForm({
                                 onChange={(e) => {
                                     const files = Array.from(e.target.files ?? []);
                                     const withPreviews = files.map((file) => ({
+                                        id: crypto.randomUUID(),
                                         file,
                                         preview: URL.createObjectURL(file),
                                     }));
@@ -290,18 +427,30 @@ export function ProductForm({
     );
 }
 
-function groupAttributesByKind(
-    items: { id: number; kind: ProductAttributeKind; name: string }[] | undefined,
-): Record<ProductAttributeKind, { id: number; name: string }[]> {
-    const empty: Record<ProductAttributeKind, { id: number; name: string }[]> = {
-        MANUFACTURER: [],
-        SIZE: [],
-        FORM: [],
-        PRODUCT_LINE: [],
-    };
-    if (!items) return empty;
+type AttributeListItem = {
+    id: number;
+    typeId: number;
+    name: string;
+    characteristics?: { characteristic: { id: number } }[];
+};
+
+function getAttributeCharacteristicIds(attr: AttributeListItem | undefined): number[] {
+    return attr?.characteristics?.map((l) => l.characteristic.id) ?? [];
+}
+
+type PendingFile = { id: string; file: File; preview: string };
+
+function revokePendingFiles(files: PendingFile[]) {
+    for (const f of files) URL.revokeObjectURL(f.preview);
+}
+
+function groupAttributesByType(
+    items: AttributeListItem[] | undefined,
+): Record<number, { id: number; name: string }[]> {
+    const result: Record<number, { id: number; name: string }[]> = {};
+    if (!items) return result;
     for (const item of items) {
-        empty[item.kind].push({ id: item.id, name: item.name });
+        (result[item.typeId] ??= []).push({ id: item.id, name: item.name });
     }
-    return empty;
+    return result;
 }

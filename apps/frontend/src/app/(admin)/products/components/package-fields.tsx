@@ -6,6 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import { PACKAGE_UNITS } from '../lib';
 
+/** Пустое поле вместо 0 — удобнее вводить цену с нуля. */
+function numInputValue(n: number, emptyWhenZero = true): string | number {
+    if (emptyWhenZero && n === 0) return '';
+    return n;
+}
+
+function parseNumInput(raw: string): number {
+    if (raw === '' || raw === '-') return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+}
+
 export function PriceTierEditor({
     tiers,
     onChange,
@@ -33,11 +45,13 @@ export function PriceTierEditor({
                         <Input
                             type="number"
                             step="0.001"
+                            min={0}
                             className="w-20"
-                            value={tier.amount}
+                            placeholder="1"
+                            value={numInputValue(tier.amount, false)}
                             onChange={(e) => {
                                 const next = [...tiers];
-                                next[i] = { ...next[i], amount: Number(e.target.value) };
+                                next[i] = { ...next[i], amount: parseNumInput(e.target.value) || 1 };
                                 onChange(next);
                             }}
                         />
@@ -53,11 +67,13 @@ export function PriceTierEditor({
                         <Input
                             type="number"
                             step="0.01"
+                            min={0}
                             className="flex-1"
-                            value={tier.price}
+                            placeholder="Цена"
+                            value={numInputValue(tier.price)}
                             onChange={(e) => {
                                 const next = [...tiers];
-                                next[i] = { ...next[i], price: Number(e.target.value) };
+                                next[i] = { ...next[i], price: parseNumInput(e.target.value) };
                                 onChange(next);
                             }}
                         />

@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return new Response(new Uint8Array(photo.data), {
         headers: {
             'Content-Type': photo.mimeType,
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Cache-Control': 'private, no-cache',
         },
     });
 }

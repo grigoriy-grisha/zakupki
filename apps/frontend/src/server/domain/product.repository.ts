@@ -4,6 +4,7 @@ import type { PrismaClient } from '@zakupki/database';
 import { assertProductNotInActivePurchase, findProductIdsInActivePurchases } from './product-purchase-lock';
 
 export type PriceTier = { amount: number; unit: string; price: number };
+export type ProductCharacteristicInput = { characteristicId: number; value: string };
 
 export interface ProductWriteData {
     name?: string;
@@ -12,10 +13,8 @@ export interface ProductWriteData {
     unitId?: number;
     pricePerUnit?: number;
     categoryId?: number | null;
-    manufacturerId?: number | null;
-    sizeId?: number | null;
-    formId?: number | null;
-    productLineId?: number | null;
+    attributeIds?: number[];
+    characteristics?: ProductCharacteristicInput[];
     minPackageAmount?: number | null;
     minPackageUnit?: string | null;
     priceTiers?: PriceTier[] | null;
@@ -43,10 +42,6 @@ export class ProductRepository {
                           OR: [
                               { name: { contains: search, mode: 'insensitive' } },
                               { articleNumber: { contains: search, mode: 'insensitive' } },
-                              { manufacturer: { name: { contains: search, mode: 'insensitive' } } },
-                              { size: { name: { contains: search, mode: 'insensitive' } } },
-                              { form: { name: { contains: search, mode: 'insensitive' } } },
-                              { productLine: { name: { contains: search, mode: 'insensitive' } } },
                           ],
                       }
                     : {}),
@@ -129,28 +124,35 @@ const productInclude = {
     photos: { select: { id: true, sortOrder: true } },
     unit: true,
     category: true,
-    manufacturer: true,
-    size: true,
-    form: true,
-    productLine: true,
+    attributeValues: {
+        include: {
+            attribute: {
+                include: {
+                    type: true,
+                    characteristics: { include: { characteristic: true } },
+                },
+            },
+        },
+    },
+    characteristicValues: { include: { characteristic: true }, orderBy: { characteristic: { position: 'asc' } } },
 } as const;
 
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { categoryId, unitId, priceTiers, manufacturerId, sizeId, formId, productLineId, ...rest } = data;
+    const { categoryId, unitId, priceTiers, attributeIds, characteristics, ...rest } = data;
     return {
         ...rest,
         priceTiers: priceTiers ?? Prisma.JsonNull,
         unit: { connect: { id: unitId } },
         ...optionalRelation('category', categoryId),
-        ...optionalRelation('manufacturer', manufacturerId),
-        ...optionalRelation('size', sizeId),
-        ...optionalRelation('form', formId),
-        ...optionalRelation('productLine', productLineId),
+        ...(attributeIds && attributeIds.length > 0
+            ? { attributeValues: { create: attributeIds.map((id) => ({ attribute: { connect: { id } } })) } }
+            : {}),
+        ...characteristicValuesCreate(characteristics),
     };
 }
 
 function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
-    const { categoryId, unitId, priceTiers, manufacturerId, sizeId, formId, productLineId, ...rest } = data;
+    const { categoryId, unitId, priceTiers, attributeIds, characteristics, ...rest } = data;
     const update: Prisma.ProductUpdateInput = { ...rest };
     if (priceTiers !== undefined) {
         update.priceTiers = priceTiers ?? Prisma.JsonNull;
@@ -161,30 +163,39 @@ function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
     if (categoryId !== undefined) {
         update.category = categoryId == null ? { disconnect: true } : { connect: { id: categoryId } };
     }
-    if (manufacturerId !== undefined) {
-        update.manufacturer =
-            manufacturerId == null ? { disconnect: true } : { connect: { id: manufacturerId } };
+    if (attributeIds !== undefined) {
+        update.attributeValues = {
+            deleteMany: {},
+            create: attributeIds.map((id) => ({ attribute: { connect: { id } } })),
+        };
     }
-    if (sizeId !== undefined) {
-        update.size = sizeId == null ? { disconnect: true } : { connect: { id: sizeId } };
-    }
-    if (formId !== undefined) {
-        update.form = formId == null ? { disconnect: true } : { connect: { id: formId } };
-    }
-    if (productLineId !== undefined) {
-        update.productLine =
-            productLineId == null ? { disconnect: true } : { connect: { id: productLineId } };
+    if (characteristics !== undefined) {
+        update.characteristicValues = {
+            deleteMany: {},
+            create: characteristics
+                .filter((c) => c.value.trim())
+                .map((c) => ({ characteristicId: c.characteristicId, value: c.value.trim() })),
+        };
     }
     return update;
 }
 
+function characteristicValuesCreate(
+    characteristics: ProductCharacteristicInput[] | undefined,
+): Pick<Prisma.ProductCreateInput, 'characteristicValues'> {
+    if (!characteristics?.length) return {};
+    const rows = characteristics.filter((c) => c.value.trim()).map((c) => ({
+        characteristicId: c.characteristicId,
+        value: c.value.trim(),
+    }));
+    if (!rows.length) return {};
+    return { characteristicValues: { create: rows } };
+}
+
 function optionalRelation(
-    field: 'category' | 'manufacturer' | 'size' | 'form' | 'productLine',
+    field: 'category',
     id: number | null | undefined,
-): Pick<Prisma.ProductCreateInput, 'category' | 'manufacturer' | 'size' | 'form' | 'productLine'> {
+): Pick<Prisma.ProductCreateInput, 'category'> {
     if (id == null) return {};
-    return { [field]: { connect: { id } } } as Pick<
-        Prisma.ProductCreateInput,
-        'category' | 'manufacturer' | 'size' | 'form' | 'productLine'
-    >;
+    return { [field]: { connect: { id } } } as Pick<Prisma.ProductCreateInput, 'category'>;
 }

@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { ProductLabelSource } from './format-product-label';
-import { getProductDisplayName } from './format-product-label';
+import {
+    getProductAttributeNames,
+    getProductTitleAttributeNames,
+    stripAttributesFromName,
+    type AttributeTypeMeta,
+    type ShowInTitleByTypeId,
+} from './format-product-label';
 
 export interface DescriptionFields {
     name?: string;
     articleNumber?: string;
-    manufacturer?: string;
-    size?: string;
-    form?: string;
-    productLine?: string;
+    /** Значения атрибутов для первой строки заголовка (по порядку типов). */
+    titleAttributes?: string[];
+    /** Все значения атрибутов — для очистки названия. */
+    attributeNames?: string[];
+    /** Характеристики товара (Цвет: …, Размер: …). */
+    productCharacteristics?: { name: string; value: string }[];
     minPackageAmount?: number | null;
     minPackageUnit?: string | null;
     priceTiers?: { amount?: number; unit?: string; price?: number }[];
@@ -20,36 +28,49 @@ export interface DescriptionFields {
     purchaseTag?: string;
 }
 
-export function productToDescriptionFields(product: ProductLabelSource): Omit<DescriptionFields, 'name'> {
+export function productToDescriptionFields(
+    product: ProductLabelSource,
+    showInTitleByTypeId?: ShowInTitleByTypeId,
+    attributeTypes?: AttributeTypeMeta[],
+): Omit<DescriptionFields, 'name'> {
     return {
         articleNumber: product.articleNumber ?? undefined,
-        manufacturer: product.manufacturer?.name,
-        size: product.size?.name,
-        form: product.form?.name,
-        productLine: product.productLine?.name,
+        titleAttributes: getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes),
+        attributeNames: getProductAttributeNames(product, attributeTypes),
+        productCharacteristics: getProductCharacteristics(product),
     };
+}
+
+function getProductCharacteristics(product: ProductLabelSource): { name: string; value: string }[] {
+    return (product.characteristicValues ?? [])
+        .map((v) => ({
+            name: v.characteristic.name?.trim() ?? '',
+            value: v.value?.trim() ?? '',
+        }))
+        .filter((c) => c.name && c.value);
 }
 
 /** Текст описания для закупки / Telegram */
 export function buildProductDescriptionText(input: DescriptionFields): string {
     const lines: string[] = [];
     const article = (input.articleNumber ?? '').trim();
-    const displayName = getProductDisplayName({
-        name: input.name ?? '',
-        articleNumber: input.articleNumber,
-        manufacturer: input.manufacturer ? { name: input.manufacturer } : null,
-        size: input.size ? { name: input.size } : null,
-        form: input.form ? { name: input.form } : null,
-        productLine: input.productLine ? { name: input.productLine } : null,
-    });
+    const displayName = stripAttributesFromName(input.name ?? '', input.articleNumber, input.attributeNames ?? []);
 
-    const line1 = [input.manufacturer?.trim(), input.productLine?.trim()].filter(Boolean).join(' ');
+    const line1 = (input.titleAttributes ?? []).map((s) => s.trim()).filter(Boolean).join(' ');
     if (line1) lines.push(line1);
 
     const line2Parts: string[] = [];
     if (article) line2Parts.push(article);
     if (displayName) line2Parts.push(displayName);
     if (line2Parts.length) lines.push(line2Parts.join('  '));
+
+    const chars = input.productCharacteristics?.filter((c) => c.name && c.value) ?? [];
+    if (chars.length > 0) {
+        lines.push('');
+        for (const c of chars) {
+            lines.push(`${c.name}: ${c.value}`);
+        }
+    }
 
     if (isPositive(input.minPackageAmount) && input.minPackageUnit) {
         lines.push('');
@@ -96,16 +117,9 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
 export function buildDescriptionHtml(input: DescriptionFields): string {
     const blocks: string[] = [];
     const article = (input.articleNumber ?? '').trim();
-    const displayName = getProductDisplayName({
-        name: input.name ?? '',
-        articleNumber: input.articleNumber,
-        manufacturer: input.manufacturer ? { name: input.manufacturer } : null,
-        size: input.size ? { name: input.size } : null,
-        form: input.form ? { name: input.form } : null,
-        productLine: input.productLine ? { name: input.productLine } : null,
-    });
+    const displayName = stripAttributesFromName(input.name ?? '', input.articleNumber, input.attributeNames ?? []);
 
-    const line1 = [input.manufacturer?.trim(), input.productLine?.trim()].filter(Boolean).join(' ');
+    const line1 = (input.titleAttributes ?? []).map((s) => s.trim()).filter(Boolean).join(' ');
     const line2Parts: string[] = [];
     if (article) line2Parts.push(article);
     if (displayName) line2Parts.push(displayName);
@@ -113,6 +127,12 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
 
     const headerLines = [line1, line2].filter(Boolean);
     if (headerLines.length) blocks.push(boldLinesParagraph(headerLines));
+
+    const chars = input.productCharacteristics?.filter((c) => c.name && c.value) ?? [];
+    if (chars.length > 0) {
+        blocks.push(blankParagraph());
+        blocks.push(linesParagraph(chars.map((c) => `${c.name}: ${c.value}`)));
+    }
 
     if (isPositive(input.minPackageAmount) && input.minPackageUnit) {
         blocks.push(blankParagraph());
@@ -160,7 +180,7 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         blocks.push(paragraph(tag.startsWith('#') ? tag : `#${tag}`));
     }
 
-    return blocks.join('');
+    return normalizeNovelHtml(blocks.join(''));
 }
 
 function blankParagraph(): string {
@@ -190,20 +210,165 @@ function mixedParagraph(boldLine: string, normalLine: string): string {
     return `<p><strong>${escapeHtml(boldLine)}</strong><br>${escapeHtml(normalLine)}</p>`;
 }
 
+/** Несколько строк через &lt;br&gt; без обёртки &lt;p&gt; — для подстановки в шаблон. */
+function linesInline(lines: string[]): string {
+    return lines.map(escapeHtml).join('<br>');
+}
+
+function boldInline(text: string): string {
+    return `<strong>${escapeHtml(text)}</strong>`;
+}
+
+/** Подсказки для редактора шаблонов постов (вставляйте как {{ключ}}). */
+export const POST_TEMPLATE_PLACEHOLDERS: { key: string; label: string; example: string }[] = [
+    { key: 'название', label: 'Название товара', example: 'синий ирис' },
+    { key: 'номер', label: 'Номер (артикул)', example: 'DB-0002' },
+    { key: 'заголовок', label: 'Первая строка (атрибуты в шапке)', example: 'MIYUKI Delica 11/0' },
+    { key: 'атрибуты', label: 'Все атрибуты через ·', example: 'MIYUKI · Delica 11/0 · …' },
+    { key: 'характеристики', label: 'Блок характеристик', example: 'Цвет: …, Размер: …' },
+    { key: 'мин_фасовка', label: 'Минимальная фасовка', example: '5 гр' },
+    { key: 'цены', label: 'Список цен', example: '5 гр - 100 руб' },
+    { key: 'фасовка_поставщика', label: 'Фасовка поставщика', example: '111 гр - 111 руб' },
+    { key: 'свободно', label: 'Свободный остаток', example: 'СВОБОДНО: 10 гр' },
+    { key: 'тег', label: 'Тег закупки', example: '#закупка_май' },
+];
+
+const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
+    'Всё описание целиком — например: автотекст из полей закупки',
+    'Название товара (строкой) — например: синий ирис',
+    'Атрибуты (строкой) — например: MIYUKI · Delica 11/0 · …',
+    'Если меток нет, при публикации в конец добавится полное автоматическое описание (как',
+    'Если меток в шаблоне нет, при публикации в конец добавится полное автоматическое описание из полей закупки.',
+    'Копируйте только метки вроде',
+    'без подписей списка. Если в шаблон попал старый текст подсказок',
+    'Атрибуты с галочкой «в заголовок» попадают в метку',
+    'не в {{название}}',
+];
+
+/** Убирает только строки-подсказки из редактора шаблонов (не трогает текст подстановки). */
+export function stripPlaceholderHintDebris(html: string): string {
+    const fragments = [
+        ...LEGACY_PLACEHOLDER_HINT_FRAGMENTS,
+        ...POST_TEMPLATE_PLACEHOLDERS.map((p) => `${p.label} — например: ${p.example}`).filter(
+            (s) => s.includes('например:'),
+        ),
+        ...POST_TEMPLATE_PLACEHOLDERS.map((p) => `${p.label} · ${p.example}`).filter((s) => s.includes(' · ')),
+    ].sort((a, b) => b.length - a.length);
+
+    let result = html ?? '';
+    for (const frag of fragments) {
+        if (frag) result = result.split(frag).join('');
+    }
+    return result;
+}
+
+/** Подставляет поля товара в шаблон поста по меткам {{ключ}}. Без меток — только текст шаблона. */
+export function applyPostTemplate(templateHtml: string, fields: DescriptionFields): string {
+    const tpl = (templateHtml ?? '').trim();
+    if (!tpl) return '';
+
+    const values = buildPlaceholderValues(fields, buildDescriptionHtml(fields));
+    let result = tpl;
+    for (const [key, value] of Object.entries(values)) {
+        result = result.replace(new RegExp(`\\{\\{\\s*${escapeRegExp(key)}\\s*\\}\\}`, 'gi'), () => value);
+    }
+    return normalizeNovelHtml(stripPlaceholderHintDebris(result));
+}
+
+function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Record<string, string> {
+    const article = (fields.articleNumber ?? '').trim();
+    const displayName = stripAttributesFromName(
+        fields.name ?? '',
+        fields.articleNumber,
+        fields.attributeNames ?? [],
+    );
+    const line1 = (fields.titleAttributes ?? []).map((s) => s.trim()).filter(Boolean).join(' ');
+    const attributesLine = (fields.attributeNames ?? [])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(' · ');
+
+    const chars = fields.productCharacteristics?.filter((c) => c.name && c.value) ?? [];
+
+    const validTiers =
+        fields.priceTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
+
+    const tagRaw = fields.purchaseTag?.trim() ?? '';
+    const tag = tagRaw ? (tagRaw.startsWith('#') ? tagRaw : `#${tagRaw}`) : '';
+
+    const nameHtml = displayName ? escapeHtml(displayName) : '';
+    const attrsHtml = attributesLine ? escapeHtml(attributesLine) : '';
+
+    return {
+        /** Для старых шаблонов с {{описание}} */
+        описание: fullHtml,
+        название: nameHtml,
+        название_строка: nameHtml,
+        номер: article ? escapeHtml(article) : '',
+        заголовок: line1 ? boldInline(line1) : '',
+        атрибуты: attrsHtml,
+        атрибуты_строка: attrsHtml,
+        характеристики: chars.length > 0 ? linesInline(chars.map((c) => `${c.name}: ${c.value}`)) : '',
+        мин_фасовка:
+            isPositive(fields.minPackageAmount) && fields.minPackageUnit
+                ? boldInline(
+                      `Минимальная фасовка  - ${formatNumber(fields.minPackageAmount)} ${fields.minPackageUnit}`,
+                  )
+                : '',
+        цены:
+            validTiers.length > 0
+                ? linesInline(
+                      validTiers.map(
+                          (tier) =>
+                              `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб.`,
+                      ),
+                  )
+                : '',
+        фасовка_поставщика:
+            isPositive(fields.supplierPackageAmount) &&
+            fields.supplierPackageUnit &&
+            isPositive(fields.supplierPackagePrice)
+                ? `${boldInline('Фасовка поставщика:')}<br>${escapeHtml(`${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatNumber(fields.supplierPackagePrice)} руб.`)}`
+                : '',
+        свободно:
+            fields.availableAmount != null &&
+            Number(fields.availableAmount) >= 0 &&
+            fields.availableUnit
+                ? escapeHtml(`СВОБОДНО: ${formatNumber(fields.availableAmount)} ${fields.availableUnit}`)
+                : '',
+        тег: tag ? escapeHtml(tag) : '',
+    };
+}
+
+function escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Обновляет описание только при выбранном шаблоне поста; без шаблона поле не трогает. */
 export function useAutoProductDescription(
     fields: DescriptionFields,
     setDescription: (html: string) => void,
+    templateHtml?: string | null,
+    opts?: { ready?: boolean },
 ) {
     const lastGeneratedRef = useRef('');
-    const stableKey = useMemo(() => JSON.stringify(fields), [fields]);
+    const stableKey = useMemo(
+        () => JSON.stringify({ fields, templateHtml: templateHtml ?? '' }),
+        [fields, templateHtml],
+    );
+    const ready = opts?.ready !== false;
 
     useEffect(() => {
-        const html = buildDescriptionHtml(fields);
+        if (!ready || !templateHtml?.trim()) {
+            if (!templateHtml?.trim()) lastGeneratedRef.current = '';
+            return;
+        }
+        const html = applyPostTemplate(templateHtml, fields);
         if (html === lastGeneratedRef.current) return;
         lastGeneratedRef.current = html;
         setDescription(html);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stableKey]);
+    }, [stableKey, ready]);
 }
 
 function isPositive(v: number | null | undefined): v is number {
@@ -219,4 +384,48 @@ function formatNumber(v: number | null | undefined): string {
 
 function escapeHtml(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * NovelEditor хранит текст как HTML из абзацев. Пустые строки становятся `<p></p>`/`<p><br></p>`/`<p>&nbsp;</p>`.
+ * Из-за них в подставленном тексте появляются «огромные» пробелы. Полностью удаляем абзацы без видимого текста.
+ * В браузере используем DOM (надёжно ловит вложенные пустые теги), на сервере — регэкспы как запасной вариант.
+ */
+export function normalizeNovelHtml(html: string): string {
+    const out = (html ?? '').trim();
+    if (!out) return '';
+
+    if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+        try {
+            const doc = new window.DOMParser().parseFromString(`<body>${out}</body>`, 'text/html');
+            const body = doc.body;
+
+            // Разворачиваем вложенные абзацы: <p><p>текст</p></p> → <p>текст</p>
+            let nested = true;
+            while (nested) {
+                nested = false;
+                body.querySelectorAll('p > p').forEach((inner) => {
+                    const outer = inner.parentElement;
+                    if (outer?.tagName === 'P') {
+                        outer.replaceWith(inner);
+                        nested = true;
+                    }
+                });
+            }
+
+            body.querySelectorAll('p, div, h1, h2, h3, blockquote').forEach((el) => {
+                const hasMedia = el.querySelector('img, hr, iframe');
+                const text = (el.textContent ?? '').replace(/\u00a0/g, ' ').trim();
+                if (!hasMedia && text === '') el.remove();
+            });
+            return body.innerHTML.trim();
+        } catch {
+            /* fall through to regex */
+        }
+    }
+
+    let res = out.replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '<p></p>');
+    res = res.replace(/<p>(?:\s|&nbsp;|&#160;|\u00a0)*<\/p>/gi, '<p></p>');
+    res = res.replace(/<p>\s*<\/p>\s*/gi, '');
+    return res.trim();
 }

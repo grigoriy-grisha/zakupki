@@ -1,15 +1,17 @@
 'use client';
 
 import { use, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/client/trpc';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Rocket } from 'lucide-react';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { CheckCircle2, Loader2, Rocket, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
-import { useActivateAndPublish } from './hooks';
+import { useActivateAndPublish, useCompletePurchase, useDeleteDraftPurchase } from './hooks';
 import { ItemsTab, ParticipantsTab, SupplementDialog } from './components';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,9 +19,14 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const id = Number(idStr);
     const [supplementOpen, setSupplementOpen] = useState(false);
     const [activateOpen, setActivateOpen] = useState(false);
+    const [completeOpen, setCompleteOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const router = useRouter();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const activateAndPublish = useActivateAndPublish(id);
+    const completePurchase = useCompletePurchase(id);
+    const deleteDraft = useDeleteDraftPurchase();
 
     if (isLoading) {
         return (
@@ -36,6 +43,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
     const deadline = new Date(purchase.deadline);
     const isDraft = purchase.status === 'DRAFT';
+    const canComplete = purchase.status === 'ACTIVE' || purchase.status === 'SUPPLEMENT';
     const publishCount = purchase.items.filter((i: any) => i.shouldPublish && !i.tgMessageId).length;
 
     return (
@@ -55,14 +63,26 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
                 <div className="flex items-center gap-2">
                     {isDraft && (
-                        <Button size="lg" onClick={() => setActivateOpen(true)}>
-                            <Rocket className="mr-2 h-5 w-5" />
-                            Активировать закупку
-                        </Button>
+                        <>
+                            <Button variant="outline" size="lg" onClick={() => setDeleteOpen(true)}>
+                                <Trash2 className="mr-2 h-5 w-5" />
+                                Удалить черновик
+                            </Button>
+                            <Button size="lg" onClick={() => setActivateOpen(true)}>
+                                <Rocket className="mr-2 h-5 w-5" />
+                                Активировать закупку
+                            </Button>
+                        </>
                     )}
                     {purchase.status === 'SUPPLEMENT' && (
                         <Button variant="outline" size="sm" onClick={() => setSupplementOpen(true)}>
                             Остатки
+                        </Button>
+                    )}
+                    {canComplete && (
+                        <Button variant="outline" size="lg" onClick={() => setCompleteOpen(true)}>
+                            <CheckCircle2 className="mr-2 h-5 w-5" />
+                            Завершить закупку
                         </Button>
                     )}
                 </div>
@@ -84,6 +104,59 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
             </Tabs>
 
             <SupplementDialog purchaseId={id} open={supplementOpen} onOpenChange={setSupplementOpen} />
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                title="Удалить черновик?"
+                description={
+                    <>
+                        Закупка <strong>{purchase.tag}</strong> и все добавленные в неё товары будут удалены без
+                        возможности восстановления.
+                    </>
+                }
+                loading={deleteDraft.isPending}
+                onConfirm={() => {
+                    deleteDraft.mutate(
+                        { id },
+                        {
+                            onSuccess: () => {
+                                setDeleteOpen(false);
+                                router.push('/purchases');
+                            },
+                        },
+                    );
+                }}
+            />
+
+            <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Завершить закупку?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Участники больше не смогут оформлять и менять заказы. Закупка появится во вкладке
+                        «Завершённые».
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCompleteOpen(false)}>
+                            Отмена
+                        </Button>
+                        <Button
+                            disabled={completePurchase.isPending}
+                            onClick={() => {
+                                completePurchase.mutate(
+                                    { id },
+                                    { onSuccess: () => setCompleteOpen(false) },
+                                );
+                            }}
+                        >
+                            {completePurchase.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Завершить
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={activateOpen} onOpenChange={setActivateOpen}>
                 <DialogContent>

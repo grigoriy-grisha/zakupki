@@ -58,6 +58,31 @@ export function useActivateAndPublish(purchaseId: number) {
     });
 }
 
+export function useCompletePurchase(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.complete.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            void utils.purchases.list.invalidate();
+            toast.success('Закупка завершена');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}
+
+export function useDeleteDraftPurchase() {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.deleteDraft.useMutation({
+        onSuccess: () => {
+            void utils.purchases.list.invalidate();
+            toast.success('Черновик удалён');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}
+
 export function useToggleShouldPublish(purchaseId: number) {
     const utils = trpc.useUtils();
 

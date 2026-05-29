@@ -1,6 +1,8 @@
 export {
     useAddPurchaseItems,
     useActivateAndPublish,
+    useCompletePurchase,
+    useDeleteDraftPurchase,
     useRemovePurchaseItem,
     useToggleShouldPublish,
 } from './use-purchase-items';

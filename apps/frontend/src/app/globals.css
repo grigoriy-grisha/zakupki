@@ -236,6 +236,13 @@
 .novel-editor p {
     margin: 0;
 }
+.novel-editor p:empty {
+    display: none;
+}
+/* Empty paragraph that contains only a <br> */
+.novel-editor p:has(> br:only-child) {
+    display: none;
+}
 .novel-editor p + p,
 .novel-editor h1 + *,
 .novel-editor h2 + *,
@@ -244,7 +251,7 @@
 .novel-editor ol + *,
 .novel-editor blockquote + *,
 .novel-editor pre + * {
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
 }
 .novel-editor h1 {
     font-size: 1.5rem;

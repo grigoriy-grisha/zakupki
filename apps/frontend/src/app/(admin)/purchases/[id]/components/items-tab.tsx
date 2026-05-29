@@ -32,6 +32,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const isDraft = purchase.status === 'DRAFT';
     const isActive = purchase.status === 'ACTIVE';
     const isSupplement = purchase.status === 'SUPPLEMENT';
+    const canAddItems = purchase.status !== 'DONE';
     const existingProductIds = new Set(purchase.items.map((item) => item.productId));
 
     return (
@@ -45,11 +46,13 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         </Button>
                     )}
                 </div>
-                <ProductPickerDialog
-                    purchaseId={purchaseId}
-                    purchaseTag={purchase.tag}
-                    existingProductIds={existingProductIds}
-                />
+                {canAddItems ? (
+                    <ProductPickerDialog
+                        purchaseId={purchaseId}
+                        purchaseTag={purchase.tag}
+                        existingProductIds={existingProductIds}
+                    />
+                ) : null}
             </div>
 
             <div className="rounded-md border">
@@ -198,7 +201,8 @@ function ItemEditSheet({
     });
 
     if (!item) return null;
-    const product: Record<string, any> = item.product;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const product = item.product as any;
     const tiers: { amount: number; unit: string; price: number }[] = Array.isArray(product.priceTiers)
         ? product.priceTiers
         : [];
@@ -218,6 +222,7 @@ function ItemEditSheet({
                 <PurchaseProductEditForm
                     key={product.id}
                     product={product}
+                    loadSavedDescription
                     purchaseTag={purchase?.tag}
                     initialTiers={tiers}
                     onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}

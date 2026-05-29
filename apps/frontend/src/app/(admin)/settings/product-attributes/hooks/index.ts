@@ -1,4 +1,9 @@
 export {
+    useAttributeTypes,
+    useCreateAttributeType,
+    useUpdateAttributeType,
+    useMoveAttributeType,
+    useDeleteAttributeType,
     useProductAttributeList,
     useCreateProductAttribute,
     useUpdateProductAttribute,

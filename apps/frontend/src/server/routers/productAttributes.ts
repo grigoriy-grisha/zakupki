@@ -7,22 +7,26 @@ import { ProductAttributeService } from '../services/product-attribute.service';
 import type { PrismaClient } from '@zakupki/database';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
-const kindSchema = z.enum(['MANUFACTURER', 'SIZE', 'FORM', 'PRODUCT_LINE']);
-
 function services(db: PrismaClient) {
     return { attr: new ProductAttributeService(new ProductAttributeRepository(db)) };
 }
 
 export const productAttributesRouter = router({
     list: protectedProcedure
-        .input(z.object({ kind: kindSchema.optional() }).optional())
+        .input(z.object({ typeId: z.number().optional() }).optional())
         .query(async ({ ctx, input }) => {
             const { attr } = services(ctx.db);
-            return attr.list(input?.kind);
+            return attr.list(input?.typeId);
         }),
 
     create: adminProcedure
-        .input(z.object({ kind: kindSchema, name: z.string().trim().min(1) }))
+        .input(
+            z.object({
+                typeId: z.number(),
+                name: z.string().trim().min(1),
+                characteristicIds: z.array(z.number()).optional(),
+            }),
+        )
         .mutation(async ({ ctx, input }) => {
             const { attr } = services(ctx.db);
             try {
@@ -39,11 +43,17 @@ export const productAttributesRouter = router({
         }),
 
     update: adminProcedure
-        .input(z.object({ id: z.number(), name: z.string().min(1) }))
+        .input(
+            z.object({
+                id: z.number(),
+                name: z.string().trim().min(1).optional(),
+                characteristicIds: z.array(z.number()).optional(),
+            }),
+        )
         .mutation(async ({ ctx, input }) => {
-            const { id, name } = input;
+            const { id, ...data } = input;
             const { attr } = services(ctx.db);
-            return attr.update(id, { name });
+            return attr.update(id, data);
         }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {

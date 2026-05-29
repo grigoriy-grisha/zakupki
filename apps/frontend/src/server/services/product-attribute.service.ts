@@ -1,18 +1,17 @@
-import type { ProductAttributeKind } from '@zakupki/database';
 import { ProductAttributeRepository } from '../domain/product-attribute.repository';
 
 export class ProductAttributeService {
     constructor(private repo: ProductAttributeRepository) {}
 
-    list(kind?: ProductAttributeKind) {
-        return this.repo.list(kind);
+    list(typeId?: number) {
+        return this.repo.list(typeId);
     }
 
-    create(data: { kind: ProductAttributeKind; name: string }) {
+    create(data: { typeId: number; name: string; characteristicIds?: number[] }) {
         return this.repo.create(data);
     }
 
-    update(id: number, data: { name?: string }) {
+    update(id: number, data: { name?: string; characteristicIds?: number[] }) {
         return this.repo.update(id, data);
     }
 

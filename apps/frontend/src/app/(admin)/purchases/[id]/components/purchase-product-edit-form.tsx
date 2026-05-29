@@ -1,15 +1,19 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NovelEditor } from '@/components/ui/novel-editor';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
+import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import {
     PACKAGE_UNITS,
+    applyPostTemplate,
+    buildShowInTitleByTypeId,
     productToDescriptionFields,
-    useAutoProductDescription,
     type ProductLabelSource,
 } from '../../../products/lib';
 
@@ -45,6 +49,43 @@ interface PurchaseProductEditFormProps {
     submitLabel?: string;
     footer?: React.ReactNode;
     purchaseTag?: string;
+    /** Загрузить цены/фасовку/описание из карточки товара (правка уже добавленного в закупку). */
+    loadSavedDescription?: boolean;
+}
+
+const DEFAULT_TIER = { amount: 1, unit: PACKAGE_UNITS[0], price: 0 };
+
+function emptyPurchaseFields() {
+    return {
+        description: '',
+        tiers: [{ ...DEFAULT_TIER }],
+        minPkgAmount: null as number | null,
+        minPkgUnit: PACKAGE_UNITS[0],
+        supPkgAmount: null as number | null,
+        supPkgUnit: PACKAGE_UNITS[0],
+        supPkgPrice: null as number | null,
+        availAmount: null as number | null,
+        availUnit: PACKAGE_UNITS[0],
+        templateId: 'none',
+    };
+}
+
+function savedPurchaseFields(
+    product: PurchaseProductEditFormProps['product'],
+    initialTiers: { amount: number; unit: string; price: number }[],
+) {
+    return {
+        description: product.description ?? '',
+        tiers: initialTiers.length > 0 ? initialTiers : [{ ...DEFAULT_TIER }],
+        minPkgAmount: product.minPackageAmount != null ? Number(product.minPackageAmount) : null,
+        minPkgUnit: product.minPackageUnit ?? PACKAGE_UNITS[0],
+        supPkgAmount: product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null,
+        supPkgUnit: product.supplierPackageUnit ?? PACKAGE_UNITS[0],
+        supPkgPrice: product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
+        availAmount: product.availableAmount != null ? Number(product.availableAmount) : null,
+        availUnit: product.availableUnit ?? PACKAGE_UNITS[0],
+        templateId: 'none',
+    };
 }
 
 export function PurchaseProductEditForm({
@@ -55,30 +96,55 @@ export function PurchaseProductEditForm({
     submitLabel = 'Сохранить',
     footer,
     purchaseTag,
+    loadSavedDescription = false,
 }: PurchaseProductEditFormProps) {
-    const [description, setDescription] = useState(product.description ?? '');
-    const [tiers, setTiers] = useState(
-        initialTiers.length > 0 ? initialTiers : [{ amount: 1, unit: PACKAGE_UNITS[0], price: 0 }],
+    const initial = loadSavedDescription
+        ? savedPurchaseFields(product, initialTiers)
+        : emptyPurchaseFields();
+
+    const [description, setDescription] = useState(initial.description);
+    const [tiers, setTiers] = useState(initial.tiers);
+    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(initial.minPkgAmount);
+    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(initial.minPkgUnit);
+    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(initial.supPkgAmount);
+    const [supPkgUnit, setSupPkgUnit] = useState<string | null>(initial.supPkgUnit);
+    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(initial.supPkgPrice);
+    const [availAmount, setAvailAmount] = useState<number | null>(initial.availAmount);
+    const [availUnit, setAvailUnit] = useState<string | null>(initial.availUnit);
+    const [templateId, setTemplateId] = useState(initial.templateId);
+
+    useEffect(() => {
+        const next = loadSavedDescription
+            ? savedPurchaseFields(product, initialTiers)
+            : emptyPurchaseFields();
+        setTemplateId(next.templateId);
+        setDescription(next.description);
+        setTiers(next.tiers);
+        setMinPkgAmount(next.minPkgAmount);
+        setMinPkgUnit(next.minPkgUnit);
+        setSupPkgAmount(next.supPkgAmount);
+        setSupPkgUnit(next.supPkgUnit);
+        setSupPkgPrice(next.supPkgPrice);
+        setAvailAmount(next.availAmount);
+        setAvailUnit(next.availUnit);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product.id, loadSavedDescription]);
+
+    const { data: postTemplates } = trpc.postTemplates.list.useQuery();
+    const { data: attributeTypes, isSuccess: attributeTypesReady } = trpc.attributeTypes.list.useQuery();
+    const showInTitleByTypeId = useMemo(
+        () => buildShowInTitleByTypeId(attributeTypes),
+        [attributeTypes],
     );
-    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(
-        product.minPackageAmount != null ? Number(product.minPackageAmount) : null,
-    );
-    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(product.minPackageUnit ?? PACKAGE_UNITS[0]);
-    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(
-        product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null,
-    );
-    const [supPkgUnit, setSupPkgUnit] = useState<string | null>(product.supplierPackageUnit ?? PACKAGE_UNITS[0]);
-    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(
-        product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
-    );
-    const [availAmount, setAvailAmount] = useState<number | null>(
-        product.availableAmount != null ? Number(product.availableAmount) : null,
-    );
-    const [availUnit, setAvailUnit] = useState<string | null>(product.availableUnit ?? PACKAGE_UNITS[0]);
+    const selectedTemplateBody =
+        templateId === 'none'
+            ? null
+            : (postTemplates?.find((t: { id: number; body: string }) => t.id === Number(templateId))?.body ??
+              null);
 
     const descriptionFields = useMemo(
         () => ({
-            ...productToDescriptionFields(product),
+            ...productToDescriptionFields(product, showInTitleByTypeId, attributeTypes),
             name: product.name,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
@@ -92,6 +158,8 @@ export function PurchaseProductEditForm({
         }),
         [
             product,
+            showInTitleByTypeId,
+            attributeTypes,
             minPkgAmount,
             minPkgUnit,
             tiers,
@@ -104,7 +172,25 @@ export function PurchaseProductEditForm({
         ],
     );
 
-    useAutoProductDescription(descriptionFields, setDescription);
+    useEffect(() => {
+        if (templateId === 'none' || !attributeTypesReady) return;
+        const body = selectedTemplateBody?.trim();
+        if (!body) return;
+        setDescription(applyPostTemplate(body, descriptionFields));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [templateId, selectedTemplateBody, descriptionFields, attributeTypesReady]);
+
+    function handleTemplateChange(value: string) {
+        setTemplateId(value);
+        if (value === 'none') {
+            setDescription('');
+            return;
+        }
+        const body = postTemplates?.find((t: { id: number; body: string }) => t.id === Number(value))?.body;
+        if (body?.trim() && attributeTypesReady) {
+            setDescription(applyPostTemplate(body, descriptionFields));
+        }
+    }
 
     function handleSave() {
         const firstTier = tiers[0];
@@ -128,15 +214,35 @@ export function PurchaseProductEditForm({
     return (
         <div className="space-y-4 px-4">
             <div className="space-y-1">
+                <Label>Шаблон поста</Label>
+                <Select value={templateId} onValueChange={handleTemplateChange}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Без шаблона" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">Без шаблона</SelectItem>
+                        {(postTemplates ?? []).map((t: { id: number; name: string }) => (
+                            <SelectItem key={t.id} value={String(t.id)}>
+                                {t.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-1">
                 <Label>Описание</Label>
-                <NovelEditor
-                    value={description}
-                    onChange={setDescription}
-                    placeholder="Описание заполнится автоматически из полей ниже..."
-                />
-                <p className="text-xs text-muted-foreground">
-                    Заполняется автоматически из полей ниже. Можно дописать вручную.
-                </p>
+                <div className="max-h-[35vh] overflow-y-auto rounded-md border">
+                    <NovelEditor
+                        value={description}
+                        onChange={setDescription}
+                        placeholder={
+                            templateId === 'none'
+                                ? 'Текст описания для поста…'
+                                : 'Подставится из шаблона при изменении полей ниже…'
+                        }
+                    />
+                </div>
             </div>
 
             <div className="space-y-1">
@@ -153,106 +259,26 @@ export function PurchaseProductEditForm({
                 </div>
             </div>
 
-            <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                    <Label>Цены</Label>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                            setTiers((prev) => [...prev, { amount: 1, unit: PACKAGE_UNITS[0], price: 0 }])
-                        }
-                    >
-                        <Plus className="mr-1 h-3.5 w-3.5" />
-                        Добавить тир
-                    </Button>
-                </div>
-                {tiers.map((tier, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                        <Input
-                            type="number"
-                            step="0.001"
-                            className="w-20"
-                            value={tier.amount}
-                            onChange={(e) => {
-                                const next = [...tiers];
-                                next[i] = { ...next[i], amount: Number(e.target.value) };
-                                setTiers(next);
-                            }}
-                        />
-                        <UnitSelect
-                            value={tier.unit}
-                            onChange={(v) => {
-                                const next = [...tiers];
-                                next[i] = { ...next[i], unit: v };
-                                setTiers(next);
-                            }}
-                        />
-                        <span className="text-muted-foreground">—</span>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            className="flex-1"
-                            value={tier.price}
-                            onChange={(e) => {
-                                const next = [...tiers];
-                                next[i] = { ...next[i], price: Number(e.target.value) };
-                                setTiers(next);
-                            }}
-                        />
-                        <span className="text-sm text-muted-foreground">₽</span>
-                        {tiers.length > 1 && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => setTiers((prev) => prev.filter((_, j) => j !== i))}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-                ))}
-            </div>
+            <PriceTierEditor tiers={tiers} onChange={setTiers} />
 
-            <div className="space-y-1">
-                <Label>Фасовка поставщика</Label>
-                <div className="flex items-center gap-2">
-                    <Input
-                        type="number"
-                        step="0.001"
-                        className="w-24"
-                        value={supPkgAmount ?? ''}
-                        onChange={(e) => setSupPkgAmount(e.target.value ? Number(e.target.value) : null)}
-                    />
-                    <UnitSelect value={supPkgUnit ?? PACKAGE_UNITS[0]} onChange={setSupPkgUnit} />
-                    <span className="text-muted-foreground">—</span>
-                    <Input
-                        type="number"
-                        step="0.01"
-                        className="flex-1"
-                        value={supPkgPrice ?? ''}
-                        onChange={(e) => setSupPkgPrice(e.target.value ? Number(e.target.value) : null)}
-                    />
-                    <span className="text-sm text-muted-foreground">₽</span>
-                </div>
-            </div>
+            <PackageEditor
+                label="Фасовка поставщика"
+                amount={supPkgAmount}
+                unit={supPkgUnit ?? PACKAGE_UNITS[0]}
+                price={supPkgPrice}
+                onAmountChange={setSupPkgAmount}
+                onUnitChange={setSupPkgUnit}
+                onPriceChange={setSupPkgPrice}
+                showPrice
+            />
 
-            <div className="space-y-1">
-                <Label>Свободно</Label>
-                <div className="flex gap-2">
-                    <Input
-                        type="number"
-                        step="0.001"
-                        className="flex-1"
-                        value={availAmount ?? ''}
-                        onChange={(e) => setAvailAmount(e.target.value ? Number(e.target.value) : null)}
-                    />
-                    <UnitSelect value={availUnit ?? PACKAGE_UNITS[0]} onChange={setAvailUnit} />
-                </div>
-            </div>
+            <PackageEditor
+                label="Свободно"
+                amount={availAmount}
+                unit={availUnit ?? PACKAGE_UNITS[0]}
+                onAmountChange={setAvailAmount}
+                onUnitChange={setAvailUnit}
+            />
 
             {footer}
 

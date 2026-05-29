@@ -14,11 +14,8 @@ export type PriceTierValues = z.infer<typeof priceTierSchema>;
 export const productCreateSchema = z.object({
     name: z.string().min(1, 'Название обязательно'),
     articleNumber: z.string().optional(),
+    unitId: z.coerce.number().positive('Выберите единицу учёта'),
     categoryId: z.number().nullable(),
-    manufacturerId: z.number().nullable(),
-    sizeId: z.number().nullable(),
-    formId: z.number().nullable(),
-    productLineId: z.number().nullable(),
 });
 
 export type ProductCreateFormValues = z.infer<typeof productCreateSchema>;
@@ -30,10 +27,6 @@ export const productSchema = z.object({
     description: z.string().optional(),
     unitId: z.coerce.number().positive('Выберите единицу'),
     categoryId: z.number().nullable(),
-    manufacturerId: z.number().nullable(),
-    sizeId: z.number().nullable(),
-    formId: z.number().nullable(),
-    productLineId: z.number().nullable(),
     minPackageAmount: z.number().positive('Укажите фасовку').nullable(),
     minPackageUnit: z.string().nullable(),
     priceTiers: z.array(priceTierSchema).min(1, 'Укажите хотя бы одну цену'),
@@ -58,12 +51,3 @@ export const productAttributeSchema = z.object({
 });
 
 export type ProductAttributeFormValues = z.infer<typeof productAttributeSchema>;
-
-export type ProductAttributeKind = 'MANUFACTURER' | 'SIZE' | 'FORM' | 'PRODUCT_LINE';
-
-export const PRODUCT_ATTRIBUTE_KIND_LABELS: Record<ProductAttributeKind, string> = {
-    MANUFACTURER: 'Производитель',
-    SIZE: 'Размер',
-    FORM: 'Форма',
-    PRODUCT_LINE: 'Категория',
-};

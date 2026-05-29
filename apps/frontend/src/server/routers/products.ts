@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 
+import { ensureDefaultUnitId } from '../domain/default-unit';
 import { ProductRepository } from '../domain/product.repository';
 import { ProductService } from '../services/product.service';
 import { Prisma, type PrismaClient } from '@zakupki/database';
@@ -12,11 +13,9 @@ export interface ProductCreateInput {
     unitId?: number;
     pricePerUnit?: number;
     description?: string;
-    categoryId?: number;
-    manufacturerId?: number | null;
-    sizeId?: number | null;
-    formId?: number | null;
-    productLineId?: number | null;
+    categoryId?: number | null;
+    attributeIds?: number[];
+    characteristics?: { characteristicId: number; value: string }[];
     minPackageAmount?: number;
     minPackageUnit?: string;
     priceTiers?: { amount: number; unit: string; price: number }[];
@@ -35,10 +34,8 @@ export interface ProductUpdateInput {
     pricePerUnit?: number;
     description?: string;
     categoryId?: number | null;
-    manufacturerId?: number | null;
-    sizeId?: number | null;
-    formId?: number | null;
-    productLineId?: number | null;
+    attributeIds?: number[];
+    characteristics?: { characteristicId: number; value: string }[];
     minPackageAmount?: number;
     minPackageUnit?: string;
     priceTiers?: { amount: number; unit: string; price: number }[];
@@ -61,11 +58,11 @@ const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
-    categoryId: z.number().optional(),
-    manufacturerId: z.number().optional(),
-    sizeId: z.number().optional(),
-    formId: z.number().optional(),
-    productLineId: z.number().optional(),
+    categoryId: z.number().nullable().optional(),
+    attributeIds: z.array(z.number()).optional(),
+    characteristics: z
+        .array(z.object({ characteristicId: z.number(), value: z.string() }))
+        .optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
     priceTiers: z.array(priceTierSchema).optional(),
@@ -83,11 +80,11 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
-    categoryId: z.number().optional(),
-    manufacturerId: z.number().nullable().optional(),
-    sizeId: z.number().nullable().optional(),
-    formId: z.number().nullable().optional(),
-    productLineId: z.number().nullable().optional(),
+    categoryId: z.number().nullable().optional(),
+    attributeIds: z.array(z.number()).optional(),
+    characteristics: z
+        .array(z.object({ characteristicId: z.number(), value: z.string() }))
+        .optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
     priceTiers: z.array(priceTierSchema).optional(),
@@ -117,8 +114,7 @@ export const productsRouter = router({
 
     create: adminProcedure.input(productCreateInput).mutation(async ({ ctx, input }) => {
         const { product } = services(ctx.db);
-        const unitId = input.unitId ?? (await ctx.db.unit.findFirst({ orderBy: { id: 'asc' } }))?.id;
-        if (!unitId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нет единиц учёта' });
+        const unitId = input.unitId ?? (await ensureDefaultUnitId(ctx.db));
         return product.create({ ...input, unitId, pricePerUnit: input.pricePerUnit ?? 0 });
     }),
 

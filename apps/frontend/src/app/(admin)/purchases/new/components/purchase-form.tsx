@@ -8,6 +8,7 @@ import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
@@ -28,6 +29,13 @@ export function PurchaseForm() {
     });
 
     const deadline = watch('deadline');
+    const tag = watch('tag');
+    const supplier = watch('supplier');
+    const isSz = tag.trim().toLowerCase().includes('сз');
+
+    const { data: suppliers, isLoading: suppliersLoading } = trpc.suppliers.list.useQuery(undefined, {
+        enabled: isSz,
+    });
 
     const createMutation = trpc.purchases.create.useMutation({
         onSuccess: (data) => {
@@ -62,7 +70,33 @@ export function PurchaseForm() {
 
                     <div className="space-y-2">
                         <Label htmlFor="supplier">Поставщик</Label>
-                        <Input id="supplier" placeholder="Поставщик №1" {...register('supplier')} />
+                        {isSz ? (
+                            suppliersLoading ? (
+                                <Input id="supplier" disabled placeholder="Загрузка поставщиков…" />
+                            ) : suppliers && suppliers.length > 0 ? (
+                                <Select
+                                    value={supplier || undefined}
+                                    onValueChange={(v) =>
+                                        setValue('supplier', v, { shouldValidate: true, shouldDirty: true })
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Выберите поставщика" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {(suppliers as { id: number; name: string }[]).map((s) => (
+                                            <SelectItem key={s.id} value={s.name}>
+                                                {s.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Input id="supplier" placeholder="Поставщик №1" {...register('supplier')} />
+                            )
+                        ) : (
+                            <Input id="supplier" placeholder="Поставщик №1" {...register('supplier')} />
+                        )}
                         {errors.supplier && <p className="text-xs text-destructive">{errors.supplier.message}</p>}
                     </div>
 

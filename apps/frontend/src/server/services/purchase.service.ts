@@ -36,6 +36,38 @@ export class PurchaseService {
         return this.repo.findUnpublishedItems(purchaseId);
     }
 
+    async complete(id: number) {
+        const purchase = await this.repo.getById(id);
+        if (!purchase) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
+        }
+        if (purchase.status !== 'ACTIVE' && purchase.status !== 'SUPPLEMENT') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Завершить можно только активную закупку или добор',
+            });
+        }
+        return this.repo.updateStatus(id, 'DONE');
+    }
+
+    async deleteDraft(id: number) {
+        const purchase = await this.repo.getById(id);
+        if (!purchase) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
+        }
+        if (purchase.status !== 'DRAFT') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Удалить можно только черновик',
+            });
+        }
+        const deleted = await this.repo.deleteDraft(id);
+        if (!deleted) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
+        }
+        return deleted;
+    }
+
     async toggleShouldPublish(purchaseItemId: number, value: boolean) {
         return this.repo.toggleShouldPublish(purchaseItemId, value);
     }
@@ -56,6 +88,17 @@ export class PurchaseService {
     }
 
     async addItems(purchaseId: number, productIds: number[], shouldPublish = false) {
+        const purchase = await this.repo.getById(purchaseId);
+        if (!purchase) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
+        }
+        if (purchase.status === 'DONE') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'В завершённую закупку нельзя добавлять товары',
+            });
+        }
+
         const uniqueIds = [...new Set(productIds)];
         const alreadyInPurchase = await this.repo.findProductIdsInPurchase(purchaseId, uniqueIds);
         const alreadySet = new Set(alreadyInPurchase);

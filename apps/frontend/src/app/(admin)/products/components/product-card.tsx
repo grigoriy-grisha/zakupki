@@ -2,19 +2,18 @@
 
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Loader2, Package, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
+import { getProductDisplayName, formatProductAttributesLine, type ProductLabelSource } from '../lib';
 
 interface CatalogProductCardProps {
-    product: {
+    product: ProductLabelSource & {
         id: number;
         name: string;
-        unit: { shortName: string } | null;
         minPackageAmount: string | number | null;
         minPackageUnit: string | null;
         photos: { id: number }[];
@@ -29,6 +28,9 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const utils = trpc.useUtils();
 
     const photo = product.photos?.[0];
+    const displayName = getProductDisplayName(product) || product.name;
+    const article = product.articleNumber?.trim();
+    const attributesLine = formatProductAttributesLine({ ...product, articleNumber: null });
 
     async function handleDelete() {
         try {
@@ -59,7 +61,6 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                             <Package className="h-12 w-12 text-muted-foreground/30" />
                         </div>
                     )}
-                    <Badge className="absolute bottom-2 right-2">{product.unit?.shortName ?? ''}</Badge>
                     {!product.inActivePurchase && (
                         <Button
                             variant="destructive"
@@ -76,7 +77,11 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                 </div>
 
                 <CardContent className="p-4">
-                    <h3 className="font-semibold leading-tight line-clamp-1">{product.name}</h3>
+                    {article && <p className="text-xs font-medium text-muted-foreground">{article}</p>}
+                    <h3 className="font-semibold leading-tight line-clamp-1">{displayName}</h3>
+                    {attributesLine && (
+                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{attributesLine}</p>
+                    )}
                     {product.minPackageAmount != null && product.minPackageUnit && (
                         <p className="mt-0.5 text-xs text-muted-foreground">
                             Мин. фасовка: {Number(product.minPackageAmount)} {product.minPackageUnit}

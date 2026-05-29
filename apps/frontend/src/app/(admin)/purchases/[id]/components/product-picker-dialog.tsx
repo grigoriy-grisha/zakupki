@@ -9,7 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useAddPurchaseItems } from '../hooks';
+import { useUpdateProduct } from '../../../products/hooks';
 import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '../../../products/lib';
+import { ProductSheet } from '../../../products/components';
 import { PurchaseProductEditForm } from './purchase-product-edit-form';
 
 interface ProductPickerDialogProps {
@@ -26,6 +28,8 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
     const [shouldPublish, setShouldPublish] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
+    const utils = trpc.useUtils();
 
     const { data: allProducts, isLoading } = trpc.products.list.useQuery(
         { search: search.trim() || undefined },
@@ -106,6 +110,16 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                             />
                         </div>
 
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-muted-foreground">
+                                Если товара нет в каталоге — создайте его прямо здесь.
+                            </p>
+                            <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Создать товар
+                            </Button>
+                        </div>
+
                         <div className="max-h-[400px] space-y-2 overflow-y-auto">
                             {isLoading && (
                                 <p className="py-4 text-center text-sm text-muted-foreground">Загрузка…</p>
@@ -148,6 +162,16 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                     </>
                 )}
             </DialogContent>
+
+            <ProductSheet
+                open={createOpen}
+                onOpenChange={(v) => {
+                    setCreateOpen(v);
+                    if (!v) void utils.products.list.invalidate();
+                }}
+                editId={null}
+                defaultCategoryId={null}
+            />
         </Dialog>
     );
 }
@@ -219,14 +243,7 @@ function ProductDetail({
 }) {
     const { data: product, isLoading } = trpc.products.getById.useQuery({ id: productId });
     const utils = trpc.useUtils();
-    const updateMutation = trpc.products.update.useMutation({
-        onSuccess: () => {
-            void utils.products.getById.invalidate({ id: productId });
-            void utils.products.list.invalidate();
-            toast.success('Товар обновлён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const updateMutation = useUpdateProduct();
 
     if (isLoading) {
         return <div className="py-8 text-center text-sm text-muted-foreground">Загрузка...</div>;
@@ -236,10 +253,8 @@ function ProductDetail({
         return <div className="py-8 text-center text-sm text-muted-foreground">Товар не найден</div>;
     }
 
-    const priceTiers = Array.isArray(product.priceTiers)
-        ? (product.priceTiers as { amount: number; unit: string; price: number }[])
-        : [];
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prod = product as any;
     return (
         <div className="space-y-2">
             <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -247,9 +262,9 @@ function ProductDetail({
             </button>
             <PurchaseProductEditForm
                 key={productId}
-                product={product}
+                product={prod}
                 purchaseTag={purchaseTag}
-                initialTiers={priceTiers}
+                initialTiers={[]}
                 onSave={(data) => {
                     updateMutation.mutate(
                         {
@@ -265,7 +280,15 @@ function ProductDetail({
                             availableAmount: data.availableAmount ?? undefined,
                             availableUnit: data.availableUnit ?? undefined,
                         },
-                        { onSuccess: () => onAdd([productId]) },
+                        {
+                            onSuccess: () => {
+                                void utils.products.getById.invalidate({ id: productId });
+                                void utils.products.list.invalidate();
+                                toast.success('Товар обновлён');
+                                onAdd([productId]);
+                            },
+                            onError: (err) => toast.error(err.message),
+                        },
                     );
                 }}
                 isSaving={updateMutation.isPending}
