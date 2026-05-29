@@ -1,19 +1,45 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { TelegramIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 
+import { useTelegramAutoLogin } from '@/lib/hooks/use-telegram-auto-login';
 import { useTgAuth } from '@/lib/hooks/use-tg-auth';
 import { useVkAuth } from '@/lib/hooks/use-vk-auth';
 
 export default function LoginPage() {
+    const router = useAppRouter();
     const vk = useVkAuth();
     const tg = useTgAuth();
+    const { isMounted, isTelegramWebApp, isAuthenticated, isPending } = useTelegramAutoLogin();
 
     useEffect(() => {
         vk.initWidget();
     }, [vk.initWidget]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            router.replace('/shop');
+        }
+    }, [isAuthenticated, router]);
+
+    if (!isMounted) {
+        return (
+            <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+                Загрузка…
+            </div>
+        );
+    }
+
+    if (isTelegramWebApp && (isPending || isAuthenticated)) {
+        return (
+            <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+                Вход через Telegram…
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">

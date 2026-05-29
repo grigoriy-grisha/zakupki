@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { AppLink } from '@/components/app-link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, LayoutDashboard, Package, Plus, ShoppingCart } from 'lucide-react';
@@ -33,7 +33,7 @@ export default function DashboardPage() {
                     </div>
                     <p className="mt-2 text-3xl font-bold">{activeCount}</p>
                     <Button variant="link" className="mt-2 h-auto p-0" asChild>
-                        <Link href="/purchases">Перейти к закупкам</Link>
+                        <AppLink href="/purchases">Перейти к закупкам</AppLink>
                     </Button>
                 </Card>
                 <Card className="p-4 shadow-sm">
@@ -43,7 +43,7 @@ export default function DashboardPage() {
                     </div>
                     <p className="mt-2 text-3xl font-bold">{productCount}</p>
                     <Button variant="link" className="mt-2 h-auto p-0" asChild>
-                        <Link href="/products">Перейти к каталогу</Link>
+                        <AppLink href="/products">Перейти к каталогу</AppLink>
                     </Button>
                 </Card>
             </div>
@@ -53,10 +53,10 @@ export default function DashboardPage() {
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Активные закупки</CardTitle>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href="/purchases/new">
+                            <AppLink href="/purchases/new">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Новая
-                            </Link>
+                            </AppLink>
                         </Button>
                     </CardHeader>
                     <CardContent>
@@ -66,13 +66,13 @@ export default function DashboardPage() {
                             <ul className="space-y-2">
                                 {purchases?.map((p) => (
                                     <li key={p.id}>
-                                        <Link
+                                        <AppLink
                                             href={`/purchases/${p.id}`}
                                             className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-accent/50"
                                         >
                                             <span className="font-medium">{p.tag}</span>
                                             <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                        </Link>
+                                        </AppLink>
                                     </li>
                                 ))}
                             </ul>
@@ -86,16 +86,16 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2">
                         <Button variant="outline" asChild className="justify-start">
-                            <Link href="/products">
+                            <AppLink href="/products">
                                 <Package className="mr-2 h-4 w-4" />
                                 Каталог товаров
-                            </Link>
+                            </AppLink>
                         </Button>
                         <Button variant="outline" asChild className="justify-start">
-                            <Link href="/shop">
+                            <AppLink href="/shop">
                                 <ShoppingCart className="mr-2 h-4 w-4" />
                                 Мои закупки (участник)
-                            </Link>
+                            </AppLink>
                         </Button>
                     </CardContent>
                 </Card>

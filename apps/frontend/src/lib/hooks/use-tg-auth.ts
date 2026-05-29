@@ -1,28 +1,15 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useCallback, useState } from 'react';
 
 import { trpc } from '@/lib/client/trpc';
 import { useProviderUnlink } from '@/lib/hooks/use-provider-unlink';
 import { toast } from 'sonner';
 
-declare global {
-    interface Window {
-        Telegram?: {
-            Login?: {
-                auth: (
-                    options: { bot_id: number; request_access: boolean },
-                    callback: (user: unknown) => void,
-                ) => void;
-            };
-        };
-    }
-}
-
 export function useTgAuth() {
-    const router = useRouter();
+    const router = useAppRouter();
     const utils = trpc.useUtils();
     const linkProvider = trpc.users.linkProvider.useMutation();
     const { unlink: unlinkTg, loading, setLoading } = useProviderUnlink('telegram');

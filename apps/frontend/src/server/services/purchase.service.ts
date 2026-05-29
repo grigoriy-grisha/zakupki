@@ -17,6 +17,10 @@ export class PurchaseService {
         return this.repo.listByStatuses(statuses);
     }
 
+    async listByStatusesForUser(userId: number, statuses: string[]) {
+        return this.repo.listByStatusesForUser(userId, statuses);
+    }
+
     async getById(id: number) {
         const purchase = await this.repo.getById(id);
         if (!purchase) throw new Error('Purchase not found');

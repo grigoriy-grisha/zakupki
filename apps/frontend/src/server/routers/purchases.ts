@@ -24,6 +24,11 @@ export const purchasesRouter = router({
             return purchase.list(input?.status);
         }),
 
+    listMyCompleted: protectedProcedure.query(async ({ ctx }) => {
+        const { purchase } = createPurchaseServices(ctx.db);
+        return purchase.listByStatusesForUser(ctx.userId, ['DONE']);
+    }),
+
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
         const { purchase } = createPurchaseServices(ctx.db);
         return purchase.getById(input.id);

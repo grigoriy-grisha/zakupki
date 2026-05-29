@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { newPurchaseSchema, type NewPurchaseValues } from '../../lib';
 
 export function PurchaseForm() {
-    const router = useRouter();
+    const router = useAppRouter();
 
     const {
         register,

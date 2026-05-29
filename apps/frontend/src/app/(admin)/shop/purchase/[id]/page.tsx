@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <CardContent className="flex flex-col items-center py-16">
                     <h2 className="text-lg font-medium">Закупка не найдена</h2>
                     <Button variant="outline" className="mt-4" asChild>
-                        <Link href="/shop">Назад к закупкам</Link>
+                        <AppLink href="/shop">Назад к закупкам</AppLink>
                     </Button>
                 </CardContent>
             </Card>
@@ -51,9 +51,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         <div className="space-y-6">
             <div className="flex items-start gap-4">
                 <Button variant="ghost" size="icon" asChild>
-                    <Link href="/shop">
+                    <AppLink href="/shop">
                         <ArrowLeft className="h-5 w-5" />
-                    </Link>
+                    </AppLink>
                 </Button>
                 <div>
                     <div className="flex items-center gap-2">

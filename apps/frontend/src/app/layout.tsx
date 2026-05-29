@@ -14,9 +14,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html lang="ru">
-            <body className="antialiased">
-                <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        <html lang="ru" suppressHydrationWarning>
+            <body className="antialiased" suppressHydrationWarning>
+                <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
                 <Script src="https://telegram.org/js/telegram-widget.js" strategy="lazyOnload" />
                 <AuthProvider>
                     <TrpcProvider>{children}</TrpcProvider>

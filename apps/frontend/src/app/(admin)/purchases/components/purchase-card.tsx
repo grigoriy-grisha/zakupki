@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { AppLink } from '@/components/app-link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
@@ -26,7 +26,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
     );
 
     return (
-        <Link href={`/purchases/${purchase.id}`}>
+        <AppLink href={`/purchases/${purchase.id}`}>
             <Card className="transition-colors hover:bg-accent/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <div className="flex items-center gap-2">
@@ -53,6 +53,6 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     </div>
                 </CardContent>
             </Card>
-        </Link>
+        </AppLink>
     );
 }

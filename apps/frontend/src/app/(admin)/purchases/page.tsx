@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { AppLink } from '@/components/app-link';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
@@ -19,10 +19,10 @@ export default function PurchasesPage() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold tracking-tight">Закупки</h1>
                 <Button asChild>
-                    <Link href="/purchases/new">
+                    <AppLink href="/purchases/new">
                         <Plus className="mr-2 h-4 w-4" />
                         Новая закупка
-                    </Link>
+                    </AppLink>
                 </Button>
             </div>
 

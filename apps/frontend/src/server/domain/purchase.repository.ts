@@ -49,6 +49,24 @@ export class PurchaseRepository {
         });
     }
 
+    async listByStatusesForUser(userId: number, statuses: string[]) {
+        return this.db.purchase.findMany({
+            where: {
+                status: { in: statuses as any },
+                items: { some: { orderLines: { some: { userId } } } },
+            },
+            include: {
+                items: {
+                    include: {
+                        product: { include: productWithAttributes },
+                        orderLines: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
     async getById(id: number) {
         return this.db.purchase.findUnique({
             where: { id },

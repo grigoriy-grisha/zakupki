@@ -89,10 +89,10 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>{product.name}</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="pr-6 text-left">{product.name}</DialogTitle>
+                    <DialogDescription className="text-left">
                         {product.minPackageAmount != null &&
                             product.minPackageUnit &&
                             `Мин. фасовка: ${Number(product.minPackageAmount)} ${product.minPackageUnit} · `}
@@ -100,8 +100,7 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
-                    {/* Available stock indicator */}
+                <div className="space-y-5 py-2">
                     {remainingLabel !== null &&
                         (() => {
                             const afterConfirm = maxQty !== null ? maxQty - quantity : remainingLabel;
@@ -123,69 +122,72 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                             );
                         })()}
 
-                    {/* Quantity Selector */}
-                    <div className="flex items-center justify-center gap-4">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-12 w-12 rounded-full"
-                            onClick={() => handleQuantityChange(-(multiplicity * 10))}
-                            disabled={quantity <= multiplicity}
-                        >
-                            {-multiplicity * 10}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-10 w-10 rounded-full"
-                            onClick={() => handleQuantityChange(-multiplicity)}
-                            disabled={quantity <= multiplicity}
-                        >
-                            <Minus className="h-4 w-4" />
-                        </Button>
-
-                        <div className="flex items-center gap-2">
-                            <span className="min-w-[5rem] text-center text-2xl font-bold tabular-nums">
+                    <div className="space-y-4">
+                        <div className="text-center">
+                            <span className="text-3xl font-bold tabular-nums sm:text-4xl">
                                 {quantity % 1 === 0 ? quantity : quantity.toFixed(3).replace(/\.?0+$/, '')}
                             </span>
-                            <span className="text-lg font-medium text-muted-foreground">{shortName}</span>
+                            <span className="ml-2 text-lg font-medium text-muted-foreground">{shortName}</span>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-10 w-10 rounded-full"
-                            onClick={() => handleQuantityChange(multiplicity)}
-                            disabled={maxQty !== null && quantity >= maxQty}
-                        >
-                            <Plus className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-12 w-12 rounded-full"
-                            onClick={() => handleQuantityChange(multiplicity * 10)}
-                            disabled={maxQty !== null && quantity >= maxQty}
-                        >
-                            +{multiplicity * 10}
-                        </Button>
+                        <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
+                            <Button
+                                variant="outline"
+                                className="h-11 rounded-xl px-1 text-xs sm:text-sm"
+                                onClick={() => handleQuantityChange(-(multiplicity * 10))}
+                                disabled={quantity <= multiplicity}
+                            >
+                                −{multiplicity * 10}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-11 w-full rounded-xl"
+                                onClick={() => handleQuantityChange(-multiplicity)}
+                                disabled={quantity <= multiplicity}
+                            >
+                                <Minus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-11 w-full rounded-xl"
+                                onClick={() => handleQuantityChange(multiplicity)}
+                                disabled={maxQty !== null && quantity >= maxQty}
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-11 rounded-xl px-1 text-xs sm:text-sm"
+                                onClick={() => handleQuantityChange(multiplicity * 10)}
+                                disabled={maxQty !== null && quantity >= maxQty}
+                            >
+                                +{multiplicity * 10}
+                            </Button>
+                        </div>
                     </div>
 
-                    {/* Total */}
                     <div className="rounded-xl bg-primary/5 p-4 text-center">
                         <p className="text-sm text-muted-foreground">Итого</p>
-                        <p className="mt-1 text-3xl font-bold text-primary">{total.toLocaleString('ru-RU')} ₽</p>
+                        <p className="mt-1 text-2xl font-bold text-primary sm:text-3xl">
+                            {total.toLocaleString('ru-RU')} ₽
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                             {quantity} {shortName} · {total.toLocaleString('ru-RU')} ₽
                         </p>
                     </div>
                 </div>
 
-                <DialogFooter className="gap-2 sm:gap-0">
-                    <Button variant="outline" onClick={onClose}>
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                    <Button variant="outline" className="w-full sm:w-auto" onClick={onClose}>
                         Отмена
                     </Button>
-                    <Button onClick={handleSubmit} disabled={upsertMutation.isPending || quantity <= 0}>
+                    <Button
+                        className="w-full sm:w-auto"
+                        onClick={handleSubmit}
+                        disabled={upsertMutation.isPending || quantity <= 0}
+                    >
                         {upsertMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Добавить в заказ
                     </Button>

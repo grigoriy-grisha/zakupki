@@ -36,5 +36,5 @@ export async function helpCommand(ctx: CustomContext) {
 function getWebAppUrl(): string | null {
     const baseUrl = process.env.WEBAPP_URL?.trim();
     if (!baseUrl) return null;
-    return `${baseUrl}/webapp`;
+    return `${baseUrl}/tg/webapp`;
 }

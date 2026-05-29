@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { AppLink } from '@/components/app-link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
     const progress = Math.min(100, Math.round((totalAmount / Number(purchase.minAmount)) * 100));
 
     return (
-        <Link href={`/shop/purchase/${purchase.id}`}>
+        <AppLink href={`/shop/purchase/${purchase.id}`}>
             <Card className="group h-full transition-all hover:border-primary/30 hover:shadow-md">
                 <CardContent className="p-5">
                     <div className="flex items-start justify-between">
@@ -83,6 +83,6 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
                     </Button>
                 </CardContent>
             </Card>
-        </Link>
+        </AppLink>
     );
 }

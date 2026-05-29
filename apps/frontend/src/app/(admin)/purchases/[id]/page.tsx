@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { trpc } from '@/lib/client/trpc';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const [activateOpen, setActivateOpen] = useState(false);
     const [completeOpen, setCompleteOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const router = useRouter();
+    const router = useAppRouter();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const activateAndPublish = useActivateAndPublish(id);

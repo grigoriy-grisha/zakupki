@@ -6,27 +6,67 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import type { RbacConfig } from '@/lib/rbac-config';
 import { buildRbac } from '@/lib/rbac-config';
-import { createRoleService } from '@/server/lib/create-user-service';
+import { createRoleService, createUserService } from '@/server/lib/create-user-service';
+import { extractTelegramInitData, verifyTelegramInitData } from '@/server/telegram-init-data';
 
-export const createTRPCContext = async () => {
+type TrpcContext = {
+    db: typeof dbClient;
+    session: Session | null;
+    userId: number | null;
+    role: RoleKind | null;
+    rbac: RbacConfig | undefined;
+};
+
+async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' | 'userId' | 'role' | 'rbac'>> {
     const session = await getServerSession(authOptions);
-    const rawId = Number(session?.user?.id);
-    const userId = rawId && !Number.isNaN(rawId) ? rawId : null;
-    const role =
-        session?.user?.role ??
-        (userId ? await createRoleService().getUserRoleKind(userId) : null);
-    const rbac = role ? buildRbac(role) : undefined;
+    const sessionUserId = Number(session?.user?.id);
+    if (session?.user?.id && sessionUserId && !Number.isNaN(sessionUserId)) {
+        const role =
+            session.user.role ?? (await createRoleService().getUserRoleKind(sessionUserId));
+        return {
+            session,
+            userId: sessionUserId,
+            role,
+            rbac: buildRbac(role),
+        };
+    }
+
+    if (req) {
+        const initData = extractTelegramInitData(req);
+        if (initData) {
+            const verified = verifyTelegramInitData(initData);
+            if (verified) {
+                const user = await createUserService().signInWithTelegram(verified);
+                const userId = Number(user.id);
+                const role = user.role ?? (await createRoleService().getUserRoleKind(userId));
+                return {
+                    session: null,
+                    userId,
+                    role,
+                    rbac: buildRbac(role),
+                };
+            }
+        }
+    }
+
+    return {
+        session: session ?? null,
+        userId: null,
+        role: null,
+        rbac: undefined,
+    };
+}
+
+export const createTRPCContext = async (opts?: { req?: Request }): Promise<TrpcContext> => {
+    const auth = await resolveAuth(opts?.req);
 
     return {
         db: dbClient,
-        session,
-        userId,
-        role,
-        rbac,
+        ...auth,
     };
 };
 
-const t = initTRPC.context<Awaited<ReturnType<typeof createTRPCContext>>>().create();
+const t = initTRPC.context<TrpcContext>().create();
 
 export const router = t.router;
 export const publicProcedure = t.procedure;

@@ -5,6 +5,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 
 import { buildRbac, type RbacConfig } from '@/lib/rbac-config';
 import { createRoleService, createUserService } from '@/server/lib/create-user-service';
+import { verifyTelegramInitData } from '@/server/telegram-init-data';
 
 export async function verifyVk(rawData: string) {
     const appId = process.env.NEXT_PUBLIC_VK_APP_ID;
@@ -77,6 +78,17 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 if (!credentials?.data) return null;
                 const verified = await verifyTelegram(credentials.data);
+                if (!verified) return null;
+                return createUserService().signInWithTelegram(verified);
+            },
+        }),
+        CredentialsProvider({
+            id: 'telegram-webapp',
+            name: 'Telegram WebApp',
+            credentials: { initData: { type: 'text' } },
+            async authorize(credentials) {
+                if (!credentials?.initData) return null;
+                const verified = verifyTelegramInitData(credentials.initData);
                 if (!verified) return null;
                 return createUserService().signInWithTelegram(verified);
             },

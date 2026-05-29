@@ -2,7 +2,7 @@
 
 import * as VKID from '@vkid/sdk';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { trpc } from '@/lib/client/trpc';
@@ -11,7 +11,7 @@ import { exchangeVkCode, initVkId } from '@/lib/vk-id';
 import { toast } from 'sonner';
 
 export function useVkAuth() {
-    const router = useRouter();
+    const router = useAppRouter();
     const utils = trpc.useUtils();
     const linkProvider = trpc.users.linkProvider.useMutation();
     const { unlink: unlinkVk, loading, setLoading } = useProviderUnlink('vk');
