@@ -66,7 +66,7 @@ export class ChannelPostService {
         const photo =
             firstPhoto && firstPhoto.data.byteLength > 0 ? productPhotoToAttachment(firstPhoto) : undefined;
 
-        const text = buildProductPostText(item.product, item.purchase.tag);
+        const text = buildProductPostText(item.product);
 
         if (isEdit && item.tgMessageId && item.tgChannelId) {
             await this.editPost(purchaseItemId, item.tgChannelId, Number(item.tgMessageId), text, photo);

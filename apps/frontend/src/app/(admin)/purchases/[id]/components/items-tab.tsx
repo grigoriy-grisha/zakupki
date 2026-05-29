@@ -7,12 +7,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Trash2 } from 'lucide-react';
+import { Loader2, Send, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
-import { useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
+import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { PurchaseProductEditForm } from './purchase-product-edit-form';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 interface ItemsTabProps {
     purchaseId: number;
     onEditSupplement?: () => void;
@@ -22,18 +29,21 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const removeItem = useRemovePurchaseItem(purchaseId);
     const togglePublish = useToggleShouldPublish(purchaseId);
+    const publishToTelegram = usePublishToTelegram(purchaseId);
 
     const [editItem, setEditItem] = useState<number | null>(null);
+    const [publishOpen, setPublishOpen] = useState(false);
 
     if (isLoading || !purchase) {
         return <Skeleton className="h-64" />;
     }
 
-    const isDraft = purchase.status === 'DRAFT';
     const isActive = purchase.status === 'ACTIVE';
     const isSupplement = purchase.status === 'SUPPLEMENT';
+    const canTogglePublish = (status: string) => status !== 'DONE';
     const canAddItems = purchase.status !== 'DONE';
     const existingProductIds = new Set(purchase.items.map((item) => item.productId));
+    const publishCount = purchase.items.filter((item) => item.shouldPublish && !item.tgMessageId).length;
 
     return (
         <div className="space-y-4">
@@ -46,13 +56,29 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         </Button>
                     )}
                 </div>
-                {canAddItems ? (
-                    <ProductPickerDialog
-                        purchaseId={purchaseId}
-                        purchaseTag={purchase.tag}
-                        existingProductIds={existingProductIds}
-                    />
-                ) : null}
+                {(canAddItems || isActive) && (
+                    <div className="flex items-center gap-2">
+                        {isActive && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={publishCount === 0}
+                                onClick={() => setPublishOpen(true)}
+                            >
+                                <Send className="mr-2 h-4 w-4" />
+                                Опубликовать в TG
+                                {publishCount > 0 && ` (${publishCount})`}
+                            </Button>
+                        )}
+                        {canAddItems ? (
+                            <ProductPickerDialog
+                                purchaseId={purchaseId}
+                                purchaseTag={purchase.tag}
+                                existingProductIds={existingProductIds}
+                            />
+                        ) : null}
+                    </div>
+                )}
             </div>
 
             <div className="rounded-md border">
@@ -119,11 +145,14 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                     </TableCell>
                                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                                         {published ? (
-                                            <Badge variant="outline">✓</Badge>
+                                            <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
                                         ) : (
                                             <Checkbox
                                                 checked={item.shouldPublish}
-                                                disabled={!isDraft || togglePublish.isPending}
+                                                disabled={
+                                                    !canTogglePublish(purchase.status) || togglePublish.isPending
+                                                }
+                                                aria-label="Опубликовать в Telegram"
                                                 onCheckedChange={(v) => {
                                                     if (typeof v === 'boolean') {
                                                         togglePublish.mutate({ purchaseItemId: item.id, value: v });
@@ -147,7 +176,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                         </TableCell>
                                     )}
                                     <TableCell onClick={(e) => e.stopPropagation()}>
-                                        {!isActive && (
+                                        {(!isActive || !published) && (
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -171,6 +200,36 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                 onClose={() => setEditItem(null)}
                 purchaseId={purchaseId}
             />
+
+            <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Опубликовать в Telegram?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        {publishCount > 0
+                            ? `${publishCount} товаров будет опубликовано в канал Telegram.`
+                            : 'Отметьте галочкой товары в таблице, которые нужно опубликовать.'}
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPublishOpen(false)}>
+                            Отмена
+                        </Button>
+                        <Button
+                            disabled={publishToTelegram.isPending || publishCount === 0}
+                            onClick={() => {
+                                publishToTelegram.mutate(
+                                    { purchaseId },
+                                    { onSuccess: () => setPublishOpen(false) },
+                                );
+                            }}
+                        >
+                            {publishToTelegram.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Опубликовать
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

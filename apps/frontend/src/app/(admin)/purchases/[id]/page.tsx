@@ -11,7 +11,7 @@ import { CheckCircle2, Loader2, Rocket, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
-import { useActivateAndPublish, useCompletePurchase, useDeleteDraftPurchase } from './hooks';
+import { useActivate, useCompletePurchase, useDeleteDraftPurchase } from './hooks';
 import { ItemsTab, ParticipantsTab, SupplementDialog } from './components';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +24,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const router = useAppRouter();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
-    const activateAndPublish = useActivateAndPublish(id);
+    const activate = useActivate(id);
     const completePurchase = useCompletePurchase(id);
     const deleteDraft = useDeleteDraftPurchase();
 
@@ -44,7 +44,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const deadline = new Date(purchase.deadline);
     const isDraft = purchase.status === 'DRAFT';
     const canComplete = purchase.status === 'ACTIVE' || purchase.status === 'SUPPLEMENT';
-    const publishCount = purchase.items.filter((i: any) => i.shouldPublish && !i.tgMessageId).length;
 
     return (
         <div className="space-y-6">
@@ -164,24 +163,20 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         <DialogTitle>Активировать закупку?</DialogTitle>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
-                        {publishCount > 0
-                            ? `${publishCount} товаров будет опубликовано в Telegram.`
-                            : 'Ни один товар не отмечен для публикации в Telegram.'}
+                        Закупка станет доступна участникам для заказов. Публикация в Telegram выполняется отдельно
+                        кнопкой «Опубликовать в TG».
                     </p>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setActivateOpen(false)}>
                             Отмена
                         </Button>
                         <Button
-                            disabled={activateAndPublish.isPending}
+                            disabled={activate.isPending}
                             onClick={() => {
-                                activateAndPublish.mutate(
-                                    { purchaseId: id },
-                                    { onSuccess: () => setActivateOpen(false) },
-                                );
+                                activate.mutate({ purchaseId: id }, { onSuccess: () => setActivateOpen(false) });
                             }}
                         >
-                            {activateAndPublish.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {activate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Активировать
                         </Button>
                     </DialogFooter>

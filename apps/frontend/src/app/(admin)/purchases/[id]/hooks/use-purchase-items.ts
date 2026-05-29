@@ -46,13 +46,36 @@ export function useRemovePurchaseItem(purchaseId: number) {
     });
 }
 
-export function useActivateAndPublish(purchaseId: number) {
+export function useActivate(purchaseId: number) {
     const utils = trpc.useUtils();
 
-    return trpc.purchases.activateAndPublish.useMutation({
+    return trpc.purchases.activate.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            void utils.purchases.list.invalidate();
+            toast.success('Закупка активирована');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}
+
+export function usePublishToTelegram(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.publishToTelegram.useMutation({
         onSuccess: (data) => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success(`Закупка активирована. ${data.queued} товаров опубликовано.`);
+            if (data.queued > 0) {
+                toast.success(
+                    data.queued === 1
+                        ? '1 товар в очереди на публикацию в Telegram'
+                        : `${data.queued} товаров в очереди на публикацию в Telegram`,
+                );
+            } else {
+                toast.message('Нет товаров для публикации', {
+                    description: 'Отметьте галочкой товары, которые нужно опубликовать',
+                });
+            }
         },
         onError: (err) => toast.error(err.message),
     });
@@ -90,5 +113,6 @@ export function useToggleShouldPublish(purchaseId: number) {
         onSuccess: () => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
         },
+        onError: (err) => toast.error(err.message),
     });
 }

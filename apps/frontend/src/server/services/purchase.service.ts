@@ -35,8 +35,31 @@ export class PurchaseService {
         return this.repo.updateStatus(id, status);
     }
 
-    async activateAndPublish(purchaseId: number) {
-        await this.repo.updateStatus(purchaseId, 'ACTIVE');
+    async activate(purchaseId: number) {
+        const purchase = await this.repo.getById(purchaseId);
+        if (!purchase) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
+        }
+        if (purchase.status !== 'DRAFT') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Активировать можно только черновик',
+            });
+        }
+        return this.repo.updateStatus(purchaseId, 'ACTIVE');
+    }
+
+    async findItemsToPublish(purchaseId: number) {
+        const purchase = await this.repo.getById(purchaseId);
+        if (!purchase) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
+        }
+        if (purchase.status !== 'ACTIVE') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Публиковать в Telegram можно только для активной закупки',
+            });
+        }
         return this.repo.findUnpublishedItems(purchaseId);
     }
 
@@ -73,7 +96,42 @@ export class PurchaseService {
     }
 
     async toggleShouldPublish(purchaseItemId: number, value: boolean) {
+        const item = await this.repo.findItemWithPurchase(purchaseItemId);
+        if (!item) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+        }
+        if (item.tgMessageId) {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Нельзя изменить флаг публикации для уже опубликованного товара',
+            });
+        }
+        if (item.purchase.status === 'DONE') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Нельзя изменить флаг публикации в завершённой закупке',
+            });
+        }
         return this.repo.toggleShouldPublish(purchaseItemId, value);
+    }
+
+    async ensureCanPublishItem(purchaseItemId: number) {
+        const item = await this.repo.findItemWithPurchase(purchaseItemId);
+        if (!item) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+        }
+        if (item.purchase.status !== 'ACTIVE') {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Публиковать в Telegram можно только для активной закупки',
+            });
+        }
+        if (item.tgMessageId) {
+            throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Товар уже опубликован в Telegram',
+            });
+        }
     }
 
     async ensureItemExists(purchaseItemId: number) {
@@ -125,7 +183,7 @@ export class PurchaseService {
         if (!item) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Позиция не найдена' });
         }
-        assertCanRemoveFromActivePurchase(item.purchase.status, item.purchase.tag);
+        assertCanRemoveFromActivePurchase(item.purchase.status, item.purchase.tag, item.tgMessageId);
         return this.repo.removeItem(id);
     }
 

@@ -1,6 +1,7 @@
 export {
     useAddPurchaseItems,
-    useActivateAndPublish,
+    useActivate,
+    usePublishToTelegram,
     useCompletePurchase,
     useDeleteDraftPurchase,
     useRemovePurchaseItem,

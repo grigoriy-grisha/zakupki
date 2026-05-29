@@ -39,11 +39,16 @@ export async function assertProductNotInActivePurchase(db: PrismaClient, product
     });
 }
 
-export function assertCanRemoveFromActivePurchase(purchaseStatus: string, purchaseTag: string): void {
+export function assertCanRemoveFromActivePurchase(
+    purchaseStatus: string,
+    purchaseTag: string,
+    tgMessageId: string | null | undefined,
+): void {
     if (purchaseStatus !== ACTIVE_PURCHASE_STATUS) return;
+    if (!tgMessageId) return;
 
     throw new TRPCError({
         code: 'PRECONDITION_FAILED',
-        message: `Нельзя удалить товар из активной закупки ${formatPurchaseTag(purchaseTag)}`,
+        message: `Нельзя удалить товар, уже опубликованный в активной закупке ${formatPurchaseTag(purchaseTag)}`,
     });
 }

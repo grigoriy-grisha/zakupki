@@ -138,7 +138,7 @@ export class PurchaseRepository {
     async findItemWithPurchase(purchaseItemId: number) {
         return this.db.purchaseItem.findUnique({
             where: { id: purchaseItemId },
-            select: { id: true, purchase: { select: { status: true, tag: true } } },
+            select: { id: true, tgMessageId: true, purchase: { select: { status: true, tag: true } } },
         });
     }
 

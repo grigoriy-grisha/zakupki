@@ -103,12 +103,6 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
         lines.push(`СВОБОДНО: ${formatNumber(input.availableAmount)} ${input.availableUnit}`);
     }
 
-    if (input.purchaseTag?.trim()) {
-        lines.push('');
-        const tag = input.purchaseTag.trim();
-        lines.push(tag.startsWith('#') ? tag : `#${tag}`);
-    }
-
     return lines.join('\n');
 }
 
@@ -171,12 +165,6 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
     if (input.availableAmount != null && Number(input.availableAmount) >= 0 && input.availableUnit) {
         blocks.push(blankParagraph());
         blocks.push(paragraph(`СВОБОДНО: ${formatNumber(input.availableAmount)} ${input.availableUnit}`));
-    }
-
-    if (input.purchaseTag?.trim()) {
-        blocks.push(blankParagraph());
-        const tag = input.purchaseTag.trim();
-        blocks.push(paragraph(tag.startsWith('#') ? tag : `#${tag}`));
     }
 
     return normalizeNovelHtml(blocks.join(''));

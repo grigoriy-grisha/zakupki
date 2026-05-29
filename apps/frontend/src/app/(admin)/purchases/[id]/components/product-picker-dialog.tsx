@@ -84,7 +84,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                     Добавить товары
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Выбрать товары из каталога</DialogTitle>
                 </DialogHeader>
@@ -97,6 +97,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                         onBack={() => setDetailProduct(null)}
                         shouldPublish={shouldPublish}
                         onPublishChange={setShouldPublish}
+                        isAdding={addItems.isPending}
                     />
                 ) : (
                     <>
@@ -148,7 +149,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                                     onCheckedChange={(v) => setShouldPublish(v === true)}
                                 />
                                 <Send className="h-4 w-4 text-muted-foreground" />
-                                Опубликовать в Telegram
+                                Опубликовать в Telegram после активации закупки
                             </label>
                             <Button
                                 className="w-full"
@@ -232,6 +233,7 @@ function ProductDetail({
     onBack,
     shouldPublish,
     onPublishChange,
+    isAdding,
 }: {
     productId: number;
     purchaseTag: string;
@@ -239,6 +241,7 @@ function ProductDetail({
     onBack: () => void;
     shouldPublish: boolean;
     onPublishChange: (v: boolean) => void;
+    isAdding: boolean;
 }) {
     const { data: product, isLoading } = trpc.products.getById.useQuery({ id: productId });
     const utils = trpc.useUtils();
@@ -290,13 +293,13 @@ function ProductDetail({
                         },
                     );
                 }}
-                isSaving={updateMutation.isPending}
+                isSaving={updateMutation.isPending || isAdding}
                 submitLabel="Сохранить и добавить в закупку"
                 footer={
                     <label className="flex items-center gap-2 cursor-pointer text-sm">
                         <Checkbox checked={shouldPublish} onCheckedChange={(v) => onPublishChange(v === true)} />
                         <Send className="h-4 w-4 text-muted-foreground" />
-                        Опубликовать в Telegram
+                        Опубликовать в Telegram после активации закупки
                     </label>
                 }
             />

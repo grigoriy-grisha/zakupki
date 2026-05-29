@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { NovelEditor } from '@/components/ui/novel-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import { PackageUnitSelect } from '../../../products/components/package-unit-select';
 import {
@@ -221,7 +222,10 @@ export function PurchaseProductEditForm({
 
     function handleSave() {
         const firstTier = tiers[0];
-        if (!firstTier?.amount || firstTier.price <= 0) return;
+        if (!firstTier?.amount || firstTier.price <= 0) {
+            toast.error('Укажите цену в первой ценовой строке');
+            return;
+        }
         const pricePerUnit = firstTier.price / firstTier.amount;
 
         onSave({

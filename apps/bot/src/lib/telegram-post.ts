@@ -77,16 +77,10 @@ export function productPhotoToAttachment(photo: ProductPhotoInput): ChannelPostP
     };
 }
 
-export function buildProductPostText(product: PostProduct, purchaseTag: string): string {
-    const rawTag = purchaseTag.replace(/^#/, '');
-    const hashtag = `#${escapeHtml(rawTag)}`;
+export function buildProductPostText(product: PostProduct): string {
     const desc = product.description?.trim();
     if (desc) {
-        const normalized = htmlToTelegramHtml(desc);
-        if (normalized.includes(hashtag) || normalized.includes(rawTag)) {
-            return normalized;
-        }
-        return normalized + '\n\n' + hashtag;
+        return htmlToTelegramHtml(desc);
     }
 
     const lines: string[] = [`<b>${escapeHtml(product.name)}</b>`];
@@ -103,7 +97,7 @@ export function buildProductPostText(product: PostProduct, purchaseTag: string):
         lines.push(`${price.toLocaleString('ru-RU')} ₽/${escapeHtml(shortName)}`);
     }
 
-    return lines.join('\n') + '\n\n' + hashtag;
+    return lines.join('\n');
 }
 
 /** Strip all HTML tags as fallback when Telegram can't parse entities */

@@ -60,14 +60,17 @@ export const purchasesRouter = router({
             return purchase.updateStatus(input.id, input.status);
         }),
 
-    activateAndPublish: adminProcedure
-        .input(z.object({ purchaseId: z.number() }))
-        .mutation(async ({ ctx, input }) => {
-            const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
-            const unpublishedItems = await purchase.activateAndPublish(input.purchaseId);
-            const queued = await telegramPublish.enqueuePurchaseItems(unpublishedItems.map((i) => i.id));
-            return { queued };
-        }),
+    activate: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
+        const { purchase } = createPurchaseServices(ctx.db);
+        return purchase.activate(input.purchaseId);
+    }),
+
+    publishToTelegram: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
+        const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
+        const unpublishedItems = await purchase.findItemsToPublish(input.purchaseId);
+        const queued = await telegramPublish.enqueuePurchaseItems(unpublishedItems.map((i) => i.id));
+        return { queued };
+    }),
 
     complete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         const { purchase } = createPurchaseServices(ctx.db);
@@ -139,7 +142,7 @@ export const purchasesRouter = router({
         .input(z.object({ purchaseItemId: z.number() }))
         .mutation(async ({ ctx, input }) => {
             const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
-            await purchase.ensureItemExists(input.purchaseItemId);
+            await purchase.ensureCanPublishItem(input.purchaseItemId);
             return telegramPublish.publishPurchaseItem(input.purchaseItemId);
         }),
 
