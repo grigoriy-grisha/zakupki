@@ -18,6 +18,11 @@ export async function startCommand(ctx: CustomContext) {
             `• Просматривать активные закупки\n` +
             `• Делать заказы\n` +
             `• Оплачивать и отслеживать статус\n\n` +
+            `📋 Команды:\n` +
+            `/start — открыть магазин\n` +
+            `/help — справка\n` +
+            `/orders — мои заказы\n` +
+            `/payments — мои оплаты\n\n` +
             (webAppUrl ? 'Нажмите кнопку ниже, чтобы открыть магазин:' : 'Магазин скоро будет доступен!'),
         replyMarkup,
     );
@@ -26,10 +31,11 @@ export async function startCommand(ctx: CustomContext) {
 export async function helpCommand(ctx: CustomContext) {
     await ctx.reply(
         '📋 Доступные команды:\n\n' +
-            '/start — Открыть магазин\n' +
-            '/help — Эта справка\n' +
-            '/orders — Мои заказы\n' +
-            '/payments — Мои оплаты',
+            '/start — открыть магазин\n' +
+            '/help — эта справка\n' +
+            '/orders — мои заказы\n' +
+            '/payments — мои оплаты\n\n' +
+            'По вопросам обращайтесь сюда: @kind_of_girl',
     );
 }
 
