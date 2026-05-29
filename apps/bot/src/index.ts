@@ -5,6 +5,7 @@ import { getRedisConnection } from '@zakupki/queue';
 
 import { createBot } from './create-bot';
 import { setupPurchaseChannelPostHandler } from './notifications/purchase-channel-post.handler';
+import { getOrdersChatIdFromEnv } from './lib/telegram-chat';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN is required');
@@ -22,6 +23,13 @@ async function main() {
     });
 
     setupPurchaseChannelPostHandler(bot, { redis: getRedisConnection(), db: dbClient });
+
+    const ordersChatId = getOrdersChatIdFromEnv();
+    if (ordersChatId) {
+        console.log(`[bot] Order collection enabled for chat ${ordersChatId}`);
+    } else {
+        console.warn('[bot] TG_ORDERS_CHAT_ID не задан — сбор заявок из чата отключён');
+    }
 
     await bot.api.setMyCommands([
         { command: 'start', description: 'Открыть магазин' },

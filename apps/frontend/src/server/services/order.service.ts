@@ -1,3 +1,5 @@
+import { calculateOrderAmount } from '@zakupki/types';
+
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
 
@@ -7,8 +9,7 @@ export class OrderService {
         private purchaseRepo: PurchaseRepository,
     ) {}
 
-    async upsert(purchaseItemId: number, userId: number, quantity: number, pricePerUnit: number) {
-        const amountDue = quantity * pricePerUnit;
+    async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
         return this.repo.upsert(purchaseItemId, userId, quantity, amountDue);
     }
 
@@ -21,12 +22,16 @@ export class OrderService {
             throw new Error('Закупка неактивна, заказы не принимаются');
         }
 
-        const price = Number(purchaseItem.priceOverride ?? purchaseItem.product.pricePerUnit);
-        return this.upsertWithStock(purchaseItemId, userId, quantity, price);
+        const amountDue = calculateOrderAmount(quantity, {
+            priceTiers: purchaseItem.product.priceTiers,
+            pricePerUnit: Number(purchaseItem.product.pricePerUnit),
+            priceOverride: purchaseItem.priceOverride != null ? Number(purchaseItem.priceOverride) : null,
+        });
+
+        return this.upsertWithStock(purchaseItemId, userId, quantity, amountDue);
     }
 
-    async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, pricePerUnit: number) {
-        const amountDue = quantity * pricePerUnit;
+    async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
         return this.repo.upsertWithStock(purchaseItemId, userId, quantity, amountDue);
     }
 

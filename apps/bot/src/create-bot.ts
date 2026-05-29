@@ -5,6 +5,8 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import type { CreateBotOptions, CustomContext, SessionData } from './domain/types';
 import { initMiddleware, requireAuth } from './middlewares';
 import { startCommand, helpCommand, ordersCommand, paymentsCommand } from './handlers';
+import { orderReplyHandler } from './handlers/order-reply';
+import { isOrderCollectionChat } from './lib/telegram-chat';
 
 function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
     return {
@@ -42,10 +44,14 @@ export function createBot({ db, token, proxyUrl }: CreateBotOptions) {
     bot.command('orders', auth, ordersCommand);
     bot.command('payments', auth, paymentsCommand);
 
+    bot.on('message:text', orderReplyHandler);
+
     bot.on('message:text', async (ctx) => {
+        if (ctx.chat && isOrderCollectionChat(ctx.chat.id, ctx.message?.reply_to_message)) {
+            return;
+        }
         await ctx.reply('Используйте /start чтобы открыть магазин.');
     });
-
     bot.catch((err) => {
         console.error(err);
         const ctx = err.ctx;

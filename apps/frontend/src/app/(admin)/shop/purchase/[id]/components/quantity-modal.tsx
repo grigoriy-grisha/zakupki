@@ -11,6 +11,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { calculateOrderAmount } from '@zakupki/types';
 import { Loader2, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -51,9 +52,21 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
 
     if (!item || !unit) return null;
 
-    const price = Number(item.priceOverride ?? item.product.pricePerUnit);
+    const product = item.product as {
+        name: string;
+        pricePerUnit: unknown;
+        priceTiers?: unknown;
+        minPackageAmount?: unknown;
+        minPackageUnit?: string | null;
+    };
+
     const shortName = unit.shortName;
-    const total = quantity * price;
+    const unitPrice = Number(item.priceOverride ?? product.pricePerUnit);
+    const total = calculateOrderAmount(quantity, {
+        priceTiers: product.priceTiers,
+        pricePerUnit: Number(product.pricePerUnit),
+        priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
+    });
 
     // availableQty = remaining stock in DB (already decremented for current user's order in supplement mode)
     // But if the order was placed BEFORE supplement mode, availableQty doesn't account for it.
@@ -78,12 +91,12 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
         <Dialog open onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>{item.product.name}</DialogTitle>
+                    <DialogTitle>{product.name}</DialogTitle>
                     <DialogDescription>
-                        {item.product.minPackageAmount != null &&
-                            item.product.minPackageUnit &&
-                            `Мин. фасовка: ${Number(item.product.minPackageAmount)} ${item.product.minPackageUnit} · `}
-                        {price.toLocaleString('ru-RU')} ₽/{shortName}
+                        {product.minPackageAmount != null &&
+                            product.minPackageUnit &&
+                            `Мин. фасовка: ${Number(product.minPackageAmount)} ${product.minPackageUnit} · `}
+                        {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -163,7 +176,7 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                         <p className="text-sm text-muted-foreground">Итого</p>
                         <p className="mt-1 text-3xl font-bold text-primary">{total.toLocaleString('ru-RU')} ₽</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                            {quantity} {shortName} × {price.toLocaleString('ru-RU')} ₽
+                            {quantity} {shortName} · {total.toLocaleString('ru-RU')} ₽
                         </p>
                     </div>
                 </div>

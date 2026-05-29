@@ -16,6 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     return (
         <html lang="ru">
             <body className="antialiased">
+                <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
                 <Script src="https://telegram.org/js/telegram-widget.js" strategy="lazyOnload" />
                 <AuthProvider>
                     <TrpcProvider>{children}</TrpcProvider>
