@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { NovelEditor } from '@/components/ui/novel-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import { PackageUnitSelect } from '../../../products/components/package-unit-select';
 import {
@@ -22,6 +23,7 @@ import {
     persistTemplateChoice,
     resolveDefaultTemplateId,
     savedPurchaseFields,
+    validatePurchasePriceTiers,
     type PurchaseProductFormState,
 } from '../lib/purchase-product-fields';
 
@@ -107,6 +109,7 @@ export function PurchaseProductEditForm({
     const [availAmount, setAvailAmount] = useState<number | null>(initial.availAmount);
     const [availUnit, setAvailUnit] = useState<string | null>(initial.availUnit);
     const [templateId, setTemplateId] = useState('none');
+    const [priceError, setPriceError] = useState<string | null>(null);
 
     const { data: postTemplates } = trpc.postTemplates.list.useQuery();
 
@@ -221,16 +224,22 @@ export function PurchaseProductEditForm({
     }
 
     function handleSave() {
-        const firstTier = tiers[0];
-        const pricePerUnit =
-            firstTier?.amount && firstTier.amount > 0 && firstTier.price > 0
-                ? firstTier.price / firstTier.amount
-                : undefined;
+        const tierError = validatePurchasePriceTiers(tiers);
+        if (tierError) {
+            setPriceError(tierError);
+            toast.error(tierError);
+            return;
+        }
+        setPriceError(null);
+
+        const validTiers = tiers.filter((t) => t.amount > 0 && t.price > 0 && t.unit.trim());
+        const firstTier = validTiers[0]!;
+        const pricePerUnit = firstTier.price / firstTier.amount;
 
         onSave({
             description: description || undefined,
             pricePerUnit,
-            priceTiers: tiers,
+            priceTiers: validTiers,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
             supplierPackageAmount: supPkgAmount,
@@ -274,7 +283,18 @@ export function PurchaseProductEditForm({
                 </div>
             </div>
 
-            <PriceTierEditor tiers={tiers} onChange={setTiers} />
+            <div className="space-y-1">
+                <PriceTierEditor
+                    tiers={tiers}
+                    onChange={(next) => {
+                        setTiers(next);
+                        if (priceError && !validatePurchasePriceTiers(next)) {
+                            setPriceError(null);
+                        }
+                    }}
+                />
+                {priceError && <p className="text-xs text-destructive">{priceError}</p>}
+            </div>
 
             <PackageEditor
                 label="Фасовка поставщика"

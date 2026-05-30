@@ -4,6 +4,7 @@ import { calculateOrderAmount } from '@zakupki/types';
 import { OrderRepository } from '../domain/repositories/order.repository';
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
+import { getChannelIdFromEnv } from '../lib/telegram-post';
 import { allTelegramPostRefs, type ReplyToMessage, walkReplyChain } from '../lib/resolve-reply-purchase-item';
 import { UserService } from './user.service';
 
@@ -48,9 +49,30 @@ export class OrderCollectionService {
         return null;
     }
 
+    async resolvePurchaseItemFromMessage(
+        chatId: number,
+        message: { reply_to_message?: ReplyToMessage; message_thread_id?: number },
+    ) {
+        // Telegram не отдаёт вложенный reply_to_message — ответ на комментарий бота
+        // не содержит ссылку на пост канала, только message_thread_id темы.
+        if (message.reply_to_message) {
+            const fromReply = await this.resolvePurchaseItemFromReply(chatId, message.reply_to_message);
+            if (fromReply) return fromReply;
+        }
+
+        const channelId = getChannelIdFromEnv();
+        const threadId = message.message_thread_id ?? message.reply_to_message?.message_thread_id;
+        if (channelId && threadId != null) {
+            return this.purchaseItems.findByTelegramPost(channelId, String(threadId));
+        }
+
+        return null;
+    }
+
     async collectFromReply(params: {
         chatId: number;
-        replyTo: ReplyToMessage;
+        replyTo?: ReplyToMessage;
+        threadId?: number;
         text: string;
         telegramId: string;
         userInfo: { firstName: string; lastName?: string; username?: string };
@@ -64,7 +86,10 @@ export class OrderCollectionService {
             };
         }
 
-        const purchaseItem = await this.resolvePurchaseItemFromReply(params.chatId, params.replyTo);
+        const purchaseItem = await this.resolvePurchaseItemFromMessage(params.chatId, {
+            reply_to_message: params.replyTo,
+            message_thread_id: params.threadId,
+        });
 
         if (!purchaseItem?.product) {
             return {

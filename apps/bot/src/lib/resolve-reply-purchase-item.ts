@@ -2,6 +2,7 @@ import { normalizeChatId } from './telegram-post';
 
 export interface ReplyToMessage {
     message_id: number;
+    message_thread_id?: number;
     forward_origin?: {
         type: string;
         chat?: { id: number };

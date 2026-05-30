@@ -12,7 +12,6 @@ import {
     productPhotoToAttachment,
     sendChannelPost,
 } from '../lib/telegram-post';
-
 export class ChannelPostService {
     private repo: PurchaseItemRepository;
     private channelId: string | null;

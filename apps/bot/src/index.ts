@@ -4,6 +4,7 @@ import { dbClient } from '@zakupki/database';
 import { getRedisConnection } from '@zakupki/queue';
 
 import { createBot } from './create-bot';
+import { initChannelDiscussion } from './lib/channel-discussion';
 import { setupPurchaseChannelPostHandler } from './notifications/purchase-channel-post.handler';
 import { getOrdersChatIdFromEnv } from './lib/telegram-chat';
 
@@ -23,6 +24,8 @@ async function main() {
     });
 
     setupPurchaseChannelPostHandler(bot, { redis: getRedisConnection(), db: dbClient });
+
+    await initChannelDiscussion(bot.api);
 
     const ordersChatId = getOrdersChatIdFromEnv();
     if (ordersChatId) {

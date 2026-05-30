@@ -1,16 +1,10 @@
 import type { CustomContext } from '../domain/types';
+import { getWebAppUrl, shopInlineKeyboardForGroup } from '../lib/webapp-url';
 
 export async function startCommand(ctx: CustomContext) {
     const name = ctx.from?.first_name ?? 'Друг';
     const webAppUrl = getWebAppUrl();
-
-    const replyMarkup = webAppUrl
-        ? {
-              reply_markup: {
-                  inline_keyboard: [[{ text: '🛒 Открыть магазин', web_app: { url: webAppUrl } }]],
-              },
-          }
-        : undefined;
+    const replyMarkup = shopInlineKeyboardForGroup();
 
     await ctx.reply(
         `Привет, ${name}! 👋\n\n` +
@@ -24,7 +18,7 @@ export async function startCommand(ctx: CustomContext) {
             `/orders — мои заказы\n` +
             `/payments — мои оплаты\n\n` +
             (webAppUrl ? 'Нажмите кнопку ниже, чтобы открыть магазин:' : 'Магазин скоро будет доступен!'),
-        replyMarkup,
+        replyMarkup ? { reply_markup: replyMarkup } : undefined,
     );
 }
 
@@ -37,10 +31,4 @@ export async function helpCommand(ctx: CustomContext) {
             '/payments — мои оплаты\n\n' +
             'По вопросам обращайтесь сюда: @kind_of_girl',
     );
-}
-
-function getWebAppUrl(): string | null {
-    const baseUrl = process.env.WEBAPP_URL?.trim();
-    if (!baseUrl) return null;
-    return `${baseUrl}/tg/webapp`;
 }

@@ -4,9 +4,15 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 
 import type { CreateBotOptions, CustomContext, SessionData } from './domain/types';
 import { initMiddleware, requireAuth } from './middlewares';
-import { startCommand, helpCommand, ordersCommand, paymentsCommand } from './handlers';
-import { orderReplyHandler } from './handlers/order-reply';
-import { isOrderCollectionChat } from './lib/telegram-chat';
+import {
+    startCommand,
+    helpCommand,
+    ordersCommand,
+    paymentsCommand,
+    channelPostShopCommentHandler,
+    orderReplyHandler,
+} from './handlers';
+import { isOrderCollectionMessage } from './lib/telegram-chat';
 
 function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
     return {
@@ -45,9 +51,11 @@ export function createBot({ db, token, proxyUrl }: CreateBotOptions) {
     bot.command('payments', auth, paymentsCommand);
 
     bot.on('message:text', orderReplyHandler);
+    bot.on('message', channelPostShopCommentHandler);
 
     bot.on('message:text', async (ctx) => {
-        if (ctx.chat && isOrderCollectionChat(ctx.chat.id, ctx.message?.reply_to_message)) {
+        if (ctx.message?.is_automatic_forward) return;
+        if (ctx.chat && ctx.message && isOrderCollectionMessage(ctx.chat.id, ctx.message)) {
             return;
         }
         await ctx.reply('Используйте /start чтобы открыть магазин.');

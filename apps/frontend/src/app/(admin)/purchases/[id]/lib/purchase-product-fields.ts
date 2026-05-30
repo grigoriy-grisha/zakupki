@@ -15,6 +15,18 @@ export type PurchaseProductFieldSource = {
 
 const DEFAULT_TIER: PurchasePriceTier = { amount: 1, unit: PACKAGE_UNITS[0], price: 0 };
 
+/** Проверка цен перед сохранением товара в закупке. */
+export function validatePurchasePriceTiers(tiers: PurchasePriceTier[]): string | null {
+    if (tiers.length === 0) {
+        return 'Укажите хотя бы одну цену';
+    }
+    const hasValid = tiers.some((t) => t.amount > 0 && t.unit.trim() && t.price > 0);
+    if (!hasValid) {
+        return 'Укажите цену больше 0';
+    }
+    return null;
+}
+
 export type PurchaseProductFormState = {
     description: string;
     tiers: PurchasePriceTier[];

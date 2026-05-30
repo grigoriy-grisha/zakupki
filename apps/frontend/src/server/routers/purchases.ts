@@ -162,7 +162,14 @@ export const purchasesRouter = router({
                     minPackageAmount: z.number().nullable().optional(),
                     minPackageUnit: z.string().nullable().optional(),
                     priceTiers: z
-                        .array(z.object({ amount: z.number(), unit: z.string(), price: z.number() }))
+                        .array(
+                            z.object({
+                                amount: z.number().positive('Укажите количество'),
+                                unit: z.string().min(1, 'Выберите ед.'),
+                                price: z.number().positive('Укажите цену больше 0'),
+                            }),
+                        )
+                        .min(1, 'Укажите хотя бы одну цену')
                         .optional(),
                     supplierPackageAmount: z.number().nullable().optional(),
                     supplierPackageUnit: z.string().nullable().optional(),

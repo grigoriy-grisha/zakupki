@@ -29,7 +29,9 @@ export function PriceTierEditor({
     return (
         <div className="space-y-1">
             <div className="flex items-center justify-between">
-                <Label>Цены</Label>
+                <Label>
+                    Цены <span className="text-destructive">*</span>
+                </Label>
                 <Button
                     type="button"
                     variant="ghost"
