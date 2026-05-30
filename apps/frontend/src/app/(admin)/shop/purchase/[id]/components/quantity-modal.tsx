@@ -12,6 +12,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { calculateOrderAmount } from '@zakupki/types';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { Loader2, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -91,7 +92,9 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
         <Dialog open onOpenChange={onClose}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="pr-6 text-left">{product.name}</DialogTitle>
+                    <DialogTitle className="pr-6 text-left">
+                        <PurchaseProductLabel product={item.product} primaryClassName="text-lg font-semibold" />
+                    </DialogTitle>
                     <DialogDescription className="text-left">
                         {product.minPackageAmount != null &&
                             product.minPackageUnit &&

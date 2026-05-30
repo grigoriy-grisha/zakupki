@@ -11,6 +11,8 @@ import { Loader2, Send, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import type { ProductLabelSource } from '../../../products/lib';
 import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { PurchaseProductEditForm } from './purchase-product-edit-form';
@@ -36,7 +38,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const [publishOpen, setPublishOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<{
         id: number;
-        name: string;
+        product: ProductLabelSource;
         orderCount: number;
     } | null>(null);
 
@@ -134,7 +136,9 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                             </div>
                                         )}
                                     </TableCell>
-                                    <TableCell className="font-medium">{item.product.name}</TableCell>
+                                    <TableCell className="font-medium">
+                                        <PurchaseProductLabel product={item.product} />
+                                    </TableCell>
                                     <TableCell className="text-muted-foreground">
                                         {item.product.minPackageAmount != null && item.product.minPackageUnit
                                             ? `${Number(item.product.minPackageAmount)} ${item.product.minPackageUnit}`
@@ -190,7 +194,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                                 onClick={() =>
                                                     setDeleteTarget({
                                                         id: item.id,
-                                                        name: item.product.name,
+                                                        product: item.product,
                                                         orderCount: item.orderLines.length,
                                                     })
                                                 }
@@ -222,7 +226,11 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                 description={
                     deleteTarget ? (
                         <>
-                            Товар <strong>{deleteTarget.name}</strong> будет удалён из закупки.
+                            Товар{' '}
+                            <strong>
+                                <PurchaseProductLabel product={deleteTarget.product} as="span" />
+                            </strong>{' '}
+                            будет удалён из закупки.
                             {deleteTarget.orderCount > 0 && (
                                 <>
                                     {' '}

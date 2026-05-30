@@ -279,6 +279,33 @@ export function formatProductAttributesLine(product: ProductLabelSource): string
         .join(' · ');
 }
 
+/** Две строки для списка товаров в закупке: заголовок и «номер название». */
+export function formatPurchaseProductLabel(
+    product: ProductLabelSource,
+    showInTitleByTypeId?: ShowInTitleByTypeId,
+    attributeTypes?: AttributeTypeMeta[],
+): { line1: string; line2: string; text: string } {
+    const article = product.articleNumber?.trim() ?? '';
+    const title = getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' ');
+    const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
+
+    const line1 = title;
+
+    const line2Parts: string[] = [];
+    if (article) line2Parts.push(article);
+    if (displayName) line2Parts.push(displayName);
+    const line2 = line2Parts.join(' ');
+
+    return {
+        line1,
+        line2,
+        text: [line1, line2].filter(Boolean).join('\n'),
+    };
+}
+
 export function getProductPhotoId(product: ProductLabelSource): number | null {
     return product.photos?.[0]?.id ?? null;
 }

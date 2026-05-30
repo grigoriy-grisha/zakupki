@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
 import { useActivate, useCompletePurchase, useDeleteDraftPurchase } from './hooks';
-import { ItemsTab, ParticipantsTab, SupplementDialog } from './components';
+import { ExportPurchaseButtons, ItemsTab, ParticipantsTab, SupplementDialog } from './components';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
@@ -86,6 +86,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     )}
                 </div>
             </div>
+
+            <ExportPurchaseButtons purchaseId={id} />
 
             <Tabs defaultValue="items">
                 <TabsList>

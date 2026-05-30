@@ -9,6 +9,7 @@ export type { PackageUnit, PriceTierValues, ProductCreateFormValues } from './sc
 export type { ProductFormValues, ProductAttributeFormValues } from './schema';
 export {
     formatProductAttributesLine,
+    formatPurchaseProductLabel,
     getProductDisplayName,
     getProductAttributeNames,
     getProductTitleAttributeNames,

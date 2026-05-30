@@ -3,6 +3,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { ShoppingCart, Plus, Check } from 'lucide-react';
 
 interface ShopPurchaseItemProductCardProps {
@@ -11,8 +13,7 @@ interface ShopPurchaseItemProductCardProps {
         priceOverride: string | null;
         availableQty: string | number | null;
         minQty: string | number | null;
-        product: {
-            name: string;
+        product: ProductLabelSource & {
             pricePerUnit: string | number;
             unit: { shortName: string; multiplicity: string | number } | null;
             minPackageAmount: string | number | null;
@@ -64,7 +65,10 @@ export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPur
             <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div>
-                        <h3 className="font-semibold leading-tight">{item.product.name}</h3>
+                        <PurchaseProductLabel
+                            product={item.product}
+                            primaryClassName="font-semibold"
+                        />
                         {item.product.minPackageAmount != null && item.product.minPackageUnit && (
                             <p className="mt-0.5 text-xs text-muted-foreground">
                                 Мин. фасовка: {Number(item.product.minPackageAmount)} {item.product.minPackageUnit}

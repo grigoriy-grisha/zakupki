@@ -89,6 +89,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
             {paymentDetail.myOrdersInPurchase.length > 0 && (
                 <OrdersSummaryCard
                     paymentDetail={paymentDetail}
+                    purchaseItems={purchase.items}
                     paymentDialog={
                         <PaymentDialog
                             purchaseId={id}

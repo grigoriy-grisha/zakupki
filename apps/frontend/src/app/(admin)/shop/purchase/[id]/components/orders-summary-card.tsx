@@ -1,6 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { cn } from '@/lib/utils';
 import { CircleCheck, Clock, CircleX, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,10 +16,15 @@ import type { usePurchasePaymentDetail } from '../../../hooks/use-purchase-payme
 interface OrdersSummaryCardProps {
     paymentDetail: ReturnType<typeof usePurchasePaymentDetail>;
     paymentDialog: ReactNode;
+    purchaseItems?: { id: number; product: ProductLabelSource }[];
 }
 
-export function OrdersSummaryCard({ paymentDetail, paymentDialog }: OrdersSummaryCardProps) {
+export function OrdersSummaryCard({ paymentDetail, paymentDialog, purchaseItems }: OrdersSummaryCardProps) {
     const { myOrdersInPurchase, totalDue, purchasePayments, hasPending, totalPaid, remaining } = paymentDetail;
+    const productByItemId = useMemo(
+        () => new Map(purchaseItems?.map((item) => [item.id, item.product]) ?? []),
+        [purchaseItems],
+    );
 
     return (
         <Card>
@@ -24,19 +32,27 @@ export function OrdersSummaryCard({ paymentDetail, paymentDialog }: OrdersSummar
                 <h3 className="font-semibold">Ваши заказы</h3>
 
                 <div className="space-y-2">
-                    {myOrdersInPurchase.map((order) => (
-                        <div
-                            key={order.id}
-                            className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
-                        >
-                            <span className="text-sm">{order.purchaseItem?.product?.name}</span>
-                            <span className="text-sm font-medium">
-                                {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                {order.purchaseItem?.product?.unit?.shortName ?? ''} ·{' '}
-                                {Number(order.amountDue).toLocaleString('ru-RU')} ₽
-                            </span>
-                        </div>
-                    ))}
+                    {myOrdersInPurchase.map((order) => {
+                        const product = productByItemId.get(order.purchaseItemId);
+
+                        return (
+                            <div
+                                key={order.id}
+                                className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2"
+                            >
+                                {product ? (
+                                    <PurchaseProductLabel product={product} className="min-w-0 text-sm" />
+                                ) : (
+                                    <span className="text-sm">{order.purchaseItem?.product?.name ?? 'Товар'}</span>
+                                )}
+                                <span className="shrink-0 text-sm font-medium">
+                                    {Number(order.quantity).toLocaleString('ru-RU')}{' '}
+                                    {order.purchaseItem?.product?.unit?.shortName ?? ''} ·{' '}
+                                    {Number(order.amountDue).toLocaleString('ru-RU')} ₽
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Payment balance */}
