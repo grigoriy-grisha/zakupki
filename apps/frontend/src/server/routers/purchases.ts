@@ -158,7 +158,7 @@ export const purchasesRouter = router({
                 product: z.object({
                     name: z.string().min(1).optional(),
                     description: z.string().optional(),
-                    pricePerUnit: z.number(),
+                    pricePerUnit: z.number().optional(),
                     minPackageAmount: z.number().nullable().optional(),
                     minPackageUnit: z.string().nullable().optional(),
                     priceTiers: z

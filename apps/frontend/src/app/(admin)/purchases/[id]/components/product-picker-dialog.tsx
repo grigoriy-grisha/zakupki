@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Loader2, Package, Plus, Search, Send } from 'lucide-react';
+import { Loader2, Package, Plus, Search } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,7 +27,6 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
     const [search, setSearch] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
-    const [shouldPublish, setShouldPublish] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
     const utils = trpc.useUtils();
 
@@ -55,13 +54,12 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
         const ids = productIdsOverride ?? Array.from(selectedIds);
         if (ids.length === 0) return;
         addItems.mutate(
-            { purchaseId, productIds: ids, shouldPublish },
+            { purchaseId, productIds: ids },
             {
                 onSuccess: () => {
                     setOpen(false);
                     setSelectedIds(new Set());
                     setDetailProduct(null);
-                    setShouldPublish(false);
                 },
             },
         );
@@ -95,8 +93,6 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                         purchaseTag={purchaseTag}
                         onAdd={handleAdd}
                         onBack={() => setDetailProduct(null)}
-                        shouldPublish={shouldPublish}
-                        onPublishChange={setShouldPublish}
                         isAdding={addItems.isPending}
                     />
                 ) : (
@@ -142,24 +138,14 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                                 />
                             ))}
                         </div>
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-2 cursor-pointer text-sm">
-                                <Checkbox
-                                    checked={shouldPublish}
-                                    onCheckedChange={(v) => setShouldPublish(v === true)}
-                                />
-                                <Send className="h-4 w-4 text-muted-foreground" />
-                                Опубликовать в Telegram после активации закупки
-                            </label>
-                            <Button
-                                className="w-full"
-                                disabled={selectedIds.size === 0 || addItems.isPending}
-                                onClick={() => handleAdd()}
-                            >
-                                {addItems.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Добавить {selectedIds.size > 0 && `(${selectedIds.size})`}
-                            </Button>
-                        </div>
+                        <Button
+                            className="w-full"
+                            disabled={selectedIds.size === 0 || addItems.isPending}
+                            onClick={() => handleAdd()}
+                        >
+                            {addItems.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Добавить {selectedIds.size > 0 && `(${selectedIds.size})`}
+                        </Button>
                     </>
                 )}
             </DialogContent>
@@ -231,16 +217,12 @@ function ProductDetail({
     purchaseTag,
     onAdd,
     onBack,
-    shouldPublish,
-    onPublishChange,
     isAdding,
 }: {
     productId: number;
     purchaseTag: string;
     onAdd: (productIds?: number[]) => void;
     onBack: () => void;
-    shouldPublish: boolean;
-    onPublishChange: (v: boolean) => void;
     isAdding: boolean;
 }) {
     const { data: product, isLoading } = trpc.products.getById.useQuery({ id: productId });
@@ -295,13 +277,6 @@ function ProductDetail({
                 }}
                 isSaving={updateMutation.isPending || isAdding}
                 submitLabel="Сохранить и добавить в закупку"
-                footer={
-                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                        <Checkbox checked={shouldPublish} onCheckedChange={(v) => onPublishChange(v === true)} />
-                        <Send className="h-4 w-4 text-muted-foreground" />
-                        Опубликовать в Telegram после активации закупки
-                    </label>
-                }
             />
         </div>
     );

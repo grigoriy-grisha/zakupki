@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Loader2, Send, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { PurchaseProductEditForm } from './purchase-product-edit-form';
@@ -33,6 +34,11 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
 
     const [editItem, setEditItem] = useState<number | null>(null);
     const [publishOpen, setPublishOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<{
+        id: number;
+        name: string;
+        orderCount: number;
+    } | null>(null);
 
     if (isLoading || !purchase) {
         return <Skeleton className="h-64" />;
@@ -181,7 +187,13 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="text-destructive"
-                                                onClick={() => removeItem.mutate({ purchaseItemId: item.id })}
+                                                onClick={() =>
+                                                    setDeleteTarget({
+                                                        id: item.id,
+                                                        name: item.product.name,
+                                                        orderCount: item.orderLines.length,
+                                                    })
+                                                }
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -199,6 +211,37 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                 open={editItem !== null}
                 onClose={() => setEditItem(null)}
                 purchaseId={purchaseId}
+            />
+
+            <ConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) setDeleteTarget(null);
+                }}
+                title="Удалить товар из закупки?"
+                description={
+                    deleteTarget ? (
+                        <>
+                            Товар <strong>{deleteTarget.name}</strong> будет удалён из закупки.
+                            {deleteTarget.orderCount > 0 && (
+                                <>
+                                    {' '}
+                                    Также будут удалены заказы участников ({deleteTarget.orderCount}).
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        ''
+                    )
+                }
+                loading={removeItem.isPending}
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    removeItem.mutate(
+                        { purchaseItemId: deleteTarget.id },
+                        { onSuccess: () => setDeleteTarget(null) },
+                    );
+                }}
             />
 
             <Dialog open={publishOpen} onOpenChange={setPublishOpen}>

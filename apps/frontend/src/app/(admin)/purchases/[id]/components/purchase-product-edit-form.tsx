@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { NovelEditor } from '@/components/ui/novel-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import { PackageUnitSelect } from '../../../products/components/package-unit-select';
 import {
@@ -28,7 +27,7 @@ import {
 
 export type PurchaseProductSaveData = {
     description?: string;
-    pricePerUnit: number;
+    pricePerUnit?: number;
     priceTiers: { amount: number; unit: string; price: number }[];
     minPackageAmount: number | null;
     minPackageUnit: string | null;
@@ -190,31 +189,32 @@ export function PurchaseProductEditForm({
         return applyPostTemplate(body, descriptionFields);
     }, [templateId, selectedTemplateBody, descriptionFields, attributeTypesReady]);
 
-    useEffect(() => {
-        if (templatedHtml != null) setDescription(templatedHtml);
-    }, [templatedHtml]);
+    const lastAutoDescriptionRef = useRef<string | null>(null);
+    const descriptionCustomizedRef = useRef(
+        loadSavedDescription ? Boolean(product.description?.trim()) : false,
+    );
 
-    const lastTemplatedHtmlRef = useRef('');
-    const [previewVersion, setPreviewVersion] = useState(0);
-    useEffect(() => {
-        lastTemplatedHtmlRef.current = '';
-        setPreviewVersion(0);
-    }, [templateId]);
     useEffect(() => {
         if (templatedHtml == null) return;
-        if (templatedHtml === lastTemplatedHtmlRef.current) return;
-        lastTemplatedHtmlRef.current = templatedHtml;
-        setPreviewVersion((v) => v + 1);
+        if (descriptionCustomizedRef.current && description !== lastAutoDescriptionRef.current) return;
+        setDescription(templatedHtml);
+        lastAutoDescriptionRef.current = templatedHtml;
+        descriptionCustomizedRef.current = false;
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-apply template when it regenerates
     }, [templatedHtml]);
 
-    const editorValue = templatedHtml ?? description;
+    function handleDescriptionChange(html: string) {
+        setDescription(html);
+        descriptionCustomizedRef.current = true;
+    }
 
-    const editorKey =
-        templateId === 'none' ? `manual-${product.id}` : `tpl-${templateId}-v${previewVersion}`;
+    const editorKey = templateId === 'none' ? `manual-${product.id}` : `tpl-${templateId}-${product.id}`;
 
     function handleTemplateChange(value: string) {
         setTemplateId(value);
         persistTemplateChoice(product.id, value);
+        descriptionCustomizedRef.current = false;
+        lastAutoDescriptionRef.current = null;
         if (value === 'none') {
             setDescription(loadSavedDescription ? (product.description ?? '') : '');
         }
@@ -222,14 +222,13 @@ export function PurchaseProductEditForm({
 
     function handleSave() {
         const firstTier = tiers[0];
-        if (!firstTier?.amount || firstTier.price <= 0) {
-            toast.error('Укажите цену в первой ценовой строке');
-            return;
-        }
-        const pricePerUnit = firstTier.price / firstTier.amount;
+        const pricePerUnit =
+            firstTier?.amount && firstTier.amount > 0 && firstTier.price > 0
+                ? firstTier.price / firstTier.amount
+                : undefined;
 
         onSave({
-            description: (templatedHtml ?? description) || undefined,
+            description: description || undefined,
             pricePerUnit,
             priceTiers: tiers,
             minPackageAmount: minPkgAmount,
@@ -301,12 +300,12 @@ export function PurchaseProductEditForm({
                 <div className="max-h-[35vh] overflow-y-auto rounded-md border">
                     <NovelEditor
                         key={editorKey}
-                        value={editorValue}
-                        onChange={setDescription}
+                        value={description}
+                        onChange={handleDescriptionChange}
                         placeholder={
                             templateId === 'none'
                                 ? 'Текст описания для поста…'
-                                : 'Обновляется из шаблона при изменении полей выше…'
+                                : 'Текст из шаблона — можно дописать своё…'
                         }
                     />
                 </div>
