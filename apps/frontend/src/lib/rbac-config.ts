@@ -1,5 +1,11 @@
-import { RoleKind } from '@zakupki/database';
 import { z } from 'zod';
+
+export const USER_ROLES = {
+    ADMIN: 'ADMIN',
+    CLIENT: 'CLIENT',
+} as const;
+
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 export const rbacConfigSchema = () =>
     z.object({
@@ -15,12 +21,12 @@ export const rbacConfigSchema = () =>
 
 export type RbacConfig = z.infer<ReturnType<typeof rbacConfigSchema>>;
 
-type RbacRoleMap = Record<RoleKind, RbacConfig>;
+type RbacRoleMap = Record<UserRole, RbacConfig>;
 
 const c = (config: Partial<RbacConfig>) => rbacConfigSchema().parse(config);
 
 export const RBAC: RbacRoleMap = {
-    [RoleKind.ADMIN]: c({
+    [USER_ROLES.ADMIN]: c({
         canAccessAdminPanel: true,
         canManagePurchases: true,
         canManageProducts: true,
@@ -30,11 +36,11 @@ export const RBAC: RbacRoleMap = {
         canExportData: true,
         canShop: true,
     }),
-    [RoleKind.CLIENT]: c({
+    [USER_ROLES.CLIENT]: c({
         canShop: true,
     }),
 };
 
-export function buildRbac(role: RoleKind): RbacConfig {
-    return RBAC[role] ?? RBAC[RoleKind.CLIENT];
+export function buildRbac(role: UserRole | string): RbacConfig {
+    return RBAC[role as UserRole] ?? RBAC[USER_ROLES.CLIENT];
 }

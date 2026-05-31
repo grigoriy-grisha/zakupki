@@ -1,12 +1,10 @@
 import { AuthDataValidator } from '@telegram-auth/server';
-import { RoleKind } from '@zakupki/database';
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 // Marks this module as server-only
 export const dynamic = 'force-dynamic';
 
-import { buildRbac, type RbacConfig } from '@/lib/rbac-config';
 import { serviceContainer } from '@/server/lib/service-container';
 import { verifyTelegramInitData } from '@/server/lib/telegram-init-data';
 
@@ -98,29 +96,18 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async jwt({ token, user, trigger }) {
+        async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
                 token.avatar = user.image;
                 token.role = user.role;
             }
-
-            // Refresh role from DB on every sign-in so role changes take effect immediately
-            if (trigger === 'signIn' && token.id) {
-                const role = await serviceContainer.user.getCachedRole(Number(token.id));
-                if (role) {
-                    token.role = role;
-                }
-            }
-
             return token;
         },
         async session({ session, token }) {
             if (session.user) {
                 session.user.id = token.id as string;
                 session.user.image = token.avatar as string | null;
-                session.user.role = token.role ?? RoleKind.CLIENT;
-                session.user.rbac = buildRbac(session.user.role);
             }
             return session;
         },
@@ -134,12 +121,11 @@ declare module 'next-auth' {
             name?: string | null;
             email?: string | null;
             image?: string | null;
-            role: RoleKind;
-            rbac: RbacConfig;
         };
     }
+
     interface User {
-        role?: RoleKind;
+        role?: string;
     }
 }
 
@@ -147,6 +133,6 @@ declare module 'next-auth/jwt' {
     interface JWT {
         id: string;
         avatar?: string | null;
-        role?: RoleKind;
+        role?: string;
     }
 }

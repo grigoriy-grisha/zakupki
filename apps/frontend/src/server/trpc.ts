@@ -28,12 +28,12 @@ async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' |
     const session = await getServerSession(authOptions);
     const sessionUserId = Number(session?.user?.id);
     if (session?.user?.id && sessionUserId && !Number.isNaN(sessionUserId)) {
-        const role = await serviceContainer.user.getCachedRole(sessionUserId);
+        const role = (await serviceContainer.user.getCachedRole(sessionUserId)) ?? RoleKind.CLIENT;
         return {
             session,
             userId: sessionUserId,
-            role: role ?? session.user.role ?? RoleKind.CLIENT,
-            rbac: buildRbac(role ?? session.user.role ?? RoleKind.CLIENT),
+            role,
+            rbac: buildRbac(role),
         };
     }
 
@@ -44,7 +44,7 @@ async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' |
             if (verified) {
                 const user = await serviceContainer.user.signInWithTelegram(verified);
                 const userId = Number(user.id);
-                const role = user.role ?? RoleKind.CLIENT;
+                const role = (await serviceContainer.user.getCachedRole(userId)) ?? RoleKind.CLIENT;
                 return {
                     session: null,
                     userId,

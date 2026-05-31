@@ -16,6 +16,24 @@ function rewriteApp(request: NextRequest, appPathname: string) {
     return NextResponse.rewrite(url);
 }
 
+function roleFromToken(token: { role?: string } | null): string | undefined {
+    return token?.role;
+}
+
+function redirectIfNotAdmin(
+    request: NextRequest,
+    appPathname: string,
+    platform: Platform | null,
+    token: { role?: string } | null,
+) {
+    if (!token || !isAdminOnlyRoute(appPathname)) return null;
+    const role = roleFromToken(token);
+    if (role !== 'ADMIN') {
+        return redirectApp(request, '/shop', platform);
+    }
+    return null;
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const { platform, pathname: appPathname } = parseAppPath(pathname);
@@ -35,7 +53,7 @@ export async function middleware(request: NextRequest) {
         if (!platform && appPathname === '/login') {
             const token = await getToken({ req: request });
             if (token) {
-                return redirectApp(request, getHomePathForRole(token.role as string | undefined), null);
+                return redirectApp(request, getHomePathForRole(roleFromToken(token)), null);
             }
         }
         return finish();
@@ -43,9 +61,8 @@ export async function middleware(request: NextRequest) {
 
     if (platform) {
         const token = await getToken({ req: request });
-        if (token && isAdminOnlyRoute(appPathname) && token.role !== 'ADMIN') {
-            return redirectApp(request, '/shop', platform);
-        }
+        const denied = redirectIfNotAdmin(request, appPathname, platform, token);
+        if (denied) return denied;
         return finish();
     }
 
@@ -54,9 +71,8 @@ export async function middleware(request: NextRequest) {
         return redirectApp(request, '/login', null);
     }
 
-    if (isAdminOnlyRoute(appPathname) && token.role !== 'ADMIN') {
-        return redirectApp(request, '/shop', null);
-    }
+    const denied = redirectIfNotAdmin(request, appPathname, null, token);
+    if (denied) return denied;
 
     return NextResponse.next();
 }
