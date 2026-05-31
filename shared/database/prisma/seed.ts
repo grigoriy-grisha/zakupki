@@ -32,27 +32,6 @@ async function main() {
     await prisma.role.createMany({
         data: [{ kind: 'ADMIN' }, { kind: 'CLIENT' }],
     });
-
-    await prisma.unit.createMany({
-        data: [
-            { name: 'Граммы', shortName: 'г', multiplicity: 1 },
-            { name: 'Штуки', shortName: 'шт', multiplicity: 1 },
-            { name: 'Туба', shortName: 'туба', multiplicity: 1 },
-        ],
-    });
-
-    await prisma.characteristic.createMany({
-        data: [
-            { name: 'Цвет', position: 0 },
-            { name: 'Размер', position: 1 },
-            { name: 'Длина', position: 2 },
-            { name: 'Упаковка', position: 3 },
-            { name: 'Страна производитель', position: 4 },
-        ],
-    });
-
-    // Структура каталога (типы атрибутов) задаётся пользователем в настройках.
-    console.log('Seed completed: roles (2), units (3), characteristics (5)');
 }
 
 main()

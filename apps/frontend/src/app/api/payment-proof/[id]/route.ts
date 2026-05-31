@@ -1,8 +1,10 @@
+import fs from 'node:fs/promises';
+
 import { NextResponse } from 'next/server';
 
 import { dbClient } from '@zakupki/database';
 
-const PUBLIC_URL_PREFIX = process.env.YANDEX_PUBLIC_URL_PREFIX || `https://storage.yandexcloud.net/${process.env.YANDEX_BUCKET_NAME}`;
+import { getPublicUrlPrefix, isS3Configured, resolveLocalFilePath } from '@/lib/server/storage-config';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -16,7 +18,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (payment.proofObjectKey) {
-        return NextResponse.redirect(`${PUBLIC_URL_PREFIX}/${payment.proofObjectKey}`, 307);
+        if (!isS3Configured()) {
+            try {
+                const data = await fs.readFile(resolveLocalFilePath(payment.proofObjectKey));
+                return new Response(data, {
+                    headers: {
+                        'Content-Type': payment.proofMimeType ?? 'image/jpeg',
+                        'Cache-Control': 'public, max-age=31536000, immutable',
+                    },
+                });
+            } catch {
+                return NextResponse.json({ error: 'Not found' }, { status: 404 });
+            }
+        }
+
+        return NextResponse.redirect(`${getPublicUrlPrefix()}/${payment.proofObjectKey}`, 307);
     }
 
     if (payment.proofData) {

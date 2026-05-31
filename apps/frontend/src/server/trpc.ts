@@ -6,6 +6,7 @@ import {
     ValidationError,
 } from '@zakupki/types';
 import { initTRPC, TRPCError } from '@trpc/server';
+import type { TRPC_ERROR_CODE_KEY } from '@trpc/server/rpc';
 import type { Session } from 'next-auth';
 import { getServerSession } from 'next-auth';
 
@@ -89,12 +90,21 @@ function appErrorToTrpc(err: AppError): TRPCError {
 }
 
 const t = initTRPC.context<TrpcContext>().create({
-    errorFormatter({ error }) {
+    errorFormatter({ shape, error }) {
         const cause = error.cause;
-        if (cause instanceof AppError) {
-            return appErrorToTrpc(cause);
+        if (!(cause instanceof AppError)) {
+            return shape;
         }
-        return error;
+
+        const mapped = appErrorToTrpc(cause);
+        return {
+            ...shape,
+            message: mapped.message,
+            data: {
+                ...shape.data,
+                code: mapped.code as TRPC_ERROR_CODE_KEY,
+            },
+        };
     },
 });
 

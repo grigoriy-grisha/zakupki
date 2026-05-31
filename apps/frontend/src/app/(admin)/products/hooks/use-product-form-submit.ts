@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import type { ProductCreateFormValues } from '../lib';
@@ -38,10 +36,16 @@ export function useProductFormSubmit({
     const updateMutation = useUpdateProduct();
     const deletePhotoMutation = useDeletePhoto();
 
+    async function refreshProductCatalog(productId?: number) {
+        await utils.products.list.refetch();
+        if (productId != null) {
+            await utils.products.getById.refetch({ id: productId });
+        }
+    }
+
     async function handleCreate(data: ProductCreateFormValues) {
         try {
             const result = await createMutation.mutateAsync(basePayload(data));
-            await utils.products.list.invalidate();
 
             if (pendingFiles.length > 0) {
                 for (let i = 0; i < pendingFiles.length; i++) {
@@ -60,11 +64,10 @@ export function useProductFormSubmit({
                     }
                 }
                 setPendingFiles([]);
-                await utils.products.getById.invalidate({ id: result.id });
-                await utils.products.list.invalidate();
             }
 
             toast.success('Товар создан');
+            void refreshProductCatalog(result.id);
             return true;
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Ошибка сохранения');
@@ -79,8 +82,8 @@ export function useProductFormSubmit({
                 id: editId,
                 ...basePayload(data),
             });
-            await utils.products.list.invalidate();
             toast.success('Товар обновлён');
+            void refreshProductCatalog(editId);
             return true;
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Ошибка сохранения');
@@ -88,17 +91,9 @@ export function useProductFormSubmit({
         }
     }
 
-    function handleFormSubmit(
-        e: React.FormEvent,
-        handleSubmit: (
-            fn: (data: ProductCreateFormValues) => void | Promise<void>,
-        ) => (e?: React.BaseSyntheticEvent) => Promise<void>,
-    ) {
-        e.preventDefault();
-        void handleSubmit(async (data) => {
-            const ok = isCreating ? await handleCreate(data) : await handleUpdate(data);
-            if (ok) onSuccess();
-        })();
+    async function submitForm(data: ProductCreateFormValues) {
+        const ok = isCreating ? await handleCreate(data) : await handleUpdate(data);
+        if (ok) onSuccess();
     }
 
     async function handleDeletePhoto(id: number) {
@@ -106,7 +101,7 @@ export function useProductFormSubmit({
     }
 
     return {
-        handleFormSubmit,
+        submitForm,
         handleDeletePhoto,
         isPending: createMutation.isPending || updateMutation.isPending,
     };

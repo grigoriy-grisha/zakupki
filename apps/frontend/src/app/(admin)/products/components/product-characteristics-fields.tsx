@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ interface ProductCharacteristicsFieldsProps {
     onChange: (characteristicId: number, value: string) => void;
     onRemove: (characteristicId: number) => void;
     canRemove: (characteristicId: number) => boolean;
+    onMove: (characteristicId: number, direction: 'up' | 'down') => void;
     allCharacteristics: CharacteristicField[];
     activeIds: number[];
     lockedIds: Set<number>;
@@ -26,6 +27,7 @@ export function ProductCharacteristicsFields({
     onChange,
     onRemove,
     canRemove,
+    onMove,
     allCharacteristics,
     activeIds,
     lockedIds,
@@ -48,8 +50,32 @@ export function ProductCharacteristicsFields({
                     Отметьте нужные характеристики или привяжите их к значениям в справочниках товаров.
                 </p>
             )}
-            {fields.map((field) => (
+            {fields.map((field, index) => (
                 <div key={field.id} className="flex items-start gap-2">
+                    <div className="mt-6 flex shrink-0 flex-col gap-0.5">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={index === 0}
+                            title="Выше"
+                            onClick={() => onMove(field.id, 'up')}
+                        >
+                            <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={index === fields.length - 1}
+                            title="Ниже"
+                            onClick={() => onMove(field.id, 'down')}
+                        >
+                            <ChevronDown className="h-4 w-4" />
+                        </Button>
+                    </div>
                     <div className="flex-1 space-y-1">
                         <Label htmlFor={`char-${field.id}`} className="text-muted-foreground">
                             {field.name}

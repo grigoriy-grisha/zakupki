@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { handleDbConflict } from '../lib/error-utils';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
@@ -15,15 +14,14 @@ export const productAttributesRouter = router({
             z.object({
                 typeId: z.number(),
                 name: z.string().trim().min(1),
+                isBrand: z.boolean().optional(),
+                parentId: z.number().nullable().optional(),
+                showInTitle: z.boolean().optional(),
                 characteristicIds: z.array(z.number()).optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            try {
-                return await ctx.services.productAttribute.create(input);
-            } catch (err) {
-                handleDbConflict(err);
-            }
+            return ctx.services.productAttribute.create(input);
         }),
 
     update: adminProcedure
@@ -31,6 +29,7 @@ export const productAttributesRouter = router({
             z.object({
                 id: z.number(),
                 name: z.string().trim().min(1).optional(),
+                showInTitle: z.boolean().optional(),
                 characteristicIds: z.array(z.number()).optional(),
             }),
         )

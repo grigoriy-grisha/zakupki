@@ -43,7 +43,7 @@ model Supplier {
   purchases Purchase[]
 }
 
-// Тип атрибута каталога (Производитель, Размер, ...) — задаётся в настройках.
+// Тип атрибута каталога (Производитель, Размер, Бренд, ...) — задаётся в настройках.
 // position = уровень вложенности в дереве каталога.
 model Characteristic {
   id             Int                              @id @default(autoincrement())
@@ -56,10 +56,9 @@ model Characteristic {
 
 model AttributeType {
   id          Int                @id @default(autoincrement())
-  name        String             @unique
+  name        String
   parentId    Int?
   position    Int                @default(0)
-  showInTree  Boolean            @default(true)
   showInTitle Boolean            @default(true)
   createdAt   DateTime           @default(now())
   parent      AttributeType?     @relation("AttributeTypeTree", fields: [parentId], references: [id], onDelete: Cascade)
@@ -74,15 +73,21 @@ model AttributeType {
 model ProductAttribute {
   id              Int                              @id @default(autoincrement())
   typeId          Int
+  parentId        Int?
   name            String
+  isBrand         Boolean                          @default(false)
+  showInTitle     Boolean                          @default(true)
   position        Int                              @default(0)
   createdAt       DateTime                         @default(now())
   type            AttributeType                    @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  parent          ProductAttribute?                @relation("AttributeValueTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children        ProductAttribute[]               @relation("AttributeValueTree")
   characteristics ProductAttributeCharacteristic[]
   values          ProductAttributeValue[]
+  brandProducts   Product[]                        @relation("ProductBrand")
 
-  @@unique([typeId, name])
   @@index([typeId])
+  @@index([parentId])
 }
 
 // Характеристики, привязанные к значению справочника (можно несколько).
@@ -112,11 +117,13 @@ model ProductCharacteristicValue {
   productId        Int
   characteristicId Int
   value            String
+  sortOrder        Int            @default(0)
   product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   characteristic   Characteristic @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
 
   @@id([productId, characteristicId])
   @@index([characteristicId])
+  @@index([productId, sortOrder])
 }
 
 model Unit {
@@ -173,6 +180,7 @@ model Product {
   id                    Int                          @id @default(autoincrement())
   name                  String
   articleNumber         String?
+  brandId               Int?
   description           String?
   unitId                Int
   pricePerUnit          Decimal                      @db.Decimal(10, 2)
@@ -190,9 +198,11 @@ model Product {
   attributeValues       ProductAttributeValue[]
   characteristicValues  ProductCharacteristicValue[]
   unit                  Unit                         @relation(fields: [unitId], references: [id])
+  brand                 ProductAttribute?            @relation("ProductBrand", fields: [brandId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([unitId])
+  @@index([brandId])
 }
 
 model ProductPhoto {

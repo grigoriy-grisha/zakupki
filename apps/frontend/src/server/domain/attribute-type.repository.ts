@@ -2,7 +2,6 @@ import { dbClient } from '@zakupki/database';
 
 export interface AttributeTypeWriteData {
     name?: string;
-    showInTree?: boolean;
     showInTitle?: boolean;
 }
 
@@ -17,7 +16,6 @@ export class AttributeTypeRepository {
     async create(data: {
         name: string;
         parentId?: number | null;
-        showInTree?: boolean;
         showInTitle?: boolean;
     }) {
         const last = await dbClient.attributeType.findFirst({ orderBy: { position: 'desc' } });
@@ -27,7 +25,6 @@ export class AttributeTypeRepository {
                 name: data.name,
                 parentId: data.parentId ?? null,
                 position,
-                showInTree: data.showInTree ?? true,
                 showInTitle: data.showInTitle ?? true,
             },
         });

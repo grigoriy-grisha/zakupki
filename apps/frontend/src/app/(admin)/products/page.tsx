@@ -72,12 +72,7 @@ export default function ProductsPage() {
                                     <Skeleton key={i} className="h-7" />
                                 ))}
                             </div>
-                        ) : tree.length === 0 ? (
-                            <p className="px-2 py-3 text-xs text-muted-foreground">
-                                Добавьте товарам атрибуты в карточке и включите «Показывать в дереве каталога» у
-                                типов в настройках.
-                            </p>
-                        ) : (
+                        ) : tree.length > 0 ? (
                             <AttributeTree
                                 nodes={tree}
                                 selectedId={selectedId}
@@ -85,7 +80,7 @@ export default function ProductsPage() {
                                 expandedIds={expandedIds}
                                 onToggle={handleToggle}
                             />
-                        )}
+                        ) : null}
                     </div>
                 </div>
 

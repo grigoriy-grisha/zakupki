@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Layers, FolderPlus, MoreVertical } from 'lucide-react';
+import { Plus, Layers, FolderPlus, MoreVertical, Tag } from 'lucide-react';
 import { useAttributeTypes } from '../hooks';
 import { AttributeTypeCard, type AttributeType, type TypeTreeNode } from './attribute-type-card';
 import { CreateTypeDialog } from './create-type-dialog';
@@ -26,20 +26,13 @@ export function AttributeTypesManager() {
 
     return (
         <div className="space-y-4 pt-4">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                    Задайте структуру каталога одним деревом. Наведите на узел, чтобы добавить подтип (
-                    <FolderPlus className="inline h-3.5 w-3.5" />) или значение (<Plus className="inline h-3.5 w-3.5" />
-                    ). В меню (<MoreVertical className="inline h-3.5 w-3.5" />) — порядок, флаги отображения и удаление.
+                    Задайте структуру каталога одним деревом. Наведите на узел: подтип (
+                    <FolderPlus className="inline h-3.5 w-3.5" />), значение (
+                    <Plus className="inline h-3.5 w-3.5" />), бренд (<Tag className="inline h-3.5 w-3.5" />
+                    ). В меню (<MoreVertical className="inline h-3.5 w-3.5" />) — порядок и флаги отображения.
                 </p>
-                <CreateTypeDialog
-                    trigger={
-                        <Button className="shrink-0">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Добавить тип
-                        </Button>
-                    }
-                />
             </div>
 
             {isLoading ? (
@@ -51,6 +44,14 @@ export function AttributeTypesManager() {
                     <p className="mt-1 text-sm text-muted-foreground">
                         Например: Производитель → Линейка → Форма → Размер.
                     </p>
+                    <CreateTypeDialog
+                        trigger={
+                            <Button variant="outline" size="sm" className="mt-4">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Добавить тип
+                            </Button>
+                        }
+                    />
                 </div>
             ) : (
                 <div className="rounded-lg border p-2">
@@ -63,6 +64,16 @@ export function AttributeTypesManager() {
                             isLast={i === tree.length - 1}
                         />
                     ))}
+                    <div className="flex justify-end pt-1">
+                        <CreateTypeDialog
+                            trigger={
+                                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    Тип
+                                </Button>
+                            }
+                        />
+                    </div>
                 </div>
             )}
         </div>

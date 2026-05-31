@@ -13,7 +13,7 @@ const productWithAttributes = {
             },
         },
     },
-    characteristicValues: { include: { characteristic: true }, orderBy: { characteristic: { position: 'asc' } } },
+    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' }, { characteristicId: 'asc' }] },
 } as const;
 
 export class PurchaseRepository {

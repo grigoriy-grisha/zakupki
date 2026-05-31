@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { handleDbConflict } from '../lib/error-utils';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
@@ -13,16 +12,11 @@ export const attributeTypesRouter = router({
             z.object({
                 name: z.string().trim().min(1),
                 parentId: z.number().nullable().optional(),
-                showInTree: z.boolean().optional(),
                 showInTitle: z.boolean().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            try {
-                return await ctx.services.attributeType.create(input);
-            } catch (err) {
-                handleDbConflict(err);
-            }
+            return ctx.services.attributeType.create(input);
         }),
 
     update: adminProcedure
@@ -30,17 +24,12 @@ export const attributeTypesRouter = router({
             z.object({
                 id: z.number(),
                 name: z.string().trim().min(1).optional(),
-                showInTree: z.boolean().optional(),
                 showInTitle: z.boolean().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
             const { id, ...data } = input;
-            try {
-                return await ctx.services.attributeType.update(id, data);
-            } catch (err) {
-                handleDbConflict(err);
-            }
+            return ctx.services.attributeType.update(id, data);
         }),
 
     move: adminProcedure

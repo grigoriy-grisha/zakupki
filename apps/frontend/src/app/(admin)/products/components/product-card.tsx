@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -8,15 +8,16 @@ import { Loader2, Package, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
-import { getProductDisplayName, formatProductAttributesLine, type ProductLabelSource } from '../lib';
+import {
+    formatProductCatalogCardLines,
+    type ProductCatalogCardSource,
+} from '../lib';
+import { productPhotoUrl } from '@/lib/product-photo-url';
 
 interface CatalogProductCardProps {
-    product: ProductLabelSource & {
+    product: ProductCatalogCardSource & {
         id: number;
         name: string;
-        minPackageAmount: string | number | null;
-        minPackageUnit: string | null;
-        photos: { id: number }[];
         inActivePurchase?: boolean;
     };
     onClick: () => void;
@@ -26,11 +27,14 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const deleteMutation = useDeleteProduct();
     const utils = trpc.useUtils();
+    const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
+
+    const descriptionLines = useMemo(
+        () => formatProductCatalogCardLines(product, attributeTypes),
+        [product, attributeTypes],
+    );
 
     const photo = product.photos?.[0];
-    const displayName = getProductDisplayName(product) || product.name;
-    const article = product.articleNumber?.trim();
-    const attributesLine = formatProductAttributesLine({ ...product, articleNumber: null });
 
     async function handleDelete() {
         try {
@@ -52,7 +56,7 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                 <div className="relative h-44 bg-muted">
                     {photo ? (
                         <img
-                            src={`/api/photos/${photo.id}`}
+                            src={productPhotoUrl(photo.id, `${product.id}-${photo.sortOrder}`)}
                             alt={product.name}
                             className="h-full w-full object-cover transition-transform group-hover:scale-105"
                         />
@@ -76,16 +80,22 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                     )}
                 </div>
 
-                <CardContent className="p-4">
-                    {article && <p className="text-xs font-medium text-muted-foreground">{article}</p>}
-                    <h3 className="font-semibold leading-tight line-clamp-1">{displayName}</h3>
-                    {attributesLine && (
-                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{attributesLine}</p>
-                    )}
-                    {product.minPackageAmount != null && product.minPackageUnit && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                            Мин. фасовка: {Number(product.minPackageAmount)} {product.minPackageUnit}
-                        </p>
+                <CardContent className="space-y-1 p-4">
+                    {descriptionLines.length > 0 ? (
+                        descriptionLines.map((line, index) => (
+                            <p
+                                key={`${index}-${line}`}
+                                className={
+                                    index === 0
+                                        ? 'text-sm font-semibold leading-snug'
+                                        : 'text-xs leading-relaxed text-muted-foreground'
+                                }
+                            >
+                                {line}
+                            </p>
+                        ))
+                    ) : (
+                        <p className="text-sm font-semibold leading-snug">{product.name}</p>
                     )}
                 </CardContent>
             </Card>

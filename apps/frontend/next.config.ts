@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     allowedDevOrigins: [
-        'fabulously-profuse-dobronfly.cloudpub.ru',
+        'fabulously-profuse-dobsonfly.cloudpub.ru',
         'prudishly-jocular-dachshund.cloudpub.ru',
     ],
 };

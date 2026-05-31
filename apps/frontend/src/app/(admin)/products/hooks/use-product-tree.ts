@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { buildAttributeTree, collectExpandableIds, matchesPath } from '../lib/attribute-tree';
+import { buildAttributesTreeByType, type AttributeListItem } from '../lib/product-form-utils';
 import type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from '../lib/types';
 
 export function useProductTree<T extends AttrProduct>(products: T[] | undefined) {
@@ -11,10 +12,21 @@ export function useProductTree<T extends AttrProduct>(products: T[] | undefined)
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
+    const { data: allAttributes } = trpc.productAttributes.list.useQuery();
+
+    const catalogByType = useMemo(
+        () => buildAttributesTreeByType(allAttributes as AttributeListItem[] | undefined),
+        [allAttributes],
+    );
 
     const tree = useMemo(
-        () => buildAttributeTree((attributeTypes ?? []) as AttributeTypeRow[], products ?? []),
-        [attributeTypes, products],
+        () =>
+            buildAttributeTree(
+                (attributeTypes ?? []) as AttributeTypeRow[],
+                products ?? [],
+                catalogByType,
+            ),
+        [attributeTypes, products, catalogByType],
     );
 
     useEffect(() => {

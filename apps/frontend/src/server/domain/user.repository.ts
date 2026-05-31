@@ -1,6 +1,6 @@
 import { dbClient } from '@zakupki/database';
 
-import { USER_PROFILE_INCLUDE } from './user.types';
+import { USER_CREDENTIALS_INCLUDE, USER_PROFILE_SELECT } from './user.types';
 
 const userWithCredentials = {
     select: {
@@ -35,7 +35,7 @@ export class UserRepository {
             include: {
                 orderLines: true,
                 payments: true,
-                ...USER_PROFILE_INCLUDE,
+                ...USER_CREDENTIALS_INCLUDE,
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -57,7 +57,7 @@ export class UserRepository {
                 lastName: true,
                 avatarUrl: true,
                 username: true,
-                ...USER_PROFILE_INCLUDE,
+                ...USER_PROFILE_SELECT,
             },
         });
     }

@@ -13,11 +13,41 @@ export class ProductAttributeRepository {
         });
     }
 
-    async create(data: { typeId: number; name: string; characteristicIds?: number[] }) {
+    async create(data: {
+        typeId: number;
+        name: string;
+        isBrand?: boolean;
+        parentId?: number | null;
+        showInTitle?: boolean;
+        characteristicIds?: number[];
+    }) {
         const { characteristicIds, ...rest } = data;
+        const isBrand = rest.isBrand ?? false;
+        const parentId = rest.parentId ?? null;
+
+        if (isBrand && parentId != null) {
+            throw new Error('Бренд не может иметь родителя');
+        }
+        if (parentId != null) {
+            if (isBrand) {
+                throw new Error('Под брендом можно добавить только значение');
+            }
+            const parent = await dbClient.productAttribute.findUnique({ where: { id: parentId } });
+            if (!parent?.isBrand) {
+                throw new Error('Значение можно добавить только под бренд');
+            }
+            if (parent.typeId !== rest.typeId) {
+                throw new Error('Бренд и значение должны относиться к одному типу');
+            }
+        }
+
         return dbClient.productAttribute.create({
             data: {
-                ...rest,
+                typeId: rest.typeId,
+                name: rest.name,
+                isBrand: rest.isBrand ?? false,
+                showInTitle: rest.showInTitle ?? true,
+                parentId: rest.parentId ?? null,
                 ...(characteristicIds?.length
                     ? {
                           characteristics: {
@@ -32,7 +62,7 @@ export class ProductAttributeRepository {
         });
     }
 
-    async update(id: number, data: { name?: string; characteristicIds?: number[] }) {
+    async update(id: number, data: { name?: string; showInTitle?: boolean; characteristicIds?: number[] }) {
         const { characteristicIds, ...rest } = data;
         if (characteristicIds !== undefined) {
             await this.setCharacteristics(id, characteristicIds);

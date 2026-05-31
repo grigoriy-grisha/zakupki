@@ -8,6 +8,7 @@ import { adminProcedure, protectedProcedure, router } from '../trpc';
 export interface ProductCreateInput {
     name: string;
     articleNumber?: string | null;
+    brandId?: number | null;
     unitId?: number;
     pricePerUnit?: number;
     description?: string;
@@ -27,6 +28,7 @@ export interface ProductUpdateInput {
     id: number;
     name?: string;
     articleNumber?: string | null;
+    brandId?: number | null;
     unitId?: number;
     pricePerUnit?: number;
     description?: string;
@@ -51,6 +53,7 @@ const priceTierSchema = z.object({
 const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     name: z.string().min(1),
     articleNumber: z.string().optional(),
+    brandId: z.number().nullable().optional(),
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
@@ -72,6 +75,7 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     id: z.number(),
     name: z.string().optional(),
     articleNumber: z.string().nullable().optional(),
+    brandId: z.number().nullable().optional(),
     unitId: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),

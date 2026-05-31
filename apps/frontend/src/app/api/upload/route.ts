@@ -21,7 +21,13 @@ export async function POST(req: NextRequest) {
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const photoId = await storage.upload(productId, bytes, file.type, sortOrder);
 
-    return NextResponse.json({ id: photoId });
+    try {
+        const photoId = await storage.upload(productId, bytes, file.type, sortOrder);
+        return NextResponse.json({ id: photoId });
+    } catch (err) {
+        console.error('[upload]', err);
+        const message = err instanceof Error ? err.message : 'Upload failed';
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
 }

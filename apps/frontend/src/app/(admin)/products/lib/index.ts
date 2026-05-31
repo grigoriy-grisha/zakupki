@@ -2,9 +2,13 @@ export type { PathSegment, AttributeTypeRow, AttrProduct, TreeNode } from './typ
 export { buildAttributeTree, collectExpandableIds, matchesPath } from './attribute-tree';
 export {
     getAttributeCharacteristicIds,
+    buildAttributesTreeByType,
+    findAttributeDisplayName,
     groupAttributesByType,
     revokePendingFiles,
     type AttributeListItem,
+    type AttributeBrandNode,
+    type AttributesTreeForType,
     type PendingFile,
 } from './product-form-utils';
 export {
@@ -18,6 +22,8 @@ export type { PackageUnit, PriceTierValues, ProductCreateFormValues } from './sc
 export type { ProductFormValues, ProductAttributeFormValues } from './schema';
 export {
     formatProductAttributesLine,
+    getProductCatalogAttributeLabels,
+    formatProductCatalogCardLines,
     formatPurchaseProductLabel,
     getProductDisplayName,
     getProductAttributeNames,
@@ -26,6 +32,7 @@ export {
     stripAttributesFromName,
     getProductPhotoId,
     type ProductLabelSource,
+    type ProductCatalogCardSource,
     type ProductAttributeValueSource,
     type AttributeTypeMeta,
     type ShowInTitleByTypeId,

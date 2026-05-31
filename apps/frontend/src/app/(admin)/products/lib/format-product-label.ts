@@ -3,7 +3,10 @@ import { escapeRegExp } from '@/lib/utils/html';
 export type ProductAttributeValueSource = {
     attribute: {
         name: string;
+        isBrand?: boolean;
+        showInTitle?: boolean;
         typeId?: number;
+        parent?: { name: string; isBrand?: boolean } | null;
         type: { id?: number; name: string; position: number; showInTitle?: boolean };
     };
 };
@@ -141,10 +144,63 @@ export type ProductCharacteristicValueSource = {
 export type ProductLabelSource = {
     name: string;
     articleNumber?: string | null;
+    brand?: { name: string; typeId?: number; showInTitle?: boolean; isBrand?: boolean } | null;
     attributeValues?: ProductAttributeValueSource[];
     characteristicValues?: ProductCharacteristicValueSource[];
     photos?: { id: number }[];
 };
+
+function formatAttributeValueName(v: ProductAttributeValueSource): string {
+    const name = v.attribute.name?.trim();
+    if (!name) return '';
+    const parentName = v.attribute.parent?.name?.trim();
+    if (parentName && !v.attribute.isBrand) {
+        return `${parentName} / ${name}`;
+    }
+    return name;
+}
+
+function buildValuesByTypeId(
+    product: ProductLabelSource,
+    attributeTypes?: AttributeTypeMeta[],
+): Map<number, ProductAttributeValueSource> {
+    const map = new Map<number, ProductAttributeValueSource>();
+    for (const v of orderedValues(product, attributeTypes)) {
+        const typeId = attributeTypeId(v);
+        if (typeId != null) map.set(typeId, v);
+    }
+
+    const brand = product.brand;
+    const brandTypeId = brand?.typeId;
+    const brandName = brand?.name?.trim();
+    if (brandTypeId != null && brandName && !map.has(brandTypeId)) {
+        const typeMeta = attributeTypes?.find((t) => t.id === brandTypeId);
+        map.set(brandTypeId, {
+            attribute: {
+                name: brandName,
+                isBrand: true,
+                typeId: brandTypeId,
+                type: {
+                    id: brandTypeId,
+                    name: typeMeta?.name ?? '',
+                    position: typeMeta?.position ?? 0,
+                },
+            },
+        });
+    }
+
+    return map;
+}
+
+function brandShowsInTitle(brand: ProductLabelSource['brand']): boolean {
+    if (!brand?.name?.trim()) return false;
+    return brand.showInTitle !== false;
+}
+
+function attributeValueShowsInTitle(attr: ProductAttributeValueSource['attribute'] | undefined): boolean {
+    if (!attr?.isBrand) return true;
+    return attr.showInTitle !== false;
+}
 
 function orderedValues(
     product: ProductLabelSource,
@@ -163,8 +219,36 @@ export function getProductAttributeNames(
     attributeTypes?: AttributeTypeMeta[],
 ): string[] {
     return orderedValues(product, attributeTypes)
-        .map((v) => v.attribute.name?.trim())
+        .map((v) => formatAttributeValueName(v))
         .filter((n): n is string => Boolean(n));
+}
+
+/** Подписи атрибутов для каталога: «Тип: Бренд / Значение» по дереву типов. */
+export function getProductCatalogAttributeLabels(
+    product: ProductLabelSource,
+    attributeTypes?: AttributeTypeMeta[],
+): string[] {
+    if (!attributeTypes?.length) {
+        return getProductAttributeNames(product);
+    }
+
+    const maps = buildTypeMaps(attributeTypes);
+    const valuesByTypeId = buildValuesByTypeId(product, attributeTypes);
+    const labels: string[] = [];
+
+    function walk(parentId: number | null) {
+        for (const type of maps.childrenOf.get(parentId) ?? []) {
+            const val = valuesByTypeId.get(type.id);
+            if (val) {
+                const valueLabel = formatAttributeValueName(val);
+                if (valueLabel) labels.push(`${type.name}: ${valueLabel}`);
+            }
+            walk(type.id);
+        }
+    }
+
+    walk(null);
+    return labels;
 }
 
 function hasSelectedValueInDescendant(
@@ -226,7 +310,7 @@ export function getProductTitleAttributeNames(
 ): string[] {
     if (!attributeTypes?.length) {
         return orderedValues(product, attributeTypes)
-            .filter((v) => isShowInTitle(v, showInTitleByTypeId, attributeTypes))
+            .filter((v) => isShowInTitle(v, showInTitleByTypeId, attributeTypes) && attributeValueShowsInTitle(v.attribute))
             .map((v) => v.attribute.name?.trim())
             .filter((n): n is string => Boolean(n));
     }
@@ -244,18 +328,19 @@ export function getProductTitleAttributeNames(
         for (const type of maps.childrenOf.get(parentId) ?? []) {
             const val = valuesByTypeId.get(type.id);
             const valueName = val?.attribute.name?.trim();
+            const attributeInTitle = attributeValueShowsInTitle(val?.attribute);
             const typeInTitle = typeHasShowInTitle(type.id, maps, showInTitleByTypeId);
             const inBranch = isTypeInTitleBranch(type.id, maps, showInTitleByTypeId);
 
             // Тип с галочкой и выбранным значением: «Miyuki Delica 11/0»
-            if (typeInTitle && valueName) {
+            if (typeInTitle && valueName && attributeInTitle) {
                 const typeLabel = type.name.trim();
                 if (typeLabel) parts.push(typeLabel);
                 parts.push(valueName);
             } else if (shouldIncludeTypeNameInTitle(type.id, maps, valuesByTypeId, showInTitleByTypeId)) {
                 const label = type.name.trim();
                 if (label) parts.push(label);
-            } else if (valueName && inBranch) {
+            } else if (valueName && inBranch && attributeInTitle) {
                 parts.push(valueName);
             }
 
@@ -275,10 +360,72 @@ export function buildShowInTitleByTypeId(
 }
 
 /** Подпись: MIYUKI · Delica 11/0 · Цилиндр · 11/0 · DB-0002 */
-export function formatProductAttributesLine(product: ProductLabelSource): string {
-    return [...getProductAttributeNames(product), product.articleNumber?.trim() || null]
+export function formatProductAttributesLine(
+    product: ProductLabelSource,
+    attributeTypes?: AttributeTypeMeta[],
+): string {
+    const attrNames = getProductAttributeNames(product, attributeTypes);
+    const brandName = product.brand?.name?.trim() || null;
+    const parts =
+        brandName && !attrNames.some((n) => n === brandName || n.startsWith(`${brandName} /`))
+            ? [brandName, ...attrNames]
+            : attrNames;
+    return [...parts, product.articleNumber?.trim() || null]
         .filter((p): p is string => Boolean(p))
         .join(' · ');
+}
+
+export type ProductCatalogCardSource = ProductLabelSource & {
+    unit?: { name: string; shortName: string } | null;
+    minPackageAmount?: string | number | null;
+    minPackageUnit?: string | null;
+};
+
+/** Строки полного описания для карточки товара в каталоге. */
+export function formatProductCatalogCardLines(
+    product: ProductCatalogCardSource,
+    attributeTypes?: AttributeTypeMeta[],
+): string[] {
+    const lines: string[] = [];
+    const showInTitleByTypeId = buildShowInTitleByTypeId(attributeTypes);
+
+    const title = getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' ');
+    if (title) lines.push(title);
+
+    const article = product.articleNumber?.trim() ?? '';
+    const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
+    const nameLine = [article, displayName].filter(Boolean).join(' ');
+    if (nameLine) lines.push(nameLine);
+
+    const attributeLabels = getProductCatalogAttributeLabels(product, attributeTypes);
+    if (attributeLabels.length > 0) {
+        lines.push(attributeLabels.join(' · '));
+    } else {
+        const attributesLine = formatProductAttributesLine(product, attributeTypes);
+        if (attributesLine) lines.push(attributesLine);
+    }
+
+    for (const cv of product.characteristicValues ?? []) {
+        const name = cv.characteristic.name?.trim();
+        const value = cv.value?.trim();
+        if (name && value) lines.push(`${name}: ${value}`);
+    }
+
+    if (product.unit?.name) {
+        const unitLabel = product.unit.shortName
+            ? `${product.unit.name} (${product.unit.shortName})`
+            : product.unit.name;
+        lines.push(`Ед. учёта: ${unitLabel}`);
+    }
+
+    if (product.minPackageAmount != null && product.minPackageUnit) {
+        lines.push(`Мин. фасовка: ${Number(product.minPackageAmount)} ${product.minPackageUnit}`);
+    }
+
+    return lines.map((l) => l.trim()).filter(Boolean);
 }
 
 /** Две строки для списка товаров в закупке: заголовок и «номер название». */

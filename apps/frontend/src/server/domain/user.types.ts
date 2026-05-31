@@ -1,5 +1,4 @@
-export const USER_PROFILE_INCLUDE = {
-    role: true,
+export const USER_CREDENTIALS_INCLUDE = {
     telegramCredential: {
         select: {
             telegramId: true,
@@ -13,6 +12,12 @@ export const USER_PROFILE_INCLUDE = {
             avatarUrl: true,
         },
     },
+} as const;
+
+/** Для select — role скаляр, не relation. */
+export const USER_PROFILE_SELECT = {
+    role: true,
+    ...USER_CREDENTIALS_INCLUDE,
 } as const;
 
 export type VerifiedAccount = {

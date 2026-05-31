@@ -75,7 +75,13 @@ export function CharacteristicsTab() {
                         будут удалены.
                     </>
                 }
-                onConfirm={() => deleteTarget && deleteMutation.mutate({ id: deleteTarget.id })}
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    deleteMutation.mutate(
+                        { id: deleteTarget.id },
+                        { onSuccess: () => setDeleteTarget(null) },
+                    );
+                }}
                 loading={deleteMutation.isPending}
             />
         </div>

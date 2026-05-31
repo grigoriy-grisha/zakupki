@@ -1,12 +1,13 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, ListChecks, Tag, Layers, FileText, Truck } from 'lucide-react';
+import { Settings, ListChecks, Tag, Layers, FileText, Truck, Scale } from 'lucide-react';
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
 import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
 import { SuppliersTab } from './suppliers/suppliers-tab';
+import { UnitsTab } from './units/units-tab';
 
 export default function SettingsPage() {
     return (
@@ -33,6 +34,10 @@ export default function SettingsPage() {
                         <ListChecks className="h-4 w-4" />
                         Характеристики
                     </TabsTrigger>
+                    <TabsTrigger value="units">
+                        <Scale className="h-4 w-4" />
+                        Единицы учёта
+                    </TabsTrigger>
                     <TabsTrigger value="suppliers">
                         <Truck className="h-4 w-4" />
                         Поставщики
@@ -51,6 +56,9 @@ export default function SettingsPage() {
                 </TabsContent>
                 <TabsContent value="characteristics">
                     <CharacteristicsTab />
+                </TabsContent>
+                <TabsContent value="units">
+                    <UnitsTab />
                 </TabsContent>
                 <TabsContent value="suppliers">
                     <SuppliersTab />

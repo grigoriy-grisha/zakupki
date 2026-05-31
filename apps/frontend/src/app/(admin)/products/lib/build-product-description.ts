@@ -12,6 +12,8 @@ import { escapeHtml, escapeRegExp } from '@/lib/utils/html';
 export interface DescriptionFields {
     name?: string;
     articleNumber?: string;
+    /** Название бренда товара. */
+    brandName?: string;
     /** Значения атрибутов для первой строки заголовка (по порядку типов). */
     titleAttributes?: string[];
     /** Все значения атрибутов — для очистки названия. */
@@ -36,10 +38,23 @@ export function productToDescriptionFields(
 ): Omit<DescriptionFields, 'name'> {
     return {
         articleNumber: product.articleNumber ?? undefined,
+        brandName: getProductBrandName(product) || undefined,
         titleAttributes: getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes),
         attributeNames: getProductAttributeNames(product, attributeTypes),
         productCharacteristics: getProductCharacteristics(product),
     };
+}
+
+function getProductBrandName(product: ProductLabelSource): string {
+    const fromRelation = product.brand?.name?.trim();
+    if (fromRelation) return fromRelation;
+    for (const v of product.attributeValues ?? []) {
+        if (v.attribute.isBrand) {
+            const name = v.attribute.name?.trim();
+            if (name) return name;
+        }
+    }
+    return '';
 }
 
 function getProductCharacteristics(product: ProductLabelSource): { name: string; value: string }[] {
@@ -209,47 +224,18 @@ function boldInline(text: string): string {
 }
 
 /** Подсказки для редактора шаблонов постов (вставляйте как {{ключ}}). */
-export const POST_TEMPLATE_PLACEHOLDERS: {
-    key: string;
-    label: string;
-    description: string;
-    example: string;
-}[] = [
-    { key: 'название', label: 'Название товара', description: 'Имя из карточки, без атрибутов', example: 'синий ирис' },
-    { key: 'номер', label: 'Номер (артикул)', description: 'Артикул / номер товара', example: 'DB-0002' },
-    {
-        key: 'заголовок',
-        label: 'Первая строка (атрибуты в шапке)',
-        description: 'Атрибуты с галочкой «в заголовок»',
-        example: 'MIYUKI Delica 11/0',
-    },
-    {
-        key: 'атрибуты',
-        label: 'Все атрибуты через ·',
-        description: 'Все значения справочников одной строкой',
-        example: 'MIYUKI · Delica 11/0 · …',
-    },
-    {
-        key: 'характеристики',
-        label: 'Блок характеристик',
-        description: 'Цвет, размер и др. из карточки товара',
-        example: 'Цвет: …, Размер: …',
-    },
-    {
-        key: 'мин_фасовка',
-        label: 'Минимальная фасовка',
-        description: 'Мин. фасовка из формы в закупке',
-        example: '5 гр',
-    },
-    { key: 'цены', label: 'Список цен', description: 'Все ценовые строки из закупки', example: '5 гр - 100 руб' },
-    {
-        key: 'фасовка_поставщика',
-        label: 'Фасовка поставщика',
-        description: 'Фасовка и цена у поставщика',
-        example: '111 гр - 111 руб',
-    },
-    { key: 'свободно', label: 'Свободный остаток', description: 'Строка «СВОБОДНО: …»', example: 'СВОБОДНО: 10 гр' },
-    { key: 'тег', label: 'Тег закупки', description: 'Тег текущей закупки (#…)', example: '#закупка_май' },
+export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
+    { key: 'название' },
+    { key: 'номер' },
+    { key: 'бренд' },
+    { key: 'заголовок' },
+    { key: 'атрибуты' },
+    { key: 'характеристики' },
+    { key: 'мин_фасовка' },
+    { key: 'цены' },
+    { key: 'фасовка_поставщика' },
+    { key: 'свободно' },
+    { key: 'тег' },
 ];
 
 const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
@@ -262,17 +248,31 @@ const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
     'без подписей списка. Если в шаблон попал старый текст подсказок',
     'Атрибуты с галочкой «в заголовок» попадают в метку',
     'не в {{название}}',
+    'Имя из карточки, без атрибутов',
+    'Артикул / номер товара',
+    'Атрибуты с галочкой «в заголовок»',
+    'Все значения справочников одной строкой',
+    'Цвет, размер и др. из карточки товара',
+    'Мин. фасовка из формы в закупке',
+    'Все ценовые строки из закупки',
+    'Фасовка и цена у поставщика',
+    'Строка «СВОБОДНО: …»',
+    'Тег текущей закупки (#…)',
+    'Название товара — например: синий ирис',
+    'Номер (артикул) — например: DB-0002',
+    'Первая строка (атрибуты в шапке) — например: MIYUKI Delica 11/0',
+    'Все атрибуты через · — например: MIYUKI · Delica 11/0 · …',
+    'Блок характеристик — например: Цвет: …, Размер: …',
+    'Минимальная фасовка — например: 5 гр',
+    'Список цен — например: 5 гр - 100 руб',
+    'Фасовка поставщика — например: 111 гр - 111 руб',
+    'Свободный остаток — например: СВОБОДНО: 10 гр',
+    'Тег закупки — например: #закупка_май',
 ];
 
 /** Убирает только строки-подсказки из редактора шаблонов (не трогает текст подстановки). */
 export function stripPlaceholderHintDebris(html: string): string {
-    const fragments = [
-        ...LEGACY_PLACEHOLDER_HINT_FRAGMENTS,
-        ...POST_TEMPLATE_PLACEHOLDERS.map((p) => `${p.label} — например: ${p.example}`).filter(
-            (s) => s.includes('например:'),
-        ),
-        ...POST_TEMPLATE_PLACEHOLDERS.map((p) => `${p.label} · ${p.example}`).filter((s) => s.includes(' · ')),
-    ].sort((a, b) => b.length - a.length);
+    const fragments = [...LEGACY_PLACEHOLDER_HINT_FRAGMENTS].sort((a, b) => b.length - a.length);
 
     let result = html ?? '';
     for (const frag of fragments) {
@@ -314,6 +314,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
 
     const tagRaw = fields.purchaseTag?.trim() ?? '';
     const tag = tagRaw ? (tagRaw.startsWith('#') ? tagRaw : `#${tagRaw}`) : '';
+    const brandName = (fields.brandName ?? '').trim();
 
     const nameHtml = displayName ? escapeHtml(displayName) : '';
     const attrsHtml = attributesLine ? escapeHtml(attributesLine) : '';
@@ -324,6 +325,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
         название: nameHtml,
         название_строка: nameHtml,
         номер: article ? escapeHtml(article) : '',
+        бренд: brandName ? escapeHtml(brandName) : '',
         заголовок: line1 ? boldInline(line1) : '',
         атрибуты: attrsHtml,
         атрибуты_строка: attrsHtml,

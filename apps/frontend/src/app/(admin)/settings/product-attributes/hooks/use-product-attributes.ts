@@ -81,7 +81,13 @@ export function useUpdateProductAttribute() {
     const utils = trpc.useUtils();
     return trpc.productAttributes.update.useMutation({
         onSuccess: async () => {
-            await utils.productAttributes.list.invalidate();
+            await Promise.all([
+                utils.productAttributes.list.invalidate(),
+                utils.products.list.invalidate(),
+                utils.products.getById.invalidate(),
+                utils.purchases.list.invalidate(),
+                utils.purchases.getById.invalidate(),
+            ]);
             toast.success('Значение обновлено');
         },
         onError: (err) => toast.error(err.message),

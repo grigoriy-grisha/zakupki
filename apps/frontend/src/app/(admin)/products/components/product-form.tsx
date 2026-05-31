@@ -33,7 +33,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
 
     return (
         <form
-            onSubmit={(e) => submit.handleFormSubmit(e, state.form.handleSubmit)}
+            onSubmit={state.form.handleSubmit(submit.submitForm)}
             className="space-y-4 px-4"
         >
             <div className="grid grid-cols-2 gap-4">
@@ -73,7 +73,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 <AttributeTreePicker
                     rootTypes={state.childrenOfType(null)}
                     childrenOfType={state.childrenOfType}
-                    attrsByType={state.attrsByType}
+                    attrsTreeByType={state.attrsTreeByType}
                     selectedAttrs={state.selectedAttrs}
                     onSelect={state.handleSelectType}
                 />
@@ -86,6 +86,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                     onChange={(id, value) => state.setCharValues((prev) => ({ ...prev, [id]: value }))}
                     onRemove={(id) => state.handleActiveCharIdsChange(state.activeCharIds.filter((x) => x !== id))}
                     canRemove={(id) => !state.linkedCharIds.has(id)}
+                    onMove={state.handleMoveCharacteristic}
                     allCharacteristics={(state.allCharacteristics ?? []).map((c) => ({ id: c.id, name: c.name }))}
                     activeIds={state.activeCharIds}
                     lockedIds={state.linkedCharIds}

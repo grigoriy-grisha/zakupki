@@ -7,11 +7,18 @@ export class ProductAttributeService {
         return this.repo.list(typeId);
     }
 
-    create(data: { typeId: number; name: string; characteristicIds?: number[] }) {
+    create(data: {
+        typeId: number;
+        name: string;
+        isBrand?: boolean;
+        parentId?: number | null;
+        showInTitle?: boolean;
+        characteristicIds?: number[];
+    }) {
         return this.repo.create(data);
     }
 
-    update(id: number, data: { name?: string; characteristicIds?: number[] }) {
+    update(id: number, data: { name?: string; showInTitle?: boolean; characteristicIds?: number[] }) {
         return this.repo.update(id, data);
     }
 

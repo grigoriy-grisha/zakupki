@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderOpen, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TreeNode } from '../lib/types';
 
@@ -62,12 +62,16 @@ export function AttributeTree({
                             ) : (
                                 <span className="w-3.5" />
                             )}
-                            <FolderOpen
-                                className={cn(
-                                    'h-4 w-4 shrink-0',
-                                    node.isTypeFolder ? 'text-muted-foreground/70' : 'text-muted-foreground',
-                                )}
-                            />
+                            {node.isBrandFolder ? (
+                                <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            ) : (
+                                <FolderOpen
+                                    className={cn(
+                                        'h-4 w-4 shrink-0',
+                                        node.isTypeFolder ? 'text-muted-foreground/70' : 'text-muted-foreground',
+                                    )}
+                                />
+                            )}
                             <span className={cn('truncate', node.isTypeFolder && 'font-medium')}>{node.label}</span>
                             <span className="ml-auto pl-2 text-xs text-muted-foreground">{node.count}</span>
                         </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 
 interface ConfirmDialogProps {
@@ -30,18 +30,16 @@ export function ConfirmDialog({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                    <p className="text-sm">{description}</p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-                            Отмена
-                        </Button>
-                        <Button variant={variant} className="flex-1" onClick={onConfirm} disabled={loading}>
-                            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {confirmLabel}
-                        </Button>
-                    </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                        Отмена
+                    </Button>
+                    <Button variant={variant} className="flex-1" onClick={onConfirm} disabled={loading}>
+                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {confirmLabel}
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>
