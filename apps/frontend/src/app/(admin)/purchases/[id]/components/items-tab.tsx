@@ -29,6 +29,7 @@ import { ItemEditSheet } from './item-edit-sheet';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -55,11 +56,14 @@ function formatSupplierPackageCell(product: {
 const purchaseItemTextClass = 'text-sm font-semibold text-foreground';
 const purchaseItemSubtitleClass = 'text-sm font-medium text-muted-foreground';
 const purchaseItemNumericClass = `${purchaseItemTextClass} tabular-nums whitespace-nowrap`;
-const purchaseItemHeadClass = 'text-sm font-medium text-muted-foreground whitespace-nowrap';
-const purchaseItemTgHeadClass = `${purchaseItemHeadClass} text-center pr-5`;
-const purchaseItemStatsLeadHeadClass = `${purchaseItemHeadClass} pl-4 border-l border-border/60`;
-const purchaseItemTgCellClass = 'text-center pr-5';
-const purchaseItemStatsLeadCellClass = `${purchaseItemNumericClass} pl-4 border-l border-border/60`;
+const purchaseItemHeadClass =
+    'text-sm font-medium text-muted-foreground whitespace-normal text-center leading-snug align-middle px-2';
+const purchaseItemTgColumnClass = 'w-14 pr-5 align-middle [&:has([role=checkbox])]:pr-5 [&_[role=checkbox]]:translate-y-0';
+const purchaseItemTgHeadClass = `${purchaseItemHeadClass} ${purchaseItemTgColumnClass}`;
+const purchaseItemStatsLeadHeadClass = `${purchaseItemHeadClass} pl-4`;
+const purchaseItemTgCellClass = `${purchaseItemTgColumnClass} text-center`;
+const purchaseItemStatsLeadCellClass = `${purchaseItemNumericClass} pl-4`;
+const purchaseItemOrdersCellClass = 'text-center align-middle';
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
@@ -88,35 +92,44 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-medium">Товары в закупке</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <h2 className="text-base font-medium sm:text-lg">Товары в закупке</h2>
                     {isSupplement && onEditSupplement && (
-                        <Button variant="outline" size="sm" onClick={onEditSupplement}>
-                            Редактировать остатки
+                        <Button variant="outline" size="sm" className="shrink-0" onClick={onEditSupplement}>
+                            <span className="sm:hidden">Остатки</span>
+                            <span className="hidden sm:inline">Редактировать остатки</span>
                         </Button>
                     )}
                 </div>
                 {(canAddItems || isActive) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                         {isActive && (
                             <Button
                                 variant="outline"
                                 size="sm"
+                                className="w-full sm:w-auto"
                                 disabled={publishCount === 0}
                                 onClick={() => setPublishOpen(true)}
                             >
-                                <Send className="mr-2 h-4 w-4" />
-                                Опубликовать в TG
-                                {publishCount > 0 && ` (${publishCount})`}
+                                <Send className="mr-2 h-4 w-4 shrink-0" />
+                                <span className="truncate sm:hidden">
+                                    В TG{publishCount > 0 ? ` (${publishCount})` : ''}
+                                </span>
+                                <span className="hidden truncate sm:inline">
+                                    Опубликовать в TG
+                                    {publishCount > 0 && ` (${publishCount})`}
+                                </span>
                             </Button>
                         )}
                         {canAddItems ? (
-                            <ProductPickerDialog
-                                purchaseId={purchaseId}
-                                purchaseTag={purchase.tag}
-                                existingProductIds={existingProductIds}
-                            />
+                            <div className="w-full sm:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+                                <ProductPickerDialog
+                                    purchaseId={purchaseId}
+                                    purchaseTag={purchase.tag}
+                                    existingProductIds={existingProductIds}
+                                />
+                            </div>
                         ) : null}
                     </div>
                 )}
@@ -128,19 +141,64 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         <TableRow>
                             <TableHead className={purchaseItemHeadClass}>Фото</TableHead>
                             <TableHead className={purchaseItemHeadClass}>Название</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Мин. фасовка</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Фасовка поставщика</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Цена за пачку в рублях</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Цена за 5/10 гр. в рублях</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Цена за 1 гр/шт в рублях</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Мин.
+                                <br />
+                                фасовка
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Фасовка
+                                <br />
+                                поставщика
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Цена за пачку
+                                <br />
+                                в рублях
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Цена за 5/10 гр
+                                <br />
+                                в рублях
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Цена за 1 гр/шт
+                                <br />
+                                в рублях
+                            </TableHead>
                             <TableHead className={purchaseItemHeadClass}>Заказов</TableHead>
-                            <TableHead className={purchaseItemTgHeadClass}>TG</TableHead>
-                            <TableHead className={purchaseItemStatsLeadHeadClass}>Набрано, гр</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>гр в пачке</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Кол-во пачек к заказу</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Заказано пачек</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Заказано грамм</TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Свободный остаток</TableHead>
+                            <TableHead className={purchaseItemTgHeadClass}>
+                                <div className="flex justify-center">TG</div>
+                            </TableHead>
+                            <TableHead className={purchaseItemStatsLeadHeadClass}>
+                                Набрано,
+                                <br />
+                                гр/шт
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Гр/шт в
+                                <br />
+                                пачке
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Кол-во пачек
+                                <br />к заказу
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Заказано
+                                <br />
+                                пачек
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Заказано
+                                <br />
+                                гр/шт
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Свободный
+                                <br />
+                                остаток
+                            </TableHead>
                             {isSupplement && (
                                 <TableHead className={`${purchaseItemHeadClass} text-center`}>Доступно</TableHead>
                             )}
@@ -206,32 +264,36 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatRubPrice(getPurchaseItemPrice1Gr(item))}
                                     </TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary">{item.orderLines.length}</Badge>
+                                    <TableCell className={purchaseItemOrdersCellClass}>
+                                        <div className="flex justify-center">
+                                            <Badge variant="secondary">{item.orderLines.length}</Badge>
+                                        </div>
                                     </TableCell>
                                     <TableCell className={purchaseItemTgCellClass} onClick={(e) => e.stopPropagation()}>
-                                        {published ? (
-                                            <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
-                                        ) : (
-                                            <Checkbox
-                                                checked={item.shouldPublish}
-                                                disabled={
-                                                    !canTogglePublish(purchase.status) || togglePublish.isPending
-                                                }
-                                                aria-label="Опубликовать в Telegram"
-                                                onCheckedChange={(v) => {
-                                                    if (typeof v === 'boolean') {
-                                                        togglePublish.mutate({ purchaseItemId: item.id, value: v });
+                                        <div className="flex justify-center">
+                                            {published ? (
+                                                <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
+                                            ) : (
+                                                <Checkbox
+                                                    checked={item.shouldPublish}
+                                                    disabled={
+                                                        !canTogglePublish(purchase.status) || togglePublish.isPending
                                                     }
-                                                }}
-                                            />
-                                        )}
+                                                    aria-label="Опубликовать в Telegram"
+                                                    onCheckedChange={(v) => {
+                                                        if (typeof v === 'boolean') {
+                                                            togglePublish.mutate({ purchaseItemId: item.id, value: v });
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className={purchaseItemStatsLeadCellClass}>
+                                        {formatOrderStatValue(stats.totalQuantity)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.totalGrams)}
-                                    </TableCell>
-                                    <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.packGrams)}
+                                        {formatOrderStatValue(stats.packSize)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatOrderStatValue(stats.packsToOrder)}
@@ -240,7 +302,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                         {formatOrderStatValue(stats.orderedPacks)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.totalGrams)}
+                                        {formatOrderStatValue(stats.orderedQuantity)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatOrderStatValue(stats.freeRemainder)}
@@ -330,12 +392,12 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Опубликовать в Telegram?</DialogTitle>
+                        <DialogDescription>
+                            {publishCount > 0
+                                ? `${publishCount} товаров будет опубликовано в канал Telegram.`
+                                : 'Отметьте галочкой товары в таблице, которые нужно опубликовать.'}
+                        </DialogDescription>
                     </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        {publishCount > 0
-                            ? `${publishCount} товаров будет опубликовано в канал Telegram.`
-                            : 'Отметьте галочкой товары в таблице, которые нужно опубликовать.'}
-                    </p>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setPublishOpen(false)}>
                             Отмена

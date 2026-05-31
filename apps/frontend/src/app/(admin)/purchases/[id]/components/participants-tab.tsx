@@ -8,7 +8,6 @@ import { UserProfileSheet } from '@/app/(admin)/users/components';
 import { useParticipantsData } from '../hooks';
 import { ParticipantRow } from './participant-row';
 import { PaymentDetailDialog } from './payment-detail-dialog';
-import { AddPaymentDialog } from './add-payment-dialog';
 
 interface ParticipantsTabProps {
     purchaseId: number;
@@ -45,8 +44,7 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                     <span className="text-lg font-medium text-foreground">Участники</span>
                     <span>{data.userIds.length} чел.</span>
                     <span>
@@ -72,11 +70,9 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                             </span>
                         </span>
                     )}
-                </div>
-                <AddPaymentDialog purchaseId={purchaseId} />
             </div>
 
-            <div className="rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
                 <Table>
                     <TableHeader>
                         <TableRow>

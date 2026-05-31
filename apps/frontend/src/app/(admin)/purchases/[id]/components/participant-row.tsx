@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { paymentTotal } from '../../lib/utils';
+
 interface ParticipantRowProps {
     userId: number;
     name: string;
@@ -53,15 +54,23 @@ export function ParticipantRow({
     const isPaid = paid >= due;
     const hasPending = pending > 0 && !isPaid;
 
+    function toggleDetails() {
+        setOpen((prev) => !prev);
+    }
+
     return (
         <>
-            <TableRow className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setOpen(!open)}>
+            <TableRow className="hover:bg-accent/50 transition-colors">
                 <TableCell>
-                    {open ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    <button
+                        type="button"
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        aria-label={open ? 'Скрыть детали' : 'Показать заказы и оплаты'}
+                        aria-expanded={open}
+                        onClick={toggleDetails}
+                    >
+                        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </button>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <button
@@ -113,8 +122,8 @@ export function ParticipantRow({
             {open && (
                 <TableRow>
                     <TableCell colSpan={6} className="bg-muted/30 p-0">
-                        <div className="p-4 pl-14">
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 pl-4 sm:pl-14">
+                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                                 {/* Left: Orders */}
                                 <div>
                                     <p className="mb-2 text-sm font-medium text-muted-foreground">Заказы</p>

@@ -78,8 +78,9 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
         >
             <DialogTrigger asChild>
                 <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить товары
+                    <Plus className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="sm:hidden">Добавить</span>
+                    <span className="hidden sm:inline">Добавить товары</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">

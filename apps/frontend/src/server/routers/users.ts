@@ -63,4 +63,21 @@ export const usersRouter = router({
         .mutation(async ({ ctx, input }) => {
             await ctx.services.user.unlinkProvider(ctx.userId, input.provider);
         }),
+
+    updateRole: adminProcedure
+        .input(
+            z.object({
+                userId: z.number(),
+                role: z.enum(['ADMIN', 'CLIENT']),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            if (input.userId === ctx.userId && input.role !== 'ADMIN') {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'Нельзя снять с себя роль администратора',
+                });
+            }
+            return ctx.services.user.updateRole(input.userId, input.role);
+        }),
 });

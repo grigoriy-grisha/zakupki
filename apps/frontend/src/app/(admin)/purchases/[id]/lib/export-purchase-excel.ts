@@ -157,11 +157,6 @@ function formatSupplierPackage(product: ExportProduct) {
     return `${Number(product.supplierPackageAmount)} ${product.supplierPackageUnit}`;
 }
 
-function freeRemainder(item: ExportPurchase['items'][number]) {
-    const stats = getPurchaseItemOrderStats(item);
-    return stats.freeRemainder ?? '';
-}
-
 type ExportParticipant = {
     userId: number;
     name: string;
@@ -221,20 +216,61 @@ function safeFilename(tag: string, suffix: string) {
     return `${base}_${suffix}_${date}.xlsx`;
 }
 
-function styleFixedColumnCell(cell: ExcelJS.Cell, columnIndex: number) {
-    cell.alignment = {
-        horizontal: 'left',
-        vertical: 'middle',
-        wrapText: columnIndex === 1,
-    };
+const excelThinBorder: Partial<ExcelJS.Border> = {
+    style: 'thin',
+    color: { argb: 'FF000000' },
+};
+
+const excelCellBorders: Partial<ExcelJS.Borders> = {
+    top: excelThinBorder,
+    left: excelThinBorder,
+    bottom: excelThinBorder,
+    right: excelThinBorder,
+};
+
+function applyCellBorder(cell: ExcelJS.Cell) {
+    cell.border = excelCellBorders;
+}
+
+function applySheetBorders(
+    sheet: ExcelJS.Worksheet,
+    fromRow: number,
+    toRow: number,
+    fromCol: number,
+    toCol: number,
+) {
+    for (let rowNumber = fromRow; rowNumber <= toRow; rowNumber++) {
+        const row = sheet.getRow(rowNumber);
+        for (let col = fromCol; col <= toCol; col++) {
+            applyCellBorder(row.getCell(col));
+        }
+    }
+}
+
+function styleNumericCell(cell: ExcelJS.Cell) {
+    cell.alignment = { horizontal: 'right', vertical: 'middle' };
 }
 
 function styleHeaderCell(cell: ExcelJS.Cell) {
     cell.font = { bold: true };
-    cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE2E8F0' },
+}
+
+function styleFixedColumnCell(cell: ExcelJS.Cell, columnIndex: number) {
+    if (columnIndex === 1) {
+        cell.alignment = {
+            horizontal: 'left',
+            vertical: 'middle',
+            wrapText: true,
+        };
+        return;
+    }
+    if (columnIndex >= 3) {
+        styleNumericCell(cell);
+        return;
+    }
+    cell.alignment = {
+        horizontal: 'left',
+        vertical: 'middle',
     };
 }
 
@@ -242,10 +278,20 @@ function styleHeaderRow(row: ExcelJS.Row) {
     row.eachCell((cell) => styleHeaderCell(cell));
 }
 
-function addDataSheet(workbook: ExcelJS.Workbook, name: string, headers: string[], rows: unknown[][]) {
+function addDataSheet(
+    workbook: ExcelJS.Workbook,
+    name: string,
+    headers: string[],
+    rows: unknown[][],
+    numericColumnIndices: number[] = [],
+) {
     const sheet = workbook.addWorksheet(name);
     styleHeaderRow(sheet.addRow(headers));
-    rows.forEach((row) => sheet.addRow(row));
+    rows.forEach((row) => {
+        const sheetRow = sheet.addRow(row);
+        numericColumnIndices.forEach((col) => styleNumericCell(sheetRow.getCell(col)));
+    });
+    applySheetBorders(sheet, 1, sheet.rowCount, 1, headers.length);
     autoFitColumns(sheet);
     return sheet;
 }
@@ -323,6 +369,7 @@ function addFooterRow(
     participantValues: (number | string)[],
     fixedColumns: number,
     summaryColumns: number,
+    fillArgb?: string,
 ) {
     const row = sheet.addRow([
         label,
@@ -335,13 +382,28 @@ function addFooterRow(
         sheet.mergeCells(row.number, 1, row.number, fixedColumns);
     }
 
+    const fill = fillArgb
+        ? {
+              type: 'pattern' as const,
+              pattern: 'solid' as const,
+              fgColor: { argb: fillArgb },
+          }
+        : undefined;
+
+    const totalColumns = fixedColumns + participantValues.length + summaryColumns;
+    for (let col = 1; col <= totalColumns; col++) {
+        const cell = row.getCell(col);
+        if (fill) cell.fill = fill;
+    }
+
     const labelCell = row.getCell(1);
     labelCell.font = { bold: true };
     labelCell.alignment = { vertical: 'middle', wrapText: true };
 
     participantValues.forEach((_, index) => {
         const cell = row.getCell(fixedColumns + 1 + index);
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        styleNumericCell(cell);
+        if (fill) cell.fill = fill;
     });
 
     return row;
@@ -416,11 +478,11 @@ export async function exportGeneralPurchaseData({
     const fixedColumns = 5;
     const summaryColumns = 6;
     const summaryHeaders = [
-        'НАБРАНО, гр',
-        'грамм в пачке',
+        'НАБРАНО, гр/шт',
+        'гр/шт в пачке',
         'кол-во пачек к заказу',
         'заказано пачек',
-        'заказано грамм',
+        'заказано гр/шт',
         'Свободный остаток',
     ];
     const fixedHeaders = [
@@ -445,7 +507,7 @@ export async function exportGeneralPurchaseData({
     numberRow.eachCell((cell, colNumber) => {
         if (colNumber > fixedColumns && colNumber <= fixedColumns + participants.length) {
             styleHeaderCell(cell);
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            styleNumericCell(cell);
         }
     });
     headerRow.eachCell((cell, colNumber) => {
@@ -465,10 +527,12 @@ export async function exportGeneralPurchaseData({
         maxNameLineLength = Math.max(maxNameLineLength, line1.length);
         const tiers = parsePriceTiers(product.priceTiers);
         const stats = getPurchaseItemOrderStats(item);
-        const packGrams = stats.packGrams;
-        const totalGrams = stats.totalGrams;
+        const packSize = stats.packSize;
+        const totalQuantity = stats.totalQuantity;
         const packsToOrder = stats.packsToOrder ?? '';
         const orderedPacks = stats.orderedPacks ?? '';
+        const orderedQuantity = stats.orderedQuantity ?? '';
+        const remainder = stats.freeRemainder ?? '';
 
         const quantitiesByUser = new Map<number, number>();
         item.orderLines.forEach((line) => {
@@ -482,15 +546,18 @@ export async function exportGeneralPurchaseData({
             formatPrice510(tiers),
             formatPrice1Gr(product, tiers),
             ...participants.map((participant) => quantitiesByUser.get(participant.userId) ?? ''),
-            totalGrams || '',
-            packGrams ?? '',
+            totalQuantity || '',
+            packSize ?? '',
             packsToOrder,
             orderedPacks,
-            totalGrams || '',
-            freeRemainder(item),
+            orderedQuantity,
+            remainder,
         ]);
         for (let col = 1; col <= fixedColumns; col++) {
             styleFixedColumnCell(row.getCell(col), col);
+        }
+        for (let col = fixedColumns + 1; col <= fixedColumns + participants.length + summaryColumns; col++) {
+            styleNumericCell(row.getCell(col));
         }
         setExcelProductNameCell(row.getCell(1), product, attributeTypes);
     });
@@ -504,6 +571,7 @@ export async function exportGeneralPurchaseData({
         paymentTotals.map((entry) => entry.due),
         fixedColumns,
         summaryColumns,
+        'FFFFE0B2',
     );
     addFooterRow(
         sheet,
@@ -511,6 +579,7 @@ export async function exportGeneralPurchaseData({
         paymentTotals.map((entry) => entry.balance),
         fixedColumns,
         summaryColumns,
+        'FFFFCDD2',
     );
     addFooterRow(
         sheet,
@@ -518,7 +587,16 @@ export async function exportGeneralPurchaseData({
         paymentTotals.map((entry) => entry.paid),
         fixedColumns,
         summaryColumns,
+        'FFC8E6C9',
     );
+
+    const totalColumns = fixedColumns + participants.length + summaryColumns;
+    const productEndRow = 2 + purchase.items.length;
+    const footerStartRow = productEndRow + 2;
+    const footerEndRow = footerStartRow + 2;
+
+    applySheetBorders(sheet, 1, productEndRow, 1, totalColumns);
+    applySheetBorders(sheet, footerStartRow, footerEndRow, 1, totalColumns);
 
     sheet.views = [{ state: 'frozen', ySplit: 2 }];
     applyGeneralSheetColumnWidths(sheet, {
@@ -543,7 +621,8 @@ export async function exportOrdersPurchaseData({
     const productByItemId = buildProductByItemId(purchase);
 
     const ordersSheet = workbook.addWorksheet('Заказы');
-    styleHeaderRow(ordersSheet.addRow(['Участник', 'ID в TG', 'TG ID', 'VK ID', 'Товар', 'Ед. изм.', 'Кол-во', 'Цена/ед', 'Сумма']));
+    const ordersHeaders = ['Участник', 'ID в TG', 'TG ID', 'VK ID', 'Товар', 'Ед. изм.', 'Кол-во', 'Цена/ед', 'Сумма'];
+    styleHeaderRow(ordersSheet.addRow(ordersHeaders));
     orders.forEach((order) => {
         const product =
             (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
@@ -563,7 +642,13 @@ export async function exportOrdersPurchaseData({
             formatMoney(order.amountDue),
         ]);
         setExcelProductNameCell(row.getCell(5), product, attributeTypes);
+        styleNumericCell(row.getCell(3));
+        styleNumericCell(row.getCell(4));
+        styleNumericCell(row.getCell(7));
+        styleNumericCell(row.getCell(8));
+        styleNumericCell(row.getCell(9));
     });
+    applySheetBorders(ordersSheet, 1, ordersSheet.rowCount, 1, ordersHeaders.length);
     autoFitColumns(ordersSheet);
     ordersSheet.getColumn(5).width = Math.max(ordersSheet.getColumn(5).width ?? 10, 28);
 
@@ -600,10 +685,9 @@ export async function exportOrdersPurchaseData({
         byProduct.set(itemId, current);
     });
 
+    const byProductsHeaders = ['Товар', 'Ед. изм.', 'Строк заказов', 'Участников', 'Кол-во всего', 'Сумма'];
     const byProductsSheet = workbook.addWorksheet('По товарам');
-    styleHeaderRow(
-        byProductsSheet.addRow(['Товар', 'Ед. изм.', 'Строк заказов', 'Участников', 'Кол-во всего', 'Сумма']),
-    );
+    styleHeaderRow(byProductsSheet.addRow(byProductsHeaders));
     byProduct.forEach((stats) => {
         const row = byProductsSheet.addRow([
             '',
@@ -614,7 +698,12 @@ export async function exportOrdersPurchaseData({
             stats.amount,
         ]);
         setExcelProductNameCell(row.getCell(1), stats.product, attributeTypes);
+        styleNumericCell(row.getCell(3));
+        styleNumericCell(row.getCell(4));
+        styleNumericCell(row.getCell(5));
+        styleNumericCell(row.getCell(6));
     });
+    applySheetBorders(byProductsSheet, 1, byProductsSheet.rowCount, 1, byProductsHeaders.length);
     autoFitColumns(byProductsSheet);
     byProductsSheet.getColumn(1).width = Math.max(byProductsSheet.getColumn(1).width ?? 10, 28);
 
@@ -634,6 +723,7 @@ export async function exportOrdersPurchaseData({
             participant.due - participant.paid,
             participant.status,
         ]),
+        [3, 4, 5, 6, 7, 8],
     );
 
     await downloadWorkbook(workbook, safeFilename(purchase.tag, 'данные_заказов'));

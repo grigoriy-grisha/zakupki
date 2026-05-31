@@ -26,3 +26,8 @@ export const PAYMENT_STATUS: Record<string, { label: string; className: string }
     CONFIRMED: { label: 'Подтверждено', className: 'bg-success-50 text-success hover:bg-success-50' },
     REJECTED: { label: 'Отклонено', className: 'bg-error-50 text-error hover:bg-error-50' },
 };
+
+export const USER_ROLE_LABELS: Record<string, string> = {
+    ADMIN: 'Администратор',
+    CLIENT: 'Клиент',
+};

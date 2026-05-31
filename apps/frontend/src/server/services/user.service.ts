@@ -127,4 +127,13 @@ export class UserService {
         }
         await this.repo.unlinkTelegram(userId);
     }
+
+    async updateRole(userId: number, role: 'ADMIN' | 'CLIENT') {
+        const user = await this.repo.getRoleById(userId);
+        if (!user) throw new NotFoundError('Пользователь', userId);
+
+        const updated = await this.repo.updateRole(userId, role);
+        this.roleCache.delete(userId);
+        return updated;
+    }
 }

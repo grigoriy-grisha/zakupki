@@ -29,30 +29,32 @@ export default function ProductsPage() {
     } = useProductTree(products);
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success-50">
+        <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success-50">
                         <Package className="h-5 w-5 text-success" />
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Каталог товаров</h1>
+                    <div className="min-w-0">
+                        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Каталог товаров</h1>
                         <p className="text-sm text-muted-foreground">{filteredProducts.length} товаров</p>
                     </div>
                 </div>
                 <Button
+                    className="w-full sm:w-auto"
                     onClick={() => {
                         setEditId(null);
                         setSheetOpen(true);
                     }}
                 >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить товар
+                    <Plus className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="sm:hidden">Добавить</span>
+                    <span className="hidden sm:inline">Добавить товар</span>
                 </Button>
             </div>
 
             <div className="flex gap-6">
-                <div className="w-60 shrink-0">
+                <div className="hidden w-60 shrink-0 md:block">
                     <div className="rounded-lg border bg-card p-2">
                         <button
                             onClick={clearSelection}
@@ -84,8 +86,8 @@ export default function ProductsPage() {
                     </div>
                 </div>
 
-                <div className="flex-1 space-y-4">
-                    <div className="relative max-w-sm">
+                <div className="min-w-0 flex-1 space-y-4">
+                    <div className="relative w-full sm:max-w-sm">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="Поиск по названию или бренду..."
@@ -114,9 +116,9 @@ export default function ProductsPage() {
                     )}
 
                     {isLoading ? (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                             {Array.from({ length: 8 }).map((_, i) => (
-                                <Skeleton key={i} className="h-64" />
+                                <Skeleton key={i} className="h-28 sm:h-64" />
                             ))}
                         </div>
                     ) : filteredProducts.length === 0 ? (
@@ -134,7 +136,7 @@ export default function ProductsPage() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                             {filteredProducts.map((product) => (
                                 <ProductCard
                                     key={product.id}

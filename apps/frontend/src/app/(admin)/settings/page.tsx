@@ -12,61 +12,70 @@ import { UnitsTab } from './units/units-tab';
 export default function SettingsPage() {
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+            <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                     <Settings className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Настройки</h1>
+                <div className="min-w-0">
+                    <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Настройки</h1>
                     <p className="text-sm text-muted-foreground">
-                        Управление характеристиками, поставщиками, промокодами и другими параметрами
+                        <span className="hidden sm:inline">
+                            Управление характеристиками, поставщиками, промокодами и другими параметрами
+                        </span>
+                        <span className="sm:hidden">Справочники и параметры системы</span>
                     </p>
                 </div>
             </div>
 
-            <Tabs defaultValue="attributes">
-                <TabsList>
-                    <TabsTrigger value="attributes">
-                        <Layers className="h-4 w-4" />
-                        Справочники товаров
+            <Tabs defaultValue="attributes" className="gap-4">
+                <TabsList className="h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto p-1 sm:w-fit">
+                    <TabsTrigger value="attributes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <Layers className="h-4 w-4 shrink-0" />
+                        <span className="hidden lg:inline">Справочники товаров</span>
+                        <span className="hidden sm:inline lg:hidden">Справочники</span>
+                        <span className="sm:hidden">Справ.</span>
                     </TabsTrigger>
-                    <TabsTrigger value="characteristics">
-                        <ListChecks className="h-4 w-4" />
-                        Характеристики
+                    <TabsTrigger value="characteristics" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <ListChecks className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Характеристики</span>
+                        <span className="sm:hidden">Хар-ки</span>
                     </TabsTrigger>
-                    <TabsTrigger value="units">
-                        <Scale className="h-4 w-4" />
-                        Единицы учёта
+                    <TabsTrigger value="units" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <Scale className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Единицы учёта</span>
+                        <span className="sm:hidden">Единицы</span>
                     </TabsTrigger>
-                    <TabsTrigger value="suppliers">
-                        <Truck className="h-4 w-4" />
+                    <TabsTrigger value="suppliers" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <Truck className="h-4 w-4 shrink-0" />
                         Поставщики
                     </TabsTrigger>
-                    <TabsTrigger value="templates">
-                        <FileText className="h-4 w-4" />
-                        Шаблоны постов
+                    <TabsTrigger value="templates" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Шаблоны постов</span>
+                        <span className="sm:hidden">Шаблоны</span>
                     </TabsTrigger>
-                    <TabsTrigger value="promocodes">
-                        <Tag className="h-4 w-4" />
-                        Промокоды
+                    <TabsTrigger value="promocodes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <Tag className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Промокоды</span>
+                        <span className="sm:hidden">Промо</span>
                     </TabsTrigger>
                 </TabsList>
-                <TabsContent value="attributes">
+                <TabsContent value="attributes" className="mt-0">
                     <ProductAttributesTab />
                 </TabsContent>
-                <TabsContent value="characteristics">
+                <TabsContent value="characteristics" className="mt-0">
                     <CharacteristicsTab />
                 </TabsContent>
-                <TabsContent value="units">
+                <TabsContent value="units" className="mt-0">
                     <UnitsTab />
                 </TabsContent>
-                <TabsContent value="suppliers">
+                <TabsContent value="suppliers" className="mt-0">
                     <SuppliersTab />
                 </TabsContent>
-                <TabsContent value="templates">
+                <TabsContent value="templates" className="mt-0">
                     <PostTemplatesTab />
                 </TabsContent>
-                <TabsContent value="promocodes">
+                <TabsContent value="promocodes" className="mt-0">
                     <PromoCodesTab />
                 </TabsContent>
             </Tabs>

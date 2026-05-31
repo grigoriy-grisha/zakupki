@@ -35,11 +35,38 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
     );
 }
 
+function childHasDescriptionSlot(node: React.ReactNode, slot: string): boolean {
+    let found = false;
+    React.Children.forEach(node, (child) => {
+        if (found || !React.isValidElement(child)) return;
+        const props = child.props as { 'data-slot'?: string; children?: React.ReactNode };
+        if (props['data-slot'] === slot) {
+            found = true;
+            return;
+        }
+        if (props.children && childHasDescriptionSlot(props.children, slot)) {
+            found = true;
+        }
+    });
+    return found;
+}
+
+function sheetDescribedByProps(children: React.ReactNode, ariaDescribedBy?: string) {
+    if (ariaDescribedBy !== undefined) {
+        return { 'aria-describedby': ariaDescribedBy };
+    }
+    if (childHasDescriptionSlot(children, 'sheet-description')) {
+        return {};
+    }
+    return { 'aria-describedby': void 0 as undefined };
+}
+
 function SheetContent({
     className,
     children,
     side = 'right',
     showCloseButton = true,
+    'aria-describedby': ariaDescribedBy,
     ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
     side?: 'top' | 'right' | 'bottom' | 'left';
@@ -50,6 +77,8 @@ function SheetContent({
             <SheetOverlay />
             <SheetPrimitive.Content
                 data-slot="sheet-content"
+                {...props}
+                {...sheetDescribedByProps(children, ariaDescribedBy)}
                 className={cn(
                     'fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500',
                     side === 'right' &&
@@ -62,7 +91,6 @@ function SheetContent({
                         'inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
                     className,
                 )}
-                {...props}
             >
                 {children}
                 {showCloseButton && (

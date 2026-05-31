@@ -50,10 +50,10 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     return (
         <>
             <Card
-                className="group overflow-hidden transition-all hover:shadow-md hover:border-primary/20 cursor-pointer"
+                className="group flex cursor-pointer flex-row overflow-hidden transition-all hover:border-primary/20 hover:shadow-md sm:flex-col"
                 onClick={onClick}
             >
-                <div className="relative h-44 bg-muted">
+                <div className="relative aspect-square w-28 shrink-0 bg-muted sm:aspect-auto sm:h-44 sm:w-full">
                     {photo ? (
                         <img
                             src={productPhotoUrl(photo.id, `${product.id}-${photo.sortOrder}`)}
@@ -62,14 +62,14 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         />
                     ) : (
                         <div className="flex h-full items-center justify-center">
-                            <Package className="h-12 w-12 text-muted-foreground/30" />
+                            <Package className="h-10 w-10 text-muted-foreground/30 sm:h-12 sm:w-12" />
                         </div>
                     )}
                     {!product.inActivePurchase && (
                         <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-2 right-2 h-8 w-8 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmOpen(true);
@@ -80,22 +80,24 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                     )}
                 </div>
 
-                <CardContent className="space-y-1 p-4">
+                <CardContent className="flex min-w-0 flex-1 flex-col justify-center space-y-0.5 p-3 sm:space-y-1 sm:p-4">
                     {descriptionLines.length > 0 ? (
                         descriptionLines.map((line, index) => (
                             <p
                                 key={`${index}-${line}`}
                                 className={
                                     index === 0
-                                        ? 'text-sm font-semibold leading-snug'
-                                        : 'text-xs leading-relaxed text-muted-foreground'
+                                        ? 'line-clamp-2 text-sm font-semibold leading-snug sm:line-clamp-none'
+                                        : 'line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:line-clamp-none'
                                 }
                             >
                                 {line}
                             </p>
                         ))
                     ) : (
-                        <p className="text-sm font-semibold leading-snug">{product.name}</p>
+                        <p className="line-clamp-2 text-sm font-semibold leading-snug sm:line-clamp-none">
+                            {product.name}
+                        </p>
                     )}
                 </CardContent>
             </Card>

@@ -259,6 +259,14 @@ export class UserRepository {
         });
     }
 
+    async updateRole(userId: number, role: 'ADMIN' | 'CLIENT') {
+        return dbClient.user.update({
+            where: { id: userId },
+            data: { role },
+            select: { id: true, role: true },
+        });
+    }
+
     async unlinkVk(userId: number) {
         return dbClient.vkCredential.deleteMany({ where: { userId } });
     }

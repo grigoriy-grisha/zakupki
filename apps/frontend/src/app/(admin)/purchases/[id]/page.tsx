@@ -51,10 +51,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="space-y-6">
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-semibold tracking-tight">{purchase.tag}</h1>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{purchase.tag}</h1>
                         <Badge>{STATUS_LABELS[purchase.status] ?? purchase.status}</Badge>
                     </div>
                     <p className="mt-1 text-muted-foreground">{purchase.supplier}</p>
@@ -76,28 +76,39 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:justify-end">
                     {isDraft && (
                         <>
-                            <Button variant="outline" size="lg" onClick={() => setDeleteOpen(true)}>
-                                <Trash2 className="mr-2 h-5 w-5" />
-                                Удалить черновик
+                            <Button
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                                onClick={() => setDeleteOpen(true)}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                                <span className="sm:hidden">Удалить</span>
+                                <span className="hidden sm:inline">Удалить черновик</span>
                             </Button>
-                            <Button size="lg" onClick={() => setActivateOpen(true)}>
-                                <Rocket className="mr-2 h-5 w-5" />
-                                Активировать закупку
+                            <Button className="w-full sm:w-auto" onClick={() => setActivateOpen(true)}>
+                                <Rocket className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                                <span className="sm:hidden">Активировать</span>
+                                <span className="hidden sm:inline">Активировать закупку</span>
                             </Button>
                         </>
                     )}
                     {purchase.status === 'SUPPLEMENT' && (
-                        <Button variant="outline" size="sm" onClick={() => setSupplementOpen(true)}>
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSupplementOpen(true)}>
                             Остатки
                         </Button>
                     )}
                     {canComplete && (
-                        <Button variant="outline" size="lg" onClick={() => setCompleteOpen(true)}>
-                            <CheckCircle2 className="mr-2 h-5 w-5" />
-                            Завершить закупку
+                        <Button
+                            variant="destructive"
+                            className="w-full sm:w-auto"
+                            onClick={() => setCompleteOpen(true)}
+                        >
+                            <CheckCircle2 className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                            <span className="sm:hidden">Завершить</span>
+                            <span className="hidden sm:inline">Завершить закупку</span>
                         </Button>
                     )}
                 </div>
@@ -146,34 +157,23 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 }}
             />
 
-            <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Завершить закупку?</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Участники больше не смогут оформлять и менять заказы. Закупка появится во вкладке
-                        «Завершённые».
-                    </p>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setCompleteOpen(false)}>
-                            Отмена
-                        </Button>
-                        <Button
-                            disabled={completePurchase.isPending}
-                            onClick={() => {
-                                completePurchase.mutate(
-                                    { id },
-                                    { onSuccess: () => setCompleteOpen(false) },
-                                );
-                            }}
-                        >
-                            {completePurchase.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Завершить
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={completeOpen}
+                onOpenChange={setCompleteOpen}
+                title="Вы уверены, что хотите завершить закупку?"
+                description={
+                    <>
+                        Закупка <strong>{purchase.tag}</strong> будет переведена в статус «Завершена». Участники
+                        больше не смогут оформлять и менять заказы.
+                    </>
+                }
+                confirmLabel="Завершить закупку"
+                variant="destructive"
+                loading={completePurchase.isPending}
+                onConfirm={() => {
+                    completePurchase.mutate({ id }, { onSuccess: () => setCompleteOpen(false) });
+                }}
+            />
 
             <Dialog open={activateOpen} onOpenChange={setActivateOpen}>
                 <DialogContent>

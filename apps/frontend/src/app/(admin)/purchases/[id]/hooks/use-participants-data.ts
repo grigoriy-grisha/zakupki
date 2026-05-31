@@ -30,15 +30,15 @@ export function useParticipantsData(purchaseId: number) {
 
         const userMap = new Map<number, { name: string; username?: string }>();
         orders.forEach((o) => {
-        if (
-            !userMap.has(o.userId) &&
-            (o as { user?: { firstName: string; lastName?: string | null; username?: string } }).user
-        ) {
-            const u = (o as { user: { firstName: string; lastName?: string | null; username?: string } }).user;
-            userMap.set(o.userId, {
-                name: displayName({ firstName: u.firstName, lastName: u.lastName ?? null }),
-                username: u.username,
-            });
+            if (
+                !userMap.has(o.userId) &&
+                (o as { user?: { firstName: string; lastName?: string | null; username?: string } }).user
+            ) {
+                const u = (o as { user: { firstName: string; lastName?: string | null; username?: string } }).user;
+                userMap.set(o.userId, {
+                    name: displayName({ firstName: u.firstName, lastName: u.lastName ?? null }),
+                    username: u.username,
+                });
             }
         });
 

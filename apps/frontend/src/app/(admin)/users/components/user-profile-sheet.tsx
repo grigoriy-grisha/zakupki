@@ -17,6 +17,7 @@ export type UserListItem = {
     username: string | null;
     avatarUrl: string | null;
     phone: string | null;
+    role: 'ADMIN' | 'CLIENT';
     createdAt: Date | string;
     orderLines: { id: number }[];
     telegramCredential: {
