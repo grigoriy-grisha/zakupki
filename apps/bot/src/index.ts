@@ -18,12 +18,11 @@ async function main() {
     console.log('Database connected');
 
     const bot = createBot({
-        db: dbClient,
         token: BOT_TOKEN!,
         proxyUrl: TELEGRAM_PROXY,
     });
 
-    setupPurchaseChannelPostHandler(bot, { redis: getRedisConnection(), db: dbClient });
+    setupPurchaseChannelPostHandler(bot, { redis: getRedisConnection() });
 
     await initChannelDiscussion(bot.api);
 

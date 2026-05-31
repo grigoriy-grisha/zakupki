@@ -1,10 +1,8 @@
 import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
+import { Prisma } from '@zakupki/database';
+import { AppError } from '@zakupki/types';
 
 import { ensureDefaultUnitId } from '../domain/default-unit';
-import { ProductRepository } from '../domain/product.repository';
-import { ProductService } from '../services/product.service';
-import { Prisma, type PrismaClient } from '@zakupki/database';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 export interface ProductCreateInput {
@@ -91,50 +89,40 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     availableUnit: z.string().optional(),
 });
 
-function services(db: PrismaClient) {
-    return { product: new ProductService(new ProductRepository(db)) };
-}
-
 export const productsRouter = router({
     list: protectedProcedure
         .input(z.object({ search: z.string().optional() }).optional())
         .query(async ({ ctx, input }) => {
-            const { product } = services(ctx.db);
-            return product.list(input?.search);
+            return ctx.services.product.list(input?.search);
         }),
 
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
-        return product.getById(input.id);
+        return ctx.services.product.getById(input.id);
     }),
 
     create: adminProcedure.input(productCreateInput).mutation(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
         const unitId = input.unitId ?? (await ensureDefaultUnitId(ctx.db));
-        return product.create({ ...input, unitId, pricePerUnit: input.pricePerUnit ?? 0 });
+        return ctx.services.product.create({ ...input, unitId, pricePerUnit: input.pricePerUnit ?? 0 });
     }),
 
     update: adminProcedure.input(productUpdateInput).mutation(async ({ ctx, input }) => {
         const { id, ...data } = input;
-        const { product } = services(ctx.db);
-        return product.update(id, data);
+        return ctx.services.product.update(id, data);
     }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
         try {
-            return await product.delete(input.id);
+            return await ctx.services.product.delete(input.id);
         } catch (err) {
-            if (err instanceof TRPCError) throw err;
+            if (err instanceof AppError) throw err;
             if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
-                throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+                throw new AppError('NOT_FOUND', 'Товар не найден');
             }
             throw err;
         }
     }),
 
     deletePhoto: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
-        return product.deletePhoto(input.id);
+        return ctx.services.product.deletePhoto(input.id);
     }),
 });

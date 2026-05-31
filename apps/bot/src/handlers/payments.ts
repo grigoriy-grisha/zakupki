@@ -3,7 +3,7 @@ import { PaymentService } from '../services/payment.service';
 
 export async function paymentsCommand(ctx: CustomContext) {
     const userId = ctx.session.userId!;
-    const paymentService = new PaymentService(ctx.db);
+    const paymentService = new PaymentService();
 
     const { payments, lines } = await paymentService.getUserPayments(userId);
 

@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CreditCard, Upload, Loader2, X, AlertCircle, Tag } from 'lucide-react';
-import { toast } from 'sonner';
+import { usePaymentForm } from '../hooks/use-payment-form';
 
 interface PaymentDialogProps {
     purchaseId: number;
@@ -17,108 +15,11 @@ interface PaymentDialogProps {
 }
 
 export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDialogProps) {
-    const [open, setOpen] = useState(false);
-    const [amount, setAmount] = useState(String(remaining));
-    const [comment, setComment] = useState('');
-    const [preview, setPreview] = useState<string | null>(null);
-    const [fileData, setFileData] = useState<{ base64: string; mimeType: string } | null>(null);
-    const [promoInput, setPromoInput] = useState('');
-    const [appliedPromo, setAppliedPromo] = useState<{
-        id: number;
-        code: string;
-        discount: number;
-        label?: string;
-    } | null>(null);
-    const [promoError, setPromoError] = useState('');
-    const [promoLoading, setPromoLoading] = useState(false);
-    const fileRef = useRef<HTMLInputElement>(null);
-    const utils = trpc.useUtils();
-
-    const mutation = trpc.payments.submit.useMutation({
-        onSuccess: () => {
-            void utils.payments.getMyPayments.invalidate();
-            void utils.orders.getMyOrders.invalidate();
-            setOpen(false);
-            setComment('');
-            setPreview(null);
-            setFileData(null);
-            setPromoInput('');
-            setAppliedPromo(null);
-            toast.success('Оплата отправлена');
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
-    const numAmount = Number(amount);
-    const amountError = numAmount > remaining ? `Максимум ${remaining.toLocaleString('ru-RU')} ₽` : '';
-    const canSubmit = fileData && numAmount > 0 && numAmount <= remaining;
-
-    async function applyPromo() {
-        if (!promoInput.trim()) return;
-        const currentAmount = Number(amount);
-        if (currentAmount <= 0) {
-            setPromoError('Укажите сумму');
-            return;
-        }
-        setPromoLoading(true);
-        setPromoError('');
-        try {
-            const result = await utils.client.promoCodes.validate.query({
-                code: promoInput.trim().toUpperCase(),
-                purchaseId,
-                orderAmount: currentAmount,
-            });
-            setAppliedPromo({
-                id: result.id,
-                code: result.code,
-                discount: result.discount,
-                label: result.label ?? undefined,
-            });
-        } catch (err: unknown) {
-            setPromoError(err instanceof Error ? err.message : 'Ошибка');
-            setAppliedPromo(null);
-        } finally {
-            setPromoLoading(false);
-        }
-    }
-
-    function removePromo() {
-        setAppliedPromo(null);
-        setPromoInput('');
-        setPromoError('');
-    }
-
-    function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('Файл слишком большой (макс 5 МБ)');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-            const base64 = (reader.result as string).split(',')[1];
-            setFileData({ base64, mimeType: file.type });
-            setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function clearFile() {
-        setFileData(null);
-        setPreview(null);
-        if (fileRef.current) fileRef.current.value = '';
-    }
+    const form = usePaymentForm(purchaseId, remaining);
 
     return (
-        <Dialog
-            open={open}
-            onOpenChange={(v) => {
-                setOpen(v);
-                if (v) setAmount(String(remaining));
-            }}
-        >
-            <Button size="sm" className="w-full" onClick={() => setOpen(true)} disabled={hasPending}>
+        <Dialog open={form.open} onOpenChange={form.handleOpenChange}>
+            <Button size="sm" className="w-full" onClick={() => form.handleOpenChange(true)} disabled={hasPending}>
                 <CreditCard className="h-4 w-4" />
                 {hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`}
             </Button>
@@ -132,40 +33,27 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                         Осталось оплатить: <strong>{remaining.toLocaleString('ru-RU')} ₽</strong>
                     </span>
                 </div>
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!canSubmit) return;
-                        mutation.mutate({
-                            purchaseId,
-                            amount: numAmount,
-                            userComment: comment || undefined,
-                            proofBase64: fileData!.base64,
-                            proofMimeType: fileData!.mimeType,
-                            promoCode: appliedPromo?.code,
-                        });
-                    }}
-                    className="space-y-4"
-                >
-                    {/* Promo code */}
+                <form onSubmit={form.handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                         <Label className="flex items-center gap-1">
                             <Tag className="h-3.5 w-3.5" />
                             Промокод
                         </Label>
-                        {appliedPromo ? (
+                        {form.appliedPromo ? (
                             <div className="flex items-center justify-between rounded-lg border border-success/30 bg-success-50 p-2">
                                 <div className="flex items-center gap-2 text-success">
                                     <Tag className="h-4 w-4" />
-                                    <span className="text-sm font-medium">{appliedPromo.code}</span>
-                                    <span className="text-xs">−{appliedPromo.discount.toLocaleString('ru-RU')} ₽</span>
+                                    <span className="text-sm font-medium">{form.appliedPromo.code}</span>
+                                    <span className="text-xs">
+                                        −{form.appliedPromo.discount.toLocaleString('ru-RU')} ₽
+                                    </span>
                                 </div>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="h-6 w-6 p-0"
-                                    onClick={removePromo}
+                                    onClick={form.removePromo}
                                 >
                                     <X className="h-3.5 w-3.5" />
                                 </Button>
@@ -174,29 +62,29 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                             <div className="flex gap-2">
                                 <Input
                                     placeholder="Введите промокод"
-                                    value={promoInput}
+                                    value={form.promoInput}
                                     onChange={(e) => {
-                                        setPromoInput(e.target.value);
-                                        setPromoError('');
+                                        form.setPromoInput(e.target.value);
+                                        form.setPromoError('');
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();
-                                            applyPromo();
+                                            void form.applyPromo();
                                         }
                                     }}
                                 />
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={applyPromo}
-                                    disabled={!promoInput.trim() || promoLoading}
+                                    onClick={() => void form.applyPromo()}
+                                    disabled={!form.promoInput.trim() || form.promoLoading}
                                 >
-                                    {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Применить'}
+                                    {form.promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Применить'}
                                 </Button>
                             </div>
                         )}
-                        {promoError && <p className="text-xs text-destructive">{promoError}</p>}
+                        {form.promoError && <p className="text-xs text-destructive">{form.promoError}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -205,45 +93,50 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                             type="number"
                             step="0.01"
                             max={remaining}
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            value={form.amount}
+                            onChange={(e) => form.setAmount(e.target.value)}
                             required
                         />
-                        {amountError && <p className="text-xs text-destructive">{amountError}</p>}
-                        {appliedPromo && (
+                        {form.amountError && <p className="text-xs text-destructive">{form.amountError}</p>}
+                        {form.appliedPromo && (
                             <div className="rounded-lg border border-success/30 bg-success-50 p-2 space-y-1">
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-muted-foreground">
-                                        Сумма: {numAmount.toLocaleString('ru-RU')} ₽
+                                        Сумма: {form.numAmount.toLocaleString('ru-RU')} ₽
                                     </span>
                                     <span className="text-success">
-                                        Скидка: −{appliedPromo.discount.toLocaleString('ru-RU')} ₽
+                                        Скидка: −{form.appliedPromo.discount.toLocaleString('ru-RU')} ₽
                                     </span>
                                 </div>
                                 <p className="text-xs font-medium text-success">
-                                    К оплате: {(numAmount - appliedPromo.discount).toLocaleString('ru-RU')} ₽
+                                    К оплате:{' '}
+                                    {(form.numAmount - form.appliedPromo.discount).toLocaleString('ru-RU')} ₽
                                 </p>
                             </div>
                         )}
-                        <p className="text-xs text-muted-foreground">Максимум: {remaining.toLocaleString('ru-RU')} ₽</p>
+                        <p className="text-xs text-muted-foreground">
+                            Максимум: {remaining.toLocaleString('ru-RU')} ₽
+                        </p>
                     </div>
+
                     <div className="space-y-2">
                         <Label>Комментарий</Label>
                         <Textarea
                             placeholder="Примечание к оплате..."
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
+                            value={form.comment}
+                            onChange={(e) => form.setComment(e.target.value)}
                             rows={2}
                         />
                     </div>
+
                     <div className="space-y-2">
                         <Label>
                             Подтверждение оплаты <span className="text-destructive">*</span>
                         </Label>
-                        {preview ? (
+                        {form.preview ? (
                             <div className="relative rounded-lg border p-2 bg-muted/50">
-                                {fileData?.mimeType.startsWith('image/') ? (
-                                    <img src={preview} alt="Preview" className="max-h-40 rounded mx-auto" />
+                                {form.fileData?.mimeType.startsWith('image/') ? (
+                                    <img src={form.preview} alt="Preview" className="max-h-40 rounded mx-auto" />
                                 ) : (
                                     <div className="flex items-center gap-2 p-2">
                                         <Upload className="h-4 w-4" />
@@ -252,7 +145,7 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                                 )}
                                 <button
                                     type="button"
-                                    onClick={clearFile}
+                                    onClick={form.clearFile}
                                     className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
                                 >
                                     <X className="h-3 w-3" />
@@ -260,7 +153,7 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                             </div>
                         ) : (
                             <div
-                                onClick={() => fileRef.current?.click()}
+                                onClick={() => form.fileRef.current?.click()}
                                 className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
                             >
                                 <Upload className="h-8 w-8" />
@@ -269,16 +162,17 @@ export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDial
                             </div>
                         )}
                         <input
-                            ref={fileRef}
+                            ref={form.fileRef}
                             type="file"
                             accept="image/*,.pdf"
-                            onChange={handleFile}
+                            onChange={form.handleFile}
                             className="hidden"
                         />
-                        {!fileData && <p className="text-xs text-destructive">Прикрепите подтверждение оплаты</p>}
+                        {!form.fileData && <p className="text-xs text-destructive">Прикрепите подтверждение оплаты</p>}
                     </div>
-                    <Button type="submit" disabled={!canSubmit || mutation.isPending} className="w-full">
-                        {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+
+                    <Button type="submit" disabled={!form.canSubmit || form.mutation.isPending} className="w-full">
+                        {form.mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         Отправить
                     </Button>
                 </form>

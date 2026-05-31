@@ -1,7 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { createPurchaseServices } from '../lib/create-purchase-services';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 export const purchasesRouter = router({
@@ -15,23 +14,18 @@ export const purchasesRouter = router({
                 .optional(),
         )
         .query(async ({ ctx, input }) => {
-            const { purchase } = createPurchaseServices(ctx.db);
-
             if (input?.statuses?.length) {
-                return purchase.listByStatuses(input.statuses);
+                return ctx.services.purchase.listByStatuses(input.statuses);
             }
-
-            return purchase.list(input?.status);
+            return ctx.services.purchase.list(input?.status);
         }),
 
     listMyCompleted: protectedProcedure.query(async ({ ctx }) => {
-        const { purchase } = createPurchaseServices(ctx.db);
-        return purchase.listByStatusesForUser(ctx.userId, ['DONE']);
+        return ctx.services.purchase.listByStatusesForUser(ctx.userId, ['DONE']);
     }),
 
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
-        const { purchase } = createPurchaseServices(ctx.db);
-        return purchase.getById(input.id);
+        return ctx.services.purchase.getById(input.id);
     }),
 
     create: adminProcedure
@@ -44,8 +38,7 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { purchase } = createPurchaseServices(ctx.db);
-            return purchase.create(input);
+            return ctx.services.purchase.create(input);
         }),
 
     updateStatus: adminProcedure
@@ -56,37 +49,31 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { purchase } = createPurchaseServices(ctx.db);
-            return purchase.updateStatus(input.id, input.status);
+            return ctx.services.purchase.updateStatus(input.id, input.status);
         }),
 
     activate: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
-        const { purchase } = createPurchaseServices(ctx.db);
-        return purchase.activate(input.purchaseId);
+        return ctx.services.purchase.activate(input.purchaseId);
     }),
 
     publishToTelegram: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
-        const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
-        const unpublishedItems = await purchase.findItemsToPublish(input.purchaseId);
-        const queued = await telegramPublish.enqueuePurchaseItems(unpublishedItems.map((i) => i.id));
+        const unpublishedItems = await ctx.services.purchase.findItemsToPublish(input.purchaseId);
+        const queued = await ctx.services.telegramPublish.enqueuePurchaseItems(unpublishedItems.map((i) => i.id));
         return { queued };
     }),
 
     complete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { purchase } = createPurchaseServices(ctx.db);
-        return purchase.complete(input.id);
+        return ctx.services.purchase.complete(input.id);
     }),
 
     deleteDraft: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { purchase } = createPurchaseServices(ctx.db);
-        return purchase.deleteDraft(input.id);
+        return ctx.services.purchase.deleteDraft(input.id);
     }),
 
     toggleShouldPublish: adminProcedure
         .input(z.object({ purchaseItemId: z.number(), value: z.boolean() }))
         .mutation(async ({ ctx, input }) => {
-            const { purchase } = createPurchaseServices(ctx.db);
-            return purchase.toggleShouldPublish(input.purchaseItemId, input.value);
+            return ctx.services.purchase.toggleShouldPublish(input.purchaseItemId, input.value);
         }),
 
     setAvailableQuantities: adminProcedure
@@ -102,8 +89,7 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { purchase } = createPurchaseServices(ctx.db);
-            return purchase.setAvailableQuantities(input.purchaseId, input.items);
+            return ctx.services.purchase.setAvailableQuantities(input.purchaseId, input.items);
         }),
 
     addItems: adminProcedure
@@ -115,9 +101,7 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
-
-            const { items, skippedCount } = await purchase.addItems(
+            const { items, skippedCount } = await ctx.services.purchase.addItems(
                 input.purchaseId,
                 input.productIds,
                 input.shouldPublish ?? false,
@@ -130,7 +114,7 @@ export const purchasesRouter = router({
                 });
             }
 
-            const tgPublish = await telegramPublish.enqueueAfterAddItems(
+            const tgPublish = await ctx.services.telegramPublish.enqueueAfterAddItems(
                 false,
                 items.map((i) => i.id),
             );
@@ -141,14 +125,12 @@ export const purchasesRouter = router({
     publishItemToTg: adminProcedure
         .input(z.object({ purchaseItemId: z.number() }))
         .mutation(async ({ ctx, input }) => {
-            const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
-            await purchase.ensureCanPublishItem(input.purchaseItemId);
-            return telegramPublish.publishPurchaseItem(input.purchaseItemId);
+            await ctx.services.purchase.ensureCanPublishItem(input.purchaseItemId);
+            return ctx.services.telegramPublish.publishPurchaseItem(input.purchaseItemId);
         }),
 
     removeItem: adminProcedure.input(z.object({ purchaseItemId: z.number() })).mutation(async ({ ctx, input }) => {
-        const { purchase } = createPurchaseServices(ctx.db);
-        return purchase.removeItem(input.purchaseItemId);
+        return ctx.services.purchase.removeItem(input.purchaseItemId);
     }),
 
     updateItemProduct: adminProcedure
@@ -180,11 +162,10 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { purchase, telegramPublish } = createPurchaseServices(ctx.db);
-            const item = await purchase.updateItemProduct(input.purchaseItemId, input.product);
+            const item = await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product);
 
             if (item.tgMessageId) {
-                await telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);
+                await ctx.services.telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);
             }
 
             return { ok: true };

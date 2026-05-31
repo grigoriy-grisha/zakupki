@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 
 import type { ReactNode } from 'react';
-import type { usePurchasePaymentDetail } from '../../../hooks/use-purchase-payment-map';
+import type { usePurchasePaymentDetail } from '../hooks/use-purchase-payment-detail';
 
 interface OrdersSummaryCardProps {
     paymentDetail: ReturnType<typeof usePurchasePaymentDetail>;

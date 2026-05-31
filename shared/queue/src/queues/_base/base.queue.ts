@@ -18,7 +18,8 @@ export abstract class BaseQueue<DataType = unknown, ResultType = unknown, NameTy
         { queueOptions = {}, workerOptions = {} }: BaseQueueOptions = {},
     ) {
         this.queue = new Queue(queueName, { ...queueOptions, connection });
-        this.workerConfig = { ...workerOptions, connection };
+        // Duplicate connection for worker to isolate blocking commands
+        this.workerConfig = { ...workerOptions, connection: connection.duplicate() };
     }
 
     public setupWorker({

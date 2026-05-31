@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
+import { resolveAvatarUrl, displayName } from '@/lib/utils/user';
 
 export type UserListItem = {
     id: number;
@@ -33,14 +34,6 @@ interface UserProfileSheetProps {
     user: UserListItem | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-}
-
-function resolveAvatarUrl(user: UserListItem): string | null {
-    return user.avatarUrl ?? user.telegramCredential?.avatarUrl ?? user.vkCredential?.avatarUrl ?? null;
-}
-
-function displayName(user: UserListItem): string {
-    return [user.firstName, user.lastName].filter(Boolean).join(' ');
 }
 
 export function UserProfileSheet({ user, open, onOpenChange }: UserProfileSheetProps) {

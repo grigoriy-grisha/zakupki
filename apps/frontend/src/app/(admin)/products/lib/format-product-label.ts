@@ -1,3 +1,5 @@
+import { escapeRegExp } from '@/lib/utils/html';
+
 export type ProductAttributeValueSource = {
     attribute: {
         name: string;
@@ -354,8 +356,4 @@ export function stripAttributesFromName(
 function stripArticlePrefix(text: string, article?: string): string {
     if (!article) return text.trim();
     return text.replace(new RegExp(`^${escapeRegExp(article)}\\s*`, 'i'), '').trim();
-}
-
-function escapeRegExp(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

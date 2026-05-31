@@ -1,14 +1,10 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
+
+const db = dbClient;
 
 export class PurchaseItemRepository {
-    private db: PrismaClient;
-
-    constructor(db: PrismaClient) {
-        this.db = db;
-    }
-
     findById(id: number) {
-        return this.db.purchaseItem.findUnique({
+        return db.purchaseItem.findUnique({
             where: { id },
             include: {
                 product: {
@@ -17,17 +13,17 @@ export class PurchaseItemRepository {
                         photos: {
                             orderBy: { sortOrder: 'asc' },
                             take: 1,
-                            select: { data: true, mimeType: true },
+                            select: { objectKey: true, mimeType: true },
                         },
                     },
                 },
-                purchase: { select: { tag: true } },
+                purchase: { select: { tag: true, status: true } },
             },
         });
     }
 
     updateTelegramMessage(id: number, messageId: string, channelId: string) {
-        return this.db.purchaseItem.update({
+        return db.purchaseItem.update({
             where: { id },
             data: {
                 tgMessageId: messageId,
@@ -39,7 +35,7 @@ export class PurchaseItemRepository {
     findByTelegramPost(channelId: string, messageId: string) {
         const channelIds = [...new Set([channelId, ...this.channelIdVariants(channelId)])];
 
-        return this.db.purchaseItem.findFirst({
+        return db.purchaseItem.findFirst({
             where: {
                 tgMessageId: messageId,
                 tgChannelId: { in: channelIds },
@@ -69,7 +65,7 @@ export class PurchaseItemRepository {
     }
 
     findByTgMessageId(messageId: string) {
-        return this.db.purchaseItem.findFirst({
+        return db.purchaseItem.findFirst({
             where: {
                 tgMessageId: messageId,
                 isActive: true,

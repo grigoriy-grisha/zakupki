@@ -1,10 +1,9 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
+import { InsufficientStockError, NotFoundError } from '@zakupki/types';
 
 export class OrderRepository {
-    constructor(private db: PrismaClient) {}
-
     async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return this.db.orderLine.upsert({
+        return dbClient.orderLine.upsert({
             where: { purchaseItemId_userId: { purchaseItemId, userId } },
             update: { quantity, amountDue },
             create: { purchaseItemId, userId, quantity, amountDue },
@@ -12,34 +11,30 @@ export class OrderRepository {
     }
 
     async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return this.db.$transaction(async (tx) => {
-            // Get current order line if exists
+        return dbClient.$transaction(async (tx) => {
             const existingLine = await tx.orderLine.findUnique({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
             });
 
-            // Get purchase item with availableQty
             const purchaseItem = await tx.purchaseItem.findUnique({
                 where: { id: purchaseItemId },
             });
 
-            if (!purchaseItem) throw new Error('Purchase item not found');
+            if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
 
             const oldQuantity = existingLine ? Number(existingLine.quantity) : 0;
             const delta = quantity - oldQuantity;
 
-            // If increasing order and availableQty is set, check & decrement
             if (delta > 0 && purchaseItem.availableQty !== null) {
                 const available = Number(purchaseItem.availableQty);
                 if (available < delta) {
-                    throw new Error(`Свободный остаток: ${available}. Нельзя заказать ${quantity}`);
+                    throw new InsufficientStockError(available, quantity);
                 }
                 await tx.purchaseItem.update({
                     where: { id: purchaseItemId },
                     data: { availableQty: available - delta },
                 });
             } else if (delta < 0 && purchaseItem.availableQty !== null) {
-                // If decreasing order, restore stock
                 const available = Number(purchaseItem.availableQty);
                 await tx.purchaseItem.update({
                     where: { id: purchaseItemId },
@@ -47,7 +42,6 @@ export class OrderRepository {
                 });
             }
 
-            // Upsert the order line
             return tx.orderLine.upsert({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
                 update: { quantity, amountDue },
@@ -56,16 +50,22 @@ export class OrderRepository {
         });
     }
 
-    async deleteAndRestoreStock(id: number) {
-        return this.db.$transaction(async (tx) => {
+    async findById(id: number) {
+        return dbClient.orderLine.findUnique({ where: { id } });
+    }
+
+    async deleteAndRestoreStock(id: number, options?: { throwIfNotFound?: boolean }) {
+        return dbClient.$transaction(async (tx) => {
             const line = await tx.orderLine.findUnique({ where: { id } });
-            if (!line) throw new Error('Order line not found');
+            if (!line) {
+                if (options?.throwIfNotFound === false) return null;
+                throw new NotFoundError('Строка заказа', id);
+            }
 
             const purchaseItem = await tx.purchaseItem.findUnique({
                 where: { id: line.purchaseItemId },
             });
 
-            // Restore stock if availableQty is set
             if (purchaseItem?.availableQty !== null && purchaseItem) {
                 const available = Number(purchaseItem.availableQty);
                 const qty = Number(line.quantity);
@@ -80,7 +80,7 @@ export class OrderRepository {
     }
 
     async getByUser(userId: number) {
-        return this.db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: { userId },
             include: {
                 purchaseItem: {
@@ -95,7 +95,7 @@ export class OrderRepository {
     }
 
     async getByPurchase(purchaseId: number) {
-        return this.db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: { purchaseItem: { purchaseId } },
             include: {
                 user: true,
@@ -107,11 +107,11 @@ export class OrderRepository {
     }
 
     async delete(id: number) {
-        return this.db.orderLine.delete({ where: { id } });
+        return dbClient.orderLine.delete({ where: { id } });
     }
 
     async getByPurchaseItem(purchaseItemId: number) {
-        return this.db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: { purchaseItemId },
             include: { user: true },
         });

@@ -1,11 +1,11 @@
 import { router } from '../trpc';
-import { attributeTypesRouter } from './attributeTypes';
+import { attributeTypesRouter } from './attribute-types';
 import { characteristicsRouter } from './characteristics';
 import { ordersRouter } from './orders';
 import { paymentsRouter } from './payments';
-import { postTemplatesRouter } from './postTemplates';
-import { promoCodesRouter } from './promoCodes';
-import { productAttributesRouter } from './productAttributes';
+import { postTemplatesRouter } from './post-templates';
+import { promoCodesRouter } from './promo-codes';
+import { productAttributesRouter } from './product-attributes';
 import { productsRouter } from './products';
 import { purchasesRouter } from './purchases';
 import { suppliersRouter } from './suppliers';

@@ -3,6 +3,7 @@
 import { AppLink } from '@/components/app-link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { daysLeftUntil, formatDeadlineShort } from '@/lib/utils/date';
 import { STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
 
 interface AdminPurchaseListCardProps {
@@ -17,8 +18,7 @@ interface AdminPurchaseListCardProps {
 }
 
 export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
-    const deadline = new Date(purchase.deadline);
-    const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysLeft = daysLeftUntil(purchase.deadline);
     const totalOrders = purchase.items.reduce((sum, item) => sum + item.orderLines.length, 0);
     const totalAmount = purchase.items.reduce(
         (sum, item) => sum + item.orderLines.reduce((s, ol) => s + Number(ol.amountDue), 0),
@@ -39,7 +39,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                 <CardContent>
                     <p className="font-medium">{purchase.supplier}</p>
                     <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>До {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                        <span>До {formatDeadlineShort(purchase.deadline)}</span>
                         {purchase.status === 'ACTIVE' && (
                             <span className={daysLeft <= 3 ? 'text-destructive font-medium' : ''}>
                                 {daysLeft > 0 ? `${daysLeft} дн.` : 'Просрочено'}

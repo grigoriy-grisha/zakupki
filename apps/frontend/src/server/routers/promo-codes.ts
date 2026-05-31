@@ -1,18 +1,10 @@
 import { z } from 'zod';
 
-import { PromoCodeRepository } from '../domain/promo-code.repository';
-import { PromoCodeService } from '../services/promo-code.service';
-import type { PrismaClient } from '@zakupki/database';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
-
-function services(db: PrismaClient) {
-    return { promoCode: new PromoCodeService(new PromoCodeRepository(db)) };
-}
 
 export const promoCodesRouter = router({
     list: adminProcedure.query(async ({ ctx }) => {
-        const { promoCode } = services(ctx.db);
-        return promoCode.list();
+        return ctx.services.promoCode.list();
     }),
 
     create: adminProcedure
@@ -29,8 +21,7 @@ export const promoCodesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { promoCode } = services(ctx.db);
-            return promoCode.create({
+            return ctx.services.promoCode.create({
                 ...input,
                 code: input.code.toUpperCase().trim(),
                 expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
@@ -49,22 +40,19 @@ export const promoCodesRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             const { id, ...data } = input;
-            const { promoCode } = services(ctx.db);
-            return promoCode.update(id, {
+            return ctx.services.promoCode.update(id, {
                 ...data,
                 expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
             });
         }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { promoCode } = services(ctx.db);
-        return promoCode.delete(input.id);
+        return ctx.services.promoCode.delete(input.id);
     }),
 
     validate: protectedProcedure
         .input(z.object({ code: z.string(), purchaseId: z.number(), orderAmount: z.number() }))
         .query(async ({ ctx, input }) => {
-            const { promoCode } = services(ctx.db);
-            return promoCode.validate(input.code.toUpperCase().trim(), input.purchaseId, input.orderAmount);
+            return ctx.services.promoCode.validate(input.code.toUpperCase().trim(), input.purchaseId, input.orderAmount);
         }),
 });

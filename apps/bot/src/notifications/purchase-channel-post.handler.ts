@@ -1,4 +1,3 @@
-import type { PrismaClient } from '@zakupki/database';
 import type { Bot } from 'grammy';
 import type { RedisClient } from '@zakupki/queue';
 
@@ -7,8 +6,8 @@ import { ChannelPostService } from '../services/channel-post.service';
 
 export function setupPurchaseChannelPostHandler(
     bot: Bot<CustomContext>,
-    { redis, db }: { redis: RedisClient; db: PrismaClient },
+    { redis }: { redis: RedisClient },
 ) {
-    const service = new ChannelPostService(bot.api, db);
+    const service = new ChannelPostService(bot.api);
     return service.setupWorker(redis);
 }

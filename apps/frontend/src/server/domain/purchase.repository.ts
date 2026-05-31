@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 
 const productWithAttributes = {
     photos: { select: { id: true, sortOrder: true } },
@@ -17,10 +17,10 @@ const productWithAttributes = {
 } as const;
 
 export class PurchaseRepository {
-    constructor(private db: PrismaClient) {}
+    constructor() {}
 
     async list(status?: string) {
-        return this.db.purchase.findMany({
+        return dbClient.purchase.findMany({
             where: status ? { status: status as any } : undefined,
             include: {
                 items: {
@@ -35,7 +35,7 @@ export class PurchaseRepository {
     }
 
     async listByStatuses(statuses: string[]) {
-        return this.db.purchase.findMany({
+        return dbClient.purchase.findMany({
             where: { status: { in: statuses as any } },
             include: {
                 items: {
@@ -50,7 +50,7 @@ export class PurchaseRepository {
     }
 
     async listByStatusesForUser(userId: number, statuses: string[]) {
-        return this.db.purchase.findMany({
+        return dbClient.purchase.findMany({
             where: {
                 status: { in: statuses as any },
                 items: { some: { orderLines: { some: { userId } } } },
@@ -68,7 +68,7 @@ export class PurchaseRepository {
     }
 
     async getById(id: number) {
-        return this.db.purchase.findUnique({
+        return dbClient.purchase.findUnique({
             where: { id },
             include: {
                 items: {
@@ -83,15 +83,15 @@ export class PurchaseRepository {
     }
 
     async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {
-        return this.db.purchase.create({ data });
+        return dbClient.purchase.create({ data });
     }
 
     async updateStatus(id: number, status: string) {
-        return this.db.purchase.update({ where: { id }, data: { status: status as any } });
+        return dbClient.purchase.update({ where: { id }, data: { status: status as any } });
     }
 
     async deleteDraft(id: number) {
-        return this.db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             const purchase = await tx.purchase.findUnique({ where: { id }, select: { status: true } });
             if (!purchase) return null;
 
@@ -122,7 +122,7 @@ export class PurchaseRepository {
 
     async findProductIdsInPurchase(purchaseId: number, productIds: number[]) {
         if (productIds.length === 0) return [];
-        const rows = await this.db.purchaseItem.findMany({
+        const rows = await dbClient.purchaseItem.findMany({
             where: { purchaseId, productId: { in: productIds } },
             select: { productId: true },
         });
@@ -130,27 +130,27 @@ export class PurchaseRepository {
     }
 
     async addItem(purchaseId: number, productId: number, shouldPublish = false) {
-        return this.db.purchaseItem.create({
+        return dbClient.purchaseItem.create({
             data: { purchaseId, productId, shouldPublish },
         });
     }
 
     async findItemWithPurchase(purchaseItemId: number) {
-        return this.db.purchaseItem.findUnique({
+        return dbClient.purchaseItem.findUnique({
             where: { id: purchaseItemId },
             select: { id: true, tgMessageId: true, purchase: { select: { status: true, tag: true } } },
         });
     }
 
     async removeItem(id: number) {
-        return this.db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             await tx.orderLine.deleteMany({ where: { purchaseItemId: id } });
             return tx.purchaseItem.delete({ where: { id } });
         });
     }
 
     async updateTgMessage(purchaseItemId: number, tgMessageId: string, tgChannelId: string) {
-        return this.db.purchaseItem.update({
+        return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
             data: { tgMessageId, tgChannelId },
         });
@@ -158,7 +158,7 @@ export class PurchaseRepository {
 
     async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; availableQty: number | null }[]) {
         const updates = items.map((item) =>
-            this.db.purchaseItem.update({
+            dbClient.purchaseItem.update({
                 where: { id: item.purchaseItemId },
                 data: { availableQty: item.availableQty },
             }),
@@ -167,35 +167,35 @@ export class PurchaseRepository {
     }
 
     async findUnpublishedItems(purchaseId: number) {
-        return this.db.purchaseItem.findMany({
+        return dbClient.purchaseItem.findMany({
             where: { purchaseId, shouldPublish: true, tgMessageId: null },
             select: { id: true },
         });
     }
 
     async toggleShouldPublish(purchaseItemId: number, value: boolean) {
-        return this.db.purchaseItem.update({
+        return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
             data: { shouldPublish: value },
         });
     }
 
     async findItemById(id: number) {
-        return this.db.purchaseItem.findUnique({
+        return dbClient.purchaseItem.findUnique({
             where: { id },
             select: { id: true },
         });
     }
 
     async findItemWithProductAndTg(id: number) {
-        return this.db.purchaseItem.findUnique({
+        return dbClient.purchaseItem.findUnique({
             where: { id },
             select: { productId: true, tgMessageId: true, tgChannelId: true },
         });
     }
 
     async findItemWithPrice(id: number) {
-        return this.db.purchaseItem.findUnique({
+        return dbClient.purchaseItem.findUnique({
             where: { id },
             include: { product: true, purchase: true },
         });

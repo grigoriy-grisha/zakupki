@@ -8,6 +8,9 @@ export async function orderReplyHandler(ctx: CustomContext) {
     if (!message || !('text' in message) || !message.text) return;
     if (!ctx.chat || !ctx.from || ctx.from.is_bot) return;
 
+    // Fast regex pre-filter: skip non-order messages immediately without DB lookup
+    if (!/^[-+]?\d/.test(message.text.trim())) return;
+
     const replyTo = message.reply_to_message;
     const threadId = getChannelPostThreadId(message);
 
@@ -17,7 +20,7 @@ export async function orderReplyHandler(ctx: CustomContext) {
         return;
     }
 
-    const service = new OrderCollectionService(ctx.db);
+    const service = new OrderCollectionService();
     const result = await service.collectFromReply({
         chatId: ctx.chat.id,
         replyTo,

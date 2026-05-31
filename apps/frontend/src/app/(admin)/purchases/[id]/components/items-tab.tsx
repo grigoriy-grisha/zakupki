@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Loader2, Send, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
@@ -15,7 +14,7 @@ import { PurchaseProductLabel } from '@/components/shared/purchase-product-label
 import type { ProductLabelSource } from '../../../products/lib';
 import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
-import { PurchaseProductEditForm } from './purchase-product-edit-form';
+import { ItemEditSheet } from './item-edit-sheet';
 import {
     Dialog,
     DialogContent,
@@ -282,65 +281,6 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                 </DialogContent>
             </Dialog>
         </div>
-    );
-}
-
-function ItemEditSheet({
-    purchaseItemId,
-    open,
-    onClose,
-    purchaseId,
-}: {
-    purchaseItemId: number | null;
-    open: boolean;
-    onClose: () => void;
-    purchaseId: number;
-}) {
-    const utils = trpc.useUtils();
-    const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
-    const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
-
-    const updateMutation = trpc.purchases.updateItemProduct.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            void utils.products.list.invalidate();
-            toast.success('Товар обновлён');
-            onClose();
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
-    if (!item) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const product = item.product as any;
-    const tiers: { amount: number; unit: string; price: number }[] = Array.isArray(product.priceTiers)
-        ? product.priceTiers
-        : [];
-    const published = !!item.tgMessageId;
-
-    return (
-        <Sheet
-            open={open}
-            onOpenChange={(v) => {
-                if (!v) onClose();
-            }}
-        >
-            <SheetContent className="sm:max-w-lg overflow-y-auto">
-                <SheetHeader>
-                    <SheetTitle>Редактировать товар {published && '· Пост в TG обновится'}</SheetTitle>
-                </SheetHeader>
-                <PurchaseProductEditForm
-                    key={product.id}
-                    product={product}
-                    loadSavedDescription
-                    purchaseTag={purchase?.tag}
-                    initialTiers={tiers}
-                    onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
-                    isSaving={updateMutation.isPending}
-                    submitLabel={published ? 'Сохранить и обновить пост в TG' : 'Сохранить'}
-                />
-            </SheetContent>
-        </Sheet>
     );
 }
 

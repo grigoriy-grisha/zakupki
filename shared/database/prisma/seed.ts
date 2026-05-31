@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../generated/client/client';
+import { PrismaClient } from '@prisma/client';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? '' });
 const prisma = new PrismaClient({ adapter });
@@ -27,6 +27,7 @@ async function main() {
     await prisma.productCharacteristicValue.deleteMany();
     await prisma.characteristic.deleteMany();
     await prisma.unit.deleteMany();
+    await prisma.supplier.deleteMany();
 
     await prisma.role.createMany({
         data: [{ kind: 'ADMIN' }, { kind: 'CLIENT' }],

@@ -75,7 +75,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
 
                 <div className="space-y-4 py-2">
                     {purchase.items.map((item) => {
-                        const orderedTotal = item.orderLines.reduce((sum, ol) => sum + Number(ol.quantity), 0);
+                        const orderedTotal = item.orderLines.reduce((sum: number, ol: any) => sum + Number(ol.quantity), 0);
                         const shortName = item.product.unit?.shortName ?? '';
                         const val = quantities[item.id] ?? '';
 

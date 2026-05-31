@@ -3,7 +3,7 @@ import { OrderService } from '../services/order.service';
 
 export async function ordersCommand(ctx: CustomContext) {
     const userId = ctx.session.userId!;
-    const orderService = new OrderService(ctx.db);
+    const orderService = new OrderService();
 
     const { orders, lines, total } = await orderService.getUserOrders(userId);
 

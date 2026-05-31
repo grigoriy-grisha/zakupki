@@ -6,13 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, CircleCheck, CircleX, CreditCard, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { daysLeftUntil } from '@/lib/utils/date';
 import type { ShopMyPurchaseCardProps } from '../lib/types';
 
 export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
     const isDone = purchase.status === 'DONE';
     const isPaid = payment.remaining === 0;
-    const deadline = new Date(purchase.deadline);
-    const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysLeft = daysLeftUntil(purchase.deadline);
 
     const statusBadge =
         purchase.status === 'DONE'

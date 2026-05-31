@@ -1,10 +1,10 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 
 export class ProductAttributeRepository {
-    constructor(private db: PrismaClient) {}
+    constructor() {}
 
     async list(typeId?: number) {
-        return this.db.productAttribute.findMany({
+        return dbClient.productAttribute.findMany({
             where: typeId ? { typeId } : undefined,
             orderBy: [{ typeId: 'asc' }, { name: 'asc' }],
             include: {
@@ -15,7 +15,7 @@ export class ProductAttributeRepository {
 
     async create(data: { typeId: number; name: string; characteristicIds?: number[] }) {
         const { characteristicIds, ...rest } = data;
-        return this.db.productAttribute.create({
+        return dbClient.productAttribute.create({
             data: {
                 ...rest,
                 ...(characteristicIds?.length
@@ -38,7 +38,7 @@ export class ProductAttributeRepository {
             await this.setCharacteristics(id, characteristicIds);
         }
         if (Object.keys(rest).length === 0) {
-            return this.db.productAttribute.findUniqueOrThrow({
+            return dbClient.productAttribute.findUniqueOrThrow({
                 where: { id },
                 include: {
                     characteristics: {
@@ -48,7 +48,7 @@ export class ProductAttributeRepository {
                 },
             });
         }
-        return this.db.productAttribute.update({
+        return dbClient.productAttribute.update({
             where: { id },
             data: rest,
             include: {
@@ -58,11 +58,11 @@ export class ProductAttributeRepository {
     }
 
     async setCharacteristics(attributeId: number, characteristicIds: number[]) {
-        await this.db.$transaction([
-            this.db.productAttributeCharacteristic.deleteMany({ where: { attributeId } }),
+        await dbClient.$transaction([
+            dbClient.productAttributeCharacteristic.deleteMany({ where: { attributeId } }),
             ...(characteristicIds.length > 0
                 ? [
-                      this.db.productAttributeCharacteristic.createMany({
+                      dbClient.productAttributeCharacteristic.createMany({
                           data: characteristicIds.map((characteristicId) => ({ attributeId, characteristicId })),
                       }),
                   ]
@@ -71,6 +71,6 @@ export class ProductAttributeRepository {
     }
 
     async delete(id: number) {
-        return this.db.productAttribute.delete({ where: { id } });
+        return dbClient.productAttribute.delete({ where: { id } });
     }
 }

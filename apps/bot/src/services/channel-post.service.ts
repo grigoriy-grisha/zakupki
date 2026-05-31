@@ -1,27 +1,34 @@
 import type { Api } from 'grammy';
-import type { PrismaClient } from '@zakupki/database';
 import type { RedisClient } from '@zakupki/queue';
 import { GrammyError } from 'grammy';
 import { TelegramChannelPostQueue, UnrecoverableError } from '@zakupki/queue';
 
 import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
+import type { ChannelPostPhoto } from '../domain/types';
+
 import {
     buildProductPostText,
     getChannelIdFromEnv,
     productPhotoToAttachment,
     sendChannelPost,
 } from '../lib/telegram-post';
+
+const S3_PUBLIC_URL_PREFIX =
+    process.env.YANDEX_PUBLIC_URL_PREFIX ||
+    `https://storage.yandexcloud.net/${process.env.YANDEX_BUCKET_NAME}`;
+
+function getS3PublicUrl(objectKey: string): string {
+    return `${S3_PUBLIC_URL_PREFIX}/${objectKey}`;
+}
+
 export class ChannelPostService {
-    private repo: PurchaseItemRepository;
-    private channelId: string | null;
+    private repo = new PurchaseItemRepository();
+    private channelId = getChannelIdFromEnv();
 
     constructor(
         private api: Api,
-        db: PrismaClient,
     ) {
-        this.repo = new PurchaseItemRepository(db);
-        this.channelId = getChannelIdFromEnv();
     }
 
     setupWorker(redis: RedisClient): TelegramChannelPostQueue {
@@ -62,8 +69,7 @@ export class ChannelPostService {
         }
 
         const firstPhoto = item.product.photos[0];
-        const photo =
-            firstPhoto && firstPhoto.data.byteLength > 0 ? productPhotoToAttachment(firstPhoto) : undefined;
+        const photo = firstPhoto ? await this.fetchPhoto(firstPhoto) : undefined;
 
         const text = buildProductPostText(item.product);
 
@@ -75,12 +81,29 @@ export class ChannelPostService {
         await this.createPost(purchaseItemId, text, photo);
     }
 
+    private async fetchPhoto(
+        photo: { objectKey: string; mimeType: string },
+    ): Promise<ChannelPostPhoto | undefined> {
+        const publicUrl = getS3PublicUrl(photo.objectKey);
+        try {
+            const resp = await fetch(publicUrl);
+            if (resp.ok) {
+                const arrayBuf = await resp.arrayBuffer();
+                return productPhotoToAttachment(Buffer.from(arrayBuf), photo.mimeType);
+            }
+            console.warn(`[TG queue] Failed to fetch photo ${photo.objectKey}: ${resp.status}`);
+        } catch (err) {
+            console.warn(`[TG queue] Error fetching photo ${photo.objectKey}:`, err);
+        }
+        return undefined;
+    }
+
     private async editPost(
         purchaseItemId: number,
         chatId: string,
         msgId: number,
         text: string,
-        photo?: import('../domain/types').ChannelPostPhoto,
+        photo?: ChannelPostPhoto,
     ) {
         try {
             if (photo) {
@@ -107,20 +130,23 @@ export class ChannelPostService {
     private async createPost(
         purchaseItemId: number,
         text: string,
-        photo?: import('../domain/types').ChannelPostPhoto,
+        photo?: ChannelPostPhoto,
     ) {
         console.log(`[TG queue] Item ${purchaseItemId}: photo=${!!photo}, text length=${text.length}`);
 
-        let messageId: number;
-        try {
-            ({ messageId } = await sendChannelPost(this.api, this.channelId!, text, photo));
-        } catch (err) {
-            console.error(`[TG queue] sendChannelPost failed for item ${purchaseItemId}:`, err);
-            throw err;
-        }
+        const { messageId } = await this.publishToChannel(text, photo);
 
         await this.repo.updateTelegramMessage(purchaseItemId, String(messageId), this.channelId!);
 
         console.log(`[TG queue] Posted item ${purchaseItemId} → message ${messageId}`);
+    }
+
+    private async publishToChannel(text: string, photo?: ChannelPostPhoto) {
+        try {
+            return await sendChannelPost(this.api, this.channelId!, text, photo);
+        } catch (err) {
+            console.error('[TG queue] sendChannelPost failed:', err);
+            throw err;
+        }
     }
 }

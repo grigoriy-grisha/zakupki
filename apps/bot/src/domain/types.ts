@@ -13,7 +13,6 @@ export type CustomContext = Context &
     };
 
 export interface CreateBotOptions {
-    db: PrismaClient;
     token: string;
     proxyUrl?: string;
 }
@@ -33,6 +32,6 @@ export type ChannelPostPhoto = {
 };
 
 export type ProductPhotoInput = {
-    data: Uint8Array | Buffer;
+    objectKey: string;
     mimeType: string;
 };

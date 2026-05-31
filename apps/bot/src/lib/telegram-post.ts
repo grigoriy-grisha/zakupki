@@ -1,7 +1,7 @@
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
 
-import type { ChannelPostPhoto, PostProduct, ProductPhotoInput } from '../domain/types';
+import type { ChannelPostPhoto, PostProduct } from '../domain/types';
 
 export function normalizeChatId(raw: string): string {
     const trimmed = raw.trim();
@@ -70,10 +70,10 @@ function photoFilename(mimeType: string): string {
     }
 }
 
-export function productPhotoToAttachment(photo: ProductPhotoInput): ChannelPostPhoto {
+export function productPhotoToAttachment(data: Buffer, mimeType?: string): ChannelPostPhoto {
     return {
-        data: Buffer.isBuffer(photo.data) ? photo.data : Buffer.from(photo.data),
-        mimeType: photo.mimeType || 'image/jpeg',
+        data,
+        mimeType: mimeType || 'image/jpeg',
     };
 }
 

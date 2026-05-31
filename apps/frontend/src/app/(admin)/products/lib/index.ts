@@ -1,3 +1,12 @@
+export type { PathSegment, AttributeTypeRow, AttrProduct, TreeNode } from './types';
+export { buildAttributeTree, collectExpandableIds, matchesPath } from './attribute-tree';
+export {
+    getAttributeCharacteristicIds,
+    groupAttributesByType,
+    revokePendingFiles,
+    type AttributeListItem,
+    type PendingFile,
+} from './product-form-utils';
 export {
     productCreateSchema,
     productSchema,

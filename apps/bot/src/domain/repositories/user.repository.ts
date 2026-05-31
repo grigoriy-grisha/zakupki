@@ -1,14 +1,10 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
+
+const db = dbClient;
 
 export class UserRepository {
-    private db: PrismaClient;
-
-    constructor(db: PrismaClient) {
-        this.db = db;
-    }
-
     async refreshProfile(userId: number, data: { firstName: string; lastName?: string; username?: string }) {
-        await this.db.user
+        await db.user
             .update({
                 where: { id: userId },
                 data: {
@@ -23,13 +19,13 @@ export class UserRepository {
     }
 
     async createOrGetUser(telegramId: string, info: { firstName: string; lastName?: string; username?: string }) {
-        const existing = await this.db.telegramCredential.findUnique({
+        const existing = await db.telegramCredential.findUnique({
             where: { telegramId },
             select: { userId: true },
         });
 
         if (existing) {
-            return this.db.user.update({
+            return db.user.update({
                 where: { id: existing.userId },
                 data: {
                     firstName: info.firstName,
@@ -40,7 +36,7 @@ export class UserRepository {
             });
         }
 
-        return this.db.user.create({
+        return db.user.create({
             data: {
                 firstName: info.firstName,
                 lastName: info.lastName,

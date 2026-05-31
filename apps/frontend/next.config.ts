@@ -4,14 +4,18 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
     output: 'standalone',
-    transpilePackages: ['@zakupki/database'],
-    serverExternalPackages: ['@prisma/client'],
+    serverExternalPackages: [
+        '@prisma/client',
+        '@prisma/client-runtime-utils',
+        '@prisma/adapter-pg',
+        '@prisma/runtime',
+        '@prisma/engine-core',
+        '@prisma/engines',
+        '@zakupki/database',
+    ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
-    outputFileTracingIncludes: {
-        './**': ['../../shared/database/generated/**/*'],
-    },
     allowedDevOrigins: [
-        'fabulously-profuse-dobsonfly.cloudpub.ru',
+        'fabulously-profuse-dobronfly.cloudpub.ru',
         'prudishly-jocular-dachshund.cloudpub.ru',
     ],
 };

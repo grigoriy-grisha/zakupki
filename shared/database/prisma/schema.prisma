@@ -1,323 +1,331 @@
 generator client {
-    provider = "prisma-client"
-    output   = "../generated/client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
+  provider = "postgresql"
 }
 
 // ── Enums ──
 
 enum PurchaseStatus {
-    DRAFT
-    ACTIVE
-    SUPPLEMENT
-    CLOSED
-    ARRIVED
-    DONE
+  DRAFT
+  ACTIVE
+  SUPPLEMENT
+  CLOSED
+  ARRIVED
+  DONE
 }
 
 enum PaymentStatus {
-    PENDING
-    CONFIRMED
-    REJECTED
+  PENDING
+  CONFIRMED
+  REJECTED
 }
 
 enum PromoType {
-    PERCENT
-    FIXED
+  PERCENT
+  FIXED
 }
 
 enum RoleKind {
-    ADMIN
-    CLIENT
+  ADMIN
+  CLIENT
 }
 
 // ── Models ──
 
 model Supplier {
-    id        Int      @id @default(autoincrement())
-    name      String   @unique
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  purchases Purchase[]
 }
 
 // Тип атрибута каталога (Производитель, Размер, ...) — задаётся в настройках.
 // position = уровень вложенности в дереве каталога.
 model Characteristic {
-    id        Int                         @id @default(autoincrement())
-    name      String                      @unique
-    position  Int                         @default(0)
-    createdAt DateTime                    @default(now())
-    attributeLinks ProductAttributeCharacteristic[]
-    products       ProductCharacteristicValue[]
+  id             Int                              @id @default(autoincrement())
+  name           String                           @unique
+  position       Int                              @default(0)
+  createdAt      DateTime                         @default(now())
+  attributeLinks ProductAttributeCharacteristic[]
+  products       ProductCharacteristicValue[]
 }
 
 model AttributeType {
-    id          Int                @id @default(autoincrement())
-    name        String             @unique
-    parentId    Int?
-    position    Int                @default(0)
-    showInTree  Boolean            @default(true)
-    showInTitle Boolean            @default(true)
-    createdAt   DateTime           @default(now())
-    parent      AttributeType?     @relation("AttributeTypeTree", fields: [parentId], references: [id], onDelete: Cascade)
-    children    AttributeType[]    @relation("AttributeTypeTree")
-    attributes  ProductAttribute[]
+  id          Int                @id @default(autoincrement())
+  name        String             @unique
+  parentId    Int?
+  position    Int                @default(0)
+  showInTree  Boolean            @default(true)
+  showInTitle Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  parent      AttributeType?     @relation("AttributeTypeTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    AttributeType[]    @relation("AttributeTypeTree")
+  attributes  ProductAttribute[]
 
-    @@index([position])
-    @@index([parentId])
+  @@index([position])
+  @@index([parentId])
 }
 
 // Значение справочника, принадлежит типу (например, тип "Производитель" → "MIYUKI").
 model ProductAttribute {
-    id             Int                              @id @default(autoincrement())
-    typeId         Int
-    name           String
-    position       Int                              @default(0)
-    createdAt      DateTime                         @default(now())
-    type           AttributeType                    @relation(fields: [typeId], references: [id], onDelete: Cascade)
-    characteristics ProductAttributeCharacteristic[]
-    values         ProductAttributeValue[]
+  id              Int                              @id @default(autoincrement())
+  typeId          Int
+  name            String
+  position        Int                              @default(0)
+  createdAt       DateTime                         @default(now())
+  type            AttributeType                    @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  characteristics ProductAttributeCharacteristic[]
+  values          ProductAttributeValue[]
 
-    @@unique([typeId, name])
-    @@index([typeId])
+  @@unique([typeId, name])
+  @@index([typeId])
 }
 
 // Характеристики, привязанные к значению справочника (можно несколько).
 model ProductAttributeCharacteristic {
-    attributeId      Int
-    characteristicId Int
-    attribute        ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
-    characteristic   Characteristic   @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
+  attributeId      Int
+  characteristicId Int
+  attribute        ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  characteristic   Characteristic   @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
 
-    @@id([attributeId, characteristicId])
-    @@index([characteristicId])
+  @@id([attributeId, characteristicId])
+  @@index([characteristicId])
 }
 
 // Связь товар ↔ значение атрибута (many-to-many).
 model ProductAttributeValue {
-    productId   Int
-    attributeId Int
-    product     Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-    attribute   ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  productId   Int
+  attributeId Int
+  product     Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute   ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
 
-    @@id([productId, attributeId])
-    @@index([attributeId])
+  @@id([productId, attributeId])
+  @@index([attributeId])
 }
 
 // Текстовое значение характеристики у товара (Цвет: Темно-зеленый).
 model ProductCharacteristicValue {
-    productId        Int
-    characteristicId Int
-    value            String
-    product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-    characteristic   Characteristic @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
+  productId        Int
+  characteristicId Int
+  value            String
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  characteristic   Characteristic @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
 
-    @@id([productId, characteristicId])
-    @@index([characteristicId])
+  @@id([productId, characteristicId])
+  @@index([characteristicId])
 }
 
 model Unit {
-    id           Int       @id @default(autoincrement())
-    name         String
-    shortName    String
-    multiplicity Decimal   @db.Decimal(10, 3) @default(1)
-    products     Product[]
-    createdAt    DateTime  @default(now())
+  id           Int       @id @default(autoincrement())
+  name         String
+  shortName    String
+  multiplicity Decimal   @default(1) @db.Decimal(10, 3)
+  products     Product[]
+  createdAt    DateTime  @default(now())
 }
 
 model User {
-    id                 Int                 @id @default(autoincrement())
-    username           String?
-    firstName          String
-    lastName           String?
-    avatarUrl          String?
-    phone              String?
-    createdAt          DateTime            @default(now())
-    orderLines         OrderLine[]
-    payments           Payment[]
-    userRole           UserRole?
-    telegramCredential TelegramCredential?
-    vkCredential       VkCredential?
+  id                 Int                 @id @default(autoincrement())
+  username           String?
+  firstName          String
+  lastName           String?
+  avatarUrl          String?
+  phone              String?
+  role               RoleKind            @default(CLIENT)
+  createdAt          DateTime            @default(now())
+  orderLines         OrderLine[]
+  payments           Payment[]
+  userRole           UserRole?
+  telegramCredential TelegramCredential?
+  vkCredential       VkCredential?
 
-    @@index([createdAt])
+  @@index([createdAt])
+  @@index([username])
+  @@index([phone])
 }
 
 model TelegramCredential {
-    id         Int      @id @default(autoincrement())
-    userId     Int      @unique
-    telegramId String   @unique
-    username   String?
-    avatarUrl  String?
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
-    user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique
+  telegramId String   @unique
+  username   String?
+  avatarUrl  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VkCredential {
-    id        Int      @id @default(autoincrement())
-    userId    Int      @unique
-    vkId      String   @unique
-    avatarUrl String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  vkId      String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Product {
-    id                    Int            @id @default(autoincrement())
-    name                  String
-    articleNumber         String?
-    description           String?
-    unitId                Int
-    pricePerUnit          Decimal        @db.Decimal(10, 2)
-    minPackageAmount      Decimal?       @db.Decimal(10, 3)
-    minPackageUnit        String?
-    priceTiers            Json?
-    supplierPackageAmount Decimal?       @db.Decimal(10, 3)
-    supplierPackageUnit   String?
-    supplierPackagePrice  Decimal?       @db.Decimal(10, 2)
-    availableAmount       Decimal?       @db.Decimal(10, 3)
-    availableUnit         String?
-    createdAt             DateTime       @default(now())
-    photos                ProductPhoto[]
-    purchaseItems         PurchaseItem[]
-    attributeValues       ProductAttributeValue[]
-    characteristicValues ProductCharacteristicValue[]
-    unit                  Unit           @relation(fields: [unitId], references: [id])
+  id                    Int                          @id @default(autoincrement())
+  name                  String
+  articleNumber         String?
+  description           String?
+  unitId                Int
+  pricePerUnit          Decimal                      @db.Decimal(10, 2)
+  minPackageAmount      Decimal?                     @db.Decimal(10, 3)
+  minPackageUnit        String?
+  priceTiers            Json?
+  supplierPackageAmount Decimal?                     @db.Decimal(10, 3)
+  supplierPackageUnit   String?
+  supplierPackagePrice  Decimal?                     @db.Decimal(10, 2)
+  availableAmount       Decimal?                     @db.Decimal(10, 3)
+  availableUnit         String?
+  createdAt             DateTime                     @default(now())
+  photos                ProductPhoto[]
+  purchaseItems         PurchaseItem[]
+  attributeValues       ProductAttributeValue[]
+  characteristicValues  ProductCharacteristicValue[]
+  unit                  Unit                         @relation(fields: [unitId], references: [id])
 
-    @@index([createdAt])
-    @@index([unitId])
+  @@index([createdAt])
+  @@index([unitId])
 }
 
 model ProductPhoto {
-    id        Int     @id @default(autoincrement())
-    productId Int
-    data      Bytes
-    mimeType  String  @default("image/jpeg")
-    sortOrder Int     @default(0)
-    product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id         Int     @id @default(autoincrement())
+  productId  Int
+  objectKey  String
+  mimeType   String  @default("image/jpeg")
+  sortOrder  Int     @default(0)
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-    @@index([productId])
+  @@index([productId])
 }
 
 model Purchase {
-    id        Int            @id @default(autoincrement())
-    tag       String         @unique
-    supplier  String
-    status    PurchaseStatus @default(DRAFT)
-    minAmount Decimal        @db.Decimal(10, 2)
-    deadline  DateTime
-    createdAt DateTime       @default(now())
-    items     PurchaseItem[]
-    payments  Payment[]
-    promoCodes PromoCode[]
+  id         Int            @id @default(autoincrement())
+  tag        String         @unique
+  supplier   String
+  supplierId Int?
+  supplierRel Supplier?     @relation(fields: [supplierId], references: [id])
+  status     PurchaseStatus @default(DRAFT)
+  minAmount  Decimal        @db.Decimal(10, 2)
+  deadline   DateTime
+  createdAt  DateTime       @default(now())
+  items      PurchaseItem[]
+  payments   Payment[]
+  promoCodes PromoCode[]
 
-    @@index([status])
-    @@index([createdAt])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model PurchaseItem {
-    id            Int           @id @default(autoincrement())
-    purchaseId    Int
-    productId     Int
-    priceOverride Decimal?      @db.Decimal(10, 2)
-    minQty        Decimal?      @db.Decimal(10, 3)
-    availableQty  Decimal?      @db.Decimal(10, 3)
-    tgMessageId   String?
-    tgChannelId   String?
-    isActive      Boolean       @default(true)
-    shouldPublish Boolean       @default(false)
-    purchase      Purchase      @relation(fields: [purchaseId], references: [id])
-    product       Product       @relation(fields: [productId], references: [id])
-    orderLines    OrderLine[]
+  id            Int         @id @default(autoincrement())
+  purchaseId    Int
+  productId     Int
+  priceOverride Decimal?    @db.Decimal(10, 2)
+  minQty        Decimal?    @db.Decimal(10, 3)
+  availableQty  Decimal?    @db.Decimal(10, 3)
+  tgMessageId   String?
+  tgChannelId   String?
+  isActive      Boolean     @default(true)
+  shouldPublish Boolean     @default(false)
+  purchase      Purchase    @relation(fields: [purchaseId], references: [id])
+  product       Product     @relation(fields: [productId], references: [id])
+  orderLines    OrderLine[]
 
-    @@unique([purchaseId, productId])
-    @@index([purchaseId])
-    @@index([productId])
+  @@unique([purchaseId, productId])
+  @@index([purchaseId])
+  @@index([productId])
 }
 
 model OrderLine {
-    id             Int          @id @default(autoincrement())
-    purchaseItemId Int
-    userId         Int
-    quantity       Decimal      @db.Decimal(10, 3)
-    amountDue      Decimal      @db.Decimal(10, 2)
-    createdAt      DateTime     @default(now())
-    updatedAt      DateTime     @updatedAt
-    purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
-    user           User         @relation(fields: [userId], references: [id])
+  id             Int          @id @default(autoincrement())
+  purchaseItemId Int
+  userId         Int
+  quantity       Decimal      @db.Decimal(10, 3)
+  amountDue      Decimal      @db.Decimal(10, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
 
-    @@unique([purchaseItemId, userId])
-    @@index([userId])
-    @@index([purchaseItemId])
+  @@unique([purchaseItemId, userId])
+  @@index([userId])
+  @@index([purchaseItemId])
 }
 
 model Payment {
-    id             Int           @id @default(autoincrement())
-    userId         Int
-    purchaseId     Int
-    amount         Decimal       @db.Decimal(10, 2)
-    status         PaymentStatus @default(PENDING)
-    userComment    String?
-    proofData      Bytes?
-    proofMimeType  String?
-    adminNote      String?
-    paidAt         DateTime      @default(now())
-    note           String?
-    promoCodeId    Int?
-    parentId       Int?
-    user           User          @relation(fields: [userId], references: [id])
-    purchase       Purchase      @relation(fields: [purchaseId], references: [id])
-    promoCode      PromoCode?    @relation(fields: [promoCodeId], references: [id])
-    parent         Payment?      @relation("PaymentChildren", fields: [parentId], references: [id])
-    children       Payment[]     @relation("PaymentChildren")
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  purchaseId     Int
+  amount         Decimal       @db.Decimal(10, 2)
+  status         PaymentStatus @default(PENDING)
+  userComment    String?
+  proofData      Bytes?
+  proofObjectKey String?
+  proofMimeType  String?
+  adminNote      String?
+  paidAt         DateTime      @default(now())
+  note           String?
+  promoCodeId    Int?
+  parentId       Int?
+  user           User          @relation(fields: [userId], references: [id])
+  purchase       Purchase      @relation(fields: [purchaseId], references: [id])
+  promoCode      PromoCode?    @relation(fields: [promoCodeId], references: [id])
+  parent         Payment?      @relation("PaymentChildren", fields: [parentId], references: [id])
+  children       Payment[]     @relation("PaymentChildren")
 
-    @@index([userId])
-    @@index([purchaseId])
+  @@index([userId])
+  @@index([purchaseId])
+  @@index([parentId])
+  @@index([promoCodeId])
 }
 
 // Шаблон поста для Telegram (текст с редактором, подставляется при добавлении в закупку).
 model PostTemplate {
-    id        Int      @id @default(autoincrement())
-    name      String
-    body      String   @db.Text
-    position  Int      @default(0)
-    createdAt DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  name      String
+  body      String   @db.Text
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model PromoCode {
-    id          Int       @id @default(autoincrement())
-    code        String    @unique
-    label       String?
-    type        PromoType
-    value       Decimal   @db.Decimal(10, 2)
-    purchaseId  Int?
-    maxUses     Int?
-    usedCount   Int       @default(0)
-    minAmount   Decimal?  @db.Decimal(10, 2)
-    expiresAt   DateTime?
-    isActive    Boolean   @default(true)
-    createdAt   DateTime  @default(now())
-    purchase    Purchase? @relation(fields: [purchaseId], references: [id])
-    usages      Payment[]
+  id         Int       @id @default(autoincrement())
+  code       String    @unique
+  label      String?
+  type       PromoType
+  value      Decimal   @db.Decimal(10, 2)
+  purchaseId Int?
+  maxUses    Int?
+  usedCount  Int       @default(0)
+  minAmount  Decimal?  @db.Decimal(10, 2)
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
+  usages     Payment[]
 
-    @@index([purchaseId])
+  @@index([purchaseId])
 }
 
 model Role {
-    id   Int      @id @default(autoincrement())
-    kind RoleKind @unique
-    users UserRole[]
+  id    Int        @id @default(autoincrement())
+  kind  RoleKind   @unique
+  users UserRole[]
 }
 
 model UserRole {
-    id        Int      @id @default(autoincrement())
-    userId    Int      @unique
-    roleId    Int
-    createdAt DateTime @default(now())
-    user      User     @relation(fields: [userId], references: [id])
-    role      Role     @relation(fields: [roleId], references: [id])
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  roleId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
 }

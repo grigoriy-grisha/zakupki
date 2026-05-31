@@ -1,3 +1,5 @@
+import { NotFoundError } from '@zakupki/types';
+
 import { ProductRepository, type ProductCreateData, type ProductWriteData } from '../domain/product.repository';
 
 export class ProductService {
@@ -11,7 +13,7 @@ export class ProductService {
 
     async getById(id: number) {
         const product = await this.repo.getById(id);
-        if (!product) throw new Error('Product not found');
+        if (!product) throw new NotFoundError('Товар', id);
         const lockedIds = await this.repo.findProductIdsInActivePurchases([id]);
         return { ...product, inActivePurchase: lockedIds.has(id) };
     }
@@ -29,8 +31,8 @@ export class ProductService {
         return this.repo.delete(id);
     }
 
-    async addPhoto(productId: number, data: Uint8Array, mimeType: string, sortOrder: number) {
-        return this.repo.addPhoto(productId, data, mimeType, sortOrder);
+    async addPhoto(productId: number, objectKey: string, mimeType: string, sortOrder: number) {
+        return this.repo.addPhoto(productId, objectKey, mimeType, sortOrder);
     }
 
     async getPhoto(id: number) {

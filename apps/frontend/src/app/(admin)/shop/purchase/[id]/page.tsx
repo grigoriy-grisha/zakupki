@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Check } from 'lucide-react';
-import { usePurchasePaymentDetail } from '../../hooks';
+import { usePurchasePaymentDetail } from './hooks';
 import { QuantityModal, ProductCard, OrdersSummaryCard, PaymentDialog } from './components';
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {

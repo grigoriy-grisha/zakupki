@@ -1,5 +1,5 @@
-import { TRPCError } from '@trpc/server';
 import type { TelegramChannelPostQueue } from '@zakupki/queue';
+import { AppError, ValidationError } from '@zakupki/types';
 
 import { getTelegramChannelPostQueue } from '../lib/telegram-channel-post-queue';
 
@@ -11,10 +11,7 @@ export class TelegramPublishService {
     private assertChannelConfigured(): void {
         const raw = (process.env.TELEGRAM_CHANNEL_ID ?? process.env.TG_CHANNEL_ID)?.trim();
         if (!raw) {
-            throw new TRPCError({
-                code: 'PRECONDITION_FAILED',
-                message: 'TG_CHANNEL_ID не задан в .env',
-            });
+            throw new ValidationError('TG_CHANNEL_ID не задан в .env');
         }
     }
 
@@ -50,7 +47,7 @@ export class TelegramPublishService {
 
     /**
      * Постановка в очередь после успешного addItems.
-     * При ошибке конфигурации — TRPC с пояснением, что товары уже в закупке.
+     * При ошибке конфигурации — ошибка с пояснением, что товары уже в закупке.
      */
     async enqueueAfterAddItems(
         publishToTg: boolean | undefined,
@@ -59,11 +56,8 @@ export class TelegramPublishService {
         try {
             return await this.enqueueIfEnabled(publishToTg, purchaseItemIds);
         } catch (e) {
-            if (e instanceof TRPCError) {
-                throw new TRPCError({
-                    code: e.code,
-                    message: `${e.message}. Товары добавлены, но не поставлены в очередь.`,
-                });
+            if (e instanceof AppError) {
+                throw new ValidationError(`${e.message}. Товары добавлены, но не поставлены в очередь.`);
             }
             throw e;
         }

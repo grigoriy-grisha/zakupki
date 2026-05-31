@@ -1,22 +1,22 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 
 export class SupplierRepository {
-    constructor(private db: PrismaClient) {}
+    constructor() {}
 
     async list() {
-        return this.db.supplier.findMany({ orderBy: [{ name: 'asc' }, { id: 'asc' }] });
+        return dbClient.supplier.findMany({ orderBy: [{ name: 'asc' }, { id: 'asc' }] });
     }
 
     async create(data: { name: string }) {
-        return this.db.supplier.create({ data: { name: data.name } });
+        return dbClient.supplier.create({ data: { name: data.name } });
     }
 
     async update(id: number, data: { name?: string }) {
-        return this.db.supplier.update({ where: { id }, data });
+        return dbClient.supplier.update({ where: { id }, data });
     }
 
     async delete(id: number) {
-        return this.db.supplier.delete({ where: { id } });
+        return dbClient.supplier.delete({ where: { id } });
     }
 }
 

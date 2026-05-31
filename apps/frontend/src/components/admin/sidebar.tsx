@@ -12,6 +12,8 @@ import {
     Users,
 } from 'lucide-react';
 
+import { useUserRole } from '@/lib/hooks/use-user-role';
+
 import { AppLink } from '@/components/app-link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -50,7 +52,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
     const appPathname = useAppPathname();
     const platform = usePlatform();
     const { data: session } = useSession();
-    const isAdmin = session?.user?.role === 'ADMIN';
+    const { isAdmin } = useUserRole();
     const items = isAdmin ? navItems : navItems.filter((n) => !n.admin);
 
     return (

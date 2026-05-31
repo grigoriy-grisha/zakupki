@@ -6,6 +6,8 @@ import {
     type AttributeTypeMeta,
     type ShowInTitleByTypeId,
 } from './format-product-label';
+import { isPositive, formatNumber } from '@/lib/utils/format';
+import { escapeHtml, escapeRegExp } from '@/lib/utils/html';
 
 export interface DescriptionFields {
     name?: string;
@@ -355,25 +357,6 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
                 : '',
         тег: tag ? escapeHtml(tag) : '',
     };
-}
-
-function escapeRegExp(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function isPositive(v: number | null | undefined): v is number {
-    return typeof v === 'number' && isFinite(v) && v > 0;
-}
-
-function formatNumber(v: number | null | undefined): string {
-    if (v == null || !isFinite(Number(v))) return '';
-    const n = Number(v);
-    if (Number.isInteger(n)) return n.toString();
-    return n.toFixed(2).replace(/\.?0+$/, '');
-}
-
-function escapeHtml(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**

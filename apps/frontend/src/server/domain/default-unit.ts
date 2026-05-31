@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@zakupki/database';
+import { ValidationError } from '@zakupki/types';
 
 const DEFAULT_UNITS = [
     { name: 'Граммы', shortName: 'г', multiplicity: 1 },
@@ -13,6 +14,6 @@ export async function ensureDefaultUnitId(db: PrismaClient): Promise<number> {
 
     await db.unit.createMany({ data: [...DEFAULT_UNITS] });
     const first = await db.unit.findFirst({ orderBy: { id: 'asc' } });
-    if (!first) throw new Error('Не удалось создать единицы учёта');
+    if (!first) throw new ValidationError('Не удалось создать единицы учёта');
     return first.id;
 }

@@ -1,10 +1,9 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
+import { NotFoundError, ValidationError } from '@zakupki/types';
 
 export class PaymentRepository {
-    constructor(private db: PrismaClient) {}
-
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
-        return this.db.payment.create({ data });
+        return dbClient.payment.create({ data });
     }
 
     async submitPayment(data: {
@@ -12,19 +11,36 @@ export class PaymentRepository {
         purchaseId: number;
         amount: number;
         userComment?: string;
-        proofData?: Buffer;
+        proofObjectKey?: string;
         proofMimeType?: string;
         promoCodeId?: number;
         discountAmount?: number;
     }) {
-        return this.db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
+            if (data.promoCodeId && data.discountAmount) {
+                const promoCheck = await tx.$queryRaw<Array<{ id: number; maxUses: number | null; usedCount: number }>>`
+                    SELECT id, "maxUses", "usedCount"
+                    FROM "PromoCode"
+                    WHERE id = ${data.promoCodeId}
+                    FOR UPDATE
+                `;
+
+                const promo = promoCheck[0];
+                if (!promo) {
+                    throw new NotFoundError('Промокод', data.promoCodeId);
+                }
+                if (promo.maxUses !== null && promo.usedCount >= promo.maxUses) {
+                    throw new ValidationError('Промокод исчерпан');
+                }
+            }
+
             const parent = await tx.payment.create({
                 data: {
                     userId: data.userId,
                     purchaseId: data.purchaseId,
                     amount: data.amount,
                     userComment: data.userComment,
-                    proofData: data.proofData ? new Uint8Array(data.proofData) : undefined,
+                    proofObjectKey: data.proofObjectKey,
                     proofMimeType: data.proofMimeType,
                 },
             });
@@ -53,7 +69,7 @@ export class PaymentRepository {
     }
 
     async getByPurchase(purchaseId: number) {
-        return this.db.payment.findMany({
+        return dbClient.payment.findMany({
             where: { purchaseId, parentId: null },
             include: { user: true, children: { include: { promoCode: true } } },
             orderBy: { paidAt: 'desc' },
@@ -61,7 +77,7 @@ export class PaymentRepository {
     }
 
     async getByUser(userId: number) {
-        return this.db.payment.findMany({
+        return dbClient.payment.findMany({
             where: { userId, parentId: null },
             include: { purchase: true, children: { include: { promoCode: true } } },
             orderBy: { paidAt: 'desc' },
@@ -69,11 +85,11 @@ export class PaymentRepository {
     }
 
     async getById(id: number) {
-        return this.db.payment.findUnique({ where: { id } });
+        return dbClient.payment.findUnique({ where: { id } });
     }
 
     async updateStatus(id: number, status: 'CONFIRMED' | 'REJECTED', adminNote?: string) {
-        return this.db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             const updated = await tx.payment.update({
                 where: { id },
                 data: { status, adminNote },
@@ -105,7 +121,7 @@ export class PaymentRepository {
         if (data.status !== undefined) updateData.status = data.status;
         if (data.adminNote !== undefined) updateData.adminNote = data.adminNote;
 
-        return this.db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             const updated = await tx.payment.update({
                 where: { id },
                 data: updateData,

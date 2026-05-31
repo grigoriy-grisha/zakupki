@@ -1,14 +1,10 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
+
+const db = dbClient;
 
 export class PaymentRepository {
-    private db: PrismaClient;
-
-    constructor(db: PrismaClient) {
-        this.db = db;
-    }
-
     findByUserId(userId: number, limit = 10) {
-        return this.db.payment.findMany({
+        return db.payment.findMany({
             where: { userId, parentId: null },
             include: {
                 purchase: { select: { tag: true, supplier: true } },

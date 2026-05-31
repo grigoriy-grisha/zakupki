@@ -1,22 +1,20 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 
-import type { PrismaClient } from '@zakupki/database';
 import { verifyTelegram, verifyVk } from '@/lib/auth';
-import { createUserService } from '../lib/create-user-service';
 import { adminProcedure, protectedProcedure, publicProcedure, router } from '../trpc';
-
-function userService(db: PrismaClient) {
-    return createUserService(db);
-}
 
 export const usersRouter = router({
     list: adminProcedure.query(async ({ ctx }) => {
-        return userService(ctx.db).list();
+        return ctx.services.user.list();
     }),
 
     me: protectedProcedure.query(async ({ ctx }) => {
-        return userService(ctx.db).getProfile(ctx.userId);
+        return ctx.services.user.getProfile(ctx.userId);
+    }),
+
+    getRole: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.services.user.getRole(ctx.userId);
     }),
 
     upsertFromTelegram: publicProcedure
@@ -29,7 +27,7 @@ export const usersRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            return userService(ctx.db).upsertFromTelegramBot(input.telegramId, {
+            return ctx.services.user.upsertFromTelegramBot(input.telegramId, {
                 username: input.username,
                 firstName: input.firstName,
                 lastName: input.lastName,
@@ -39,7 +37,7 @@ export const usersRouter = router({
     linkProvider: protectedProcedure
         .input(z.object({ provider: z.enum(['vk', 'telegram']), data: z.string() }))
         .mutation(async ({ ctx, input }) => {
-            const service = userService(ctx.db);
+            const service = ctx.services.user;
 
             if (input.provider === 'vk') {
                 const verified = await verifyVk(input.data);
@@ -59,6 +57,6 @@ export const usersRouter = router({
     unlinkProvider: protectedProcedure
         .input(z.object({ provider: z.enum(['vk', 'telegram']) }))
         .mutation(async ({ ctx, input }) => {
-            await userService(ctx.db).unlinkProvider(ctx.userId, input.provider);
+            await ctx.services.user.unlinkProvider(ctx.userId, input.provider);
         }),
 });

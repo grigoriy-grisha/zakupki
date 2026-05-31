@@ -1,3 +1,7 @@
+import { ForbiddenError } from '@zakupki/types';
+
+import { storage } from '@/lib/server/storage';
+
 import { PaymentRepository } from '../domain/payment.repository';
 
 export class PaymentService {
@@ -17,7 +21,27 @@ export class PaymentService {
         promoCodeId?: number;
         discountAmount?: number;
     }) {
-        return this.repo.submitPayment(data);
+        // Upload proof to storage before creating the payment record
+        let proofObjectKey: string | undefined;
+        if (data.proofData) {
+            proofObjectKey = await storage.uploadPaymentProof(
+                data.userId,
+                data.purchaseId,
+                data.proofData,
+                data.proofMimeType ?? 'image/jpeg',
+            );
+        }
+
+        return this.repo.submitPayment({
+            userId: data.userId,
+            purchaseId: data.purchaseId,
+            amount: data.amount,
+            userComment: data.userComment,
+            proofObjectKey,
+            proofMimeType: data.proofMimeType,
+            promoCodeId: data.promoCodeId,
+            discountAmount: data.discountAmount,
+        });
     }
 
     async getByPurchase(purchaseId: number) {
@@ -28,22 +52,29 @@ export class PaymentService {
         return this.repo.getByUser(userId);
     }
 
+    /** Admin: confirm payment */
     async confirm(id: number, adminNote?: string) {
         return this.repo.updateStatus(id, 'CONFIRMED', adminNote);
     }
 
+    /** Admin: reject payment */
     async reject(id: number, adminNote?: string) {
         return this.repo.updateStatus(id, 'REJECTED', adminNote);
     }
 
-    async cancel(id: number) {
+    /** User cancels own payment — verifies ownership */
+    async cancel(id: number, userId: number) {
+        await this.assertOwnership(id, userId);
         return this.repo.updateStatus(id, 'REJECTED');
     }
 
+    /** User updates own payment — verifies ownership */
     async updatePayment(
         id: number,
+        userId: number,
         data: { amount?: number; userComment?: string; proofData?: Buffer; proofMimeType?: string },
     ) {
+        await this.assertOwnership(id, userId);
         const updateData: {
             amount?: number;
             userComment?: string;
@@ -60,5 +91,13 @@ export class PaymentService {
         if (data.proofData !== undefined) updateData.proofData = data.proofData;
         if (data.proofMimeType !== undefined) updateData.proofMimeType = data.proofMimeType;
         return this.repo.update(id, updateData);
+    }
+
+    private async assertOwnership(id: number, userId: number) {
+        const payment = await this.repo.getById(id);
+        if (!payment) return; // Will be caught by update/delete
+        if (payment.userId !== userId) {
+            throw new ForbiddenError('Нельзя изменить чужой платёж');
+        }
     }
 }

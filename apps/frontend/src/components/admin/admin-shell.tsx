@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { ShoppingCart } from 'lucide-react';
 
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { useUserRole } from '@/lib/hooks/use-user-role';
 
 import { getCurrentNavLabel, MobileNavTrigger, Sidebar } from './sidebar';
 
@@ -22,7 +23,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     const { data: session } = useSession();
     const [menuOpen, setMenuOpen] = useState(false);
 
-    const isAdmin = session?.user?.role === 'ADMIN';
+    const { isAdmin } = useUserRole();
     const pageTitle = getCurrentNavLabel(pathname, isAdmin);
 
     useEffect(() => {

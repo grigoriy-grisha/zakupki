@@ -1,13 +1,13 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 import type { CustomContext } from '../domain/types';
 import { PROFILE_REFRESH_INTERVAL } from '../domain/constants';
 import { UserService } from '../services/user.service';
 
-export function initMiddleware(db: PrismaClient) {
-    const users = new UserService(db);
+export function initMiddleware() {
+    const users = new UserService();
 
     return async (ctx: CustomContext, next: () => Promise<void>) => {
-        ctx.db = db;
+        ctx.db = dbClient;
 
         if (!ctx.from) {
             await next();

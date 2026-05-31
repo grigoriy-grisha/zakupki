@@ -42,7 +42,7 @@ export async function channelPostShopCommentHandler(ctx: CustomContext) {
     const channelPostId =
         message.forward_origin?.type === 'channel'
             ? message.forward_origin.message_id
-            : message.forward_from_message_id;
+            : (message as any).forward_from_message_id;
 
     console.log(
         `[TG] Shop comment under channel post${channelPostId != null ? ` ${channelPostId}` : ''} ` +

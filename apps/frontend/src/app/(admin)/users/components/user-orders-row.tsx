@@ -4,20 +4,13 @@ import { ChevronRight } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { resolveAvatarUrl, displayName } from '@/lib/utils/user';
 
 import { type UserListItem } from './user-profile-sheet';
 
 interface UserOrdersRowProps {
     user: UserListItem;
     onOpenProfile: (user: UserListItem) => void;
-}
-
-function resolveAvatarUrl(user: UserListItem): string | null {
-    return user.avatarUrl ?? user.telegramCredential?.avatarUrl ?? user.vkCredential?.avatarUrl ?? null;
-}
-
-function displayName(user: UserListItem): string {
-    return [user.firstName, user.lastName].filter(Boolean).join(' ');
 }
 
 export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {

@@ -3,9 +3,12 @@ import { RoleKind } from '@zakupki/database';
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+// Marks this module as server-only
+export const dynamic = 'force-dynamic';
+
 import { buildRbac, type RbacConfig } from '@/lib/rbac-config';
-import { createRoleService, createUserService } from '@/server/lib/create-user-service';
-import { verifyTelegramInitData } from '@/server/telegram-init-data';
+import { serviceContainer } from '@/server/lib/service-container';
+import { verifyTelegramInitData } from '@/server/lib/telegram-init-data';
 
 export async function verifyVk(rawData: string) {
     const appId = process.env.NEXT_PUBLIC_VK_APP_ID;
@@ -68,7 +71,7 @@ export const authOptions: NextAuthOptions = {
                 if (!credentials?.data) return null;
                 const verified = await verifyVk(credentials.data);
                 if (!verified) return null;
-                return createUserService().signInWithVk(verified);
+                return serviceContainer.user.signInWithVk(verified);
             },
         }),
         CredentialsProvider({
@@ -79,7 +82,7 @@ export const authOptions: NextAuthOptions = {
                 if (!credentials?.data) return null;
                 const verified = await verifyTelegram(credentials.data);
                 if (!verified) return null;
-                return createUserService().signInWithTelegram(verified);
+                return serviceContainer.user.signInWithTelegram(verified);
             },
         }),
         CredentialsProvider({
@@ -90,19 +93,24 @@ export const authOptions: NextAuthOptions = {
                 if (!credentials?.initData) return null;
                 const verified = verifyTelegramInitData(credentials.initData);
                 if (!verified) return null;
-                return createUserService().signInWithTelegram(verified);
+                return serviceContainer.user.signInWithTelegram(verified);
             },
         }),
     ],
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger }) {
             if (user) {
                 token.id = user.id;
                 token.avatar = user.image;
+                token.role = user.role;
             }
 
-            if (token.id) {
-                token.role = await createRoleService().getUserRoleKind(Number(token.id));
+            // Refresh role from DB on every sign-in so role changes take effect immediately
+            if (trigger === 'signIn' && token.id) {
+                const role = await serviceContainer.user.getCachedRole(Number(token.id));
+                if (role) {
+                    token.role = role;
+                }
             }
 
             return token;

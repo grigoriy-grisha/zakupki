@@ -1,1 +1,1 @@
-export { usePurchasePaymentMap, usePurchasePaymentDetail, type PurchasePaymentInfo } from './use-purchase-payment-map';
+export { usePurchasePaymentMap, type PurchasePaymentInfo } from './use-purchase-payment-map';

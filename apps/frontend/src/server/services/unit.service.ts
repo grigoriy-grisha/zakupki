@@ -1,3 +1,5 @@
+import { NotFoundError, ValidationError } from '@zakupki/types';
+
 import { UnitRepository } from '../domain/unit.repository';
 
 export class UnitService {
@@ -9,7 +11,7 @@ export class UnitService {
 
     async getById(id: number) {
         const unit = await this.repo.getById(id);
-        if (!unit) throw new Error('Unit not found');
+        if (!unit) throw new NotFoundError('Единица измерения', id);
         return unit;
     }
 
@@ -24,7 +26,7 @@ export class UnitService {
     async delete(id: number) {
         const hasProducts = await this.repo.hasProducts(id);
         if (hasProducts) {
-            throw new Error('Нельзя удалить единицу, которая используется в товарах');
+            throw new ValidationError('Нельзя удалить единицу, которая используется в товарах');
         }
         return this.repo.delete(id);
     }

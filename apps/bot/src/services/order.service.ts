@@ -1,12 +1,7 @@
-import type { PrismaClient } from '@zakupki/database';
 import { OrderRepository } from '../domain/repositories/order.repository';
 
 export class OrderService {
-    private repo: OrderRepository;
-
-    constructor(db: PrismaClient) {
-        this.repo = new OrderRepository(db);
-    }
+    private repo = new OrderRepository();
 
     async getUserOrders(userId: number) {
         const orders = await this.repo.findByUserId(userId);

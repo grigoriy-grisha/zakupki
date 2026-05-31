@@ -1,30 +1,30 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 
 export class UnitRepository {
-    constructor(private db: PrismaClient) {}
+    constructor() {}
 
     async list() {
-        return this.db.unit.findMany({ orderBy: { createdAt: 'asc' } });
+        return dbClient.unit.findMany({ orderBy: { createdAt: 'asc' } });
     }
 
     async getById(id: number) {
-        return this.db.unit.findUnique({ where: { id } });
+        return dbClient.unit.findUnique({ where: { id } });
     }
 
     async create(data: { name: string; shortName: string; multiplicity: number }) {
-        return this.db.unit.create({ data });
+        return dbClient.unit.create({ data });
     }
 
     async update(id: number, data: { name?: string; shortName?: string; multiplicity?: number }) {
-        return this.db.unit.update({ where: { id }, data });
+        return dbClient.unit.update({ where: { id }, data });
     }
 
     async delete(id: number) {
-        return this.db.unit.delete({ where: { id } });
+        return dbClient.unit.delete({ where: { id } });
     }
 
     async hasProducts(id: number) {
-        const count = await this.db.product.count({ where: { unitId: id } });
+        const count = await dbClient.product.count({ where: { unitId: id } });
         return count > 0;
     }
 }

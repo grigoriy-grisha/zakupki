@@ -1,18 +1,10 @@
 import { z } from 'zod';
 
-import { UnitRepository } from '../domain/unit.repository';
-import { UnitService } from '../services/unit.service';
-import type { PrismaClient } from '@zakupki/database';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
-
-function services(db: PrismaClient) {
-    return { unit: new UnitService(new UnitRepository(db)) };
-}
 
 export const unitsRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
-        const { unit } = services(ctx.db);
-        return unit.list();
+        return ctx.services.unit.list();
     }),
 
     create: adminProcedure
@@ -24,8 +16,7 @@ export const unitsRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { unit } = services(ctx.db);
-            return unit.create(input);
+            return ctx.services.unit.create(input);
         }),
 
     update: adminProcedure
@@ -39,12 +30,10 @@ export const unitsRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             const { id, ...data } = input;
-            const { unit } = services(ctx.db);
-            return unit.update(id, data);
+            return ctx.services.unit.update(id, data);
         }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { unit } = services(ctx.db);
-        return unit.delete(input.id);
+        return ctx.services.unit.delete(input.id);
     }),
 });

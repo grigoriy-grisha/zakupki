@@ -1,4 +1,5 @@
 export const USER_PROFILE_INCLUDE = {
+    role: true,
     telegramCredential: {
         select: {
             telegramId: true,

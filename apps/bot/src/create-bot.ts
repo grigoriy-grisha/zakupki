@@ -25,7 +25,7 @@ function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
     };
 }
 
-export function createBot({ db, token, proxyUrl }: CreateBotOptions) {
+export function createBot({ token, proxyUrl }: CreateBotOptions) {
     const proxy = proxyUrl?.trim();
     if (proxy) {
         console.log('[bot] Telegram API via proxy');
@@ -41,7 +41,7 @@ export function createBot({ db, token, proxyUrl }: CreateBotOptions) {
         }),
     );
 
-    bot.use(initMiddleware(db));
+    bot.use(initMiddleware());
 
     bot.command('start', startCommand);
     bot.command('help', helpCommand);

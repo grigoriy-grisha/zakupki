@@ -18,7 +18,9 @@
         "db:studio": "pnpm --filter @zakupki/database prisma:studio",
         "db:grant-admin": "pnpm --filter @zakupki/database exec tsx scripts/grant-admin.mts",
         "db:seed": "pnpm --filter @zakupki/database prisma:db:seed",
-        "db:reset": "pnpm --filter @zakupki/database prisma:reset"
+        "db:reset": "pnpm --filter @zakupki/database prisma:reset",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "tsx": "^4.21.0",
@@ -31,7 +33,8 @@
         "eslint-plugin-unused-imports": "^4.4.1",
         "globals": "^17.6.0",
         "prettier": "^3.8.3",
-        "typescript-eslint": "^8.59.2"
+        "typescript-eslint": "^8.59.2",
+        "vitest": "^4.1.7"
     },
     "packageManager": "pnpm@10.28.1",
     "engines": {

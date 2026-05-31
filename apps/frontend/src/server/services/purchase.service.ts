@@ -1,4 +1,5 @@
-import { TRPCError } from '@trpc/server';
+import { NotFoundError, ValidationError } from '@zakupki/types';
+
 import { PurchaseRepository } from '../domain/purchase.repository';
 import { ProductRepository } from '../domain/product.repository';
 import { assertCanRemoveFromActivePurchase } from '../domain/product-purchase-lock';
@@ -23,7 +24,7 @@ export class PurchaseService {
 
     async getById(id: number) {
         const purchase = await this.repo.getById(id);
-        if (!purchase) throw new Error('Purchase not found');
+        if (!purchase) throw new NotFoundError('Закупка', id);
         return purchase;
     }
 
@@ -37,113 +38,73 @@ export class PurchaseService {
 
     async activate(purchaseId: number) {
         const purchase = await this.repo.getById(purchaseId);
-        if (!purchase) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
-        }
+        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status !== 'DRAFT') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Активировать можно только черновик',
-            });
+            throw new ValidationError('Активировать можно только черновик');
         }
         return this.repo.updateStatus(purchaseId, 'ACTIVE');
     }
 
     async findItemsToPublish(purchaseId: number) {
         const purchase = await this.repo.getById(purchaseId);
-        if (!purchase) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
-        }
+        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status !== 'ACTIVE') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Публиковать в Telegram можно только для активной закупки',
-            });
+            throw new ValidationError('Публиковать в Telegram можно только для активной закупки');
         }
         return this.repo.findUnpublishedItems(purchaseId);
     }
 
     async complete(id: number) {
         const purchase = await this.repo.getById(id);
-        if (!purchase) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
-        }
+        if (!purchase) throw new NotFoundError('Закупка', id);
         if (purchase.status !== 'ACTIVE' && purchase.status !== 'SUPPLEMENT') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Завершить можно только активную закупку или добор',
-            });
+            throw new ValidationError('Завершить можно только активную закупку или добор');
         }
         return this.repo.updateStatus(id, 'DONE');
     }
 
     async deleteDraft(id: number) {
         const purchase = await this.repo.getById(id);
-        if (!purchase) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
-        }
+        if (!purchase) throw new NotFoundError('Закупка', id);
         if (purchase.status !== 'DRAFT') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Удалить можно только черновик',
-            });
+            throw new ValidationError('Удалить можно только черновик');
         }
         const deleted = await this.repo.deleteDraft(id);
-        if (!deleted) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
-        }
+        if (!deleted) throw new NotFoundError('Закупка', id);
         return deleted;
     }
 
     async toggleShouldPublish(purchaseItemId: number, value: boolean) {
         const item = await this.repo.findItemWithPurchase(purchaseItemId);
-        if (!item) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
-        }
+        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
         if (item.tgMessageId) {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Нельзя изменить флаг публикации для уже опубликованного товара',
-            });
+            throw new ValidationError('Нельзя изменить флаг публикации для уже опубликованного товара');
         }
         if (item.purchase.status === 'DONE') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Нельзя изменить флаг публикации в завершённой закупке',
-            });
+            throw new ValidationError('Нельзя изменить флаг публикации в завершённой закупке');
         }
         return this.repo.toggleShouldPublish(purchaseItemId, value);
     }
 
     async ensureCanPublishItem(purchaseItemId: number) {
         const item = await this.repo.findItemWithPurchase(purchaseItemId);
-        if (!item) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
-        }
+        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
         if (item.purchase.status !== 'ACTIVE') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Публиковать в Telegram можно только для активной закупки',
-            });
+            throw new ValidationError('Публиковать в Telegram можно только для активной закупки');
         }
         if (item.tgMessageId) {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Товар уже опубликован в Telegram',
-            });
+            throw new ValidationError('Товар уже опубликован в Telegram');
         }
     }
 
     async ensureItemExists(purchaseItemId: number) {
         const item = await this.repo.findItemById(purchaseItemId);
-        if (!item) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
-        }
+        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
     }
 
     async updateItemProduct(purchaseItemId: number, productData: Record<string, unknown>) {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
-        if (!item) throw new TRPCError({ code: 'NOT_FOUND', message: 'Товар не найден' });
+        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         await this.productRepo.update(item.productId, productData as any);
         return item;
@@ -151,14 +112,9 @@ export class PurchaseService {
 
     async addItems(purchaseId: number, productIds: number[], shouldPublish = false) {
         const purchase = await this.repo.getById(purchaseId);
-        if (!purchase) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Закупка не найдена' });
-        }
+        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status === 'DONE') {
-            throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'В завершённую закупку нельзя добавлять товары',
-            });
+            throw new ValidationError('В завершённую закупку нельзя добавлять товары');
         }
 
         const uniqueIds = [...new Set(productIds)];
@@ -180,9 +136,7 @@ export class PurchaseService {
 
     async removeItem(id: number) {
         const item = await this.repo.findItemWithPurchase(id);
-        if (!item) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Позиция не найдена' });
-        }
+        if (!item) throw new NotFoundError('Позиция закупки', id);
         assertCanRemoveFromActivePurchase(item.purchase.status, item.purchase.tag, item.tgMessageId);
         return this.repo.removeItem(id);
     }

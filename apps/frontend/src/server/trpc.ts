@@ -1,4 +1,10 @@
 import { dbClient, RoleKind } from '@zakupki/database';
+import {
+    AppError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+} from '@zakupki/types';
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { Session } from 'next-auth';
 import { getServerSession } from 'next-auth';
@@ -6,11 +12,12 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import type { RbacConfig } from '@/lib/rbac-config';
 import { buildRbac } from '@/lib/rbac-config';
-import { createRoleService, createUserService } from '@/server/lib/create-user-service';
-import { extractTelegramInitData, verifyTelegramInitData } from '@/server/telegram-init-data';
+import { ServiceContainer, serviceContainer } from '@/server/lib/service-container';
+import { extractTelegramInitData, verifyTelegramInitData } from '@/server/lib/telegram-init-data';
 
 type TrpcContext = {
     db: typeof dbClient;
+    services: ServiceContainer;
     session: Session | null;
     userId: number | null;
     role: RoleKind | null;
@@ -21,13 +28,12 @@ async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' |
     const session = await getServerSession(authOptions);
     const sessionUserId = Number(session?.user?.id);
     if (session?.user?.id && sessionUserId && !Number.isNaN(sessionUserId)) {
-        const role =
-            session.user.role ?? (await createRoleService().getUserRoleKind(sessionUserId));
+        const role = await serviceContainer.user.getCachedRole(sessionUserId);
         return {
             session,
             userId: sessionUserId,
-            role,
-            rbac: buildRbac(role),
+            role: role ?? session.user.role ?? RoleKind.CLIENT,
+            rbac: buildRbac(role ?? session.user.role ?? RoleKind.CLIENT),
         };
     }
 
@@ -36,9 +42,9 @@ async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' |
         if (initData) {
             const verified = verifyTelegramInitData(initData);
             if (verified) {
-                const user = await createUserService().signInWithTelegram(verified);
+                const user = await serviceContainer.user.signInWithTelegram(verified);
                 const userId = Number(user.id);
-                const role = user.role ?? (await createRoleService().getUserRoleKind(userId));
+                const role = user.role ?? RoleKind.CLIENT;
                 return {
                     session: null,
                     userId,
@@ -62,11 +68,35 @@ export const createTRPCContext = async (opts?: { req?: Request }): Promise<TrpcC
 
     return {
         db: dbClient,
+        services: serviceContainer,
         ...auth,
     };
 };
 
-const t = initTRPC.context<TrpcContext>().create();
+/** Convert AppError to the appropriate TRPCError code */
+function appErrorToTrpc(err: AppError): TRPCError {
+    if (err instanceof NotFoundError) {
+        return new TRPCError({ code: 'NOT_FOUND', message: err.message });
+    }
+    if (err instanceof ValidationError) {
+        return new TRPCError({ code: 'BAD_REQUEST', message: err.message });
+    }
+    if (err instanceof ForbiddenError) {
+        return new TRPCError({ code: 'FORBIDDEN', message: err.message });
+    }
+    // BusinessRuleError and other AppError subclasses
+    return new TRPCError({ code: 'BAD_REQUEST', message: err.message });
+}
+
+const t = initTRPC.context<TrpcContext>().create({
+    errorFormatter({ error }) {
+        const cause = error.cause;
+        if (cause instanceof AppError) {
+            return appErrorToTrpc(cause);
+        }
+        return error;
+    },
+});
 
 export const router = t.router;
 export const publicProcedure = t.procedure;

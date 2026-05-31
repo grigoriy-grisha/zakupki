@@ -6,12 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, Package, Users, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { daysLeftUntil } from '@/lib/utils/date';
 
 import type { AvailablePurchaseCardProps } from '../lib/types';
 
 export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) {
-    const deadline = new Date(purchase.deadline);
-    const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysLeft = daysLeftUntil(purchase.deadline);
     const totalOrders = purchase.items.reduce((sum, item) => sum + item.orderLines.length, 0);
     const totalAmount = purchase.items.reduce(
         (sum, item) => sum + item.orderLines.reduce((s, ol) => s + Number(ol.amountDue), 0),

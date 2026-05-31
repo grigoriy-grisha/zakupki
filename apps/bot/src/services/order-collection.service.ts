@@ -1,8 +1,10 @@
-import type { PrismaClient } from '@zakupki/database';
 import { calculateOrderAmount } from '@zakupki/types';
+import type { Redis } from 'ioredis';
+import { getRedisConnection } from '@zakupki/queue';
 
 import { OrderRepository } from '../domain/repositories/order.repository';
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
+
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
 import { getChannelIdFromEnv } from '../lib/telegram-post';
 import { allTelegramPostRefs, type ReplyToMessage, walkReplyChain } from '../lib/resolve-reply-purchase-item';
@@ -26,24 +28,67 @@ export class OrderCollectionService {
     private purchaseItems: PurchaseItemRepository;
     private orders: OrderRepository;
     private users: UserService;
+    private redis: Redis;
 
-    constructor(db: PrismaClient) {
-        this.purchaseItems = new PurchaseItemRepository(db);
-        this.orders = new OrderRepository(db);
-        this.users = new UserService(db);
+    constructor(redis?: Redis) {
+        this.purchaseItems = new PurchaseItemRepository();
+        this.orders = new OrderRepository();
+        this.users = new UserService();
+        this.redis = redis ?? getRedisConnection();
+    }
+
+    private async getCachedPurchaseItemId(key: string): Promise<number | null> {
+        try {
+            const val = await this.redis.get(key);
+            return val ? Number(val) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private async setCachedPurchaseItemId(key: string, id: number): Promise<void> {
+        try {
+            await this.redis.set(key, String(id), 'EX', 86400); // 24 hours TTL
+        } catch (err) {
+            console.error('[Redis cache] error:', err);
+        }
     }
 
     async resolvePurchaseItemFromReply(chatId: number, replyTo: ReplyToMessage) {
         const refs = allTelegramPostRefs(chatId, replyTo);
 
         for (const ref of refs) {
+            const cacheKey = `tg_post_to_item:${ref.channelId}:${ref.messageId}`;
+            const cachedId = await this.getCachedPurchaseItemId(cacheKey);
+            if (cachedId) {
+                const item = await this.purchaseItems.findById(cachedId);
+                if (item) return item;
+            }
+
             const item = await this.purchaseItems.findByTelegramPost(ref.channelId, ref.messageId);
-            if (item) return item;
+            if (item) {
+                await this.setCachedPurchaseItemId(cacheKey, item.id);
+                return item;
+            }
         }
 
         for (const msg of walkReplyChain(replyTo)) {
+            const cacheKey = `tg_msg_to_item:${chatId}:${msg.message_id}`;
+            const cachedId = await this.getCachedPurchaseItemId(cacheKey);
+            if (cachedId) {
+                const item = await this.purchaseItems.findById(cachedId);
+                if (item) return item;
+            }
+
             const item = await this.purchaseItems.findByTgMessageId(String(msg.message_id));
-            if (item) return item;
+            if (item) {
+                await this.setCachedPurchaseItemId(cacheKey, item.id);
+                if (item.tgChannelId && item.tgMessageId) {
+                    const postKey = `tg_post_to_item:${item.tgChannelId}:${item.tgMessageId}`;
+                    await this.setCachedPurchaseItemId(postKey, item.id);
+                }
+                return item;
+            }
         }
 
         return null;
@@ -63,7 +108,17 @@ export class OrderCollectionService {
         const channelId = getChannelIdFromEnv();
         const threadId = message.message_thread_id ?? message.reply_to_message?.message_thread_id;
         if (channelId && threadId != null) {
-            return this.purchaseItems.findByTelegramPost(channelId, String(threadId));
+            const cacheKey = `tg_post_to_item:${channelId}:${threadId}`;
+            const cachedId = await this.getCachedPurchaseItemId(cacheKey);
+            if (cachedId) {
+                return this.purchaseItems.findById(cachedId);
+            }
+
+            const item = await this.purchaseItems.findByTelegramPost(channelId, String(threadId));
+            if (item) {
+                await this.setCachedPurchaseItemId(cacheKey, item.id);
+            }
+            return item;
         }
 
         return null;

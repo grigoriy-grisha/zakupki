@@ -20,7 +20,8 @@
         ],
         "paths": {
             "@/*": ["./src/*"],
-            "@zakupki/database": ["../../shared/database/src/database.ts"]
+            "@zakupki/database": ["../../shared/database/src/database.ts"],
+            "@zakupki/database/*": ["../../shared/database/generated/client/*"]
         }
     },
     "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],

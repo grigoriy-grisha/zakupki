@@ -1,13 +1,8 @@
-import type { PrismaClient } from '@zakupki/database';
 import { PaymentRepository } from '../domain/repositories/payment.repository';
 import { PAYMENT_STATUS } from '../domain/constants';
 
 export class PaymentService {
-    private repo: PaymentRepository;
-
-    constructor(db: PrismaClient) {
-        this.repo = new PaymentRepository(db);
-    }
+    private repo = new PaymentRepository();
 
     async getUserPayments(userId: number) {
         const payments = await this.repo.findByUserId(userId);

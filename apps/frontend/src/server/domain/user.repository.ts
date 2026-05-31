@@ -1,19 +1,37 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 
-import { USER_PROFILE_INCLUDE, type UpsertOAuthProfile } from './user.types';
+import { USER_PROFILE_INCLUDE } from './user.types';
 
 const userWithCredentials = {
-    include: {
-        telegramCredential: true,
-        vkCredential: true,
+    select: {
+        id: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        phone: true,
+        role: true,
+        telegramCredential: {
+            select: {
+                id: true,
+                telegramId: true,
+                username: true,
+                avatarUrl: true,
+            },
+        },
+        vkCredential: {
+            select: {
+                id: true,
+                vkId: true,
+                avatarUrl: true,
+            },
+        },
     },
 } as const;
 
 export class UserRepository {
-    constructor(private db: PrismaClient) {}
-
     async list() {
-        return this.db.user.findMany({
+        return dbClient.user.findMany({
             include: {
                 orderLines: true,
                 payments: true,
@@ -24,14 +42,14 @@ export class UserRepository {
     }
 
     async getById(id: number) {
-        return this.db.user.findUnique({
+        return dbClient.user.findUnique({
             where: { id },
             ...userWithCredentials,
         });
     }
 
     async getProfileById(id: number) {
-        return this.db.user.findUnique({
+        return dbClient.user.findUnique({
             where: { id },
             select: {
                 id: true,
@@ -45,7 +63,7 @@ export class UserRepository {
     }
 
     async findUserIdByTelegramId(telegramId: string) {
-        const credential = await this.db.telegramCredential.findUnique({
+        const credential = await dbClient.telegramCredential.findUnique({
             where: { telegramId },
             select: { userId: true },
         });
@@ -53,7 +71,7 @@ export class UserRepository {
     }
 
     async findUserIdByVkId(vkId: string) {
-        const credential = await this.db.vkCredential.findUnique({
+        const credential = await dbClient.vkCredential.findUnique({
             where: { vkId },
             select: { userId: true },
         });
@@ -63,7 +81,7 @@ export class UserRepository {
     async upsertFromTelegramBot(telegramId: string, data: { username?: string; firstName: string; lastName?: string }) {
         const existingUserId = await this.findUserIdByTelegramId(telegramId);
         if (existingUserId != null) {
-            return this.db.user.update({
+            return dbClient.user.update({
                 where: { id: existingUserId },
                 data: {
                     firstName: data.firstName,
@@ -77,7 +95,7 @@ export class UserRepository {
             });
         }
 
-        return this.db.user.create({
+        return dbClient.user.create({
             data: {
                 firstName: data.firstName,
                 lastName: data.lastName,
@@ -93,12 +111,12 @@ export class UserRepository {
         });
     }
 
-    async upsertFromVk(vkId: string, data: UpsertOAuthProfile) {
+    async upsertFromVk(vkId: string, data: { firstName: string; lastName?: string; avatarUrl?: string | null }) {
         const existingUserId = await this.findUserIdByVkId(vkId);
         const credentialData = { avatarUrl: data.avatarUrl ?? undefined };
 
         if (existingUserId != null) {
-            return this.db.user.update({
+            return dbClient.user.update({
                 where: { id: existingUserId },
                 data: {
                     firstName: data.firstName,
@@ -110,7 +128,7 @@ export class UserRepository {
             });
         }
 
-        return this.db.user.create({
+        return dbClient.user.create({
             data: {
                 firstName: data.firstName,
                 lastName: data.lastName,
@@ -126,7 +144,7 @@ export class UserRepository {
         });
     }
 
-    async upsertFromTelegram(telegramId: string, data: UpsertOAuthProfile & { username?: string }) {
+    async upsertFromTelegram(telegramId: string, data: { firstName: string; lastName?: string; avatarUrl?: string | null; username?: string }) {
         const existingUserId = await this.findUserIdByTelegramId(telegramId);
         const credentialData = {
             username: data.username,
@@ -134,7 +152,7 @@ export class UserRepository {
         };
 
         if (existingUserId != null) {
-            return this.db.user.update({
+            return dbClient.user.update({
                 where: { id: existingUserId },
                 data: {
                     firstName: data.firstName,
@@ -147,7 +165,7 @@ export class UserRepository {
             });
         }
 
-        return this.db.user.create({
+        return dbClient.user.create({
             data: {
                 firstName: data.firstName,
                 lastName: data.lastName,
@@ -165,7 +183,7 @@ export class UserRepository {
     }
 
     async linkVk(userId: number, vkId: string, avatar: string | null) {
-        return this.db.user.update({
+        return dbClient.user.update({
             where: { id: userId },
             data: {
                 avatarUrl: avatar,
@@ -181,7 +199,7 @@ export class UserRepository {
     }
 
     async linkTelegram(userId: number, telegramId: string, data: { username?: string; avatar: string | null }) {
-        return this.db.user.update({
+        return dbClient.user.update({
             where: { id: userId },
             data: {
                 avatarUrl: data.avatar,
@@ -205,11 +223,18 @@ export class UserRepository {
         });
     }
 
+    async getRoleById(id: number) {
+        return dbClient.user.findUnique({
+            where: { id },
+            select: { role: true },
+        });
+    }
+
     async unlinkVk(userId: number) {
-        return this.db.vkCredential.deleteMany({ where: { userId } });
+        return dbClient.vkCredential.deleteMany({ where: { userId } });
     }
 
     async unlinkTelegram(userId: number) {
-        return this.db.telegramCredential.deleteMany({ where: { userId } });
+        return dbClient.telegramCredential.deleteMany({ where: { userId } });
     }
 }

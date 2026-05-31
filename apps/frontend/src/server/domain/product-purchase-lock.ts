@@ -1,5 +1,5 @@
-import { TRPCError } from '@trpc/server';
 import type { PrismaClient } from '@zakupki/database';
+import { BusinessRuleError } from '@zakupki/types';
 
 export const ACTIVE_PURCHASE_STATUS = 'ACTIVE' as const;
 
@@ -33,10 +33,10 @@ export async function assertProductNotInActivePurchase(db: PrismaClient, product
     if (tags.length === 0) return;
 
     const list = tags.map(formatPurchaseTag).join(', ');
-    throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: `Товар участвует в активной закупке ${list}. Удаление из каталога недоступно.`,
-    });
+    throw new BusinessRuleError(
+        'PRODUCT_IN_ACTIVE_PURCHASE',
+        `Товар участвует в активной закупке ${list}. Удаление из каталога недоступно.`,
+    );
 }
 
 export function assertCanRemoveFromActivePurchase(
@@ -47,8 +47,8 @@ export function assertCanRemoveFromActivePurchase(
     if (purchaseStatus !== ACTIVE_PURCHASE_STATUS) return;
     if (!tgMessageId) return;
 
-    throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: `Нельзя удалить товар, уже опубликованный в активной закупке ${formatPurchaseTag(purchaseTag)}`,
-    });
+    throw new BusinessRuleError(
+        'PRODUCT_ALREADY_PUBLISHED',
+        `Нельзя удалить товар, уже опубликованный в активной закупке ${formatPurchaseTag(purchaseTag)}`,
+    );
 }

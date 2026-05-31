@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 
 export interface AttributeTypeWriteData {
     name?: string;
@@ -7,10 +7,9 @@ export interface AttributeTypeWriteData {
 }
 
 export class AttributeTypeRepository {
-    constructor(private db: PrismaClient) {}
 
     async list() {
-        return this.db.attributeType.findMany({
+        return dbClient.attributeType.findMany({
             orderBy: [{ position: 'asc' }, { id: 'asc' }],
         });
     }
@@ -21,9 +20,9 @@ export class AttributeTypeRepository {
         showInTree?: boolean;
         showInTitle?: boolean;
     }) {
-        const last = await this.db.attributeType.findFirst({ orderBy: { position: 'desc' } });
+        const last = await dbClient.attributeType.findFirst({ orderBy: { position: 'desc' } });
         const position = (last?.position ?? -1) + 1;
-        return this.db.attributeType.create({
+        return dbClient.attributeType.create({
             data: {
                 name: data.name,
                 parentId: data.parentId ?? null,
@@ -35,23 +34,23 @@ export class AttributeTypeRepository {
     }
 
     async update(id: number, data: AttributeTypeWriteData) {
-        return this.db.attributeType.update({ where: { id }, data });
+        return dbClient.attributeType.update({ where: { id }, data });
     }
 
     async delete(id: number) {
-        return this.db.attributeType.delete({ where: { id } });
+        return dbClient.attributeType.delete({ where: { id } });
     }
 
     /** Меняет местами позицию двух типов (для кнопок вверх/вниз). */
     async swapPositions(id: number, otherId: number) {
         const [a, b] = await Promise.all([
-            this.db.attributeType.findUnique({ where: { id } }),
-            this.db.attributeType.findUnique({ where: { id: otherId } }),
+            dbClient.attributeType.findUnique({ where: { id } }),
+            dbClient.attributeType.findUnique({ where: { id: otherId } }),
         ]);
         if (!a || !b) return;
-        await this.db.$transaction([
-            this.db.attributeType.update({ where: { id: a.id }, data: { position: b.position } }),
-            this.db.attributeType.update({ where: { id: b.id }, data: { position: a.position } }),
+        await dbClient.$transaction([
+            dbClient.attributeType.update({ where: { id: a.id }, data: { position: b.position } }),
+            dbClient.attributeType.update({ where: { id: b.id }, data: { position: a.position } }),
         ]);
     }
 }

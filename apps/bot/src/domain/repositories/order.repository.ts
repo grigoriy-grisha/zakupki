@@ -1,30 +1,11 @@
-import type { PrismaClient } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
+import { InsufficientStockError, NotFoundError } from '@zakupki/types';
+
+const db = dbClient;
 
 export class OrderRepository {
-    private db: PrismaClient;
-
-    constructor(db: PrismaClient) {
-        this.db = db;
-    }
-
-    findByUserId(userId: number, limit = 10) {
-        return this.db.orderLine.findMany({
-            where: { userId },
-            include: {
-                purchaseItem: {
-                    include: {
-                        product: { include: { unit: true } },
-                        purchase: { select: { tag: true, supplier: true } },
-                    },
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-        });
-    }
-
-    upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return this.db.$transaction(async (tx) => {
+    async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
+        return db.$transaction(async (tx) => {
             const existingLine = await tx.orderLine.findUnique({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
             });
@@ -33,7 +14,7 @@ export class OrderRepository {
                 where: { id: purchaseItemId },
             });
 
-            if (!purchaseItem) throw new Error('Purchase item not found');
+            if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
 
             const oldQuantity = existingLine ? Number(existingLine.quantity) : 0;
             const delta = quantity - oldQuantity;
@@ -41,7 +22,7 @@ export class OrderRepository {
             if (delta > 0 && purchaseItem.availableQty !== null) {
                 const available = Number(purchaseItem.availableQty);
                 if (available < delta) {
-                    throw new Error(`Свободный остаток: ${available}. Нельзя заказать ${quantity}`);
+                    throw new InsufficientStockError(available, quantity);
                 }
                 await tx.purchaseItem.update({
                     where: { id: purchaseItemId },
@@ -63,14 +44,30 @@ export class OrderRepository {
         });
     }
 
+    findByUserId(userId: number, limit = 10) {
+        return db.orderLine.findMany({
+            where: { userId },
+            include: {
+                purchaseItem: {
+                    include: {
+                        product: { include: { unit: true } },
+                        purchase: { select: { tag: true, supplier: true } },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+        });
+    }
+
     findByPurchaseItemAndUser(purchaseItemId: number, userId: number) {
-        return this.db.orderLine.findUnique({
+        return db.orderLine.findUnique({
             where: { purchaseItemId_userId: { purchaseItemId, userId } },
         });
     }
 
     deleteAndRestoreStock(id: number) {
-        return this.db.$transaction(async (tx) => {
+        return db.$transaction(async (tx) => {
             const line = await tx.orderLine.findUnique({ where: { id } });
             if (!line) return null;
 

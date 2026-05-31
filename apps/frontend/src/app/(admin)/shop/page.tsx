@@ -1,39 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
-
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/lib/client/trpc';
-
-import { AvailablePurchaseCard, PurchaseCard } from './components';
+import { AvailablePurchaseCard, PurchaseCard, ShopGridSkeleton, EmptyState } from './components';
 import { usePurchasePaymentMap } from './hooks';
-
-function ShopGridSkeleton() {
-    return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-52" />
-            ))}
-        </div>
-    );
-}
-
-function EmptyState({ title, description }: { title: string; description: string }) {
-    return (
-        <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                    <ShoppingCart className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h2 className="mt-4 text-lg font-medium">{title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-            </CardContent>
-        </Card>
-    );
-}
 
 export default function ShopPage() {
     const [tab, setTab] = useState<'active' | 'past'>('active');
