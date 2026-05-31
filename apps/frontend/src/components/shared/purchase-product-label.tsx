@@ -31,19 +31,26 @@ export function PurchaseProductLabel({
         [attributeTypes],
     );
     const label = formatPurchaseProductLabel(product, showInTitleByTypeId, attributeTypes);
+    const LineTag = Tag === 'span' ? 'span' : 'div';
+    const lineClass = Tag === 'span' ? 'block leading-snug' : 'leading-snug';
 
-    if (!label.line1 && !label.line2) {
+    if (label.lines.length === 0) {
         return <Tag className={className}>{product.name}</Tag>;
     }
 
     return (
         <Tag className={className}>
-            {label.line1 ? <div className={cn('leading-snug', primaryClassName)}>{label.line1}</div> : null}
-            {label.line2 ? (
-                <div className={cn('leading-snug', label.line1 ? secondaryClassName ?? 'text-muted-foreground' : primaryClassName)}>
-                    {label.line2}
-                </div>
-            ) : null}
+            {label.lines.map((line, index) => (
+                <LineTag
+                    key={`${index}-${line}`}
+                    className={cn(
+                        lineClass,
+                        index === 0 ? primaryClassName : secondaryClassName ?? 'text-muted-foreground',
+                    )}
+                >
+                    {line}
+                </LineTag>
+            ))}
         </Tag>
     );
 }

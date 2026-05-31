@@ -1,4 +1,4 @@
-import { calculateOrderAmount } from '@zakupki/types';
+import { calculateOrderAmount, getOrderQuantityValidationError } from '@zakupki/types';
 import type { Redis } from 'ioredis';
 import { getRedisConnection } from '@zakupki/queue';
 
@@ -214,6 +214,26 @@ export class OrderCollectionService {
                     purchaseTag: purchaseItem.purchase.tag,
                     subtracted,
                     cancelled: true,
+                };
+            }
+
+            const orderQtyOptions = {
+                multiplicity: purchaseItem.product.unit ? Number(purchaseItem.product.unit.multiplicity) : 1,
+                minPackageAmount:
+                    purchaseItem.product.minPackageAmount != null
+                        ? Number(purchaseItem.product.minPackageAmount)
+                        : null,
+                minPackageUnit: purchaseItem.product.minPackageUnit,
+                purchaseItemMinQty: purchaseItem.minQty != null ? Number(purchaseItem.minQty) : null,
+                unitShort,
+            };
+
+            const validationError = getOrderQuantityValidationError(newQuantity, orderQtyOptions);
+            if (validationError) {
+                return {
+                    ok: false,
+                    reason: 'error',
+                    message: validationError,
                 };
             }
 

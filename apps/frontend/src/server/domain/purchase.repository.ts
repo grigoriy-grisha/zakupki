@@ -3,11 +3,13 @@ import { dbClient } from '@zakupki/database';
 const productWithAttributes = {
     photos: { select: { id: true, sortOrder: true } },
     unit: true,
+    brand: { select: { id: true, name: true, typeId: true, showInTitle: true, isBrand: true } },
     attributeValues: {
         include: {
             attribute: {
                 include: {
                     type: true,
+                    parent: { select: { id: true, name: true, isBrand: true } },
                     characteristics: { include: { characteristic: true } },
                 },
             },
@@ -88,6 +90,13 @@ export class PurchaseRepository {
 
     async updateStatus(id: number, status: string) {
         return dbClient.purchase.update({ where: { id }, data: { status: status as any } });
+    }
+
+    async updateFulfillmentStatus(id: number, fulfillmentStatus: string) {
+        return dbClient.purchase.update({
+            where: { id },
+            data: { fulfillmentStatus: fulfillmentStatus as any },
+        });
     }
 
     async deleteDraft(id: number) {
@@ -197,7 +206,7 @@ export class PurchaseRepository {
     async findItemWithPrice(id: number) {
         return dbClient.purchaseItem.findUnique({
             where: { id },
-            include: { product: true, purchase: true },
+            include: { product: { include: { unit: true } }, purchase: true },
         });
     }
 }

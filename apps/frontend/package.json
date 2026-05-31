@@ -21,6 +21,7 @@
         "@vkid/sdk": "2.6.5",
         "@zakupki/database": "workspace:*",
         "@zakupki/queue": "workspace:*",
+        "@zakupki/storage": "workspace:*",
         "@zakupki/types": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

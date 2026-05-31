@@ -2,18 +2,26 @@ import ExcelJS from 'exceljs';
 import { parsePriceTiers, type PriceTier } from '@zakupki/types';
 
 import {
-    buildShowInTitleByTypeId,
-    getProductDisplayName,
-    getProductTitleAttributeNames,
+    formatPurchaseProductLabel,
     type AttributeTypeMeta,
     type ProductLabelSource,
 } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
+import {
+    getPurchaseItemOrderStats,
+} from './purchase-item-order-stats';
 
 type ExportUser = {
     firstName: string;
     lastName?: string | null;
     username?: string | null;
+    telegramCredential?: {
+        telegramId: string;
+        username?: string | null;
+    } | null;
+    vkCredential?: {
+        vkId: string;
+    } | null;
 };
 
 type ExportProduct = ProductLabelSource & {
@@ -79,26 +87,8 @@ export type PurchaseExportData = {
 };
 
 function excelProductNameLines(product: ExportProduct, attributeTypes?: AttributeTypeMeta[]) {
-    const showInTitleByTypeId = buildShowInTitleByTypeId(
-        attributeTypes?.map((type) => ({ id: type.id, showInTitle: type.showInTitle ?? true })),
-    );
-    const article = product.articleNumber?.trim() ?? '';
-    const title = getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
-        .map((part) => part.trim())
-        .filter(Boolean)
-        .join(' ');
-    const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
-
-    let line1 = '';
-    if (article && displayName) {
-        line1 = `${article} - ${displayName}`;
-    } else if (article) {
-        line1 = article;
-    } else if (displayName) {
-        line1 = displayName;
-    }
-
-    return { line1, line2: title };
+    const label = formatPurchaseProductLabel(product, undefined, attributeTypes);
+    return { line1: label.line1, line2: label.line2 };
 }
 
 function setExcelProductNameCell(
@@ -106,7 +96,7 @@ function setExcelProductNameCell(
     product: ExportProduct | undefined,
     attributeTypes?: AttributeTypeMeta[],
 ) {
-    cell.alignment = { wrapText: true, vertical: 'middle' };
+    cell.alignment = { horizontal: 'left', wrapText: true, vertical: 'middle' };
     if (!product) return;
 
     const { line1, line2 } = excelProductNameLines(product, attributeTypes);
@@ -167,27 +157,27 @@ function formatSupplierPackage(product: ExportProduct) {
     return `${Number(product.supplierPackageAmount)} ${product.supplierPackageUnit}`;
 }
 
-function gramsInPack(product: ExportProduct) {
-    if (product.supplierPackageAmount == null) return null;
-    if (product.supplierPackageUnit !== 'гр') return null;
-    return Number(product.supplierPackageAmount);
-}
-
 function freeRemainder(item: ExportPurchase['items'][number]) {
-    if (item.availableQty != null && item.availableQty !== undefined) {
-        return Number(item.availableQty);
-    }
-    if (item.product.availableAmount != null && item.product.availableUnit === 'гр') {
-        return Number(item.product.availableAmount);
-    }
-    return '';
+    const stats = getPurchaseItemOrderStats(item);
+    return stats.freeRemainder ?? '';
 }
 
 type ExportParticipant = {
     userId: number;
     name: string;
-    username: string;
+    tgUsername: string;
+    telegramId: string;
+    vkId: string;
 };
+
+function extractParticipantCredentials(user?: ExportUser) {
+    const tgUsername = (user?.telegramCredential?.username ?? user?.username ?? '').replace(/^@/, '');
+    return {
+        tgUsername,
+        telegramId: user?.telegramCredential?.telegramId ?? '',
+        vkId: user?.vkCredential?.vkId ?? '',
+    };
+}
 
 function buildParticipants(orders: ExportOrder[]): ExportParticipant[] {
     const map = new Map<number, ExportParticipant>();
@@ -197,7 +187,7 @@ function buildParticipants(orders: ExportOrder[]): ExportParticipant[] {
         map.set(order.userId, {
             userId: order.userId,
             name: userName(order.user) || `Участник #${order.userId}`,
-            username: order.user?.username ?? '',
+            ...extractParticipantCredentials(order.user),
         });
     });
 
@@ -205,9 +195,17 @@ function buildParticipants(orders: ExportOrder[]): ExportParticipant[] {
 }
 
 function participantHeaderLabel(participant: ExportParticipant) {
-    return participant.username
-        ? `${participant.name}\n@${participant.username}`
-        : participant.name;
+    const lines = [participant.name];
+    if (participant.tgUsername) {
+        lines.push(`@${participant.tgUsername}`);
+    }
+    if (participant.telegramId) {
+        lines.push(`TG ID: ${participant.telegramId}`);
+    }
+    if (participant.vkId) {
+        lines.push(`VK ID: ${participant.vkId}`);
+    }
+    return lines.join('\n');
 }
 
 function participantStatus(due: number, paid: number, pending: number) {
@@ -221,6 +219,14 @@ function safeFilename(tag: string, suffix: string) {
     const base = tag.replace(/[<>:"/\\|?*]/g, '_').slice(0, 80);
     const date = new Date().toISOString().slice(0, 10);
     return `${base}_${suffix}_${date}.xlsx`;
+}
+
+function styleFixedColumnCell(cell: ExcelJS.Cell, columnIndex: number) {
+    cell.alignment = {
+        horizontal: 'left',
+        vertical: 'middle',
+        wrapText: columnIndex === 1,
+    };
 }
 
 function styleHeaderCell(cell: ExcelJS.Cell) {
@@ -255,7 +261,6 @@ function autoFitColumns(sheet: ExcelJS.Worksheet) {
     });
 }
 
-/** Ширины колонок: узко везде, кроме «Виды бисера» и колонок участников. */
 function applyGeneralSheetColumnWidths(
     sheet: ExcelJS.Worksheet,
     options: {
@@ -282,14 +287,14 @@ function applyGeneralSheetColumnWidths(
     }
 
     const headerRow = sheet.getRow(2);
-    for (let col = 2; col <= fixedColumns; col++) {
+    for (let col = 1; col <= fixedColumns; col++) {
         headerRow.getCell(col).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
     }
 
     for (let col = fixedColumns + 1; col <= fixedColumns + participantCount; col++) {
         const label = String(headerRow.getCell(col).value ?? '');
         const maxLine = Math.max(...label.split('\n').map((line) => line.length), 8);
-        sheet.getColumn(col).width = Math.min(Math.max(maxLine + 2, 12), 28);
+        sheet.getColumn(col).width = Math.min(Math.max(maxLine + 2, 14), 32);
         headerRow.getCell(col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     }
 
@@ -386,7 +391,7 @@ function buildParticipantSummary(orders: ExportOrder[], payments: ExportPayment[
         return {
             userId,
             name: userName(user) || `Участник #${userId}`,
-            username: user?.username ?? '',
+            ...extractParticipantCredentials(user),
             positions: userOrdersList.length,
             due,
             paid,
@@ -419,11 +424,11 @@ export async function exportGeneralPurchaseData({
         'Свободный остаток',
     ];
     const fixedHeaders = [
-        'Виды бисера',
+        'Название товара',
         'Фасовка поставщика',
         'Цена за пачку в рублях',
         'Цена за 5/10 гр. в рублях',
-        'Цена за 1 гр. в рублях',
+        'Цена за 1 гр/шт в рублях',
     ];
 
     const numberRow = sheet.addRow([
@@ -459,12 +464,11 @@ export async function exportGeneralPurchaseData({
         const { line1 } = excelProductNameLines(product, attributeTypes);
         maxNameLineLength = Math.max(maxNameLineLength, line1.length);
         const tiers = parsePriceTiers(product.priceTiers);
-        const packGrams = gramsInPack(product);
-        const totalGrams = item.orderLines.reduce((sum, line) => sum + formatMoney(line.quantity), 0);
-        const packsToOrder =
-            packGrams != null && packGrams > 0 ? Math.ceil(totalGrams / packGrams) : '';
-        const orderedPacks =
-            packGrams != null && packGrams > 0 ? Math.round((totalGrams / packGrams) * 1000) / 1000 : '';
+        const stats = getPurchaseItemOrderStats(item);
+        const packGrams = stats.packGrams;
+        const totalGrams = stats.totalGrams;
+        const packsToOrder = stats.packsToOrder ?? '';
+        const orderedPacks = stats.orderedPacks ?? '';
 
         const quantitiesByUser = new Map<number, number>();
         item.orderLines.forEach((line) => {
@@ -485,6 +489,9 @@ export async function exportGeneralPurchaseData({
             totalGrams || '',
             freeRemainder(item),
         ]);
+        for (let col = 1; col <= fixedColumns; col++) {
+            styleFixedColumnCell(row.getCell(col), col);
+        }
         setExcelProductNameCell(row.getCell(1), product, attributeTypes);
     });
 
@@ -536,26 +543,29 @@ export async function exportOrdersPurchaseData({
     const productByItemId = buildProductByItemId(purchase);
 
     const ordersSheet = workbook.addWorksheet('Заказы');
-    styleHeaderRow(ordersSheet.addRow(['Участник', 'Username', 'Товар', 'Ед. изм.', 'Кол-во', 'Цена/ед', 'Сумма']));
+    styleHeaderRow(ordersSheet.addRow(['Участник', 'ID в TG', 'TG ID', 'VK ID', 'Товар', 'Ед. изм.', 'Кол-во', 'Цена/ед', 'Сумма']));
     orders.forEach((order) => {
         const product =
             (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
             order.purchaseItem?.product;
         const unit = product?.unit?.shortName ?? '';
         const price = formatMoney(order.purchaseItem?.priceOverride ?? product?.pricePerUnit ?? 0);
+        const credentials = extractParticipantCredentials(order.user);
         const row = ordersSheet.addRow([
             userName(order.user),
-            order.user?.username ? `@${order.user.username}` : '',
+            credentials.tgUsername ? `@${credentials.tgUsername}` : '',
+            credentials.telegramId,
+            credentials.vkId,
             '',
             unit,
             formatMoney(order.quantity),
             price,
             formatMoney(order.amountDue),
         ]);
-        setExcelProductNameCell(row.getCell(3), product, attributeTypes);
+        setExcelProductNameCell(row.getCell(5), product, attributeTypes);
     });
     autoFitColumns(ordersSheet);
-    ordersSheet.getColumn(3).width = Math.max(ordersSheet.getColumn(3).width ?? 10, 28);
+    ordersSheet.getColumn(5).width = Math.max(ordersSheet.getColumn(5).width ?? 10, 28);
 
     const byProduct = new Map<
         number,
@@ -612,10 +622,12 @@ export async function exportOrdersPurchaseData({
     addDataSheet(
         workbook,
         'По участникам',
-        ['Участник', 'Username', 'Позиций', 'К оплате', 'Покрыто', 'Остаток', 'Статус'],
+        ['Участник', 'ID в TG', 'TG ID', 'VK ID', 'Позиций', 'К оплате', 'Покрыто', 'Остаток', 'Статус'],
         participants.map((participant) => [
             participant.name,
-            participant.username ? `@${participant.username}` : '',
+            participant.tgUsername ? `@${participant.tgUsername}` : '',
+            participant.telegramId,
+            participant.vkId,
             participant.positions,
             participant.due,
             participant.paid,

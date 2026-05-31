@@ -46,6 +46,19 @@ export function useRemovePurchaseItem(purchaseId: number) {
     });
 }
 
+export function useUpdateFulfillmentStatus(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.updateFulfillmentStatus.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            void utils.purchases.list.invalidate();
+            toast.success('Этап закупки обновлён');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}
+
 export function useActivate(purchaseId: number) {
     const utils = trpc.useUtils();
 

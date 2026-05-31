@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { UserProfileSheet } from '@/app/(admin)/users/components';
 import { useParticipantsData } from '../hooks';
 import { ParticipantRow } from './participant-row';
 import { PaymentDetailDialog } from './payment-detail-dialog';
@@ -16,6 +17,7 @@ interface ParticipantsTabProps {
 export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
     const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
+    const [profileUserId, setProfileUserId] = useState<number | null>(null);
 
     const data = useParticipantsData(purchaseId);
 
@@ -99,8 +101,10 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                             return (
                                 <ParticipantRow
                                     key={userId}
+                                    userId={userId}
                                     name={name}
                                     username={info?.username}
+                                    onOpenProfile={setProfileUserId}
                                     orders={userOrdersList}
                                     payments={userPaymentsList}
                                     due={due}
@@ -128,6 +132,14 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                     purchaseId={purchaseId}
                 />
             )}
+
+            <UserProfileSheet
+                userId={profileUserId}
+                open={profileUserId != null}
+                onOpenChange={(open) => {
+                    if (!open) setProfileUserId(null);
+                }}
+            />
         </div>
     );
 }

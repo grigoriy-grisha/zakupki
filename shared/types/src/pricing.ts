@@ -75,3 +75,109 @@ export function calculateOrderAmount(
 function roundMoney(value: number): number {
     return Math.round(value * 100) / 100;
 }
+
+function positiveOrNull(value: unknown): number | null {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function roundUpToStep(value: number, step: number): number {
+    if (step <= 0) return value;
+    return Math.ceil((value - 1e-9) / step) * step;
+}
+
+function isMultipleOf(quantity: number, step: number): boolean {
+    const remainder = quantity % step;
+    return remainder < 1e-6 || Math.abs(remainder - step) < 1e-6;
+}
+
+function formatQtyLabel(quantity: number): string {
+    return quantity % 1 === 0 ? String(quantity) : quantity.toFixed(3).replace(/\.?0+$/, '');
+}
+
+export type OrderQuantityOptions = {
+    multiplicity?: number | null;
+    minPackageAmount?: number | null;
+    minPackageUnit?: string | null;
+    purchaseItemMinQty?: number | null;
+    unitShort?: string | null;
+};
+
+/** Шаг заказа: мин. фасовка товара, иначе кратность единицы измерения. */
+export function getOrderQuantityStep(options: OrderQuantityOptions): number {
+    return positiveOrNull(options.minPackageAmount) ?? positiveOrNull(options.multiplicity) ?? 1;
+}
+
+/** Минимальное количество заказа: мин. фасовка товара, иначе minQty позиции, иначе шаг. */
+export function getMinOrderQuantity(options: OrderQuantityOptions): number {
+    const step = getOrderQuantityStep(options);
+    const base =
+        positiveOrNull(options.minPackageAmount) ??
+        positiveOrNull(options.purchaseItemMinQty) ??
+        step;
+    return roundUpToStep(base, step);
+}
+
+export function getOrderQuantityValidationError(quantity: number, options: OrderQuantityOptions): string | null {
+    if (!isPositive(quantity)) return 'Укажите положительное количество';
+
+    const step = getOrderQuantityStep(options);
+    const min = getMinOrderQuantity(options);
+    const unit =
+        positiveOrNull(options.minPackageAmount) != null && options.minPackageUnit
+            ? options.minPackageUnit
+            : (options.unitShort ?? 'ед.');
+    const stepLabel = formatQtyLabel(step);
+    const minLabel = formatQtyLabel(min);
+
+    if (quantity + 1e-9 < min) {
+        if (positiveOrNull(options.minPackageAmount) != null) {
+            return `Мин. фасовка: ${stepLabel} ${unit}`;
+        }
+        return `Минимальный заказ: ${minLabel} ${unit}`;
+    }
+
+    if (!isMultipleOf(quantity, step)) {
+        if (positiveOrNull(options.minPackageAmount) != null) {
+            return `Можно заказать только кратно ${stepLabel} ${unit}: ${stepLabel}, ${formatQtyLabel(step * 2)}, ${formatQtyLabel(step * 3)}…`;
+        }
+        return `Количество должно быть кратно ${stepLabel} ${unit}`;
+    }
+
+    return null;
+}
+
+export function isValidOrderQuantity(quantity: number, options: OrderQuantityOptions): boolean {
+    return getOrderQuantityValidationError(quantity, options) === null;
+}
+
+/** Приводит количество к допустимому: не ниже мин., не выше max, кратно шагу. */
+export function snapOrderQuantity(
+    quantity: number,
+    options: OrderQuantityOptions,
+    bounds?: { max?: number | null },
+): number {
+    const step = getOrderQuantityStep(options);
+    const min = getMinOrderQuantity(options);
+    let qty = Math.max(min, quantity);
+
+    if (bounds?.max != null) {
+        qty = Math.min(qty, bounds.max);
+        if (!isMultipleOf(qty, step)) {
+            qty = Math.floor((qty + 1e-9) / step) * step;
+        }
+        return qty < min ? 0 : qty;
+    }
+
+    if (!isMultipleOf(qty, step)) {
+        qty = roundUpToStep(qty, step);
+    }
+    return qty;
+}
+
+export function formatMinPackageOrderHint(options: OrderQuantityOptions): string | null {
+    const step = positiveOrNull(options.minPackageAmount);
+    if (step == null) return null;
+    const unit = options.minPackageUnit ?? options.unitShort ?? 'ед.';
+    return `Мин. фасовка: ${formatQtyLabel(step)} ${unit} · заказ кратно ${formatQtyLabel(step)} ${unit}`;
+}

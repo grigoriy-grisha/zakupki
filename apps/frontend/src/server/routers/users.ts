@@ -9,6 +9,10 @@ export const usersRouter = router({
         return ctx.services.user.list();
     }),
 
+    getById: adminProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+        return ctx.services.user.getById(input.id);
+    }),
+
     me: protectedProcedure.query(async ({ ctx }) => {
         return ctx.services.user.getProfile(ctx.userId);
     }),

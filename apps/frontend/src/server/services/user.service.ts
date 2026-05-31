@@ -39,6 +39,12 @@ export class UserService {
         return this.repo.list();
     }
 
+    async getById(id: number) {
+        const user = await this.repo.getListItemById(id);
+        if (!user) throw new NotFoundError('Пользователь', id);
+        return user;
+    }
+
     async upsertFromTelegramBot(telegramId: string, data: { username?: string; firstName: string; lastName?: string }) {
         return this.repo.upsertFromTelegramBot(telegramId, data);
     }

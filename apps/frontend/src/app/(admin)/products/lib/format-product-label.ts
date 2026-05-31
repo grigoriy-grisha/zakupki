@@ -317,11 +317,7 @@ export function getProductTitleAttributeNames(
     }
 
     const maps = buildTypeMaps(attributeTypes);
-    const valuesByTypeId = new Map<number, ProductAttributeValueSource>();
-    for (const v of orderedValues(product, attributeTypes)) {
-        const id = attributeTypeId(v);
-        if (id != null) valuesByTypeId.set(id, v);
-    }
+    const valuesByTypeId = buildValuesByTypeId(product, attributeTypes);
 
     const parts: string[] = [];
 
@@ -429,30 +425,112 @@ export function formatProductCatalogCardLines(
     return lines.map((l) => l.trim()).filter(Boolean);
 }
 
-/** Две строки для списка товаров в закупке: заголовок и «номер название». */
-export function formatPurchaseProductLabel(
-    product: ProductLabelSource,
-    showInTitleByTypeId?: ShowInTitleByTypeId,
-    attributeTypes?: AttributeTypeMeta[],
-): { line1: string; line2: string; text: string } {
+function formatPurchaseProductLine1(product: ProductLabelSource): string {
     const article = product.articleNumber?.trim() ?? '';
-    const title = getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
-        .map((part) => part.trim())
-        .filter(Boolean)
-        .join(' ');
     const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
 
-    const line1 = title;
+    if (article && displayName) return `${article} ${displayName}`;
+    return article || displayName;
+}
 
-    const line2Parts: string[] = [];
-    if (article) line2Parts.push(article);
-    if (displayName) line2Parts.push(displayName);
-    const line2 = line2Parts.join(' ');
+function typeDepth(typeId: number, maps: ReturnType<typeof buildTypeMaps>): number {
+    let depth = 0;
+    let current: number | null = typeId;
+    while (current != null) {
+        depth++;
+        current = maps.byId.get(current)?.parentId ?? null;
+    }
+    return depth;
+}
+
+function findNearestSubtypeNameForBrand(
+    product: ProductLabelSource,
+    brandName: string,
+    attributeTypes: AttributeTypeMeta[],
+): string | null {
+    const maps = buildTypeMaps(attributeTypes);
+    let best: { typeName: string; depth: number } | null = null;
+
+    for (const label of getProductCatalogAttributeLabels(product, attributeTypes)) {
+        const colonIdx = label.indexOf(':');
+        if (colonIdx === -1) continue;
+        const typeName = label.slice(0, colonIdx).trim();
+        const value = label.slice(colonIdx + 1).trim();
+        if (!value || (value !== brandName && !value.startsWith(`${brandName} `))) continue;
+
+        const typeId = [...maps.byId.values()].find((t) => t.name === typeName)?.id;
+        const depth = typeId != null ? typeDepth(typeId, maps) : 0;
+        if (!best || depth > best.depth) {
+            best = { typeName, depth };
+        }
+    }
+
+    return best?.typeName ?? null;
+}
+
+function getPurchaseProductSubtitleLine(
+    product: ProductLabelSource,
+    attributeTypes?: AttributeTypeMeta[],
+): string {
+    for (const v of orderedValues(product, attributeTypes)) {
+        if (v.attribute.parent?.isBrand) {
+            const line = formatAttributeValueName(v);
+            if (line) return line;
+        }
+    }
+
+    const brandName = product.brand?.name?.trim() ?? '';
+    if (brandName && attributeTypes?.length) {
+        const nearestSubtype = findNearestSubtypeNameForBrand(product, brandName, attributeTypes);
+        if (nearestSubtype) {
+            return `${nearestSubtype} ${brandName}`;
+        }
+
+        const brandTypeId = product.brand?.typeId;
+        if (brandTypeId != null) {
+            const maps = buildTypeMaps(attributeTypes);
+            const brandType = maps.byId.get(brandTypeId);
+            // Тип, к которому привязан бренд — ближайший подтип (напр. «Нитки для бисера»).
+            if (brandType?.name && brandType.name !== brandName) {
+                return `${brandType.name} ${brandName}`;
+            }
+            const parentType = brandType?.parentId != null ? maps.byId.get(brandType.parentId) : null;
+            if (parentType?.name) {
+                return `${parentType.name} ${brandName}`;
+            }
+        }
+    }
+
+    if (brandName) return brandName;
+
+    for (const label of getProductCatalogAttributeLabels(product, attributeTypes)) {
+        const colonIdx = label.indexOf(':');
+        if (colonIdx === -1) continue;
+        const typeName = label.slice(0, colonIdx).trim();
+        const value = label.slice(colonIdx + 1).trim();
+        if (!value) continue;
+        if (value.includes(' ') || value.includes('/')) return value;
+        if (typeName) return `${typeName} ${value}`;
+    }
+
+    return '';
+}
+
+/** Две строки для таблицы «Товары в закупке»: «номер название» и бренд/тип. */
+export function formatPurchaseProductLabel(
+    product: ProductLabelSource,
+    _showInTitleByTypeId?: ShowInTitleByTypeId,
+    attributeTypes?: AttributeTypeMeta[],
+): { lines: string[]; line1: string; line2: string; text: string } {
+    const line1 = formatPurchaseProductLine1(product);
+    const line2 = getPurchaseProductSubtitleLine(product, attributeTypes);
+    const lines = [line1, line2].filter(Boolean);
 
     return {
-        line1,
-        line2,
-        text: [line1, line2].filter(Boolean).join('\n'),
+        lines,
+        line1: lines[0] ?? '',
+        line2: lines[1] ?? '',
+        text: lines.join('\n'),
     };
 }
 

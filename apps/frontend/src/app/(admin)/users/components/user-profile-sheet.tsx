@@ -31,16 +31,43 @@ export type UserListItem = {
 };
 
 interface UserProfileSheetProps {
-    user: UserListItem | null;
+    user?: UserListItem | null;
+    userId?: number | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
-export function UserProfileSheet({ user, open, onOpenChange }: UserProfileSheetProps) {
-    const { data: orders, isLoading } = trpc.orders.getByUser.useQuery(
+export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }: UserProfileSheetProps) {
+    const { data: fetchedUser, isLoading: profileLoading } = trpc.users.getById.useQuery(
+        { id: userId ?? 0 },
+        { enabled: open && userProp == null && userId != null },
+    );
+
+    const user = userProp ?? fetchedUser ?? null;
+
+    const { data: orders, isLoading: ordersLoading } = trpc.orders.getByUser.useQuery(
         { userId: user?.id ?? 0 },
         { enabled: open && user != null },
     );
+
+    if (!open) return null;
+
+    if (profileLoading && userProp == null && userId != null) {
+        return (
+            <Sheet open={open} onOpenChange={onOpenChange}>
+                <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+                    <SheetHeader className="pb-2">
+                        <SheetTitle>Профиль участника</SheetTitle>
+                    </SheetHeader>
+                    <div className="space-y-3 px-4">
+                        <Skeleton className="h-20 w-20 rounded-full" />
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-32 w-full" />
+                    </div>
+                </SheetContent>
+            </Sheet>
+        );
+    }
 
     if (!user) return null;
 
@@ -71,6 +98,11 @@ export function UserProfileSheet({ user, open, onOpenChange }: UserProfileSheetP
                             {user.username && (
                                 <p className="truncate text-sm text-muted-foreground">@{user.username}</p>
                             )}
+                            {user.telegramCredential && (
+                                <p className="truncate text-xs text-muted-foreground">
+                                    TG ID: {user.telegramCredential.telegramId}
+                                </p>
+                            )}
                             <p className="mt-1 text-xs text-muted-foreground">
                                 с {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                             </p>
@@ -97,7 +129,7 @@ export function UserProfileSheet({ user, open, onOpenChange }: UserProfileSheetP
                                 )}
                                 <div className="min-w-0 space-y-1 text-sm">
                                     {tgUsername && <p className="font-medium">@{tgUsername.replace(/^@/, '')}</p>}
-                                    <p className="text-muted-foreground">ID: {user.telegramCredential.telegramId}</p>
+                                    <p className="text-muted-foreground">TG ID: {user.telegramCredential.telegramId}</p>
                                     {tgLink && (
                                         <a
                                             href={tgLink}
@@ -161,7 +193,7 @@ export function UserProfileSheet({ user, open, onOpenChange }: UserProfileSheetP
                             <h3 className="text-sm font-medium">Заказы</h3>
                             <Badge variant="secondary">{user.orderLines.length}</Badge>
                         </div>
-                        {isLoading ? (
+                        {ordersLoading ? (
                             <div className="space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
                                     <Skeleton key={i} className="h-10 w-full" />

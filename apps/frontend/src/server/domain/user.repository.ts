@@ -41,6 +41,35 @@ export class UserRepository {
         });
     }
 
+    async getListItemById(id: number) {
+        return dbClient.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                username: true,
+                avatarUrl: true,
+                phone: true,
+                createdAt: true,
+                orderLines: { select: { id: true } },
+                telegramCredential: {
+                    select: {
+                        telegramId: true,
+                        username: true,
+                        avatarUrl: true,
+                    },
+                },
+                vkCredential: {
+                    select: {
+                        vkId: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        });
+    }
+
     async getById(id: number) {
         return dbClient.user.findUnique({
             where: { id },

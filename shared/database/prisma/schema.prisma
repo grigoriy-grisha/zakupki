@@ -17,6 +17,18 @@ enum PurchaseStatus {
   DONE
 }
 
+enum PurchaseFulfillmentStatus {
+  COLLECTION
+  REORDER
+  PAYMENT
+  SUPPLIER_ASSEMBLY
+  PREPARING_SHIPMENT_RF
+  IN_TRANSIT_RF
+  IN_TRANSIT_TO_ORGANIZER
+  PACKAGING
+  READY_FOR_PICKUP
+}
+
 enum PaymentStatus {
   PENDING
   CONFIRMED
@@ -222,8 +234,9 @@ model Purchase {
   supplier   String
   supplierId Int?
   supplierRel Supplier?     @relation(fields: [supplierId], references: [id])
-  status     PurchaseStatus @default(DRAFT)
-  minAmount  Decimal        @db.Decimal(10, 2)
+  status             PurchaseStatus             @default(DRAFT)
+  fulfillmentStatus  PurchaseFulfillmentStatus  @default(COLLECTION)
+  minAmount          Decimal                    @db.Decimal(10, 2)
   deadline   DateTime
   createdAt  DateTime       @default(now())
   items      PurchaseItem[]

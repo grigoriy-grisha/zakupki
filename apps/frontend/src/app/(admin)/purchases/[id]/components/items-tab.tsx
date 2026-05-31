@@ -12,6 +12,17 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '../../../products/lib';
+import {
+    formatPrice510Cell,
+    formatRubPrice,
+    getPackPriceRub,
+    getProductPriceTiers,
+    getPurchaseItemPrice1Gr,
+} from '../lib/purchase-item-prices';
+import {
+    formatOrderStatValue,
+    getPurchaseItemOrderStats,
+} from '../lib/purchase-item-order-stats';
 import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { ItemEditSheet } from './item-edit-sheet';
@@ -26,6 +37,29 @@ interface ItemsTabProps {
     purchaseId: number;
     onEditSupplement?: () => void;
 }
+
+function formatSupplierPackageCell(product: {
+    supplierPackageAmount?: unknown;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: unknown;
+}) {
+    if (product.supplierPackageAmount == null || !product.supplierPackageUnit) return '—';
+    const amount = Number(product.supplierPackageAmount);
+    const base = `${amount} ${product.supplierPackageUnit}`;
+    if (product.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0) {
+        return `${base} · ${Number(product.supplierPackagePrice).toLocaleString('ru-RU')} ₽`;
+    }
+    return base;
+}
+
+const purchaseItemTextClass = 'text-sm font-semibold text-foreground';
+const purchaseItemSubtitleClass = 'text-sm font-medium text-muted-foreground';
+const purchaseItemNumericClass = `${purchaseItemTextClass} tabular-nums whitespace-nowrap`;
+const purchaseItemHeadClass = 'text-sm font-medium text-muted-foreground whitespace-nowrap';
+const purchaseItemTgHeadClass = `${purchaseItemHeadClass} text-center pr-5`;
+const purchaseItemStatsLeadHeadClass = `${purchaseItemHeadClass} pl-4 border-l border-border/60`;
+const purchaseItemTgCellClass = 'text-center pr-5';
+const purchaseItemStatsLeadCellClass = `${purchaseItemNumericClass} pl-4 border-l border-border/60`;
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
@@ -88,17 +122,28 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                 )}
             </div>
 
-            <div className="rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Фото</TableHead>
-                            <TableHead>Название</TableHead>
-                            <TableHead>Мин. фасовка</TableHead>
-                            <TableHead>Цена/ед</TableHead>
-                            <TableHead>Заказов</TableHead>
-                            <TableHead className="text-center">TG</TableHead>
-                            {isSupplement && <TableHead className="text-center">Доступно</TableHead>}
+                            <TableHead className={purchaseItemHeadClass}>Фото</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Название</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Мин. фасовка</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Фасовка поставщика</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Цена за пачку в рублях</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Цена за 5/10 гр. в рублях</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Цена за 1 гр/шт в рублях</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Заказов</TableHead>
+                            <TableHead className={purchaseItemTgHeadClass}>TG</TableHead>
+                            <TableHead className={purchaseItemStatsLeadHeadClass}>Набрано, гр</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>гр в пачке</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Кол-во пачек к заказу</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Заказано пачек</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Заказано грамм</TableHead>
+                            <TableHead className={purchaseItemHeadClass}>Свободный остаток</TableHead>
+                            {isSupplement && (
+                                <TableHead className={`${purchaseItemHeadClass} text-center`}>Доступно</TableHead>
+                            )}
                             <TableHead className="w-16" />
                         </TableRow>
                     </TableHeader>
@@ -106,7 +151,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         {purchase.items.length === 0 && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={isSupplement ? 8 : 7}
+                                    colSpan={isSupplement ? 17 : 16}
                                     className="h-24 text-center text-muted-foreground"
                                 >
                                     Нет товаров
@@ -116,6 +161,8 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         {purchase.items.map((item) => {
                             const shortName = item.product.unit?.shortName ?? '';
                             const published = !!item.tgMessageId;
+                            const tiers = getProductPriceTiers(item.product.priceTiers);
+                            const stats = getPurchaseItemOrderStats(item);
                             return (
                                 <TableRow
                                     key={item.id}
@@ -135,24 +182,34 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                             </div>
                                         )}
                                     </TableCell>
-                                    <TableCell className="font-medium">
-                                        <PurchaseProductLabel product={item.product} />
+                                    <TableCell className={`min-w-[18rem] max-w-xl whitespace-normal ${purchaseItemTextClass}`}>
+                                        <PurchaseProductLabel
+                                            product={item.product}
+                                            primaryClassName={purchaseItemTextClass}
+                                            secondaryClassName={purchaseItemSubtitleClass}
+                                        />
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground">
+                                    <TableCell className={purchaseItemNumericClass}>
                                         {item.product.minPackageAmount != null && item.product.minPackageUnit
                                             ? `${Number(item.product.minPackageAmount)} ${item.product.minPackageUnit}`
                                             : '—'}
                                     </TableCell>
-                                    <TableCell>
-                                        {Number(item.priceOverride ?? item.product.pricePerUnit).toLocaleString(
-                                            'ru-RU',
-                                        )}{' '}
-                                        ₽
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatSupplierPackageCell(item.product)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatRubPrice(getPackPriceRub(item.product))}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatPrice510Cell(tiers)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatRubPrice(getPurchaseItemPrice1Gr(item))}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">{item.orderLines.length}</Badge>
                                     </TableCell>
-                                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                                    <TableCell className={purchaseItemTgCellClass} onClick={(e) => e.stopPropagation()}>
                                         {published ? (
                                             <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
                                         ) : (
@@ -169,6 +226,24 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                                 }}
                                             />
                                         )}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatOrderStatValue(stats.totalGrams)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatOrderStatValue(stats.packGrams)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatOrderStatValue(stats.packsToOrder)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatOrderStatValue(stats.orderedPacks)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatOrderStatValue(stats.totalGrams)}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatOrderStatValue(stats.freeRemainder)}
                                     </TableCell>
                                     {isSupplement && (
                                         <TableCell className="text-center">

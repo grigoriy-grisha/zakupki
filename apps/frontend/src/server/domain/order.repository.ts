@@ -1,6 +1,8 @@
 import { dbClient } from '@zakupki/database';
 import { InsufficientStockError, NotFoundError } from '@zakupki/types';
 
+import { USER_CREDENTIALS_INCLUDE } from './user.types';
+
 export class OrderRepository {
     async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
         return dbClient.orderLine.upsert({
@@ -98,7 +100,7 @@ export class OrderRepository {
         return dbClient.orderLine.findMany({
             where: { purchaseItem: { purchaseId } },
             include: {
-                user: true,
+                user: { include: USER_CREDENTIALS_INCLUDE },
                 purchaseItem: {
                     include: { product: { include: { unit: true } } },
                 },

@@ -12,6 +12,7 @@ describe('parseOrderQuantity', () => {
 
     it('parses positive integers as add', () => {
         expect(parseOrderQuantity('10')).toEqual({ kind: 'add', amount: 10 });
+        expect(parseOrderQuantity('+10')).toEqual({ kind: 'add', amount: 10 });
         expect(parseOrderQuantity('5')).toEqual({ kind: 'add', amount: 5 });
         expect(parseOrderQuantity('100')).toEqual({ kind: 'add', amount: 100 });
     });
@@ -33,6 +34,7 @@ describe('parseOrderQuantity', () => {
 
     it('ignores text after number', () => {
         expect(parseOrderQuantity('10 гр')).toEqual({ kind: 'add', amount: 10 });
+        expect(parseOrderQuantity('+10 гр')).toEqual({ kind: 'add', amount: 10 });
         expect(parseOrderQuantity('-5 шт')).toEqual({ kind: 'subtract', amount: 5 });
         expect(parseOrderQuantity('10.5 кг')).toEqual({ kind: 'add', amount: 10.5 });
     });

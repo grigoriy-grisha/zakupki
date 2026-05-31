@@ -8,8 +8,10 @@ import { cn } from '@/lib/utils';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { paymentTotal } from '../../lib/utils';
 interface ParticipantRowProps {
+    userId: number;
     name: string;
     username?: string;
+    onOpenProfile: (userId: number) => void;
     orders: {
         id: number;
         purchaseItemId: number;
@@ -36,8 +38,10 @@ interface ParticipantRowProps {
 }
 
 export function ParticipantRow({
+    userId,
     name,
     username,
+    onOpenProfile,
     orders,
     payments,
     due,
@@ -59,16 +63,20 @@ export function ParticipantRow({
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     )}
                 </TableCell>
-                <TableCell>
-                    <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        className="flex items-center gap-2 rounded-md text-left transition-colors hover:bg-accent/60 -m-1 p-1"
+                        onClick={() => onOpenProfile(userId)}
+                    >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
                             {name.charAt(0)}
                         </div>
                         <div>
                             <p className="font-medium">{name}</p>
                             {username && <p className="text-xs text-muted-foreground">@{username}</p>}
                         </div>
-                    </div>
+                    </button>
                 </TableCell>
                 <TableCell className="text-center">
                     <Badge variant="secondary" className="font-normal">

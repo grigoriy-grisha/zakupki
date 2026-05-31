@@ -2,6 +2,7 @@ import type { Api } from 'grammy';
 import type { RedisClient } from '@zakupki/queue';
 import { GrammyError } from 'grammy';
 import { TelegramChannelPostQueue, UnrecoverableError } from '@zakupki/queue';
+import { loadProductPhoto } from '@zakupki/storage';
 
 import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
@@ -13,14 +14,6 @@ import {
     productPhotoToAttachment,
     sendChannelPost,
 } from '../lib/telegram-post';
-
-const S3_PUBLIC_URL_PREFIX =
-    process.env.YANDEX_PUBLIC_URL_PREFIX ||
-    `https://storage.yandexcloud.net/${process.env.YANDEX_BUCKET_NAME}`;
-
-function getS3PublicUrl(objectKey: string): string {
-    return `${S3_PUBLIC_URL_PREFIX}/${objectKey}`;
-}
 
 export class ChannelPostService {
     private repo = new PurchaseItemRepository();
@@ -82,19 +75,28 @@ export class ChannelPostService {
     }
 
     private async fetchPhoto(
-        photo: { objectKey: string; mimeType: string },
+        photo: { id: number; objectKey: string; mimeType: string },
     ): Promise<ChannelPostPhoto | undefined> {
-        const publicUrl = getS3PublicUrl(photo.objectKey);
-        try {
-            const resp = await fetch(publicUrl);
-            if (resp.ok) {
-                const arrayBuf = await resp.arrayBuffer();
-                return productPhotoToAttachment(Buffer.from(arrayBuf), photo.mimeType);
-            }
-            console.warn(`[TG queue] Failed to fetch photo ${photo.objectKey}: ${resp.status}`);
-        } catch (err) {
-            console.warn(`[TG queue] Error fetching photo ${photo.objectKey}:`, err);
+        const data = await loadProductPhoto(photo.objectKey);
+        if (data?.length) {
+            return productPhotoToAttachment(data, photo.mimeType);
         }
+
+        const webappUrl = process.env.WEBAPP_URL?.trim();
+        if (webappUrl) {
+            try {
+                const resp = await fetch(`${webappUrl.replace(/\/$/, '')}/api/photos/${photo.id}`);
+                if (resp.ok) {
+                    const arrayBuf = await resp.arrayBuffer();
+                    return productPhotoToAttachment(Buffer.from(arrayBuf), photo.mimeType);
+                }
+                console.warn(`[TG queue] Failed to fetch photo ${photo.id} via WEBAPP_URL: ${resp.status}`);
+            } catch (err) {
+                console.warn(`[TG queue] Error fetching photo ${photo.id} via WEBAPP_URL:`, err);
+            }
+        }
+
+        console.warn(`[TG queue] Photo unavailable for item (photoId=${photo.id}, key=${photo.objectKey})`);
         return undefined;
     }
 
@@ -106,24 +108,65 @@ export class ChannelPostService {
         photo?: ChannelPostPhoto,
     ) {
         try {
-            if (photo) {
-                await this.api.editMessageCaption(chatId, msgId, {
-                    caption: text.slice(0, TELEGRAM_CAPTION_MAX),
-                    parse_mode: 'HTML',
-                });
-            } else {
-                await this.api.editMessageText(chatId, msgId, text.slice(0, TELEGRAM_MESSAGE_MAX), {
-                    parse_mode: 'HTML',
-                });
-            }
+            await this.applyPostEdit(chatId, msgId, text, photo);
             console.log(`[TG queue] Edited item ${purchaseItemId} → message ${msgId}`);
         } catch (err) {
             if (err instanceof GrammyError && err.description.includes('message is not modified')) {
                 console.log(`[TG queue] Item ${purchaseItemId} — no changes, skipped`);
-            } else {
-                console.error(`[TG queue] Edit failed for item ${purchaseItemId}:`, err);
+                return;
+            }
+            console.error(`[TG queue] Edit failed for item ${purchaseItemId}:`, err);
+            throw err;
+        }
+    }
+
+    private async applyPostEdit(
+        chatId: string,
+        msgId: number,
+        text: string,
+        photo?: ChannelPostPhoto,
+    ) {
+        const caption = text.slice(0, TELEGRAM_CAPTION_MAX);
+        const messageText = text.slice(0, TELEGRAM_MESSAGE_MAX);
+
+        if (photo) {
+            try {
+                await this.api.editMessageCaption(chatId, msgId, {
+                    caption,
+                    parse_mode: 'HTML',
+                });
+                return;
+            } catch (err) {
+                if (
+                    err instanceof GrammyError &&
+                    err.description.includes('there is no caption in the message to edit')
+                ) {
+                    await this.api.editMessageText(chatId, msgId, messageText, {
+                        parse_mode: 'HTML',
+                    });
+                    return;
+                }
                 throw err;
             }
+        }
+
+        try {
+            await this.api.editMessageText(chatId, msgId, messageText, {
+                parse_mode: 'HTML',
+            });
+        } catch (err) {
+            if (
+                err instanceof GrammyError &&
+                (err.description.includes("message can't be edited") ||
+                    err.description.includes('there is no text in the message to edit'))
+            ) {
+                await this.api.editMessageCaption(chatId, msgId, {
+                    caption,
+                    parse_mode: 'HTML',
+                });
+                return;
+            }
+            throw err;
         }
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +11,14 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { calculateOrderAmount } from '@zakupki/types';
+import {
+    calculateOrderAmount,
+    formatMinPackageOrderHint,
+    getMinOrderQuantity,
+    getOrderQuantityStep,
+    isValidOrderQuantity,
+    snapOrderQuantity,
+} from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { Loader2, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,15 +38,33 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
 
     const unit = item?.product?.unit;
     const multiplicity = unit ? Number(unit.multiplicity) : 1;
-    const minQty = item?.minQty ? Number(item.minQty) : multiplicity;
+    const minPackageAmount =
+        item?.product?.minPackageAmount != null ? Number(item.product.minPackageAmount) : null;
+    const minPackageUnit = item?.product?.minPackageUnit ?? null;
+    const orderQtyOptions = {
+        multiplicity,
+        minPackageAmount,
+        minPackageUnit,
+        purchaseItemMinQty: item?.minQty != null ? Number(item.minQty) : null,
+        unitShort: unit?.shortName ?? 'ед.',
+    };
+    const orderStep = getOrderQuantityStep(orderQtyOptions);
+    const minOrderQty = getMinOrderQuantity(orderQtyOptions);
     const availableQty =
         item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
 
-    const startQty = Math.max(multiplicity, minQty);
-    const roundedStart = Math.ceil(startQty / multiplicity) * multiplicity;
-    const effectiveStart = availableQty !== null ? Math.min(roundedStart, availableQty) : roundedStart;
+    const startQty =
+        currentQuantity != null
+            ? snapOrderQuantity(Math.max(currentQuantity, minOrderQty), orderQtyOptions)
+            : minOrderQty;
+    const effectiveStart = snapOrderQuantity(startQty, orderQtyOptions, { max: availableQty });
 
     const [quantity, setQuantity] = useState(currentQuantity ?? effectiveStart);
+
+    useEffect(() => {
+        if (currentQuantity != null || !item || !unit) return;
+        setQuantity(effectiveStart);
+    }, [currentQuantity, effectiveStart, item, unit]);
 
     const upsertMutation = trpc.orders.upsertOrder.useMutation({
         onSuccess: () => {
@@ -79,8 +104,7 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
     function handleQuantityChange(delta: number) {
         setQuantity((prev) => {
             const next = Number((prev + delta).toFixed(3));
-            const capped = Math.max(multiplicity, next);
-            return maxQty !== null ? Math.min(capped, maxQty) : capped;
+            return snapOrderQuantity(next, orderQtyOptions, { max: maxQty });
         });
     }
 
@@ -96,10 +120,11 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                         <PurchaseProductLabel product={item.product} primaryClassName="text-lg font-semibold" />
                     </DialogTitle>
                     <DialogDescription className="text-left">
-                        {product.minPackageAmount != null &&
-                            product.minPackageUnit &&
-                            `Мин. фасовка: ${Number(product.minPackageAmount)} ${product.minPackageUnit} · `}
-                        {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}
+                        {formatMinPackageOrderHint(orderQtyOptions) ??
+                            `${unitPrice.toLocaleString('ru-RU')} ₽/${shortName}`}
+                        {formatMinPackageOrderHint(orderQtyOptions) && (
+                            <> · {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}</>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -132,22 +157,28 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                             </span>
                             <span className="ml-2 text-lg font-medium text-muted-foreground">{shortName}</span>
                         </div>
+                        {minPackageAmount != null && minPackageUnit && (
+                            <p className="text-center text-xs text-muted-foreground">
+                                Можно заказать: {minOrderQty}, {minOrderQty + orderStep}, {minOrderQty + orderStep * 2}{' '}
+                                {minPackageUnit}…
+                            </p>
+                        )}
 
                         <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
                             <Button
                                 variant="outline"
                                 className="h-11 rounded-xl px-1 text-xs sm:text-sm"
-                                onClick={() => handleQuantityChange(-(multiplicity * 10))}
-                                disabled={quantity <= multiplicity}
+                                onClick={() => handleQuantityChange(-(orderStep * 10))}
+                                disabled={quantity <= minOrderQty}
                             >
-                                −{multiplicity * 10}
+                                −{orderStep * 10}
                             </Button>
                             <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-11 w-full rounded-xl"
-                                onClick={() => handleQuantityChange(-multiplicity)}
-                                disabled={quantity <= multiplicity}
+                                onClick={() => handleQuantityChange(-orderStep)}
+                                disabled={quantity <= minOrderQty}
                             >
                                 <Minus className="h-4 w-4" />
                             </Button>
@@ -155,7 +186,7 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                                 variant="outline"
                                 size="icon"
                                 className="h-11 w-full rounded-xl"
-                                onClick={() => handleQuantityChange(multiplicity)}
+                                onClick={() => handleQuantityChange(orderStep)}
                                 disabled={maxQty !== null && quantity >= maxQty}
                             >
                                 <Plus className="h-4 w-4" />
@@ -163,10 +194,10 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                             <Button
                                 variant="outline"
                                 className="h-11 rounded-xl px-1 text-xs sm:text-sm"
-                                onClick={() => handleQuantityChange(multiplicity * 10)}
+                                onClick={() => handleQuantityChange(orderStep * 10)}
                                 disabled={maxQty !== null && quantity >= maxQty}
                             >
-                                +{multiplicity * 10}
+                                +{orderStep * 10}
                             </Button>
                         </div>
                     </div>
@@ -189,7 +220,7 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                     <Button
                         className="w-full sm:w-auto"
                         onClick={handleSubmit}
-                        disabled={upsertMutation.isPending || quantity <= 0}
+                        disabled={upsertMutation.isPending || !isValidOrderQuantity(quantity, orderQtyOptions)}
                     >
                         {upsertMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Добавить в заказ

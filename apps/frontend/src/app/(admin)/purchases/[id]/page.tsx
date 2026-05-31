@@ -11,8 +11,10 @@ import { CheckCircle2, Loader2, Rocket, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
-import { useActivate, useCompletePurchase, useDeleteDraftPurchase } from './hooks';
+import { useActivate, useCompletePurchase, useDeleteDraftPurchase, useUpdateFulfillmentStatus } from './hooks';
 import { ExportPurchaseButtons, ItemsTab, ParticipantsTab, SupplementDialog } from './components';
+import { PurchaseFulfillmentStatusSelect } from '../components/purchase-fulfillment-status-select';
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
@@ -27,6 +29,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const activate = useActivate(id);
     const completePurchase = useCompletePurchase(id);
     const deleteDraft = useDeleteDraftPurchase();
+    const updateFulfillmentStatus = useUpdateFulfillmentStatus(id);
 
     if (isLoading) {
         return (
@@ -44,6 +47,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const deadline = new Date(purchase.deadline);
     const isDraft = purchase.status === 'DRAFT';
     const canComplete = purchase.status === 'ACTIVE' || purchase.status === 'SUPPLEMENT';
+    const fulfillmentStatus = (purchase as { fulfillmentStatus?: PurchaseFulfillmentStatus }).fulfillmentStatus;
 
     return (
         <div className="space-y-6">
@@ -58,6 +62,18 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         Мин. сумма: {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽ · До{' '}
                         {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
+                    {!isDraft && (
+                        <div className="mt-3 max-w-md space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground">Этап закупки</p>
+                            <PurchaseFulfillmentStatusSelect
+                                value={fulfillmentStatus}
+                                disabled={updateFulfillmentStatus.isPending}
+                                onChange={(next) => {
+                                    updateFulfillmentStatus.mutate({ id, fulfillmentStatus: next });
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">

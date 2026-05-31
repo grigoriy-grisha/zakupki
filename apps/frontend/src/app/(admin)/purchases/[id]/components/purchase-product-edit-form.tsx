@@ -15,6 +15,7 @@ import {
     PACKAGE_UNITS,
     applyPostTemplate,
     buildShowInTitleByTypeId,
+    normalizeNovelHtml,
     productToDescriptionFields,
     type ProductLabelSource,
 } from '../../../products/lib';
@@ -193,22 +194,32 @@ export function PurchaseProductEditForm({
     }, [templateId, selectedTemplateBody, descriptionFields, attributeTypesReady]);
 
     const lastAutoDescriptionRef = useRef<string | null>(null);
-    const descriptionCustomizedRef = useRef(
-        loadSavedDescription ? Boolean(product.description?.trim()) : false,
-    );
+    const applyingTemplateRef = useRef(false);
+
+    function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
+        if (!prevAuto) return nextAuto;
+        const normCurrent = normalizeNovelHtml(current);
+        const normPrev = normalizeNovelHtml(prevAuto);
+        if (normCurrent === normPrev) return nextAuto;
+        if (normCurrent.startsWith(normPrev)) {
+            return nextAuto + current.slice(prevAuto.length);
+        }
+        return nextAuto;
+    }
 
     useEffect(() => {
         if (templatedHtml == null) return;
-        if (descriptionCustomizedRef.current && description !== lastAutoDescriptionRef.current) return;
-        setDescription(templatedHtml);
+        applyingTemplateRef.current = true;
+        setDescription((current) => mergeTemplateIntoDescription(current, lastAutoDescriptionRef.current, templatedHtml));
         lastAutoDescriptionRef.current = templatedHtml;
-        descriptionCustomizedRef.current = false;
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-apply template when it regenerates
+        queueMicrotask(() => {
+            applyingTemplateRef.current = false;
+        });
     }, [templatedHtml]);
 
     function handleDescriptionChange(html: string) {
         setDescription(html);
-        descriptionCustomizedRef.current = true;
+        if (applyingTemplateRef.current) return;
     }
 
     const editorKey = templateId === 'none' ? `manual-${product.id}` : `tpl-${templateId}-${product.id}`;
@@ -216,7 +227,6 @@ export function PurchaseProductEditForm({
     function handleTemplateChange(value: string) {
         setTemplateId(value);
         persistTemplateChoice(product.id, value);
-        descriptionCustomizedRef.current = false;
         lastAutoDescriptionRef.current = null;
         if (value === 'none') {
             setDescription(loadSavedDescription ? (product.description ?? '') : '');

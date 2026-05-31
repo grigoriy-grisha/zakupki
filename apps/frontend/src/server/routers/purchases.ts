@@ -3,6 +3,18 @@ import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
+const purchaseFulfillmentStatusSchema = z.enum([
+    'COLLECTION',
+    'REORDER',
+    'PAYMENT',
+    'SUPPLIER_ASSEMBLY',
+    'PREPARING_SHIPMENT_RF',
+    'IN_TRANSIT_RF',
+    'IN_TRANSIT_TO_ORGANIZER',
+    'PACKAGING',
+    'READY_FOR_PICKUP',
+]);
+
 export const purchasesRouter = router({
     list: protectedProcedure
         .input(
@@ -50,6 +62,17 @@ export const purchasesRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             return ctx.services.purchase.updateStatus(input.id, input.status);
+        }),
+
+    updateFulfillmentStatus: adminProcedure
+        .input(
+            z.object({
+                id: z.number(),
+                fulfillmentStatus: purchaseFulfillmentStatusSchema,
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.purchase.updateFulfillmentStatus(input.id, input.fulfillmentStatus);
         }),
 
     activate: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {

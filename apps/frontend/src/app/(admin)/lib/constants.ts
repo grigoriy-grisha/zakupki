@@ -15,6 +15,12 @@ export const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' 
     DONE: 'secondary',
 };
 
+export {
+    PURCHASE_FULFILLMENT_LABELS,
+    PURCHASE_FULFILLMENT_STATUSES,
+    type PurchaseFulfillmentStatus,
+} from '@zakupki/types';
+
 export const PAYMENT_STATUS: Record<string, { label: string; className: string }> = {
     PENDING: { label: 'Ожидает', className: 'bg-warning-50 text-warning hover:bg-warning-50' },
     CONFIRMED: { label: 'Подтверждено', className: 'bg-success-50 text-success hover:bg-success-50' },

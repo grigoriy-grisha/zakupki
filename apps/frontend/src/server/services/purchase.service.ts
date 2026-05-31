@@ -36,6 +36,12 @@ export class PurchaseService {
         return this.repo.updateStatus(id, status);
     }
 
+    async updateFulfillmentStatus(id: number, fulfillmentStatus: string) {
+        const purchase = await this.repo.getById(id);
+        if (!purchase) throw new NotFoundError('Закупка', id);
+        return this.repo.updateFulfillmentStatus(id, fulfillmentStatus);
+    }
+
     async activate(purchaseId: number) {
         const purchase = await this.repo.getById(purchaseId);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateOrderAmount, parsePriceTiers } from '../src/pricing';
+import {
+    calculateOrderAmount,
+    formatMinPackageOrderHint,
+    getOrderQuantityValidationError,
+    parsePriceTiers,
+    snapOrderQuantity,
+} from '../src/pricing';
 
 describe('parsePriceTiers', () => {
     it('returns empty for non-array input', () => {
@@ -70,5 +76,35 @@ describe('calculateOrderAmount', () => {
     it('rounds to 2 decimal places', () => {
         // 33.333... * 3 = 99.999...
         expect(calculateOrderAmount(3, { pricePerUnit: 33.333 })).toBe(100);
+    });
+});
+
+describe('order quantity validation', () => {
+    const minPack10 = {
+        minPackageAmount: 10,
+        minPackageUnit: 'гр',
+        unitShort: 'г',
+    };
+
+    it('requires at least min package amount', () => {
+        expect(getOrderQuantityValidationError(5, minPack10)).toBe('Мин. фасовка: 10 гр');
+        expect(getOrderQuantityValidationError(10, minPack10)).toBeNull();
+    });
+
+    it('requires multiples of min package amount', () => {
+        expect(getOrderQuantityValidationError(15, minPack10)).toBe(
+            'Можно заказать только кратно 10 гр: 10, 20, 30…',
+        );
+        expect(getOrderQuantityValidationError(20, minPack10)).toBeNull();
+    });
+
+    it('snaps quantity to valid multiples', () => {
+        expect(snapOrderQuantity(15, minPack10)).toBe(20);
+        expect(snapOrderQuantity(15, minPack10, { max: 15 })).toBe(10);
+        expect(snapOrderQuantity(5, minPack10)).toBe(10);
+    });
+
+    it('formats min package hint', () => {
+        expect(formatMinPackageOrderHint(minPack10)).toBe('Мин. фасовка: 10 гр · заказ кратно 10 гр');
     });
 });

@@ -97,13 +97,14 @@ export function NovelEditor({
 
         const incoming = normalizeNovelHtml(value ?? '');
         const prevIncoming = normalizeNovelHtml(prevValueRef.current ?? '');
-        const valueChangedFromParent = incoming !== prevIncoming;
         prevValueRef.current = value;
 
-        if (!valueChangedFromParent && incoming === lastEmittedHtml.current) return;
+        const lastEmitted = normalizeNovelHtml(lastEmittedHtml.current);
+        // Не перезаписываем содержимое, если prop — эхо нашего же onChange (иначе курсор прыгает в конец).
+        if (incoming === lastEmitted) return;
 
         const currentHtml = editor.isEmpty ? '' : normalizeNovelHtml(editor.getHTML());
-        if (!valueChangedFromParent && currentHtml === incoming) return;
+        if (incoming === currentHtml) return;
 
         editor.commands.setContent(incoming, false);
         lastEmittedHtml.current = incoming;
@@ -133,7 +134,7 @@ export function NovelEditor({
                         }
                     }}
                     onUpdate={({ editor }) => {
-                        const html = editor.isEmpty ? '' : editor.getHTML();
+                        const html = editor.isEmpty ? '' : normalizeNovelHtml(editor.getHTML());
                         lastEmittedHtml.current = html;
                         onChange?.(html);
                     }}

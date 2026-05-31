@@ -13,7 +13,7 @@ export class PurchaseItemRepository {
                         photos: {
                             orderBy: { sortOrder: 'asc' },
                             take: 1,
-                            select: { objectKey: true, mimeType: true },
+                            select: { id: true, objectKey: true, mimeType: true },
                         },
                     },
                 },

@@ -51,6 +51,9 @@ importers:
       '@zakupki/queue':
         specifier: workspace:*
         version: link:../../shared/queue
+      '@zakupki/storage':
+        specifier: workspace:*
+        version: link:../../shared/storage
       '@zakupki/types':
         specifier: workspace:*
         version: link:../../shared/types
@@ -112,6 +115,9 @@ importers:
       '@zakupki/queue':
         specifier: workspace:*
         version: link:../../shared/queue
+      '@zakupki/storage':
+        specifier: workspace:*
+        version: link:../../shared/storage
       '@zakupki/types':
         specifier: workspace:*
         version: link:../../shared/types
@@ -200,9 +206,6 @@ importers:
       '@prisma/client':
         specifier: 7.8.0
         version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3))(typescript@6.0.3)
-      '@zakupki/types':
-        specifier: workspace:*
-        version: link:../types
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -238,6 +241,19 @@ importers:
       ioredis:
         specifier: ^5.6.0
         version: 5.10.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+    devDependencies:
+      '@types/node':
+        specifier: ^25.6.2
+        version: 25.8.0
+
+  shared/storage:
+    dependencies:
+      easy-yandex-s3:
+        specifier: ^2.0.0
+        version: 2.0.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

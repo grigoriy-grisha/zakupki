@@ -122,6 +122,9 @@ export default function ProfilePage() {
                                                 @{user.telegramCredential.username ?? user.username}
                                             </span>
                                         )}
+                                        <span className="text-xs text-muted-foreground">
+                                            TG ID: {user.telegramCredential.telegramId}
+                                        </span>
                                     </div>
                                 </div>
                                 <Button

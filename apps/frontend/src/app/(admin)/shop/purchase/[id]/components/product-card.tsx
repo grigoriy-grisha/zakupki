@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
+import { formatMinPackageOrderHint } from '@zakupki/types';
 import { ShoppingCart, Plus, Check } from 'lucide-react';
 
 interface ShopPurchaseItemProductCardProps {
@@ -69,11 +70,19 @@ export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPur
                             product={item.product}
                             primaryClassName="font-semibold"
                         />
-                        {item.product.minPackageAmount != null && item.product.minPackageUnit && (
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                Мин. фасовка: {Number(item.product.minPackageAmount)} {item.product.minPackageUnit}
-                            </p>
-                        )}
+                        {(() => {
+                            const hint = formatMinPackageOrderHint({
+                                minPackageAmount:
+                                    item.product.minPackageAmount != null
+                                        ? Number(item.product.minPackageAmount)
+                                        : null,
+                                minPackageUnit: item.product.minPackageUnit,
+                                unitShort: shortName,
+                            });
+                            return hint ? (
+                                <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+                            ) : null;
+                        })()}
                     </div>
                 </div>
 

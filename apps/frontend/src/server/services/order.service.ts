@@ -1,4 +1,11 @@
-import { calculateOrderAmount, ForbiddenError, NotFoundError, PurchaseNotActiveError } from '@zakupki/types';
+import {
+    calculateOrderAmount,
+    ForbiddenError,
+    getOrderQuantityValidationError,
+    NotFoundError,
+    PurchaseNotActiveError,
+    ValidationError,
+} from '@zakupki/types';
 
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
@@ -27,6 +34,23 @@ export class OrderService {
             pricePerUnit: Number(purchaseItem.product.pricePerUnit),
             priceOverride: purchaseItem.priceOverride != null ? Number(purchaseItem.priceOverride) : null,
         });
+
+        const unit = purchaseItem.product.unit;
+        const orderQtyOptions = {
+            multiplicity: unit ? Number(unit.multiplicity) : 1,
+            minPackageAmount:
+                purchaseItem.product.minPackageAmount != null
+                    ? Number(purchaseItem.product.minPackageAmount)
+                    : null,
+            minPackageUnit: purchaseItem.product.minPackageUnit,
+            purchaseItemMinQty: purchaseItem.minQty != null ? Number(purchaseItem.minQty) : null,
+            unitShort: unit?.shortName ?? 'ед.',
+        };
+
+        const validationError = getOrderQuantityValidationError(quantity, orderQtyOptions);
+        if (validationError) {
+            throw new ValidationError(validationError);
+        }
 
         return this.upsertWithStock(purchaseItemId, userId, quantity, amountDue);
     }
