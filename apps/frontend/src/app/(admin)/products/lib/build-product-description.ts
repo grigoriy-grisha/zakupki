@@ -6,7 +6,7 @@ import {
     type AttributeTypeMeta,
     type ShowInTitleByTypeId,
 } from './format-product-label';
-import { isPositive, formatNumber } from '@/lib/utils/format';
+import { isPositive, formatNumber, formatRubles } from '@/lib/utils/format';
 import { escapeHtml, escapeRegExp } from '@/lib/utils/html';
 
 export interface DescriptionFields {
@@ -111,7 +111,7 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
         lines.push('');
         lines.push('Фасовка поставщика:');
         lines.push(
-            `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatNumber(input.supplierPackagePrice)} руб`,
+            `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatRubles(input.supplierPackagePrice)} руб`,
         );
     }
 
@@ -174,7 +174,7 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         blocks.push(
             mixedParagraph(
                 'Фасовка поставщика:',
-                `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatNumber(input.supplierPackagePrice)} руб`,
+                `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatRubles(input.supplierPackagePrice)} руб`,
             ),
         );
     }
@@ -219,10 +219,6 @@ function linesInline(lines: string[]): string {
     return lines.map(escapeHtml).join('<br>');
 }
 
-function boldInline(text: string): string {
-    return `<strong>${escapeHtml(text)}</strong>`;
-}
-
 /** Подсказки для редактора шаблонов постов (вставляйте как {{ключ}}). */
 export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'название' },
@@ -231,9 +227,9 @@ export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'заголовок' },
     { key: 'атрибуты' },
     { key: 'характеристики' },
-    { key: 'мин_фасовка' },
+    { key: 'мин фасовка' },
     { key: 'цены' },
-    { key: 'фасовка_поставщика' },
+    { key: 'фасовка поставщика' },
     { key: 'свободно' },
     { key: 'тег' },
 ];
@@ -281,16 +277,31 @@ export function stripPlaceholderHintDebris(html: string): string {
     return result;
 }
 
-/** Подставляет поля товара в шаблон поста по меткам {{ключ}}. Без меток — только текст шаблона. */
+function normalizePlaceholderKey(key: string): string {
+    return key.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function formatSupplierPackageLine(fields: DescriptionFields): string {
+    if (
+        !isPositive(fields.supplierPackageAmount) ||
+        !fields.supplierPackageUnit ||
+        !isPositive(fields.supplierPackagePrice)
+    ) {
+        return '';
+    }
+    return `${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatRubles(fields.supplierPackagePrice)} руб`;
+}
+
+/** Подставляет поля товара в шаблон поста по меткам {{ключ}}. Только значения полей, без подписей. */
 export function applyPostTemplate(templateHtml: string, fields: DescriptionFields): string {
     const tpl = (templateHtml ?? '').trim();
     if (!tpl) return '';
 
     const values = buildPlaceholderValues(fields, buildDescriptionHtml(fields));
-    let result = tpl;
-    for (const [key, value] of Object.entries(values)) {
-        result = result.replace(new RegExp(`\\{\\{\\s*${escapeRegExp(key)}\\s*\\}\\}`, 'gi'), () => value);
-    }
+    const result = tpl.replace(/\{\{\s*([^}]+?)\s*\}\}/gi, (match, rawKey) => {
+        const key = normalizePlaceholderKey(rawKey);
+        return key in values ? (values[key] ?? '') : match;
+    });
     return normalizeNovelHtml(stripPlaceholderHintDebris(result));
 }
 
@@ -326,36 +337,32 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
         название_строка: nameHtml,
         номер: article ? escapeHtml(article) : '',
         бренд: brandName ? escapeHtml(brandName) : '',
-        заголовок: line1 ? boldInline(line1) : '',
+        заголовок: line1 ? escapeHtml(line1) : '',
         атрибуты: attrsHtml,
         атрибуты_строка: attrsHtml,
         характеристики: chars.length > 0 ? linesInline(chars.map((c) => `${c.name}: ${c.value}`)) : '',
         мин_фасовка:
             isPositive(fields.minPackageAmount) && fields.minPackageUnit
-                ? boldInline(
-                      `Минимальная фасовка  - ${formatNumber(fields.minPackageAmount)} ${fields.minPackageUnit}`,
-                  )
+                ? escapeHtml(`${formatNumber(fields.minPackageAmount)} ${fields.minPackageUnit}`)
                 : '',
         цены:
             validTiers.length > 0
                 ? linesInline(
                       validTiers.map(
                           (tier) =>
-                              `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб`,
+                              `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`,
                       ),
                   )
                 : '',
-        фасовка_поставщика:
-            isPositive(fields.supplierPackageAmount) &&
-            fields.supplierPackageUnit &&
-            isPositive(fields.supplierPackagePrice)
-                ? `${boldInline('Фасовка поставщика:')}<br>${escapeHtml(`${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatNumber(fields.supplierPackagePrice)} руб`)}`
-                : '',
+        фасовка_поставщика: (() => {
+            const line = formatSupplierPackageLine(fields);
+            return line ? escapeHtml(line) : '';
+        })(),
         свободно:
             fields.availableAmount != null &&
             Number(fields.availableAmount) >= 0 &&
             fields.availableUnit
-                ? escapeHtml(`СВОБОДНО: ${formatNumber(fields.availableAmount)} ${fields.availableUnit}`)
+                ? escapeHtml(`${formatNumber(fields.availableAmount)} ${fields.availableUnit}`)
                 : '',
         тег: tag ? escapeHtml(tag) : '',
     };

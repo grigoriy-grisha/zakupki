@@ -104,7 +104,7 @@ export function findAttributeDisplayName(
     for (const brand of tree.brands) {
         if (brand.id === attributeId) return brand.name;
         const child = brand.values.find((v) => v.id === attributeId);
-        if (child) return `${brand.name} / ${child.name}`;
+        if (child) return `${brand.name} ${child.name}`;
     }
     return undefined;
 }
@@ -120,7 +120,7 @@ export function groupAttributesByType(
             ...node.topValues,
             ...node.brands.flatMap((b) => [
                 { id: b.id, name: b.name },
-                ...b.values.map((v) => ({ id: v.id, name: `${b.name} / ${v.name}` })),
+                ...b.values.map((v) => ({ id: v.id, name: `${b.name} ${v.name}` })),
             ]),
         ];
     }

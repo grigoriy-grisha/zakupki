@@ -13,10 +13,22 @@ function numInputValue(n: number, emptyWhenZero = true): string | number {
     return n;
 }
 
-function parseNumInput(raw: string): number {
+function parseIntegerInput(raw: string): number {
+    if (raw === '' || raw === '-') return 0;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function parseDecimalInput(raw: string): number {
     if (raw === '' || raw === '-') return 0;
     const n = Number(raw);
     return Number.isFinite(n) ? n : 0;
+}
+
+function integerInputValue(value: number | null | undefined, emptyWhenZero = false): string {
+    if (value == null) return '';
+    if (emptyWhenZero && value === 0) return '';
+    return String(Math.trunc(value));
 }
 
 export function PriceTierEditor({
@@ -47,14 +59,15 @@ export function PriceTierEditor({
                     <div key={i} className="flex items-center gap-2">
                         <Input
                             type="number"
-                            step="0.001"
-                            min={0}
+                            step="1"
+                            min={1}
+                            inputMode="numeric"
                             className="w-20"
                             placeholder="1"
                             value={numInputValue(tier.amount, false)}
                             onChange={(e) => {
                                 const next = [...tiers];
-                                next[i] = { ...next[i], amount: parseNumInput(e.target.value) || 1 };
+                                next[i] = { ...next[i], amount: parseIntegerInput(e.target.value) || 1 };
                                 onChange(next);
                             }}
                         />
@@ -76,7 +89,7 @@ export function PriceTierEditor({
                             value={numInputValue(tier.price)}
                             onChange={(e) => {
                                 const next = [...tiers];
-                                next[i] = { ...next[i], price: parseNumInput(e.target.value) };
+                                next[i] = { ...next[i], price: parseDecimalInput(e.target.value) };
                                 onChange(next);
                             }}
                         />
@@ -107,8 +120,6 @@ export function PackageEditor({
     onAmountChange,
     onUnitChange,
     onPriceChange,
-    amountStep = '0.001',
-    priceStep = '0.01',
     showPrice = false,
 }: {
     label: string;
@@ -118,8 +129,6 @@ export function PackageEditor({
     onAmountChange: (v: number | null) => void;
     onUnitChange: (v: string) => void;
     onPriceChange?: (v: number | null) => void;
-    amountStep?: string;
-    priceStep?: string;
     showPrice?: boolean;
 }) {
     return (
@@ -128,10 +137,15 @@ export function PackageEditor({
             <div className="flex items-center gap-2">
                 <Input
                     type="number"
-                    step={amountStep}
+                    step="1"
+                    min={0}
+                    inputMode="numeric"
                     className={showPrice ? 'w-24' : 'flex-1'}
-                    value={amount ?? ''}
-                    onChange={(e) => onAmountChange(e.target.value ? Number(e.target.value) : null)}
+                    value={integerInputValue(amount)}
+                    onChange={(e) => {
+                        const raw = e.target.value;
+                        onAmountChange(raw === '' ? null : parseIntegerInput(raw));
+                    }}
                 />
                 <PackageUnitSelect value={unit} onChange={onUnitChange} />
                 {showPrice && onPriceChange && (
@@ -139,10 +153,14 @@ export function PackageEditor({
                         <span className="text-muted-foreground">—</span>
                         <Input
                             type="number"
-                            step={priceStep}
+                            step="0.01"
+                            min={0}
                             className="flex-1"
                             value={price ?? ''}
-                            onChange={(e) => onPriceChange(e.target.value ? Number(e.target.value) : null)}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                onPriceChange(raw === '' ? null : parseDecimalInput(raw));
+                            }}
                         />
                         <span className="text-sm text-muted-foreground">₽</span>
                     </>

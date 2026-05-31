@@ -274,10 +274,15 @@ export function PurchaseProductEditForm({
                 <div className="flex gap-2">
                     <Input
                         type="number"
-                        step="0.001"
+                        step="1"
+                        min={0}
+                        inputMode="numeric"
                         className="flex-1"
-                        value={minPkgAmount ?? ''}
-                        onChange={(e) => setMinPkgAmount(e.target.value ? Number(e.target.value) : null)}
+                        value={minPkgAmount != null ? String(Math.trunc(minPkgAmount)) : ''}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            setMinPkgAmount(raw === '' ? null : Number.parseInt(raw, 10) || 0);
+                        }}
                     />
                     <PackageUnitSelect value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={setMinPkgUnit} />
                 </div>

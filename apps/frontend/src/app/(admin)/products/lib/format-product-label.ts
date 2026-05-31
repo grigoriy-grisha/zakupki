@@ -155,7 +155,8 @@ function formatAttributeValueName(v: ProductAttributeValueSource): string {
     if (!name) return '';
     const parentName = v.attribute.parent?.name?.trim();
     if (parentName && !v.attribute.isBrand) {
-        return `${parentName} / ${name}`;
+        const separator = v.attribute.parent?.isBrand ? ' ' : ' / ';
+        return `${parentName}${separator}${name}`;
     }
     return name;
 }
@@ -223,7 +224,7 @@ export function getProductAttributeNames(
         .filter((n): n is string => Boolean(n));
 }
 
-/** Подписи атрибутов для каталога: «Тип: Бренд / Значение» по дереву типов. */
+/** Подписи атрибутов для каталога: «Тип: Бренд Значение» по дереву типов. */
 export function getProductCatalogAttributeLabels(
     product: ProductLabelSource,
     attributeTypes?: AttributeTypeMeta[],
@@ -367,7 +368,7 @@ export function formatProductAttributesLine(
     const attrNames = getProductAttributeNames(product, attributeTypes);
     const brandName = product.brand?.name?.trim() || null;
     const parts =
-        brandName && !attrNames.some((n) => n === brandName || n.startsWith(`${brandName} /`))
+        brandName && !attrNames.some((n) => n === brandName || n.startsWith(`${brandName} `) || n.startsWith(`${brandName} /`))
             ? [brandName, ...attrNames]
             : attrNames;
     return [...parts, product.articleNumber?.trim() || null]

@@ -88,15 +88,25 @@ export function savedPurchaseFields(
     product: PurchaseProductFieldSource,
     initialTiers: PurchasePriceTier[],
 ): PurchaseProductFormState {
+    const tiers =
+        initialTiers.length > 0
+            ? initialTiers.map((t) => ({
+                  amount: Math.max(1, Math.trunc(t.amount)),
+                  unit: t.unit,
+                  price: Number(t.price),
+              }))
+            : [{ ...DEFAULT_TIER }];
     return {
         description: product.description ?? '',
-        tiers: initialTiers.length > 0 ? initialTiers : [{ ...DEFAULT_TIER }],
-        minPkgAmount: product.minPackageAmount != null ? Number(product.minPackageAmount) : null,
+        tiers,
+        minPkgAmount: product.minPackageAmount != null ? Math.trunc(Number(product.minPackageAmount)) : null,
         minPkgUnit: product.minPackageUnit ?? PACKAGE_UNITS[0],
-        supPkgAmount: product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null,
+        supPkgAmount:
+            product.supplierPackageAmount != null ? Math.trunc(Number(product.supplierPackageAmount)) : null,
         supPkgUnit: product.supplierPackageUnit ?? PACKAGE_UNITS[0],
-        supPkgPrice: product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
-        availAmount: product.availableAmount != null ? Number(product.availableAmount) : null,
+        supPkgPrice:
+            product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
+        availAmount: product.availableAmount != null ? Math.trunc(Number(product.availableAmount)) : null,
         availUnit: product.availableUnit ?? PACKAGE_UNITS[0],
     };
 }
