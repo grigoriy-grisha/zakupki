@@ -12,28 +12,17 @@ export function getOrdersChatIdFromEnv(): string | null {
     return raw ? normalizeChatId(raw) : null;
 }
 
-/** All common string forms of a Telegram chat id (-100…, -id, id). */
-export function chatIdVariants(id: number | string): string[] {
-    const normalized = normalizeChatId(String(id));
-    const variants = new Set<string>([normalized]);
-
-    if (normalized.startsWith('-100')) {
-        variants.add(normalized.slice(4));
-        variants.add(normalized.slice(1));
-    } else if (normalized.startsWith('-')) {
-        variants.add(normalized.slice(1));
-        variants.add(`-100${normalized.slice(1)}`);
-    } else if (/^\d+$/.test(normalized)) {
-        variants.add(`-${normalized}`);
-        variants.add(`-100${normalized}`);
-    }
-
-    return [...variants];
+/** Ключ для сравнения: -1003537022316 и -3537022316 — один чат. */
+function telegramChatIdKey(id: string | number): string {
+    const s = normalizeChatId(String(id));
+    if (s.startsWith('@')) return s;
+    if (s.startsWith('-100')) return s.slice(4);
+    if (s.startsWith('-')) return s.slice(1);
+    return s;
 }
 
 export function chatIdsMatch(a: number | string, b: string): boolean {
-    const bVariants = new Set(chatIdVariants(b));
-    return chatIdVariants(a).some((variant) => bVariants.has(variant));
+    return telegramChatIdKey(a) === telegramChatIdKey(b);
 }
 
 function replyReferencesChannel(replyTo: ReplyToMessage, chatId: number, channelChatId: string): boolean {
@@ -64,7 +53,7 @@ export function isOrdersChat(chatId: number, ordersChatId: string | null): boole
 
 export function isLinkedDiscussionChat(chatId: number): boolean {
     const discussionId = getLinkedDiscussionChatId();
-    return discussionId != null && chatIdsMatch(chatId, String(discussionId));
+    return discussionId != null && chatIdsMatch(chatId, discussionId);
 }
 
 /** id поста в канале = message_thread_id темы в группе обсуждений. */

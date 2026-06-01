@@ -8,7 +8,10 @@ import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants'
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
 import type { ChannelPostPhoto } from '../domain/types';
 
-import { waitUntilShopCommentPosted } from '../lib/post-shop-comment';
+import {
+    postShopCommentInDiscussionWithRetry,
+    waitUntilShopCommentPosted,
+} from '../lib/post-shop-comment';
 import {
     buildProductPostText,
     getChannelIdFromEnv,
@@ -197,11 +200,14 @@ export class ChannelPostService {
             console.warn('[TG queue] Redis cache for post mapping failed:', err);
         }
 
-        const commentPosted = await waitUntilShopCommentPosted(messageId, 20_000);
+        let commentPosted = await waitUntilShopCommentPosted(messageId, 20_000);
+        if (!commentPosted) {
+            commentPosted = await postShopCommentInDiscussionWithRetry(this.api, messageId, 30_000);
+        }
         if (!commentPosted) {
             console.warn(
                 `[TG] Комментарий с кнопкой не появился под постом ${messageId}. ` +
-                    'Бот в группе обсуждений? Group Privacy выключен?',
+                    'Бот — админ в группе обсуждений? @BotFather → Group Privacy → Turn off',
             );
         }
 

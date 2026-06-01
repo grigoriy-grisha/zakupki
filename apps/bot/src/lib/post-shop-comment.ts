@@ -1,5 +1,7 @@
+import type { Api } from 'grammy';
 import { GrammyError } from 'grammy';
 
+import { getLinkedDiscussionChatId } from './channel-discussion';
 import { shopUrlKeyboard } from './webapp-url';
 
 export const SHOP_COMMENT_TEXT = '👇 Оформить заказ в магазине:';
@@ -44,6 +46,42 @@ export function waitUntilShopCommentPosted(channelPostId: number, timeoutMs: num
         };
         tick();
     });
+}
+
+/** Запасной вариант: комментарий в теме обсуждения (message_thread_id = id поста в канале). */
+export async function postShopCommentInDiscussion(api: Api, channelPostMessageId: number): Promise<boolean> {
+    if (wasShopCommentPosted(channelPostMessageId)) return true;
+
+    const discussionId = getLinkedDiscussionChatId();
+    if (!discussionId) return false;
+
+    const replyMarkup = shopUrlKeyboard();
+    try {
+        await api.sendMessage(discussionId, SHOP_COMMENT_TEXT, {
+            message_thread_id: channelPostMessageId,
+            ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+        });
+        markShopCommentPosted(channelPostMessageId);
+        console.log(`[TG] Shop comment in discussion thread ${channelPostMessageId}`);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export async function postShopCommentInDiscussionWithRetry(
+    api: Api,
+    channelPostMessageId: number,
+    timeoutMs = 30_000,
+): Promise<boolean> {
+    if (wasShopCommentPosted(channelPostMessageId)) return true;
+
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (await postShopCommentInDiscussion(api, channelPostMessageId)) return true;
+        await new Promise((r) => setTimeout(r, 500));
+    }
+    return false;
 }
 
 export function formatShopCommentError(err: unknown): string {

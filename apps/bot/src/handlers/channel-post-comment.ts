@@ -1,6 +1,7 @@
 import type { Message } from 'grammy/types';
 
 import type { CustomContext } from '../domain/types';
+import { getLinkedDiscussionChatId } from '../lib/channel-discussion';
 import {
     SHOP_COMMENT_TEXT,
     formatShopCommentError,
@@ -12,16 +13,22 @@ import { getChannelIdFromEnv } from '../lib/telegram-post';
 import { chatIdsMatch } from '../lib/telegram-chat';
 import { shopUrlKeyboard } from '../lib/webapp-url';
 
-function isOurChannelAutomaticForward(message: Message): boolean {
-    const channelId = getChannelIdFromEnv();
-    if (!channelId || !message.is_automatic_forward) return false;
+function isOurChannelAutomaticForward(message: Message, chatId: number): boolean {
+    if (!message.is_automatic_forward) return false;
 
-    if (message.sender_chat?.type === 'channel' && chatIdsMatch(message.sender_chat.id, channelId)) {
+    const channelId = getChannelIdFromEnv();
+    if (message.sender_chat?.type === 'channel' && channelId && chatIdsMatch(message.sender_chat.id, channelId)) {
         return true;
     }
 
     const origin = message.forward_origin;
-    if (origin?.type === 'channel' && chatIdsMatch(origin.chat.id, channelId)) {
+    if (origin?.type === 'channel' && channelId && chatIdsMatch(origin.chat.id, channelId)) {
+        return true;
+    }
+
+    // В привязанной группе обсуждений автопересылка — только с нашего канала.
+    const discussionId = getLinkedDiscussionChatId();
+    if (discussionId && chatIdsMatch(chatId, discussionId)) {
         return true;
     }
 
@@ -36,7 +43,7 @@ export async function channelPostShopCommentHandler(ctx: CustomContext) {
     const message = ctx.message;
     if (!message || !ctx.chat) return;
     if (!message.is_automatic_forward) return;
-    if (!isOurChannelAutomaticForward(message)) return;
+    if (!isOurChannelAutomaticForward(message, ctx.chat.id)) return;
 
     const channelPostId =
         message.forward_origin?.type === 'channel'

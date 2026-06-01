@@ -49,6 +49,9 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
 
     bot.use(initMiddleware());
 
+    // Раньше остальных message-хендлеров: автопересылка поста в группу обсуждений.
+    bot.on('message:is_automatic_forward', channelPostShopCommentHandler);
+
     bot.command('start', startCommand);
     bot.command('help', helpCommand);
 
@@ -65,7 +68,6 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
     bot.on('message:text', auth, paymentFlowTextHandler);
 
     bot.on('message:text', orderReplyHandler);
-    bot.on('message', channelPostShopCommentHandler);
 
     bot.on('message:text', async (ctx) => {
         if (ctx.session.paymentFlow) return;

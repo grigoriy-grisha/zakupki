@@ -31,12 +31,10 @@ export class PurchaseItemRepository {
     }
 
     findByTelegramPost(channelId: string, messageId: string) {
-        const channelIds = [...new Set([channelId, ...this.channelIdVariants(channelId)])];
-
         return dbClient.purchaseItem.findFirst({
             where: {
                 tgMessageId: messageId,
-                tgChannelId: { in: channelIds },
+                tgChannelId: channelId,
                 isActive: true,
             },
             include: {
@@ -44,22 +42,6 @@ export class PurchaseItemRepository {
                 purchase: { select: { id: true, tag: true, status: true } },
             },
         });
-    }
-
-    private channelIdVariants(channelId: string) {
-        const normalized = channelId.trim();
-        const variants = new Set<string>([normalized]);
-        if (normalized.startsWith('-100')) {
-            variants.add(normalized.slice(4));
-            variants.add(normalized.slice(1));
-        } else if (normalized.startsWith('-')) {
-            variants.add(normalized.slice(1));
-            variants.add(`-100${normalized.slice(1)}`);
-        } else if (/^\d+$/.test(normalized)) {
-            variants.add(`-${normalized}`);
-            variants.add(`-100${normalized}`);
-        }
-        return [...variants];
     }
 
     findByTgMessageId(messageId: string) {
