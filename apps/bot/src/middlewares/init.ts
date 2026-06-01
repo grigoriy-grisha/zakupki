@@ -31,15 +31,19 @@ export function initMiddleware() {
             return;
         }
 
-        const user = await users.createOrGetUser(telegramId, {
-            firstName: ctx.from.first_name,
-            lastName: ctx.from.last_name,
-            username: ctx.from.username,
-        });
+        try {
+            const user = await users.createOrGetUser(telegramId, {
+                firstName: ctx.from.first_name,
+                lastName: ctx.from.last_name,
+                username: ctx.from.username,
+            });
 
-        ctx.session.userId = user.id;
-        ctx.session.telegramId = ctx.from.id;
-        ctx.session.profileRefreshedAt = Date.now();
+            ctx.session.userId = user.id;
+            ctx.session.telegramId = ctx.from.id;
+            ctx.session.profileRefreshedAt = Date.now();
+        } catch (err) {
+            console.error('[init] createOrGetUser failed:', err);
+        }
 
         await next();
     };

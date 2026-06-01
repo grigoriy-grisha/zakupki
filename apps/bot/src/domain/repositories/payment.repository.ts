@@ -1,10 +1,8 @@
 import { dbClient } from '@zakupki/database';
 
-const db = dbClient;
-
 export class PaymentRepository {
     findByUserId(userId: number, limit = 10) {
-        return db.payment.findMany({
+        return dbClient.payment.findMany({
             where: { userId, parentId: null },
             include: {
                 purchase: { select: { tag: true, supplier: true } },
@@ -16,7 +14,7 @@ export class PaymentRepository {
     }
 
     findAllByUserId(userId: number) {
-        return db.payment.findMany({
+        return dbClient.payment.findMany({
             where: { userId, parentId: null },
             include: {
                 purchase: { select: { id: true, tag: true } },
@@ -34,7 +32,7 @@ export class PaymentRepository {
         proofObjectKey?: string;
         proofMimeType?: string;
     }) {
-        return db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             const parent = await tx.payment.create({
                 data: {
                     userId: data.userId,

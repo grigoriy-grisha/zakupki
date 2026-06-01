@@ -1,10 +1,8 @@
 import { dbClient } from '@zakupki/database';
 
-const db = dbClient;
-
 export class PurchaseItemRepository {
     findById(id: number) {
-        return db.purchaseItem.findUnique({
+        return dbClient.purchaseItem.findUnique({
             where: { id },
             include: {
                 product: {
@@ -23,7 +21,7 @@ export class PurchaseItemRepository {
     }
 
     updateTelegramMessage(id: number, messageId: string, channelId: string) {
-        return db.purchaseItem.update({
+        return dbClient.purchaseItem.update({
             where: { id },
             data: {
                 tgMessageId: messageId,
@@ -35,7 +33,7 @@ export class PurchaseItemRepository {
     findByTelegramPost(channelId: string, messageId: string) {
         const channelIds = [...new Set([channelId, ...this.channelIdVariants(channelId)])];
 
-        return db.purchaseItem.findFirst({
+        return dbClient.purchaseItem.findFirst({
             where: {
                 tgMessageId: messageId,
                 tgChannelId: { in: channelIds },
@@ -65,7 +63,7 @@ export class PurchaseItemRepository {
     }
 
     findByTgMessageId(messageId: string) {
-        return db.purchaseItem.findFirst({
+        return dbClient.purchaseItem.findFirst({
             where: {
                 tgMessageId: messageId,
                 isActive: true,

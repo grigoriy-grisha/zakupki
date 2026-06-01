@@ -49,10 +49,6 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
 
     bot.use(initMiddleware());
 
-    // Заказы в группе — без requireAuth; комментарий к посту — только на автопересылку
-    bot.on('message:text', orderReplyHandler);
-    bot.on('message', channelPostShopCommentHandler);
-
     bot.command('start', startCommand);
     bot.command('help', helpCommand);
 
@@ -67,6 +63,9 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
 
     bot.on(['message:photo', 'message:document'], auth, paymentProofHandler);
     bot.on('message:text', auth, paymentFlowTextHandler);
+
+    bot.on('message:text', orderReplyHandler);
+    bot.on('message', channelPostShopCommentHandler);
 
     bot.on('message:text', async (ctx) => {
         if (ctx.session.paymentFlow) return;

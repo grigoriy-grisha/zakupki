@@ -1,11 +1,9 @@
 import { dbClient } from '@zakupki/database';
 import { InsufficientStockError, NotFoundError } from '@zakupki/types';
 
-const db = dbClient;
-
 export class OrderRepository {
     async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             const existingLine = await tx.orderLine.findUnique({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
             });
@@ -45,7 +43,7 @@ export class OrderRepository {
     }
 
     findByUserId(userId: number, limit = 10) {
-        return db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: { userId },
             include: {
                 purchaseItem: {
@@ -61,7 +59,7 @@ export class OrderRepository {
     }
 
     findAllByUserId(userId: number) {
-        return db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: { userId },
             select: {
                 amountDue: true,
@@ -76,7 +74,7 @@ export class OrderRepository {
     }
 
     findActiveOrdersByUserId(userId: number) {
-        return db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: {
                 userId,
                 purchaseItem: {
@@ -98,7 +96,7 @@ export class OrderRepository {
     }
 
     findByUserAndPurchase(userId: number, purchaseId: number) {
-        return db.orderLine.findMany({
+        return dbClient.orderLine.findMany({
             where: {
                 userId,
                 purchaseItem: { purchaseId },
@@ -118,13 +116,13 @@ export class OrderRepository {
     }
 
     findByPurchaseItemAndUser(purchaseItemId: number, userId: number) {
-        return db.orderLine.findUnique({
+        return dbClient.orderLine.findUnique({
             where: { purchaseItemId_userId: { purchaseItemId, userId } },
         });
     }
 
     deleteAndRestoreStock(id: number) {
-        return db.$transaction(async (tx) => {
+        return dbClient.$transaction(async (tx) => {
             const line = await tx.orderLine.findUnique({ where: { id } });
             if (!line) return null;
 

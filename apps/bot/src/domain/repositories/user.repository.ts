@@ -1,10 +1,8 @@
 import { dbClient } from '@zakupki/database';
 
-const db = dbClient;
-
 export class UserRepository {
     async refreshProfile(userId: number, data: { firstName: string; lastName?: string; username?: string }) {
-        await db.user
+        await dbClient.user
             .update({
                 where: { id: userId },
                 data: {
@@ -19,13 +17,13 @@ export class UserRepository {
     }
 
     async createOrGetUser(telegramId: string, info: { firstName: string; lastName?: string; username?: string }) {
-        const existing = await db.telegramCredential.findUnique({
+        const existing = await dbClient.telegramCredential.findUnique({
             where: { telegramId },
             select: { userId: true },
         });
 
         if (existing) {
-            return db.user.update({
+            return dbClient.user.update({
                 where: { id: existing.userId },
                 data: {
                     firstName: info.firstName,
@@ -36,7 +34,7 @@ export class UserRepository {
             });
         }
 
-        return db.user.create({
+        return dbClient.user.create({
             data: {
                 firstName: info.firstName,
                 lastName: info.lastName,
