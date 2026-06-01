@@ -10,6 +10,7 @@ import {
     getAttributeCharacteristicIds,
     buildAttributesTreeByType,
     revokePendingFiles,
+    resolveProductUnitId,
     syncCharacteristicOrder,
     moveCharacteristicOrder,
     type AttributeListItem,
@@ -32,7 +33,8 @@ export type ProductFormExisting = {
     articleNumber: string | null;
     brandId?: number | null;
     brand?: { id: number; name: string } | null;
-    unitId: number;
+    unitId?: number;
+    unit?: { id: number; name: string; shortName: string } | null;
     attributeValues?: ProductAttributeValueShape[];
     characteristicValues?: ProductCharacteristicValueShape[];
     photos: { id: number }[];
@@ -51,7 +53,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             .map((v) => `${v.characteristicId}:${v.value}`)
             .join(',');
         const photoIds = product.photos.map((p) => p.id).join(',');
-        return `${product.name}|${product.unitId}|${product.articleNumber ?? ''}|${attrIds}|${charIds}|${photoIds}`;
+        return `${product.name}|${resolveProductUnitId(product)}|${product.articleNumber ?? ''}|${attrIds}|${charIds}|${photoIds}`;
     }
     pendingFilesRef.current = pendingFiles;
 
@@ -194,7 +196,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             form.reset({
                 name: existing.name,
                 articleNumber: existing.articleNumber ?? '',
-                unitId: existing.unitId,
+                unitId: resolveProductUnitId(existing),
             });
             setPendingFiles((prev) => {
                 revokePendingFiles(prev);

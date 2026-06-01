@@ -21,10 +21,9 @@ import {
     type ProductLabelSource,
 } from '../../../products/lib';
 import {
-    emptyPurchaseFields,
+    buildPurchaseFormState,
     persistTemplateChoice,
     resolveDefaultTemplateId,
-    savedPurchaseFields,
     validatePurchasePriceTiers,
     type PurchaseProductFormState,
 } from '../lib/purchase-product-fields';
@@ -54,6 +53,7 @@ interface PurchaseProductEditFormProps {
         availableUnit?: string | null;
         description?: string | null;
         priceTiers?: unknown;
+        unit?: { shortName?: string | null; name?: string | null } | null;
     };
     initialTiers: { amount: number; unit: string; price: number }[];
     onSave: (data: PurchaseProductSaveData) => void;
@@ -114,9 +114,7 @@ export function PurchaseProductEditForm({
     purchaseTag,
     loadSavedDescription = false,
 }: PurchaseProductEditFormProps) {
-    const initial = loadSavedDescription
-        ? savedPurchaseFields(product, initialTiers)
-        : emptyPurchaseFields();
+    const initial = buildPurchaseFormState(product, initialTiers, loadSavedDescription);
 
     const [description, setDescription] = useState(initial.description);
     const [tiers, setTiers] = useState(initial.tiers);
@@ -145,9 +143,7 @@ export function PurchaseProductEditForm({
     );
 
     useEffect(() => {
-        const next = loadSavedDescription
-            ? savedPurchaseFields(product, initialTiers)
-            : emptyPurchaseFields();
+        const next = buildPurchaseFormState(product, initialTiers, loadSavedDescription);
         applyPurchaseFields(
             {
                 setDescription,
@@ -244,6 +240,8 @@ export function PurchaseProductEditForm({
 
             if (preserveSavedDescriptionRef.current) {
                 lastAppliedSignatureRef.current = `${id}:${body}`;
+                lastAutoDescriptionRef.current = nextHtml;
+                preserveSavedDescriptionRef.current = false;
                 return false;
             }
 

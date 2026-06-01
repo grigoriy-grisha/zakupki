@@ -1,5 +1,10 @@
 import { getBeadPackPriceDiscountPercent } from '@zakupki/database/bead-pack-discount';
-import { calculateOrderAmount, getOrderQuantityValidationError } from '@zakupki/types';
+import {
+    calculateFreeRemainder,
+    calculateOrderAmount,
+    getOrderQuantityValidationError,
+    getSupplementOrderQuantityValidationError,
+} from '@zakupki/types';
 import type { Redis } from 'ioredis';
 import { getRedisConnection } from '@zakupki/queue';
 
@@ -156,6 +161,7 @@ export class OrderCollectionService {
         }
 
         const status = purchaseItem.purchase.status;
+        const fulfillmentStatus = (purchaseItem.purchase as { fulfillmentStatus?: string }).fulfillmentStatus;
         if (status !== 'ACTIVE' && status !== 'SUPPLEMENT') {
             return {
                 ok: false,
@@ -206,10 +212,12 @@ export class OrderCollectionService {
             newQuantity = currentQty - parsed.amount;
         }
 
+        const isSupplement = status === 'SUPPLEMENT' || fulfillmentStatus === 'REORDER';
+
         try {
             if (newQuantity <= 0) {
                 if (existingLine) {
-                    await this.orders.deleteAndRestoreStock(existingLine.id);
+                    await this.orders.deleteAndRestoreStock(existingLine.id, { isSupplement });
                 }
                 return {
                     ok: true,
@@ -234,7 +242,27 @@ export class OrderCollectionService {
                 unitShort,
             };
 
-            const validationError = getOrderQuantityValidationError(newQuantity, orderQtyOptions);
+            const rawAvailableQty =
+                purchaseItem.availableQty !== null && purchaseItem.availableQty !== undefined
+                    ? Number(purchaseItem.availableQty)
+                    : null;
+            const packAmount = purchaseItem.product.supplierPackageAmount != null
+                ? Number(purchaseItem.product.supplierPackageAmount)
+                : null;
+            const freeRemainder = calculateFreeRemainder(
+                purchaseItem.orderLines ?? [],
+                packAmount,
+            );
+            const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainder;
+
+            const validationError =
+                isSupplement
+                    ? getSupplementOrderQuantityValidationError(newQuantity, orderQtyOptions, {
+                          availableQty: effectiveAvailableQty,
+                          currentQuantity: currentQty,
+                          supplierPackageAmount: packAmount,
+                      })
+                    : getOrderQuantityValidationError(newQuantity, orderQtyOptions);
             if (validationError) {
                 return {
                     ok: false,
@@ -244,7 +272,9 @@ export class OrderCollectionService {
             }
 
             const amountDue = calculateOrderAmount(newQuantity, pricing);
-            await this.orders.upsertWithStock(purchaseItem.id, user.id, newQuantity, amountDue);
+            await this.orders.upsertWithStock(purchaseItem.id, user.id, newQuantity, amountDue, {
+                isSupplement,
+            });
 
             return {
                 ok: true,

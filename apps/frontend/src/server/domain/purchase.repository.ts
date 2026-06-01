@@ -151,7 +151,7 @@ export class PurchaseRepository {
                 id: true,
                 tgMessageId: true,
                 tgChannelId: true,
-                purchase: { select: { status: true, tag: true } },
+                purchase: { select: { status: true, tag: true, fulfillmentStatus: true } },
             },
         });
     }
@@ -211,7 +211,11 @@ export class PurchaseRepository {
     async findItemWithPrice(id: number) {
         return dbClient.purchaseItem.findUnique({
             where: { id },
-            include: { product: { include: { unit: true } }, purchase: true },
+            include: {
+                product: { include: { unit: true } },
+                orderLines: { select: { quantity: true } },
+                purchase: true,
+            },
         });
     }
 }

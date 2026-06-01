@@ -12,14 +12,19 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import {
+    calculateFreeRemainder,
     calculateOrderAmount,
     countFullSupplierPacks,
     formatMinPackageOrderHint,
+    formatSupplementOrderHint,
     getMinOrderQuantity,
     getOrderQuantityStep,
     getPackDiscountPricingInfo,
+    getSupplementDisplayMax,
     isValidOrderQuantity,
+    isValidSupplementOrderQuantity,
     snapOrderQuantity,
+    snapSupplementOrderQuantity,
 } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { Loader2, Minus, Plus } from 'lucide-react';
@@ -30,6 +35,7 @@ interface QuantityModalProps {
     purchaseId: number;
     packDiscountPercent: number;
     currentQuantity?: number;
+    isSupplementMode?: boolean;
     onClose: () => void;
 }
 
@@ -38,12 +44,13 @@ export function QuantityModal({
     purchaseId,
     packDiscountPercent,
     currentQuantity,
+    isSupplementMode: isSupplementModeProp,
     onClose,
 }: QuantityModalProps) {
     const utils = trpc.useUtils();
 
     const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
-    const item = purchase?.items.find((i) => i.id === purchaseItemId);
+    const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
 
     const unit = item?.product?.unit;
     const multiplicity = unit ? Number(unit.multiplicity) : 1;
@@ -59,14 +66,35 @@ export function QuantityModal({
     };
     const orderStep = getOrderQuantityStep(orderQtyOptions);
     const minOrderQty = getMinOrderQuantity(orderQtyOptions);
-    const availableQty =
+    const rawAvailableQty =
         item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
+    const currentQty = currentQuantity ?? 0;
+    const isSupplementMode = isSupplementModeProp ?? purchase?.status === 'SUPPLEMENT';
+
+    // Рассчитываем свободный остаток из пачек как fallback для availableQty
+    const packSize =
+        item?.product?.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
+    const freeRemainderFromPacks = calculateFreeRemainder(item?.orderLines ?? [], packSize);
+
+    const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainderFromPacks;
+
+    const supplementBounds = isSupplementMode
+        ? {
+              availableQty: effectiveAvailableQty,
+              currentQuantity: currentQty,
+              supplierPackageAmount: packSize,
+          }
+        : null;
+
+    const maxQty = supplementBounds ? getSupplementDisplayMax(supplementBounds) : null;
 
     const startQty =
         currentQuantity != null
-            ? snapOrderQuantity(Math.max(currentQuantity, minOrderQty), orderQtyOptions)
+            ? Math.max(currentQuantity, minOrderQty)
             : minOrderQty;
-    const effectiveStart = snapOrderQuantity(startQty, orderQtyOptions, { max: availableQty });
+    const effectiveStart = supplementBounds
+        ? snapSupplementOrderQuantity(startQty, orderQtyOptions, supplementBounds)
+        : snapOrderQuantity(startQty, orderQtyOptions);
 
     const [quantity, setQuantity] = useState(currentQuantity ?? effectiveStart);
 
@@ -114,17 +142,19 @@ export function QuantityModal({
     const fullPacks =
         packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
 
-    // availableQty = remaining stock in DB (already decremented for current user's order in supplement mode)
-    // But if the order was placed BEFORE supplement mode, availableQty doesn't account for it.
-    // So max = currentQuantity + availableQty (user can keep what they have + take remaining)
-    const currentQty = currentQuantity ?? 0;
-    const maxQty = availableQty !== null ? currentQty + availableQty : null; // null = unlimited
-    const remainingLabel = availableQty; // how much MORE can be added
+    const remainingLabel = maxQty != null ? Math.max(0, maxQty - quantity) : null;
+
+    const quantityValid = supplementBounds
+        ? isValidSupplementOrderQuantity(quantity, orderQtyOptions, supplementBounds)
+        : isValidOrderQuantity(quantity, orderQtyOptions);
 
     function handleQuantityChange(delta: number) {
         setQuantity((prev) => {
             const next = Number((prev + delta).toFixed(3));
-            return snapOrderQuantity(next, orderQtyOptions, { max: maxQty });
+            if (supplementBounds) {
+                return snapSupplementOrderQuantity(next, orderQtyOptions, supplementBounds);
+            }
+            return snapOrderQuantity(next, orderQtyOptions);
         });
     }
 
@@ -140,35 +170,37 @@ export function QuantityModal({
                         <PurchaseProductLabel product={item.product} primaryClassName="text-lg font-semibold" />
                     </DialogTitle>
                     <DialogDescription className="text-left">
-                        {formatMinPackageOrderHint(orderQtyOptions) ??
-                            `${unitPrice.toLocaleString('ru-RU')} ₽/${shortName}`}
-                        {formatMinPackageOrderHint(orderQtyOptions) && (
-                            <> · {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}</>
+                        {isSupplementMode && supplementBounds ? (
+                            formatSupplementOrderHint(supplementBounds, orderQtyOptions)
+                        ) : (
+                            <>
+                                {formatMinPackageOrderHint(orderQtyOptions) ??
+                                    `${unitPrice.toLocaleString('ru-RU')} ₽/${shortName}`}
+                                {formatMinPackageOrderHint(orderQtyOptions) && (
+                                    <> · {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}</>
+                                )}
+                            </>
                         )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-5 py-2">
-                    {remainingLabel !== null &&
-                        (() => {
-                            const afterConfirm = maxQty !== null ? maxQty - quantity : remainingLabel;
-                            return (
-                                <div
-                                    className={`rounded-lg p-3 text-center text-sm ${afterConfirm <= 0 ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
-                                >
-                                    {afterConfirm > 0 ? (
-                                        <>
-                                            Доступно ещё:{' '}
-                                            <strong>
-                                                {afterConfirm} {shortName}
-                                            </strong>
-                                        </>
-                                    ) : (
-                                        <strong>Весь остаток выбран</strong>
-                                    )}
-                                </div>
-                            );
-                        })()}
+                    {maxQty != null && (
+                        <div
+                            className={`rounded-lg p-3 text-center text-sm ${remainingLabel !== null && remainingLabel <= 0 ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
+                        >
+                            {remainingLabel != null && remainingLabel > 0 ? (
+                                <>
+                                    Доступно ещё:{' '}
+                                    <strong>
+                                        {remainingLabel} {shortName}
+                                    </strong>
+                                </>
+                            ) : (
+                                <strong>Весь остаток выбран</strong>
+                            )}
+                        </div>
+                    )}
 
                     <div className="space-y-4">
                         <div className="text-center">
@@ -177,11 +209,19 @@ export function QuantityModal({
                             </span>
                             <span className="ml-2 text-lg font-medium text-muted-foreground">{shortName}</span>
                         </div>
-                        {minPackageAmount != null && minPackageUnit && (
+                        {minPackageAmount != null && minPackageUnit && !isSupplementMode && (
                             <p className="text-center text-xs text-muted-foreground">
                                 Можно заказать: {minOrderQty}, {minOrderQty + orderStep}, {minOrderQty + orderStep * 2}{' '}
                                 {minPackageUnit}…
                             </p>
+                        )}
+
+                        {isSupplementMode && maxQty != null && quantity < maxQty && (
+                            <div className="flex justify-center">
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setQuantity(maxQty)}>
+                                    Взять весь остаток ({maxQty} {shortName})
+                                </Button>
+                            </div>
                         )}
 
                         <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
@@ -255,7 +295,7 @@ export function QuantityModal({
                     <Button
                         className="w-full sm:w-auto"
                         onClick={handleSubmit}
-                        disabled={upsertMutation.isPending || !isValidOrderQuantity(quantity, orderQtyOptions)}
+                        disabled={upsertMutation.isPending || !quantityValid}
                     >
                         {upsertMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Добавить в заказ

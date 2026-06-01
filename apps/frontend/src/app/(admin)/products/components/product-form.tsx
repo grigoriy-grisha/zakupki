@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Controller } from 'react-hook-form';
 import { useProductFormState, useProductFormSubmit, type ProductFormExisting } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
 import { AttributeTreePicker } from './attribute-tree-picker';
@@ -50,22 +51,36 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
 
             <div className="space-y-2">
                 <Label>Единица учёта</Label>
-                <Select
-                    value={state.unitId > 0 ? String(state.unitId) : undefined}
-                    onValueChange={(v) => state.form.setValue('unitId', Number(v), { shouldValidate: true })}
-                    disabled={!state.units?.length}
-                >
-                    <SelectTrigger>
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {state.units?.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)}>
-                                {u.name} ({u.shortName})
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Controller
+                    name="unitId"
+                    control={state.form.control}
+                    render={({ field }) => {
+                        const unitId = Number(field.value) || 0;
+                        const units = state.units ?? [];
+                        const valueInList = units.some((u) => u.id === unitId);
+                        const selectValue = unitId > 0 && valueInList ? String(unitId) : undefined;
+
+                        return (
+                            <Select
+                                key={`unit-${editId ?? 'new'}-${unitId}-${units.length}`}
+                                value={selectValue}
+                                onValueChange={(v) => field.onChange(Number(v))}
+                                disabled={!units.length}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Выберите единицу" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {units.map((u) => (
+                                        <SelectItem key={u.id} value={String(u.id)}>
+                                            {u.name} ({u.shortName})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        );
+                    }}
+                />
                 {errors.unitId && <p className="text-xs text-destructive">{errors.unitId.message}</p>}
             </div>
 

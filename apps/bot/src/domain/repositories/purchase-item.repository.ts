@@ -15,7 +15,8 @@ export class PurchaseItemRepository {
                         },
                     },
                 },
-                purchase: { select: { tag: true, status: true } },
+                orderLines: { select: { quantity: true } },
+                purchase: { select: { tag: true, status: true, fulfillmentStatus: true } },
             },
         });
     }
@@ -39,7 +40,8 @@ export class PurchaseItemRepository {
             },
             include: {
                 product: { include: { unit: true } },
-                purchase: { select: { id: true, tag: true, status: true } },
+                orderLines: { select: { quantity: true } },
+                purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
             },
         });
     }
@@ -52,7 +54,8 @@ export class PurchaseItemRepository {
             },
             include: {
                 product: { include: { unit: true } },
-                purchase: { select: { id: true, tag: true, status: true } },
+                orderLines: { select: { quantity: true } },
+                purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
             },
         });
     }

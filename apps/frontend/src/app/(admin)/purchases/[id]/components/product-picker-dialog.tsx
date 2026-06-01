@@ -206,8 +206,6 @@ function ProductDetail({
         return <div className="py-8 text-center text-sm text-muted-foreground">Товар не найден</div>;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const prod = product as any;
     return (
         <div className="space-y-2">
             <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -215,8 +213,9 @@ function ProductDetail({
             </button>
             <PurchaseProductEditForm
                 key={productId}
-                product={prod}
+                product={product}
                 purchaseTag={purchaseTag}
+                loadSavedDescription={false}
                 initialTiers={[]}
                 onSave={(data) => {
                     updateMutation.mutate(

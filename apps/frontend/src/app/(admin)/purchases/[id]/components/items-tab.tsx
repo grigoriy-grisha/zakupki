@@ -38,7 +38,6 @@ import {
 } from '@/components/ui/dialog';
 interface ItemsTabProps {
     purchaseId: number;
-    onEditSupplement?: () => void;
 }
 
 function formatSupplierPackageCell(product: {
@@ -67,7 +66,7 @@ const purchaseItemTgCellClass = `${purchaseItemTgColumnClass} text-center`;
 const purchaseItemStatsLeadCellClass = `${purchaseItemNumericClass} pl-4`;
 const purchaseItemOrdersCellClass = 'text-center align-middle';
 
-export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
+export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
     const packDiscountPercent =
@@ -102,12 +101,6 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <h2 className="text-base font-medium sm:text-lg">Товары в закупке</h2>
-                    {isSupplement && onEditSupplement && (
-                        <Button variant="outline" size="sm" className="shrink-0" onClick={onEditSupplement}>
-                            <span className="sm:hidden">Остатки</span>
-                            <span className="hidden sm:inline">Редактировать остатки</span>
-                        </Button>
-                    )}
                 </div>
                 {(canAddItems || isActive) && (
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">

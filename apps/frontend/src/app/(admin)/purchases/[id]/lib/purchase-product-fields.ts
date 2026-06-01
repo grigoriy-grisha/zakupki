@@ -1,4 +1,4 @@
-import { PACKAGE_UNITS } from '../../../products/lib';
+import { PACKAGE_UNITS, type PackageUnit } from '../../../products/lib';
 
 export type PurchasePriceTier = { amount: number; unit: string; price: number };
 
@@ -11,9 +11,56 @@ export type PurchaseProductFieldSource = {
     supplierPackagePrice?: string | number | null;
     availableAmount?: string | number | null;
     availableUnit?: string | null;
+    unit?: { shortName?: string | null; name?: string | null } | null;
 };
 
-const DEFAULT_TIER: PurchasePriceTier = { amount: 1, unit: PACKAGE_UNITS[0], price: 0 };
+function isPackageUnit(value: string): value is PackageUnit {
+    return (PACKAGE_UNITS as readonly string[]).includes(value);
+}
+
+/** Единица для полей фасовки/цен: из сохранённых полей товара или единица учёта каталога. */
+export function resolveProductPackageUnit(product: PurchaseProductFieldSource): PackageUnit {
+    for (const candidate of [
+        product.minPackageUnit,
+        product.supplierPackageUnit,
+        product.availableUnit,
+        product.unit?.shortName,
+        product.unit?.name,
+    ]) {
+        const normalized = normalizePackageUnit(candidate);
+        if (normalized) return normalized;
+    }
+    return PACKAGE_UNITS[0];
+}
+
+function normalizePackageUnit(raw?: string | null): PackageUnit | null {
+    const s = raw?.trim();
+    if (!s) return null;
+    if (isPackageUnit(s)) return s;
+    const lower = s.toLowerCase();
+    const exact = PACKAGE_UNITS.find((u) => u.toLowerCase() === lower);
+    if (exact) return exact;
+    if (lower === 'г' || lower.startsWith('гр')) return 'гр';
+    if (lower.startsWith('шт')) return 'шт';
+    if (lower.includes('туб')) return 'туба';
+    return null;
+}
+
+function withCatalogPackageUnits(
+    state: PurchaseProductFormState,
+    catalogUnit: PackageUnit,
+): PurchaseProductFormState {
+    return {
+        ...state,
+        tiers: state.tiers.map((t) => ({
+            ...t,
+            unit: normalizePackageUnit(t.unit) ?? catalogUnit,
+        })),
+        minPkgUnit: normalizePackageUnit(state.minPkgUnit) ?? catalogUnit,
+        supPkgUnit: normalizePackageUnit(state.supPkgUnit) ?? catalogUnit,
+        availUnit: normalizePackageUnit(state.availUnit) ?? catalogUnit,
+    };
+}
 
 /** Проверка цен перед сохранением товара в закупке. */
 export function validatePurchasePriceTiers(tiers: PurchasePriceTier[]): string | null {
@@ -70,17 +117,18 @@ export function persistTemplateChoice(productId: number, templateId: string) {
     sessionStorage.setItem(LAST_TEMPLATE_KEY, templateId);
 }
 
-export function emptyPurchaseFields(): PurchaseProductFormState {
+export function emptyPurchaseFields(unit?: string): PurchaseProductFormState {
+    const u = unit ?? PACKAGE_UNITS[0];
     return {
         description: '',
-        tiers: [{ ...DEFAULT_TIER }],
+        tiers: [{ amount: 0, unit: u, price: 0 }],
         minPkgAmount: null,
-        minPkgUnit: PACKAGE_UNITS[0],
+        minPkgUnit: u,
         supPkgAmount: null,
-        supPkgUnit: PACKAGE_UNITS[0],
+        supPkgUnit: u,
         supPkgPrice: null,
         availAmount: null,
-        availUnit: PACKAGE_UNITS[0],
+        availUnit: u,
     };
 }
 
@@ -88,6 +136,7 @@ export function savedPurchaseFields(
     product: PurchaseProductFieldSource,
     initialTiers: PurchasePriceTier[],
 ): PurchaseProductFormState {
+    const catalogUnit = resolveProductPackageUnit(product);
     const tiers =
         initialTiers.length > 0
             ? initialTiers.map((t) => ({
@@ -95,18 +144,33 @@ export function savedPurchaseFields(
                   unit: t.unit,
                   price: Number(t.price),
               }))
-            : [{ ...DEFAULT_TIER }];
-    return {
-        description: product.description ?? '',
-        tiers,
-        minPkgAmount: product.minPackageAmount != null ? Math.trunc(Number(product.minPackageAmount)) : null,
-        minPkgUnit: product.minPackageUnit ?? PACKAGE_UNITS[0],
-        supPkgAmount:
-            product.supplierPackageAmount != null ? Math.trunc(Number(product.supplierPackageAmount)) : null,
-        supPkgUnit: product.supplierPackageUnit ?? PACKAGE_UNITS[0],
-        supPkgPrice:
-            product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
-        availAmount: product.availableAmount != null ? Math.trunc(Number(product.availableAmount)) : null,
-        availUnit: product.availableUnit ?? PACKAGE_UNITS[0],
-    };
+            : [{ amount: 1, unit: catalogUnit, price: 0 }];
+    return withCatalogPackageUnits(
+        {
+            description: product.description ?? '',
+            tiers,
+            minPkgAmount: product.minPackageAmount != null ? Math.trunc(Number(product.minPackageAmount)) : null,
+            minPkgUnit: product.minPackageUnit ?? catalogUnit,
+            supPkgAmount:
+                product.supplierPackageAmount != null ? Math.trunc(Number(product.supplierPackageAmount)) : null,
+            supPkgUnit: product.supplierPackageUnit ?? catalogUnit,
+            supPkgPrice:
+                product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
+            availAmount: product.availableAmount != null ? Math.trunc(Number(product.availableAmount)) : null,
+            availUnit: product.availableUnit ?? catalogUnit,
+        },
+        catalogUnit,
+    );
+}
+
+export function buildPurchaseFormState(
+    product: PurchaseProductFieldSource,
+    initialTiers: PurchasePriceTier[],
+    loadSavedDescription: boolean,
+): PurchaseProductFormState {
+    const catalogUnit = resolveProductPackageUnit(product);
+    if (loadSavedDescription) {
+        return savedPurchaseFields(product, initialTiers);
+    }
+    return emptyPurchaseFields(catalogUnit);
 }

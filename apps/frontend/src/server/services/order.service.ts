@@ -1,7 +1,9 @@
 import {
+    calculateFreeRemainder,
     calculateOrderAmount,
     ForbiddenError,
     getOrderQuantityValidationError,
+    getSupplementOrderQuantityValidationError,
     NotFoundError,
     PurchaseNotActiveError,
     ValidationError,
@@ -26,6 +28,7 @@ export class OrderService {
         if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         const status = purchaseItem.purchase.status as string;
+        const fulfillmentStatus = (purchaseItem.purchase as { fulfillmentStatus?: string }).fulfillmentStatus;
         if (status !== 'ACTIVE' && status !== 'SUPPLEMENT') {
             throw new PurchaseNotActiveError(status);
         }
@@ -54,16 +57,46 @@ export class OrderService {
             unitShort: unit?.shortName ?? 'ед.',
         };
 
-        const validationError = getOrderQuantityValidationError(quantity, orderQtyOptions);
+        const existingLine = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
+        const currentQty = existingLine ? Number(existingLine.quantity) : 0;
+
+        const isSupplement = status === 'SUPPLEMENT' || fulfillmentStatus === 'REORDER';
+        const rawAvailableQty =
+            purchaseItem.availableQty !== null && purchaseItem.availableQty !== undefined
+                ? Number(purchaseItem.availableQty)
+                : null;
+        const packAmount = purchaseItem.product.supplierPackageAmount != null
+            ? Number(purchaseItem.product.supplierPackageAmount)
+            : null;
+        const freeRemainder = calculateFreeRemainder(
+            (purchaseItem as any).orderLines ?? [],
+            packAmount,
+        );
+        const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainder;
+
+        const validationError =
+            isSupplement
+                ? getSupplementOrderQuantityValidationError(quantity, orderQtyOptions, {
+                      availableQty: effectiveAvailableQty,
+                      currentQuantity: currentQty,
+                      supplierPackageAmount: packAmount,
+                  })
+                : getOrderQuantityValidationError(quantity, orderQtyOptions);
         if (validationError) {
             throw new ValidationError(validationError);
         }
 
-        return this.upsertWithStock(purchaseItemId, userId, quantity, amountDue);
+        return this.upsertWithStock(purchaseItemId, userId, quantity, amountDue, { isSupplement });
     }
 
-    async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return this.repo.upsertWithStock(purchaseItemId, userId, quantity, amountDue);
+    async upsertWithStock(
+        purchaseItemId: number,
+        userId: number,
+        quantity: number,
+        amountDue: number,
+        options?: { isSupplement?: boolean },
+    ) {
+        return this.repo.upsertWithStock(purchaseItemId, userId, quantity, amountDue, options);
     }
 
     async getByUser(userId: number) {
@@ -89,7 +122,10 @@ export class OrderService {
         if (line.userId !== userId) {
             throw new ForbiddenError('Нельзя удалить чужой заказ');
         }
-        return this.repo.deleteAndRestoreStock(id, options as any);
+        const purchaseStatus = (line as any)?.purchaseItem?.purchase?.status;
+        const purchaseFulfillmentStatus = (line as any)?.purchaseItem?.purchase?.fulfillmentStatus;
+        const isSupplement = purchaseStatus === 'SUPPLEMENT' || purchaseFulfillmentStatus === 'REORDER';
+        return this.repo.deleteAndRestoreStock(id, { ...options, isSupplement });
     }
 
     async getByPurchaseItem(purchaseItemId: number) {

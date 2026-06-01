@@ -4,6 +4,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
     output: 'standalone',
+    transpilePackages: ['@zakupki/storage'],
     serverExternalPackages: [
         '@prisma/client',
         '@prisma/client-runtime-utils',

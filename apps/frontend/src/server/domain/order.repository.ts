@@ -1,5 +1,10 @@
 import { dbClient } from '@zakupki/database';
-import { InsufficientStockError, NotFoundError } from '@zakupki/types';
+import {
+    getSupplementStockDecrement,
+    InsufficientStockError,
+    NotFoundError,
+    shouldDecrementSupplementStock,
+} from '@zakupki/types';
 
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
 
@@ -12,7 +17,13 @@ export class OrderRepository {
         });
     }
 
-    async upsertWithStock(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
+    async upsertWithStock(
+        purchaseItemId: number,
+        userId: number,
+        quantity: number,
+        amountDue: number,
+        options?: { isSupplement?: boolean },
+    ) {
         return dbClient.$transaction(async (tx) => {
             const existingLine = await tx.orderLine.findUnique({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
@@ -20,6 +31,7 @@ export class OrderRepository {
 
             const purchaseItem = await tx.purchaseItem.findUnique({
                 where: { id: purchaseItemId },
+                include: { product: { select: { supplierPackageAmount: true } } },
             });
 
             if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
@@ -27,21 +39,32 @@ export class OrderRepository {
             const oldQuantity = existingLine ? Number(existingLine.quantity) : 0;
             const delta = quantity - oldQuantity;
 
-            if (delta > 0 && purchaseItem.availableQty !== null) {
-                const available = Number(purchaseItem.availableQty);
-                if (available < delta) {
-                    throw new InsufficientStockError(available, quantity);
+            // Списываем/восстанавливаем остаток только при доборе
+            if (options?.isSupplement) {
+                const packSize =
+                    purchaseItem.product.supplierPackageAmount != null
+                        ? Number(purchaseItem.product.supplierPackageAmount)
+                        : null;
+
+                if (delta > 0 && purchaseItem.availableQty !== null) {
+                    const available = Number(purchaseItem.availableQty);
+                    if (shouldDecrementSupplementStock(quantity, delta, available, packSize)) {
+                        const decrement = getSupplementStockDecrement(delta, available);
+                        if (decrement < delta) {
+                            throw new InsufficientStockError(available, quantity);
+                        }
+                        await tx.purchaseItem.update({
+                            where: { id: purchaseItemId },
+                            data: { availableQty: available - decrement },
+                        });
+                    }
+                } else if (delta < 0 && purchaseItem.availableQty !== null) {
+                    const available = Number(purchaseItem.availableQty);
+                    await tx.purchaseItem.update({
+                        where: { id: purchaseItemId },
+                        data: { availableQty: available + Math.abs(delta) },
+                    });
                 }
-                await tx.purchaseItem.update({
-                    where: { id: purchaseItemId },
-                    data: { availableQty: available - delta },
-                });
-            } else if (delta < 0 && purchaseItem.availableQty !== null) {
-                const available = Number(purchaseItem.availableQty);
-                await tx.purchaseItem.update({
-                    where: { id: purchaseItemId },
-                    data: { availableQty: available + Math.abs(delta) },
-                });
             }
 
             return tx.orderLine.upsert({
@@ -53,10 +76,19 @@ export class OrderRepository {
     }
 
     async findById(id: number) {
-        return dbClient.orderLine.findUnique({ where: { id } });
+        return dbClient.orderLine.findUnique({
+            where: { id },
+            include: { purchaseItem: { include: { purchase: { select: { status: true, fulfillmentStatus: true } } } } },
+        });
     }
 
-    async deleteAndRestoreStock(id: number, options?: { throwIfNotFound?: boolean }) {
+    findByPurchaseItemAndUser(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.findUnique({
+            where: { purchaseItemId_userId: { purchaseItemId, userId } },
+        });
+    }
+
+    async deleteAndRestoreStock(id: number, options?: { throwIfNotFound?: boolean; isSupplement?: boolean }) {
         return dbClient.$transaction(async (tx) => {
             const line = await tx.orderLine.findUnique({ where: { id } });
             if (!line) {
@@ -64,17 +96,19 @@ export class OrderRepository {
                 throw new NotFoundError('Строка заказа', id);
             }
 
-            const purchaseItem = await tx.purchaseItem.findUnique({
-                where: { id: line.purchaseItemId },
-            });
-
-            if (purchaseItem?.availableQty !== null && purchaseItem) {
-                const available = Number(purchaseItem.availableQty);
-                const qty = Number(line.quantity);
-                await tx.purchaseItem.update({
+            if (options?.isSupplement) {
+                const purchaseItem = await tx.purchaseItem.findUnique({
                     where: { id: line.purchaseItemId },
-                    data: { availableQty: available + qty },
                 });
+
+                if (purchaseItem?.availableQty !== null && purchaseItem) {
+                    const available = Number(purchaseItem.availableQty);
+                    const qty = Number(line.quantity);
+                    await tx.purchaseItem.update({
+                        where: { id: line.purchaseItemId },
+                        data: { availableQty: available + qty },
+                    });
+                }
             }
 
             return tx.orderLine.delete({ where: { id } });

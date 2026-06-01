@@ -12,14 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
 import { useActivate, useCompletePurchase, useDeleteDraftPurchase, useUpdateFulfillmentStatus } from './hooks';
-import { ExportPurchaseButtons, ItemsTab, ParticipantsTab, SupplementDialog } from './components';
+import { ExportPurchaseButtons, ItemsTab, ParticipantsTab, SupplementTab } from './components';
 import { PurchaseFulfillmentStatusSelect } from '../components/purchase-fulfillment-status-select';
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
     const id = Number(idStr);
-    const [supplementOpen, setSupplementOpen] = useState(false);
     const [activateOpen, setActivateOpen] = useState(false);
     const [completeOpen, setCompleteOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -95,11 +94,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             </Button>
                         </>
                     )}
-                    {purchase.status === 'SUPPLEMENT' && (
-                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSupplementOpen(true)}>
-                            Остатки
-                        </Button>
-                    )}
                     {canComplete && (
                         <Button
                             variant="destructive"
@@ -119,19 +113,22 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
             <Tabs defaultValue="items">
                 <TabsList>
                     <TabsTrigger value="items">Товары</TabsTrigger>
+                    <TabsTrigger value="supplement">Доборы</TabsTrigger>
                     <TabsTrigger value="participants">Участники</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="items" className="mt-4">
-                    <ItemsTab purchaseId={id} onEditSupplement={() => setSupplementOpen(true)} />
+                    <ItemsTab purchaseId={id} />
+                </TabsContent>
+
+                <TabsContent value="supplement" className="mt-4">
+                    <SupplementTab purchaseId={id} />
                 </TabsContent>
 
                 <TabsContent value="participants" className="mt-4">
                     <ParticipantsTab purchaseId={id} />
                 </TabsContent>
             </Tabs>
-
-            <SupplementDialog purchaseId={id} open={supplementOpen} onOpenChange={setSupplementOpen} />
 
             <ConfirmDialog
                 open={deleteOpen}

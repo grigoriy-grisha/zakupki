@@ -48,7 +48,7 @@ export function PriceTierEditor({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => onChange([...tiers, { amount: 1, unit: PACKAGE_UNITS[0], price: 0 }])}
+                    onClick={() => onChange([...tiers, { amount: 0, unit: PACKAGE_UNITS[0], price: 0 }])}
                 >
                     <Plus className="mr-1 h-3.5 w-3.5" />
                     Добавить тир
@@ -64,10 +64,10 @@ export function PriceTierEditor({
                             inputMode="numeric"
                             className="w-20"
                             placeholder="1"
-                            value={numInputValue(tier.amount, false)}
+                            value={numInputValue(tier.amount)}
                             onChange={(e) => {
                                 const next = [...tiers];
-                                next[i] = { ...next[i], amount: parseIntegerInput(e.target.value) || 1 };
+                                next[i] = { ...next[i], amount: parseIntegerInput(e.target.value) };
                                 onChange(next);
                             }}
                         />

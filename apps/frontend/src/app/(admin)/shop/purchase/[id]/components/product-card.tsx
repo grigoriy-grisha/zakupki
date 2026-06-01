@@ -8,6 +8,7 @@ import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { formatMinPackageOrderHint } from '@zakupki/types';
 import { ShoppingCart, Plus, Check } from 'lucide-react';
 import { PackDiscountHint } from '../../../components/pack-discount-hint';
+import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 
 interface ShopPurchaseItemProductCardProps {
     item: {
@@ -45,9 +46,10 @@ export function ProductCard({ item, packDiscountPercent, isOrdered, isSupplement
             <div className="relative h-48 bg-muted">
                 {photo ? (
                     <img
-                        src={`/api/photos/${photo.id}`}
+                        src={absoluteProductPhotoUrl(photo.id)}
                         alt={item.product.name}
                         className="h-full w-full object-cover"
+                        loading="lazy"
                     />
                 ) : (
                     <div className="flex h-full items-center justify-center">
@@ -59,11 +61,19 @@ export function ProductCard({ item, packDiscountPercent, isOrdered, isSupplement
                         <Check className="h-3.5 w-3.5" />
                     </div>
                 )}
-                {isSupplement && item.availableQty !== null && item.availableQty !== undefined && (
+                {isSupplement && (
                     <Badge
                         className={`absolute bottom-2 left-2 ${isSoldOut ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
                     >
-                        {isSoldOut ? 'Разобрано' : `Доступно: ${Number(item.availableQty)} ${shortName}`}
+                        {item.availableQty == null
+                            ? item.product.supplierPackageAmount != null
+                                ? `Пачка: ${Number(item.product.supplierPackageAmount)} ${shortName}`
+                                : 'Добор'
+                            : isSoldOut
+                                ? 'Разобрано'
+                                : item.product.supplierPackageAmount != null
+                                    ? `Остаток: ${Number(item.availableQty)} ${shortName} · Пачка: ${Number(item.product.supplierPackageAmount)} ${shortName}`
+                                    : `Доступно: ${Number(item.availableQty)} ${shortName}`}
                     </Badge>
                 )}
             </div>

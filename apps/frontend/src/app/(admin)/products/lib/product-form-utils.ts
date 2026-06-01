@@ -9,6 +9,17 @@ export type AttributeListItem = {
 
 export type PendingFile = { id: string; file: File; preview: string };
 
+export function resolveProductUnitId(product: {
+    unitId?: number | null;
+    unit?: { id: number } | null;
+}): number {
+    const fromScalar = Number(product.unitId);
+    if (Number.isFinite(fromScalar) && fromScalar > 0) return fromScalar;
+    const fromRelation = Number(product.unit?.id);
+    if (Number.isFinite(fromRelation) && fromRelation > 0) return fromRelation;
+    return 0;
+}
+
 export function getAttributeCharacteristicIds(attr: AttributeListItem | undefined): number[] {
     return attr?.characteristics?.map((l) => l.characteristic.id) ?? [];
 }

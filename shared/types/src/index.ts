@@ -69,6 +69,23 @@ export {
 } from './pricing';
 
 export {
+    calculateFreeRemainder,
+    getSupplementDisplayMax,
+    getSupplementMaxQuantity,
+    getSupplementOrderQuantityValidationError,
+    getSupplementRemainderPool,
+    getSupplementStockDecrement,
+    isFullSupplierPackOrder,
+    isExactSupplierPackOrder,
+    isWholePackOrder,
+    isValidSupplementOrderQuantity,
+    shouldDecrementSupplementStock,
+    snapSupplementOrderQuantity,
+    formatSupplementOrderHint,
+    type SupplementOrderBounds,
+} from './supplement-order';
+
+export {
     countFullSupplierPacks,
     formatPackDiscountBanner,
     formatPackDiscountHint,

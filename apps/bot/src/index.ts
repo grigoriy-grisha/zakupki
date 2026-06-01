@@ -46,7 +46,6 @@ async function main() {
         onStart: (info) => console.log(`Bot @${info.username} started`),
     });
 
-    // Graceful shutdown
     const shutdown = async (signal: string) => {
         console.log(`\n${signal} received, shutting down...`);
         await bot.stop();

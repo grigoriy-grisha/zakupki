@@ -135,7 +135,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         item={item}
                         packDiscountPercent={packDiscountPercent}
                         isOrdered={orderedItems.has(item.id)}
-                        isSupplement={purchase.status === 'SUPPLEMENT'}
+                        isSupplement={purchase.status === 'SUPPLEMENT' || purchase.fulfillmentStatus === 'REORDER'}
                         onSelect={setSelectedItem}
                     />
                 ))}
@@ -158,6 +158,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     purchaseItemId={selectedItem}
                     purchaseId={id}
                     packDiscountPercent={packDiscountPercent}
+                    isSupplementMode={purchase.status === 'SUPPLEMENT' || purchase.fulfillmentStatus === 'REORDER'}
                     currentQuantity={(() => {
                         const order = paymentDetail.myOrders?.find((o) => o.purchaseItemId === selectedItem);
                         return order ? Number(order.quantity) : undefined;

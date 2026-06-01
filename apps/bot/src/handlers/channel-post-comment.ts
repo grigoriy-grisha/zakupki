@@ -26,7 +26,6 @@ function isOurChannelAutomaticForward(message: Message, chatId: number): boolean
         return true;
     }
 
-    // В привязанной группе обсуждений автопересылка — только с нашего канала.
     const discussionId = getLinkedDiscussionChatId();
     if (discussionId && chatIdsMatch(chatId, discussionId)) {
         return true;
@@ -35,20 +34,15 @@ function isOurChannelAutomaticForward(message: Message, chatId: number): boolean
     return false;
 }
 
-/**
- * После публикации в канал Telegram пересылает пост в группу обсуждений.
- * Отвечаем reply на это сообщение — так кнопка всегда под постом, не раньше.
- */
 export async function channelPostShopCommentHandler(ctx: CustomContext) {
-    const message = ctx.message;
-    if (!message || !ctx.chat) return;
-    if (!message.is_automatic_forward) return;
-    if (!isOurChannelAutomaticForward(message, ctx.chat.id)) return;
+    if (!ctx.message || !ctx.chat) return;
+    if (!ctx.message.is_automatic_forward) return;
+    if (!isOurChannelAutomaticForward(ctx.message, ctx.chat.id)) return;
 
     const channelPostId =
-        message.forward_origin?.type === 'channel'
-            ? message.forward_origin.message_id
-            : (message as { forward_from_message_id?: number }).forward_from_message_id;
+        ctx.message.forward_origin?.type === 'channel'
+            ? ctx.message.forward_origin.message_id
+            : (ctx.message as { forward_from_message_id?: number }).forward_from_message_id;
 
     if (channelPostId == null) {
         console.warn('[TG] Автопересылка без id поста канала');
@@ -60,17 +54,17 @@ export async function channelPostShopCommentHandler(ctx: CustomContext) {
     }
 
     try {
-        await ctx.reply(SHOP_COMMENT_TEXT, shopCommentReplyOptions(message.message_id));
+        await ctx.reply(SHOP_COMMENT_TEXT, shopCommentReplyOptions(ctx.message.message_id));
         markShopCommentPosted(channelPostId);
         console.log(
-            `[TG] Shop comment reply on discussion msg ${message.message_id} (channel post ${channelPostId})`,
+            `[TG] Shop comment reply on discussion msg ${ctx.message.message_id} (channel post ${channelPostId})`,
         );
     } catch (err) {
         const replyMarkup = shopUrlKeyboard();
         if (replyMarkup) {
             try {
                 await ctx.reply(SHOP_COMMENT_TEXT, {
-                    reply_parameters: { message_id: message.message_id },
+                    reply_parameters: { message_id: ctx.message.message_id },
                 });
                 markShopCommentPosted(channelPostId);
                 console.log(`[TG] Shop comment text-only reply under post ${channelPostId}`);

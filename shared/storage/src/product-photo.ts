@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
-import { isS3Configured, resolveLocalFilePath } from './config.js';
+import { isS3Configured, resolveLocalFilePath } from './config';
 
 const require = createRequire(import.meta.url);
 const EasyYandexS3 = require('easy-yandex-s3').default as new (params: {

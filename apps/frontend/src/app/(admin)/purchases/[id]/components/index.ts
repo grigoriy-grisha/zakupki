@@ -1,5 +1,6 @@
 export { ExportPurchaseButtons } from './export-purchase-buttons';
 export { ItemsTab } from './items-tab';
+export { SupplementTab } from './supplement-tab';
 export { ItemEditSheet } from './item-edit-sheet';
 export { ParticipantsTab } from './participants-tab';
 export { SupplementDialog } from './supplement-dialog';

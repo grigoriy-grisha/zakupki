@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useProduct } from '../hooks';
 import { ProductForm } from './product-form';
 interface ProductSheetProps {
@@ -17,7 +18,7 @@ export function ProductSheet({ open, onOpenChange, editId: propEditId }: Product
         setEditId(propEditId);
     }, [propEditId]);
 
-    const { data: existing } = useProduct(editId, open);
+    const { data: existing, isLoading: isProductLoading } = useProduct(editId, open);
 
     return (
         <Sheet
@@ -35,7 +36,15 @@ export function ProductSheet({ open, onOpenChange, editId: propEditId }: Product
                     </SheetDescription>
                 </SheetHeader>
 
-                <ProductForm editId={editId} existing={existing} onSuccess={() => onOpenChange(false)} />
+                {editId && isProductLoading ? (
+                    <div className="space-y-4 px-4 pt-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                ) : (
+                    <ProductForm editId={editId} existing={existing} onSuccess={() => onOpenChange(false)} />
+                )}
             </SheetContent>
         </Sheet>
     );
