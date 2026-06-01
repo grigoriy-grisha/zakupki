@@ -1,8 +1,8 @@
 import type { Api } from 'grammy';
 
-import { getChannelIdFromEnv } from './telegram-post';
+import { getChannelIdFromEnv, normalizeChatId } from './telegram-post';
 
-let linkedDiscussionChatId: number | null = null;
+let linkedDiscussionChatId: string | null = null;
 let initialized = false;
 
 export async function initChannelDiscussion(api: Api): Promise<void> {
@@ -15,8 +15,9 @@ export async function initChannelDiscussion(api: Api): Promise<void> {
 
     try {
         const chat = await api.getChat(channelId);
-        linkedDiscussionChatId =
+        const rawLinked =
             chat.type === 'channel' ? ((chat as { linked_chat_id?: number }).linked_chat_id ?? null) : null;
+        linkedDiscussionChatId = rawLinked != null ? normalizeChatId(String(rawLinked)) : null;
         console.log(
             `[bot] Channel discussion chat: ${linkedDiscussionChatId ?? 'not linked'}`,
         );
@@ -28,7 +29,7 @@ export async function initChannelDiscussion(api: Api): Promise<void> {
     initialized = true;
 }
 
-export function getLinkedDiscussionChatId(): number | null {
+export function getLinkedDiscussionChatId(): string | null {
     return linkedDiscussionChatId;
 }
 

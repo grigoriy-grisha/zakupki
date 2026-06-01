@@ -40,6 +40,8 @@ export function useRemovePurchaseItem(purchaseId: number) {
     return trpc.purchases.removeItem.useMutation({
         onSuccess: () => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
+            void utils.orders.getAllByPurchase.invalidate({ purchaseId });
+            void utils.purchases.list.invalidate();
             toast.success('Товар удалён из закупки');
         },
         onError: (err) => toast.error(err.message),

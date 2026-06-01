@@ -2,12 +2,13 @@ import { NotFoundError, ValidationError } from '@zakupki/types';
 
 import { PurchaseRepository } from '../domain/purchase.repository';
 import { ProductRepository } from '../domain/product.repository';
-import { assertCanRemoveFromActivePurchase } from '../domain/product-purchase-lock';
+import type { TelegramPublishService } from './telegram-publish.service';
 
 export class PurchaseService {
     constructor(
         private repo: PurchaseRepository,
         private productRepo: ProductRepository,
+        private telegramPublish: TelegramPublishService,
     ) {}
 
     async list(status?: string) {
@@ -143,7 +144,11 @@ export class PurchaseService {
     async removeItem(id: number) {
         const item = await this.repo.findItemWithPurchase(id);
         if (!item) throw new NotFoundError('Позиция закупки', id);
-        assertCanRemoveFromActivePurchase(item.purchase.status, item.purchase.tag, item.tgMessageId);
+
+        if (item.tgMessageId && item.tgChannelId) {
+            await this.telegramPublish.enqueueDeleteChannelPost(item.tgChannelId, item.tgMessageId);
+        }
+
         return this.repo.removeItem(id);
     }
 

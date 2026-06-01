@@ -14,6 +14,7 @@ export class OrderService {
     constructor(
         private repo: OrderRepository,
         private purchaseRepo: PurchaseRepository,
+        private getPackDiscountPercent: () => Promise<number>,
     ) {}
 
     async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
@@ -29,10 +30,16 @@ export class OrderService {
             throw new PurchaseNotActiveError(status);
         }
 
+        const packDiscountPercent = await this.getPackDiscountPercent();
+
         const amountDue = calculateOrderAmount(quantity, {
             priceTiers: purchaseItem.product.priceTiers,
             pricePerUnit: Number(purchaseItem.product.pricePerUnit),
             priceOverride: purchaseItem.priceOverride != null ? Number(purchaseItem.priceOverride) : null,
+            supplierPackageAmount: purchaseItem.product.supplierPackageAmount,
+            supplierPackageUnit: purchaseItem.product.supplierPackageUnit,
+            supplierPackagePrice: purchaseItem.product.supplierPackagePrice,
+            packDiscountPercent,
         });
 
         const unit = purchaseItem.product.unit;

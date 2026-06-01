@@ -1,4 +1,9 @@
-import { parsePriceTiers, type PriceTier } from '@zakupki/types';
+import {
+    computeDiscountedPackPrice,
+    isGramSupplierPackProduct,
+    parsePriceTiers,
+    type PriceTier,
+} from '@zakupki/types';
 
 export function getProductPriceTiers(priceTiers: unknown): PriceTier[] {
     return parsePriceTiers(priceTiers);
@@ -13,6 +18,20 @@ export function getPackPriceRub(product: { supplierPackagePrice?: unknown }): nu
     if (product.supplierPackagePrice == null) return null;
     const price = Number(product.supplierPackagePrice);
     return Number.isFinite(price) && price > 0 ? price : null;
+}
+
+export function getDiscountedPackPriceRub(
+    product: {
+        supplierPackageAmount?: unknown;
+        supplierPackageUnit?: string | null;
+        supplierPackagePrice?: unknown;
+    },
+    discountPercent: number,
+): number | null {
+    if (!isGramSupplierPackProduct(product)) return null;
+    const packPrice = getPackPriceRub(product);
+    if (packPrice == null) return null;
+    return computeDiscountedPackPrice(packPrice, discountPercent);
 }
 
 export function formatPrice510Cell(tiers: PriceTier[]): string {

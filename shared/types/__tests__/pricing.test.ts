@@ -77,6 +77,62 @@ describe('calculateOrderAmount', () => {
         // 33.333... * 3 = 99.999...
         expect(calculateOrderAmount(3, { pricePerUnit: 33.333 })).toBe(100);
     });
+
+    it('applies pack discount for full supplier packs in grams', () => {
+        const tiers = [
+            { amount: 10, price: 133 },
+            { amount: 50, price: 1267 },
+        ];
+        expect(
+            calculateOrderAmount(50, {
+                pricePerUnit: 27,
+                priceTiers: tiers,
+                supplierPackageAmount: 50,
+                supplierPackageUnit: 'гр',
+                supplierPackagePrice: 1267,
+                packDiscountPercent: 3,
+            }),
+        ).toBe(1228.99);
+        expect(
+            calculateOrderAmount(100, {
+                pricePerUnit: 27,
+                priceTiers: tiers,
+                supplierPackageAmount: 50,
+                supplierPackageUnit: 'гр',
+                supplierPackagePrice: 1267,
+                packDiscountPercent: 3,
+            }),
+        ).toBe(2457.98);
+    });
+
+    it('uses tiers for gram remainder after full packs', () => {
+        const tiers = [
+            { amount: 10, price: 133 },
+            { amount: 50, price: 1267 },
+        ];
+        expect(
+            calculateOrderAmount(60, {
+                pricePerUnit: 27,
+                priceTiers: tiers,
+                supplierPackageAmount: 50,
+                supplierPackageUnit: 'гр',
+                supplierPackagePrice: 1267,
+                packDiscountPercent: 3,
+            }),
+        ).toBe(1361.99);
+    });
+
+    it('ignores pack discount for non-gram products', () => {
+        expect(
+            calculateOrderAmount(10, {
+                pricePerUnit: 100,
+                supplierPackageAmount: 10,
+                supplierPackageUnit: 'шт',
+                supplierPackagePrice: 500,
+                packDiscountPercent: 3,
+            }),
+        ).toBe(1000);
+    });
 });
 
 describe('order quantity validation', () => {

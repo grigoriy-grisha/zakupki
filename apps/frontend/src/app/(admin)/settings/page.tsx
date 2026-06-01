@@ -1,7 +1,8 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, ListChecks, Tag, Layers, FileText, Truck, Scale } from 'lucide-react';
+import { Settings, ListChecks, Tag, Layers, FileText, Truck, Scale, Percent } from 'lucide-react';
+import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
 import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
@@ -59,6 +60,11 @@ export default function SettingsPage() {
                         <span className="hidden sm:inline">Промокоды</span>
                         <span className="sm:hidden">Промо</span>
                     </TabsTrigger>
+                    <TabsTrigger value="pricing" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <Percent className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Цены закупок</span>
+                        <span className="sm:hidden">Цены</span>
+                    </TabsTrigger>
                 </TabsList>
                 <TabsContent value="attributes" className="mt-0">
                     <ProductAttributesTab />
@@ -77,6 +83,9 @@ export default function SettingsPage() {
                 </TabsContent>
                 <TabsContent value="promocodes" className="mt-0">
                     <PromoCodesTab />
+                </TabsContent>
+                <TabsContent value="pricing" className="mt-0">
+                    <PurchasePricingTab />
                 </TabsContent>
             </Tabs>
         </div>

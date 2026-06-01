@@ -12,17 +12,39 @@ interface PaymentDialogProps {
     purchaseId: number;
     remaining: number;
     hasPending: boolean;
+    paymentOpen: boolean;
 }
 
-export function PaymentDialog({ purchaseId, remaining, hasPending }: PaymentDialogProps) {
+export function PaymentDialog({ purchaseId, remaining, hasPending, paymentOpen }: PaymentDialogProps) {
     const form = usePaymentForm(purchaseId, remaining);
+
+    const payButton = !paymentOpen ? (
+        <div className="relative w-full">
+            <Button size="sm" disabled className="w-full blur-[3px] opacity-50 pointer-events-none">
+                <CreditCard className="h-4 w-4" />
+                Оплатить {remaining.toLocaleString('ru-RU')} ₽
+            </Button>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
+                <span className="rounded-md bg-background/90 px-2 py-1 text-center text-xs font-medium text-muted-foreground shadow-sm">
+                    Ждём начала оплаты
+                </span>
+            </div>
+        </div>
+    ) : (
+        <Button
+            size="sm"
+            className="w-full"
+            onClick={() => form.handleOpenChange(true)}
+            disabled={hasPending}
+        >
+            <CreditCard className="h-4 w-4" />
+            {hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`}
+        </Button>
+    );
 
     return (
         <Dialog open={form.open} onOpenChange={form.handleOpenChange}>
-            <Button size="sm" className="w-full" onClick={() => form.handleOpenChange(true)} disabled={hasPending}>
-                <CreditCard className="h-4 w-4" />
-                {hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`}
-            </Button>
+            {payButton}
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Сообщить об оплате</DialogTitle>

@@ -7,14 +7,13 @@ import {
     type ProductLabelSource,
 } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
-import {
-    getPurchaseItemOrderStats,
-} from './purchase-item-order-stats';
+import { formatOrderStatValue, getPurchaseItemOrderStats, unitsInPack } from './purchase-item-order-stats';
 
 type ExportUser = {
     firstName: string;
     lastName?: string | null;
     username?: string | null;
+    phone?: string | null;
     telegramCredential?: {
         telegramId: string;
         username?: string | null;
@@ -153,13 +152,18 @@ function formatPrice1Gr(product: ExportProduct, tiers: PriceTier[]) {
 }
 
 function formatSupplierPackage(product: ExportProduct) {
-    if (product.supplierPackageAmount == null || !product.supplierPackageUnit) return '';
-    return `${Number(product.supplierPackageAmount)} ${product.supplierPackageUnit}`;
+    if (product.supplierPackageAmount == null) return '';
+    const amount = Number(product.supplierPackageAmount);
+    const unit = product.supplierPackageUnit?.trim();
+    if (unit === 'гр' || unit === 'г') return amount;
+    if (!unit) return amount;
+    return `${amount} ${unit}`;
 }
 
 type ExportParticipant = {
     userId: number;
     name: string;
+    phone: string;
     tgUsername: string;
     telegramId: string;
     vkId: string;
@@ -182,25 +186,12 @@ function buildParticipants(orders: ExportOrder[]): ExportParticipant[] {
         map.set(order.userId, {
             userId: order.userId,
             name: userName(order.user) || `Участник #${order.userId}`,
+            phone: order.user?.phone?.trim() ?? '',
             ...extractParticipantCredentials(order.user),
         });
     });
 
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-}
-
-function participantHeaderLabel(participant: ExportParticipant) {
-    const lines = [participant.name];
-    if (participant.tgUsername) {
-        lines.push(`@${participant.tgUsername}`);
-    }
-    if (participant.telegramId) {
-        lines.push(`TG ID: ${participant.telegramId}`);
-    }
-    if (participant.vkId) {
-        lines.push(`VK ID: ${participant.vkId}`);
-    }
-    return lines.join('\n');
 }
 
 function participantStatus(due: number, paid: number, pending: number) {
@@ -307,23 +298,56 @@ function autoFitColumns(sheet: ExcelJS.Worksheet) {
     });
 }
 
+const GENERAL_EXPORT_FIXED_COLUMNS = 5;
+const GENERAL_EXPORT_SUMMARY_COLUMNS = 6;
+const GENERAL_EXPORT_LABEL_START = 3;
+const GENERAL_EXPORT_LABEL_END = 5;
+
+const GENERAL_EXPORT_FILL = {
+    purchaseTag: 'FFFFC9CD',
+    participantNumber: 'FF92D050',
+    priceHeader: 'FF00B0F0',
+    productRow: 'FF00FF00',
+    sumBeads: 'FFFFE0B2',
+    balance: 'FFFFCDD2',
+    paid: 'FF92D050',
+} as const;
+
+const GENERAL_EXPORT_PARTICIPANT_FILLS = ['FFFFFF00', 'FF92D050', 'FFFFC9CD'] as const;
+
+const GENERAL_EXPORT_PRICE_HEADERS = [
+    'цена за пачку в рублях',
+    'цена за 5/10 гр. в рублях',
+    'цена за 1 гр. в рублях',
+] as const;
+
+const GENERAL_EXPORT_SUMMARY_HEADERS = [
+    'НАБРАНО, гр',
+    'грамм в пачке',
+    'кол-во пачек к заказу',
+    'заказано пачек',
+    'заказано грамм',
+    'Свободный остаток',
+] as const;
+
 function applyGeneralSheetColumnWidths(
     sheet: ExcelJS.Worksheet,
     options: {
-        fixedColumns: number;
         participantCount: number;
-        summaryColumns: number;
         maxNameLineLength: number;
+        headerRowNumber: number;
     },
 ) {
-    const { fixedColumns, participantCount, summaryColumns, maxNameLineLength } = options;
+    const { participantCount, maxNameLineLength, headerRowNumber } = options;
+    const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
+    const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
     const summaryStart = fixedColumns + participantCount + 1;
-    const narrowWidth = 10;
+    const narrowWidth = 11;
     const fixedWidths: Record<number, number> = {
         2: 12,
-        3: 11,
-        4: 12,
-        5: 10,
+        3: 14,
+        4: 16,
+        5: 14,
     };
 
     sheet.getColumn(1).width = Math.min(Math.max(maxNameLineLength + 2, 28), 55);
@@ -332,21 +356,80 @@ function applyGeneralSheetColumnWidths(
         sheet.getColumn(col).width = fixedWidths[col] ?? narrowWidth;
     }
 
-    const headerRow = sheet.getRow(2);
-    for (let col = 1; col <= fixedColumns; col++) {
-        headerRow.getCell(col).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-    }
-
+    const headerRow = sheet.getRow(headerRowNumber);
     for (let col = fixedColumns + 1; col <= fixedColumns + participantCount; col++) {
-        const label = String(headerRow.getCell(col).value ?? '');
-        const maxLine = Math.max(...label.split('\n').map((line) => line.length), 8);
-        sheet.getColumn(col).width = Math.min(Math.max(maxLine + 2, 14), 32);
+        sheet.getColumn(col).width = 18;
         headerRow.getCell(col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     }
 
     for (let col = summaryStart; col < summaryStart + summaryColumns; col++) {
         sheet.getColumn(col).width = narrowWidth;
         headerRow.getCell(col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    }
+}
+
+function participantGramTotals(
+    orders: ExportOrder[],
+    participants: ExportParticipant[],
+    productByItemId: Map<number, ExportProduct>,
+) {
+    const totals = new Map<number, number>();
+    participants.forEach((participant) => totals.set(participant.userId, 0));
+
+    orders.forEach((order) => {
+        const product =
+            (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
+            order.purchaseItem?.product;
+        if (!isGramProduct(product)) return;
+
+        const qty = formatMoney(order.quantity);
+        if (qty <= 0) return;
+        totals.set(order.userId, (totals.get(order.userId) ?? 0) + qty);
+    });
+
+    return participants.map((participant) => totals.get(participant.userId) ?? 0);
+}
+
+function addGeneralFooterRow(
+    sheet: ExcelJS.Worksheet,
+    label: string,
+    participantValues: (number | string)[],
+    participantCount: number,
+    fillArgb?: string,
+) {
+    const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
+    const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
+    const row = sheet.addRow([
+        '',
+        '',
+        label,
+        '',
+        '',
+        ...participantValues,
+        ...Array(summaryColumns).fill(''),
+    ]);
+
+    sheet.mergeCells(row.number, GENERAL_EXPORT_LABEL_START, row.number, GENERAL_EXPORT_LABEL_END);
+
+    const fill = fillArgb
+        ? {
+              type: 'pattern' as const,
+              pattern: 'solid' as const,
+              fgColor: { argb: fillArgb },
+          }
+        : undefined;
+
+    const totalColumns = fixedColumns + participantCount + summaryColumns;
+    for (let col = GENERAL_EXPORT_LABEL_START; col <= totalColumns; col++) {
+        const cell = row.getCell(col);
+        if (fill) cell.fill = fill;
+        if (col <= GENERAL_EXPORT_LABEL_END) {
+            cell.font = { bold: true };
+            cell.alignment = { vertical: 'middle', wrapText: true };
+        } else if (col <= fixedColumns + participantCount) {
+            styleNumericCell(cell);
+            if (fill) cell.fill = fill;
+        }
     }
 }
 
@@ -361,52 +444,6 @@ async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string) {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
-}
-
-function addFooterRow(
-    sheet: ExcelJS.Worksheet,
-    label: string,
-    participantValues: (number | string)[],
-    fixedColumns: number,
-    summaryColumns: number,
-    fillArgb?: string,
-) {
-    const row = sheet.addRow([
-        label,
-        ...Array(fixedColumns - 1).fill(''),
-        ...participantValues,
-        ...Array(summaryColumns).fill(''),
-    ]);
-
-    if (fixedColumns > 1) {
-        sheet.mergeCells(row.number, 1, row.number, fixedColumns);
-    }
-
-    const fill = fillArgb
-        ? {
-              type: 'pattern' as const,
-              pattern: 'solid' as const,
-              fgColor: { argb: fillArgb },
-          }
-        : undefined;
-
-    const totalColumns = fixedColumns + participantValues.length + summaryColumns;
-    for (let col = 1; col <= totalColumns; col++) {
-        const cell = row.getCell(col);
-        if (fill) cell.fill = fill;
-    }
-
-    const labelCell = row.getCell(1);
-    labelCell.font = { bold: true };
-    labelCell.alignment = { vertical: 'middle', wrapText: true };
-
-    participantValues.forEach((_, index) => {
-        const cell = row.getCell(fixedColumns + 1 + index);
-        styleNumericCell(cell);
-        if (fill) cell.fill = fill;
-    });
-
-    return row;
 }
 
 function participantPaymentTotals(orders: ExportOrder[], payments: ExportPayment[], participants: ExportParticipant[]) {
@@ -475,51 +512,68 @@ export async function exportGeneralPurchaseData({
 
     const sheet = workbook.addWorksheet('Общие данные');
     const participants = buildParticipants(orders);
-    const fixedColumns = 5;
-    const summaryColumns = 6;
-    const summaryHeaders = [
-        'НАБРАНО, гр/шт',
-        'гр/шт в пачке',
-        'кол-во пачек к заказу',
-        'заказано пачек',
-        'заказано гр/шт',
-        'Свободный остаток',
-    ];
-    const fixedHeaders = [
-        'Название товара',
-        'Фасовка поставщика',
-        'Цена за пачку в рублях',
-        'Цена за 5/10 гр. в рублях',
-        'Цена за 1 гр/шт в рублях',
-    ];
+    const productByItemId = buildProductByItemId(purchase);
+    const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
+    const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
+    const participantCount = participants.length;
+    const summaryStartCol = fixedColumns + participantCount + 1;
+    const totalColumns = fixedColumns + participantCount + summaryColumns;
 
-    const numberRow = sheet.addRow([
-        ...Array(fixedColumns).fill(''),
+    const metaRow = sheet.addRow([
+        '',
+        purchase.tag,
+        'НОМЕР УЧАСТНИКА',
+        '',
+        '',
         ...participants.map((_, index) => index + 1),
         ...Array(summaryColumns).fill(''),
     ]);
-    const headerRow = sheet.addRow([
-        ...fixedHeaders,
-        ...participants.map(participantHeaderLabel),
-        ...summaryHeaders,
-    ]);
+    sheet.mergeCells(metaRow.number, GENERAL_EXPORT_LABEL_START, metaRow.number, GENERAL_EXPORT_LABEL_END);
+    applyOrdersCellFill(metaRow.getCell(2), GENERAL_EXPORT_FILL.purchaseTag);
+    metaRow.getCell(2).font = { bold: true };
+    metaRow.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+    const participantLabelCell = metaRow.getCell(GENERAL_EXPORT_LABEL_START);
+    participantLabelCell.font = { bold: true };
+    participantLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    for (let col = fixedColumns + 1; col <= fixedColumns + participantCount; col++) {
+        const cell = metaRow.getCell(col);
+        applyOrdersCellFill(cell, GENERAL_EXPORT_FILL.participantNumber);
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        styleNumericCell(cell);
+    }
 
-    numberRow.eachCell((cell, colNumber) => {
-        if (colNumber > fixedColumns && colNumber <= fixedColumns + participants.length) {
-            styleHeaderCell(cell);
-            styleNumericCell(cell);
-        }
+    const headerRow = sheet.addRow([
+        '',
+        'Фасовка поставщика, гр',
+        ...GENERAL_EXPORT_PRICE_HEADERS,
+        ...participants.map(() => ''),
+        ...GENERAL_EXPORT_SUMMARY_HEADERS,
+    ]);
+    participants.forEach((participant, index) => {
+        const cell = headerRow.getCell(fixedColumns + 1 + index);
+        cell.value = participantBlockTitle(participant);
+        applyOrdersCellFill(cell, GENERAL_EXPORT_PARTICIPANT_FILLS[index % GENERAL_EXPORT_PARTICIPANT_FILLS.length]);
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
-    headerRow.eachCell((cell, colNumber) => {
+    for (let col = GENERAL_EXPORT_LABEL_START; col <= GENERAL_EXPORT_LABEL_END; col++) {
+        const cell = headerRow.getCell(col);
         styleHeaderCell(cell);
-        cell.alignment = {
-            horizontal: colNumber <= fixedColumns ? 'left' : 'center',
-            vertical: 'middle',
-            wrapText: colNumber > fixedColumns && colNumber <= fixedColumns + participants.length,
-        };
-    });
+        applyOrdersCellFill(cell, GENERAL_EXPORT_FILL.priceHeader);
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    }
+    const packHeaderCell = headerRow.getCell(2);
+    styleHeaderCell(packHeaderCell);
+    packHeaderCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    for (let col = summaryStartCol; col <= totalColumns; col++) {
+        styleHeaderCell(headerRow.getCell(col));
+    }
 
     let maxNameLineLength = 0;
+    let grandCollected = 0;
+    let grandPacksToOrder = 0;
+    let grandOrderedPacks = 0;
+    let grandOrderedGrams = 0;
 
     purchase.items.forEach((item) => {
         const product = item.product;
@@ -527,12 +581,10 @@ export async function exportGeneralPurchaseData({
         maxNameLineLength = Math.max(maxNameLineLength, line1.length);
         const tiers = parsePriceTiers(product.priceTiers);
         const stats = getPurchaseItemOrderStats(item);
-        const packSize = stats.packSize;
-        const totalQuantity = stats.totalQuantity;
-        const packsToOrder = stats.packsToOrder ?? '';
-        const orderedPacks = stats.orderedPacks ?? '';
-        const orderedQuantity = stats.orderedQuantity ?? '';
-        const remainder = stats.freeRemainder ?? '';
+        grandCollected += stats.totalQuantity;
+        grandPacksToOrder += stats.packsToOrder ?? 0;
+        grandOrderedPacks += stats.orderedPacks ?? 0;
+        grandOrderedGrams += stats.orderedQuantity ?? 0;
 
         const quantitiesByUser = new Map<number, number>();
         item.orderLines.forEach((line) => {
@@ -546,67 +598,371 @@ export async function exportGeneralPurchaseData({
             formatPrice510(tiers),
             formatPrice1Gr(product, tiers),
             ...participants.map((participant) => quantitiesByUser.get(participant.userId) ?? ''),
-            totalQuantity || '',
-            packSize ?? '',
-            packsToOrder,
-            orderedPacks,
-            orderedQuantity,
-            remainder,
+            stats.totalQuantity || '',
+            stats.packSize ?? '',
+            stats.packsToOrder ?? '',
+            stats.orderedPacks ?? '',
+            stats.orderedQuantity ?? '',
+            stats.freeRemainder ?? '',
         ]);
+        for (let col = 1; col <= totalColumns; col++) {
+            applyOrdersCellFill(row.getCell(col), GENERAL_EXPORT_FILL.productRow);
+        }
         for (let col = 1; col <= fixedColumns; col++) {
             styleFixedColumnCell(row.getCell(col), col);
         }
-        for (let col = fixedColumns + 1; col <= fixedColumns + participants.length + summaryColumns; col++) {
+        for (let col = fixedColumns + 1; col <= totalColumns; col++) {
             styleNumericCell(row.getCell(col));
         }
         setExcelProductNameCell(row.getCell(1), product, attributeTypes);
     });
 
+    const summaryCollectedCol = summaryStartCol;
+
+    const totalsRow = sheet.addRow([
+        '',
+        '',
+        '',
+        '',
+        '',
+        ...Array(participantCount).fill(''),
+        grandCollected || '',
+        '',
+        '',
+        '',
+        '',
+    ]);
+    const collectedTotalCell = totalsRow.getCell(summaryCollectedCol);
+    collectedTotalCell.font = { bold: true };
+    styleNumericCell(collectedTotalCell);
+
+    const gramTotals = participantGramTotals(orders, participants, productByItemId);
     const paymentTotals = participantPaymentTotals(orders, payments, participants);
 
-    sheet.addRow([]);
-    addFooterRow(
+    addGeneralFooterRow(sheet, 'грамм всего', gramTotals.map((value) => value || ''), participantCount);
+    addGeneralFooterRow(
         sheet,
         'Сумма за бисер, руб',
         paymentTotals.map((entry) => entry.due),
-        fixedColumns,
-        summaryColumns,
-        'FFFFE0B2',
+        participantCount,
+        GENERAL_EXPORT_FILL.sumBeads,
     );
-    addFooterRow(
+    addGeneralFooterRow(
         sheet,
         'ОСТАТОК К ОПЛАТЕ, руб',
         paymentTotals.map((entry) => entry.balance),
-        fixedColumns,
-        summaryColumns,
-        'FFFFCDD2',
+        participantCount,
+        GENERAL_EXPORT_FILL.balance,
     );
-    addFooterRow(
+    addGeneralFooterRow(
         sheet,
         'ОПЛАЧЕНО',
         paymentTotals.map((entry) => entry.paid),
-        fixedColumns,
-        summaryColumns,
-        'FFC8E6C9',
+        participantCount,
+        GENERAL_EXPORT_FILL.paid,
     );
 
-    const totalColumns = fixedColumns + participants.length + summaryColumns;
-    const productEndRow = 2 + purchase.items.length;
-    const footerStartRow = productEndRow + 2;
-    const footerEndRow = footerStartRow + 2;
+    const verifyRow = sheet.addRow([
+        'Проверка:',
+        '',
+        '',
+        '',
+        '',
+        ...Array(participantCount).fill(''),
+        grandCollected || '',
+        '',
+        grandPacksToOrder || '',
+        grandOrderedPacks || '',
+        grandOrderedGrams || '',
+        '',
+    ]);
+    verifyRow.getCell(1).font = { bold: true };
 
-    applySheetBorders(sheet, 1, productEndRow, 1, totalColumns);
-    applySheetBorders(sheet, footerStartRow, footerEndRow, 1, totalColumns);
+    const footerEndRow = sheet.rowCount;
+    applySheetBorders(sheet, metaRow.number, footerEndRow, 1, totalColumns);
 
-    sheet.views = [{ state: 'frozen', ySplit: 2 }];
+    sheet.views = [{ state: 'frozen', xSplit: fixedColumns, ySplit: 2 }];
     applyGeneralSheetColumnWidths(sheet, {
-        fixedColumns,
-        participantCount: participants.length,
-        summaryColumns,
+        participantCount,
         maxNameLineLength,
+        headerRowNumber: headerRow.number,
     });
 
     await downloadWorkbook(workbook, safeFilename(purchase.tag, 'общие_данные'));
+}
+
+const ORDERS_EXPORT_COLUMN_COUNT = 7;
+const ORDERS_EXPORT_COL_PACK = 2;
+const ORDERS_EXPORT_COL_PRICE_PACK = 3;
+const ORDERS_EXPORT_COL_PRICE_510 = 4;
+const ORDERS_EXPORT_COL_PRICE_1GR = 5;
+const ORDERS_EXPORT_COL_ORDER_PARTIAL = 6;
+const ORDERS_EXPORT_COL_ORDER_FULL_PACK = 7;
+const ORDERS_EXPORT_FOOTER_LABEL_START = 3;
+const ORDERS_EXPORT_FOOTER_LABEL_END = 5;
+
+const ORDERS_EXPORT_FILL = {
+    purchaseTag: 'FFFFC9CD',
+    participantNumber: 'FF92D050',
+    priceHeader: 'FF00B0F0',
+    participantName: 'FFFFFF00',
+    sumBeads: 'FFFFE0B2',
+    balance: 'FFFFCDD2',
+    paid: 'FF92D050',
+} as const;
+
+const ORDERS_EXPORT_PRICE_HEADERS = [
+    'цена за пачку в рублях',
+    'цена за 5/10 гр. в рублях',
+    'цена за 1 гр. в рублях',
+] as const;
+
+function isGramProduct(product: ExportProduct | undefined): boolean {
+    const pack = product ? unitsInPack(product) : null;
+    if (pack?.unit === 'гр') return true;
+    const short = product?.unit?.shortName?.trim().toLowerCase().replace(/\./g, '') ?? '';
+    return short === 'гр' || short === 'g';
+}
+
+function isFullPackOrder(product: ExportProduct | undefined, quantity: unknown): boolean {
+    const qty = formatMoney(quantity);
+    const pack = product ? unitsInPack(product) : null;
+    return Boolean(pack && qty > 0 && Math.abs(qty - pack.size) < 1e-6);
+}
+
+/** Слева — не целая пачка; справа — ровно одна пачка поставщика (например 50 при фасовке 50 гр). */
+function orderQuantitySplitColumns(product: ExportProduct | undefined, quantity: unknown): [string, string] {
+    const qty = formatMoney(quantity);
+    if (!qty) return ['', ''];
+
+    if (isFullPackOrder(product, quantity)) {
+        return ['', String(qty)];
+    }
+
+    return [String(qty), ''];
+}
+
+function orderAmountSplit(product: ExportProduct | undefined, amountDue: unknown, quantity: unknown) {
+    const amount = formatMoney(amountDue);
+    if (isFullPackOrder(product, quantity)) {
+        return { partial: 0, fullPack: amount };
+    }
+    return { partial: amount, fullPack: 0 };
+}
+
+function applyOrdersCellFill(cell: ExcelJS.Cell, fillArgb: string) {
+    cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: fillArgb },
+    };
+}
+
+function participantBlockTitle(participant: ExportParticipant): ExcelJS.CellRichTextValue {
+    const richText: ExcelJS.RichText[] = [{ text: participant.name, font: { bold: true } }];
+    if (participant.tgUsername) {
+        richText.push({ text: '\n', font: { bold: true } });
+        richText.push({ text: `@${participant.tgUsername}`, font: { color: { argb: 'FFFF0000' }, bold: true } });
+    }
+    if (participant.phone) {
+        richText.push({ text: `\nТел: ${participant.phone}`, font: { size: 9 } });
+    }
+    if (participant.telegramId) {
+        richText.push({ text: `\nTG ID: ${participant.telegramId}`, font: { size: 9 } });
+    }
+    if (participant.vkId) {
+        richText.push({ text: `\nVK ID: ${participant.vkId}`, font: { size: 9 } });
+    }
+    return { richText };
+}
+
+function productPriceCells(product: ExportProduct | undefined) {
+    if (!product) {
+        return ['', '', ''] as const;
+    }
+    const tiers = parsePriceTiers(product.priceTiers);
+    return [
+        product.supplierPackagePrice != null ? formatMoney(product.supplierPackagePrice) : '',
+        formatPrice510(tiers),
+        formatPrice1Gr(product, tiers),
+    ] as const;
+}
+
+function groupOrdersByUser(orders: ExportOrder[]) {
+    const map = new Map<number, ExportOrder[]>();
+    orders.forEach((order) => {
+        const list = map.get(order.userId) ?? [];
+        list.push(order);
+        map.set(order.userId, list);
+    });
+    return map;
+}
+
+function addParticipantGramTotalRow(
+    sheet: ExcelJS.Worksheet,
+    totals: { partialGr: number; fullPackGr: number },
+) {
+    if (totals.partialGr + totals.fullPackGr <= 0) return;
+
+    const row = sheet.addRow(['', '', '', '', 'грамм всего', totals.partialGr || '', totals.fullPackGr || '']);
+    const labelCell = row.getCell(ORDERS_EXPORT_COL_PRICE_1GR);
+    labelCell.font = { bold: true };
+    labelCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    styleNumericCell(row.getCell(ORDERS_EXPORT_COL_ORDER_PARTIAL));
+    styleNumericCell(row.getCell(ORDERS_EXPORT_COL_ORDER_FULL_PACK));
+}
+
+function addParticipantFooterRow(
+    sheet: ExcelJS.Worksheet,
+    label: string,
+    values: { left: number | string; right: number | string },
+    fillArgb: string,
+    mergeValues = false,
+) {
+    const row = sheet.addRow(['', '', label, '', '', values.left ?? '', values.right ?? '']);
+    sheet.mergeCells(row.number, ORDERS_EXPORT_FOOTER_LABEL_START, row.number, ORDERS_EXPORT_FOOTER_LABEL_END);
+
+    if (mergeValues) {
+        sheet.mergeCells(row.number, ORDERS_EXPORT_COL_ORDER_PARTIAL, row.number, ORDERS_EXPORT_COL_ORDER_FULL_PACK);
+        row.getCell(ORDERS_EXPORT_COL_ORDER_PARTIAL).value = values.left;
+    }
+
+    for (let col = ORDERS_EXPORT_FOOTER_LABEL_START; col <= ORDERS_EXPORT_COLUMN_COUNT; col++) {
+        const cell = row.getCell(col);
+        applyOrdersCellFill(cell, fillArgb);
+        cell.font = { bold: true };
+        if (col >= ORDERS_EXPORT_COL_ORDER_PARTIAL) {
+            styleNumericCell(cell);
+        } else {
+            cell.alignment = { vertical: 'middle', wrapText: true };
+        }
+    }
+}
+
+function addParticipantOrdersTable(
+    sheet: ExcelJS.Worksheet,
+    purchaseTag: string,
+    participantNumber: number,
+    participant: ExportParticipant,
+    userOrders: ExportOrder[],
+    payment: { due: number; paid: number },
+    productByItemId: Map<number, ExportProduct>,
+    attributeTypes?: AttributeTypeMeta[],
+) {
+    const metaRow = sheet.addRow(['', '', purchaseTag, 'НОМЕР УЧАСТНИКА', '', participantNumber, '']);
+    sheet.mergeCells(metaRow.number, ORDERS_EXPORT_COL_PRICE_510, metaRow.number, ORDERS_EXPORT_COL_PRICE_1GR);
+    sheet.mergeCells(metaRow.number, ORDERS_EXPORT_COL_ORDER_PARTIAL, metaRow.number, ORDERS_EXPORT_COL_ORDER_FULL_PACK);
+
+    applyOrdersCellFill(metaRow.getCell(ORDERS_EXPORT_COL_PRICE_PACK), ORDERS_EXPORT_FILL.purchaseTag);
+    metaRow.getCell(ORDERS_EXPORT_COL_PRICE_PACK).font = { bold: true };
+    metaRow.getCell(ORDERS_EXPORT_COL_PRICE_PACK).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const participantLabelCell = metaRow.getCell(ORDERS_EXPORT_COL_PRICE_510);
+    participantLabelCell.font = { bold: true };
+    participantLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const participantNumberCell = metaRow.getCell(ORDERS_EXPORT_COL_ORDER_PARTIAL);
+    participantNumberCell.font = { bold: true };
+    participantNumberCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    applyOrdersCellFill(participantNumberCell, ORDERS_EXPORT_FILL.participantNumber);
+    styleNumericCell(participantNumberCell);
+
+    const headerRow = sheet.addRow([
+        '',
+        'Фасовка поставщика, гр',
+        ...ORDERS_EXPORT_PRICE_HEADERS,
+        '',
+        '',
+    ]);
+    sheet.mergeCells(headerRow.number, ORDERS_EXPORT_COL_ORDER_PARTIAL, headerRow.number, ORDERS_EXPORT_COL_ORDER_FULL_PACK);
+    const participantTitleCell = headerRow.getCell(ORDERS_EXPORT_COL_ORDER_PARTIAL);
+    participantTitleCell.value = participantBlockTitle(participant);
+    participantTitleCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+    const packHeaderCell = headerRow.getCell(ORDERS_EXPORT_COL_PACK);
+    styleHeaderCell(packHeaderCell);
+    packHeaderCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+    for (let col = ORDERS_EXPORT_COL_PRICE_PACK; col <= ORDERS_EXPORT_COL_PRICE_1GR; col++) {
+        const cell = headerRow.getCell(col);
+        styleHeaderCell(cell);
+        applyOrdersCellFill(cell, ORDERS_EXPORT_FILL.priceHeader);
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    }
+    applyOrdersCellFill(participantTitleCell, ORDERS_EXPORT_FILL.participantName);
+
+    const blockStartRow = metaRow.number;
+    const gramTotals = { partialGr: 0, fullPackGr: 0 };
+    const amountTotals = { partial: 0, fullPack: 0 };
+
+    userOrders.forEach((order) => {
+        const product =
+            (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
+            order.purchaseItem?.product;
+        const [packPrice, price510, price1] = productPriceCells(product);
+        const [partialQty, fullPackQty] = orderQuantitySplitColumns(product, order.quantity);
+        const amounts = orderAmountSplit(product, order.amountDue, order.quantity);
+        amountTotals.partial += amounts.partial;
+        amountTotals.fullPack += amounts.fullPack;
+
+        if (isGramProduct(product)) {
+            const qty = formatMoney(order.quantity);
+            if (isFullPackOrder(product, order.quantity)) {
+                gramTotals.fullPackGr += qty;
+            } else if (qty > 0) {
+                gramTotals.partialGr += qty;
+            }
+        }
+
+        const row = sheet.addRow([
+            '',
+            product ? formatSupplierPackage(product) : '',
+            packPrice,
+            price510,
+            price1,
+            partialQty,
+            fullPackQty,
+        ]);
+        setExcelProductNameCell(row.getCell(1), product, attributeTypes);
+        styleFixedColumnCell(row.getCell(1), 1);
+        row.getCell(ORDERS_EXPORT_COL_PACK).alignment = { horizontal: 'center', vertical: 'middle' };
+        styleNumericCell(row.getCell(ORDERS_EXPORT_COL_PRICE_PACK));
+        styleNumericCell(row.getCell(ORDERS_EXPORT_COL_PRICE_510));
+        styleNumericCell(row.getCell(ORDERS_EXPORT_COL_PRICE_1GR));
+        styleNumericCell(row.getCell(ORDERS_EXPORT_COL_ORDER_PARTIAL));
+        styleNumericCell(row.getCell(ORDERS_EXPORT_COL_ORDER_FULL_PACK));
+    });
+
+    addParticipantGramTotalRow(sheet, gramTotals);
+
+    const balance = Math.max(0, payment.due - payment.paid);
+
+    addParticipantFooterRow(
+        sheet,
+        'Сумма за бисер, руб',
+        {
+            left: amountTotals.partial || '',
+            right: amountTotals.fullPack || '',
+        },
+        ORDERS_EXPORT_FILL.sumBeads,
+    );
+    addParticipantFooterRow(
+        sheet,
+        'ОСТАТОК К ОПЛАТЕ, руб',
+        { left: balance || '', right: '' },
+        ORDERS_EXPORT_FILL.balance,
+        true,
+    );
+    addParticipantFooterRow(
+        sheet,
+        'ОПЛАЧЕНО',
+        { left: payment.paid || '', right: '' },
+        ORDERS_EXPORT_FILL.paid,
+        true,
+    );
+
+    const blockEndRow = sheet.rowCount;
+    applySheetBorders(sheet, blockStartRow, blockEndRow, 1, ORDERS_EXPORT_COLUMN_COUNT);
 }
 
 export async function exportOrdersPurchaseData({
@@ -618,113 +974,46 @@ export async function exportOrdersPurchaseData({
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Zakupki';
     workbook.created = new Date();
+
     const productByItemId = buildProductByItemId(purchase);
+    const sheet = workbook.addWorksheet('Заказы');
+    const participants = buildParticipants(orders);
+    const ordersByUser = groupOrdersByUser(orders);
+    const paymentSummary = new Map(buildParticipantSummary(orders, payments).map((entry) => [entry.userId, entry]));
 
-    const ordersSheet = workbook.addWorksheet('Заказы');
-    const ordersHeaders = ['Участник', 'ID в TG', 'TG ID', 'VK ID', 'Товар', 'Ед. изм.', 'Кол-во', 'Цена/ед', 'Сумма'];
-    styleHeaderRow(ordersSheet.addRow(ordersHeaders));
-    orders.forEach((order) => {
-        const product =
-            (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
-            order.purchaseItem?.product;
-        const unit = product?.unit?.shortName ?? '';
-        const price = formatMoney(order.purchaseItem?.priceOverride ?? product?.pricePerUnit ?? 0);
-        const credentials = extractParticipantCredentials(order.user);
-        const row = ordersSheet.addRow([
-            userName(order.user),
-            credentials.tgUsername ? `@${credentials.tgUsername}` : '',
-            credentials.telegramId,
-            credentials.vkId,
-            '',
-            unit,
-            formatMoney(order.quantity),
-            price,
-            formatMoney(order.amountDue),
-        ]);
-        setExcelProductNameCell(row.getCell(5), product, attributeTypes);
-        styleNumericCell(row.getCell(3));
-        styleNumericCell(row.getCell(4));
-        styleNumericCell(row.getCell(7));
-        styleNumericCell(row.getCell(8));
-        styleNumericCell(row.getCell(9));
-    });
-    applySheetBorders(ordersSheet, 1, ordersSheet.rowCount, 1, ordersHeaders.length);
-    autoFitColumns(ordersSheet);
-    ordersSheet.getColumn(5).width = Math.max(ordersSheet.getColumn(5).width ?? 10, 28);
-
-    const byProduct = new Map<
-        number,
-        {
-            product?: ExportProduct;
-            unit: string;
-            qty: number;
-            amount: number;
-            orders: number;
-            participants: Set<number>;
+    participants.forEach((participant, index) => {
+        if (index > 0) {
+            sheet.addRow([]);
         }
-    >();
-    orders.forEach((order) => {
-        const itemId = order.purchaseItem?.id;
-        if (itemId == null) return;
 
-        const product =
-            productByItemId.get(itemId) ?? order.purchaseItem?.product;
-        const unit = product?.unit?.shortName ?? '';
-        const current = byProduct.get(itemId) ?? {
-            product,
-            unit,
-            qty: 0,
-            amount: 0,
-            orders: 0,
-            participants: new Set<number>(),
-        };
-        current.qty += formatMoney(order.quantity);
-        current.amount += formatMoney(order.amountDue);
-        current.orders += 1;
-        current.participants.add(order.userId);
-        byProduct.set(itemId, current);
+        const userOrders = [...(ordersByUser.get(participant.userId) ?? [])].sort((a, b) => {
+            const nameA = a.purchaseItem?.product?.name ?? '';
+            const nameB = b.purchaseItem?.product?.name ?? '';
+            return nameA.localeCompare(nameB, 'ru');
+        });
+        const payment = paymentSummary.get(participant.userId);
+        const due = payment?.due ?? userOrders.reduce((sum, order) => sum + formatMoney(order.amountDue), 0);
+        const paid = payment?.paid ?? 0;
+
+        addParticipantOrdersTable(
+            sheet,
+            purchase.tag,
+            index + 1,
+            participant,
+            userOrders,
+            { due, paid },
+            productByItemId,
+            attributeTypes,
+        );
     });
 
-    const byProductsHeaders = ['Товар', 'Ед. изм.', 'Строк заказов', 'Участников', 'Кол-во всего', 'Сумма'];
-    const byProductsSheet = workbook.addWorksheet('По товарам');
-    styleHeaderRow(byProductsSheet.addRow(byProductsHeaders));
-    byProduct.forEach((stats) => {
-        const row = byProductsSheet.addRow([
-            '',
-            stats.unit,
-            stats.orders,
-            stats.participants.size,
-            stats.qty,
-            stats.amount,
-        ]);
-        setExcelProductNameCell(row.getCell(1), stats.product, attributeTypes);
-        styleNumericCell(row.getCell(3));
-        styleNumericCell(row.getCell(4));
-        styleNumericCell(row.getCell(5));
-        styleNumericCell(row.getCell(6));
-    });
-    applySheetBorders(byProductsSheet, 1, byProductsSheet.rowCount, 1, byProductsHeaders.length);
-    autoFitColumns(byProductsSheet);
-    byProductsSheet.getColumn(1).width = Math.max(byProductsSheet.getColumn(1).width ?? 10, 28);
-
-    const participants = buildParticipantSummary(orders, payments);
-    addDataSheet(
-        workbook,
-        'По участникам',
-        ['Участник', 'ID в TG', 'TG ID', 'VK ID', 'Позиций', 'К оплате', 'Покрыто', 'Остаток', 'Статус'],
-        participants.map((participant) => [
-            participant.name,
-            participant.tgUsername ? `@${participant.tgUsername}` : '',
-            participant.telegramId,
-            participant.vkId,
-            participant.positions,
-            participant.due,
-            participant.paid,
-            participant.due - participant.paid,
-            participant.status,
-        ]),
-        [3, 4, 5, 6, 7, 8],
-    );
+    sheet.getColumn(1).width = 40;
+    sheet.getColumn(ORDERS_EXPORT_COL_PACK).width = 12;
+    sheet.getColumn(ORDERS_EXPORT_COL_PRICE_PACK).width = 14;
+    sheet.getColumn(ORDERS_EXPORT_COL_PRICE_510).width = 16;
+    sheet.getColumn(ORDERS_EXPORT_COL_PRICE_1GR).width = 14;
+    sheet.getColumn(ORDERS_EXPORT_COL_ORDER_PARTIAL).width = 10;
+    sheet.getColumn(ORDERS_EXPORT_COL_ORDER_FULL_PACK).width = 12;
 
     await downloadWorkbook(workbook, safeFilename(purchase.tag, 'данные_заказов'));
 }

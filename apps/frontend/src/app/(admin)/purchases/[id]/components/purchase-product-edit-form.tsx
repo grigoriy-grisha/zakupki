@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import { PackageUnitSelect } from '../../../products/components/package-unit-select';
+import { DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT } from '@zakupki/types';
 import {
     PACKAGE_UNITS,
     applyPostTemplate,
@@ -60,21 +61,23 @@ interface PurchaseProductEditFormProps {
     submitLabel?: string;
     footer?: React.ReactNode;
     purchaseTag?: string;
-    /** Загрузить цены/фасовку/описание из карточки товара (правка уже добавленного в закупку). */
     loadSavedDescription?: boolean;
 }
 
-function applyPurchaseFields(setters: {
-    setDescription: (v: string) => void;
-    setTiers: (v: PurchaseProductFormState['tiers']) => void;
-    setMinPkgAmount: (v: number | null) => void;
-    setMinPkgUnit: (v: string | null) => void;
-    setSupPkgAmount: (v: number | null) => void;
-    setSupPkgUnit: (v: string | null) => void;
-    setSupPkgPrice: (v: number | null) => void;
-    setAvailAmount: (v: number | null) => void;
-    setAvailUnit: (v: string | null) => void;
-}, next: PurchaseProductFormState) {
+function applyPurchaseFields(
+    setters: {
+        setDescription: (v: string) => void;
+        setTiers: (v: PurchaseProductFormState['tiers']) => void;
+        setMinPkgAmount: (v: number | null) => void;
+        setMinPkgUnit: (v: string | null) => void;
+        setSupPkgAmount: (v: number | null) => void;
+        setSupPkgUnit: (v: string | null) => void;
+        setSupPkgPrice: (v: number | null) => void;
+        setAvailAmount: (v: number | null) => void;
+        setAvailUnit: (v: string | null) => void;
+    },
+    next: PurchaseProductFormState,
+) {
     setters.setDescription(next.description);
     setters.setTiers(next.tiers);
     setters.setMinPkgAmount(next.minPkgAmount);
@@ -84,6 +87,21 @@ function applyPurchaseFields(setters: {
     setters.setSupPkgPrice(next.supPkgPrice);
     setters.setAvailAmount(next.availAmount);
     setters.setAvailUnit(next.availUnit);
+}
+
+function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
+    if (!prevAuto) return nextAuto;
+    const normCurrent = normalizeNovelHtml(current);
+    const normPrev = normalizeNovelHtml(prevAuto);
+    const normNext = normalizeNovelHtml(nextAuto);
+    if (normCurrent === normPrev) return nextAuto;
+    if (normCurrent.startsWith(normPrev)) {
+        return nextAuto + current.slice(prevAuto.length);
+    }
+    if (normCurrent !== normNext) {
+        return current;
+    }
+    return nextAuto;
 }
 
 export function PurchaseProductEditForm({
@@ -110,9 +128,21 @@ export function PurchaseProductEditForm({
     const [availAmount, setAvailAmount] = useState<number | null>(initial.availAmount);
     const [availUnit, setAvailUnit] = useState<string | null>(initial.availUnit);
     const [templateId, setTemplateId] = useState('none');
+    const [descriptionRevision, setDescriptionRevision] = useState(0);
     const [priceError, setPriceError] = useState<string | null>(null);
 
     const { data: postTemplates } = trpc.postTemplates.list.useQuery();
+    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
+    const packDiscountPercent =
+        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+
+    const userPickedTemplateRef = useRef(false);
+    const lastAppliedSignatureRef = useRef<string | null>(null);
+    const lastAutoDescriptionRef = useRef<string | null>(null);
+    /** При редактировании: не затирать уже сохранённое описание при автовыборе шаблона. */
+    const preserveSavedDescriptionRef = useRef(
+        loadSavedDescription && !!normalizeNovelHtml(initial.description),
+    );
 
     useEffect(() => {
         const next = loadSavedDescription
@@ -132,29 +162,30 @@ export function PurchaseProductEditForm({
             },
             next,
         );
+        userPickedTemplateRef.current = false;
+        preserveSavedDescriptionRef.current =
+            loadSavedDescription && !!normalizeNovelHtml(next.description);
+        setTemplateId('none');
+        setDescriptionRevision(0);
+        lastAppliedSignatureRef.current = null;
+        lastAutoDescriptionRef.current = null;
+    }, [product.id, loadSavedDescription, product, initialTiers]);
 
-        if (loadSavedDescription) {
-            const defaultTemplate = resolveDefaultTemplateId(product.id, postTemplates);
-            setTemplateId(defaultTemplate);
-            if (defaultTemplate !== 'none') {
-                persistTemplateChoice(product.id, defaultTemplate);
-            }
-        } else {
-            setTemplateId('none');
+    useEffect(() => {
+        if (!loadSavedDescription) return;
+        if (!postTemplates?.length || userPickedTemplateRef.current) return;
+        const defaultTemplate = resolveDefaultTemplateId(product.id, postTemplates);
+        setTemplateId(defaultTemplate);
+        if (defaultTemplate !== 'none') {
+            persistTemplateChoice(product.id, defaultTemplate);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [product.id, loadSavedDescription, postTemplates]);
+    }, [product.id, postTemplates, loadSavedDescription]);
 
     const { data: attributeTypes, isSuccess: attributeTypesReady } = trpc.attributeTypes.list.useQuery();
     const showInTitleByTypeId = useMemo(
         () => buildShowInTitleByTypeId(attributeTypes),
         [attributeTypes],
     );
-    const selectedTemplateBody =
-        templateId === 'none'
-            ? null
-            : (postTemplates?.find((t: { id: number; body: string }) => t.id === Number(templateId))?.body ??
-              null);
 
     const descriptionFields = useMemo(
         () => ({
@@ -169,6 +200,7 @@ export function PurchaseProductEditForm({
             availableAmount: availAmount,
             availableUnit: availUnit,
             purchaseTag,
+            packDiscountPercent,
         }),
         [
             product,
@@ -183,54 +215,89 @@ export function PurchaseProductEditForm({
             availAmount,
             availUnit,
             purchaseTag,
+            packDiscountPercent,
         ],
     );
 
-    const templatedHtml = useMemo(() => {
-        if (templateId === 'none' || !attributeTypesReady) return null;
-        const body = selectedTemplateBody?.trim();
-        if (!body) return null;
-        return applyPostTemplate(body, descriptionFields);
-    }, [templateId, selectedTemplateBody, descriptionFields, attributeTypesReady]);
+    const descriptionFieldsRef = useRef(descriptionFields);
+    descriptionFieldsRef.current = descriptionFields;
 
-    const lastAutoDescriptionRef = useRef<string | null>(null);
-    const applyingTemplateRef = useRef(false);
+    const getTemplateBody = useCallback(
+        (id: string) => {
+            if (id === 'none') return null;
+            return postTemplates?.find((t: { id: number; body: string }) => t.id === Number(id))?.body ?? null;
+        },
+        [postTemplates],
+    );
 
-    function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
-        if (!prevAuto) return nextAuto;
-        const normCurrent = normalizeNovelHtml(current);
-        const normPrev = normalizeNovelHtml(prevAuto);
-        if (normCurrent === normPrev) return nextAuto;
-        if (normCurrent.startsWith(normPrev)) {
-            return nextAuto + current.slice(prevAuto.length);
-        }
-        return nextAuto;
-    }
+    const selectedTemplateBody =
+        templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
+
+    const syncDescriptionFromTemplate = useCallback(
+        (id: string, options: { replace: boolean; bumpEditor: boolean }) => {
+            if (id === 'none' || !attributeTypesReady) return false;
+
+            const body = getTemplateBody(id)?.trim();
+            if (!body) return false;
+
+            const nextHtml = applyPostTemplate(body, descriptionFieldsRef.current);
+
+            if (preserveSavedDescriptionRef.current) {
+                lastAppliedSignatureRef.current = `${id}:${body}`;
+                return false;
+            }
+
+            const prevAuto = options.replace ? null : lastAutoDescriptionRef.current;
+            setDescription((current) => mergeTemplateIntoDescription(current, prevAuto, nextHtml));
+            lastAutoDescriptionRef.current = nextHtml;
+            lastAppliedSignatureRef.current = `${id}:${body}`;
+
+            if (options.bumpEditor) {
+                setDescriptionRevision((n) => n + 1);
+            }
+            return true;
+        },
+        [attributeTypesReady, getTemplateBody],
+    );
 
     useEffect(() => {
-        if (templatedHtml == null) return;
-        applyingTemplateRef.current = true;
-        setDescription((current) => mergeTemplateIntoDescription(current, lastAutoDescriptionRef.current, templatedHtml));
-        lastAutoDescriptionRef.current = templatedHtml;
-        queueMicrotask(() => {
-            applyingTemplateRef.current = false;
+        if (templateId === 'none') {
+            lastAppliedSignatureRef.current = null;
+            lastAutoDescriptionRef.current = null;
+            return;
+        }
+        if (!attributeTypesReady || !selectedTemplateBody) return;
+
+        const signature = `${templateId}:${selectedTemplateBody}`;
+        const isNewTemplate = lastAppliedSignatureRef.current !== signature;
+
+        syncDescriptionFromTemplate(templateId, {
+            replace: isNewTemplate,
+            bumpEditor: isNewTemplate,
         });
-    }, [templatedHtml]);
-
-    function handleDescriptionChange(html: string) {
-        setDescription(html);
-        if (applyingTemplateRef.current) return;
-    }
-
-    const editorKey = templateId === 'none' ? `manual-${product.id}` : `tpl-${templateId}-${product.id}`;
+    }, [
+        templateId,
+        attributeTypesReady,
+        selectedTemplateBody,
+        descriptionFields,
+        syncDescriptionFromTemplate,
+    ]);
 
     function handleTemplateChange(value: string) {
+        userPickedTemplateRef.current = true;
+        preserveSavedDescriptionRef.current = false;
+        lastAppliedSignatureRef.current = null;
+        lastAutoDescriptionRef.current = null;
         setTemplateId(value);
         persistTemplateChoice(product.id, value);
-        lastAutoDescriptionRef.current = null;
+
         if (value === 'none') {
             setDescription(loadSavedDescription ? (product.description ?? '') : '');
+            lastAutoDescriptionRef.current = null;
+            return;
         }
+
+        syncDescriptionFromTemplate(value, { replace: true, bumpEditor: true });
     }
 
     function handleSave() {
@@ -334,9 +401,9 @@ export function PurchaseProductEditForm({
                 <Label>Описание</Label>
                 <div className="max-h-[35vh] overflow-y-auto rounded-md border">
                     <NovelEditor
-                        key={editorKey}
+                        key={`purchase-desc-${product.id}-${descriptionRevision}`}
                         value={description}
-                        onChange={handleDescriptionChange}
+                        onChange={setDescription}
                         placeholder={
                             templateId === 'none'
                                 ? 'Текст описания для поста…'

@@ -16,7 +16,9 @@ export async function startCommand(ctx: CustomContext) {
             `/start — открыть магазин\n` +
             `/help — справка\n` +
             `/orders — мои заказы\n` +
-            `/payments — мои оплаты\n\n` +
+            `/pay — отправить чек об оплате\n` +
+            `/payments — мои оплаты\n` +
+            `/cancel — отменить отправку оплаты\n\n` +
             (webAppUrl ? 'Нажмите кнопку ниже, чтобы открыть магазин:' : 'Магазин скоро будет доступен!'),
         replyMarkup ? { reply_markup: replyMarkup } : undefined,
     );
@@ -28,7 +30,9 @@ export async function helpCommand(ctx: CustomContext) {
             '/start — открыть магазин\n' +
             '/help — эта справка\n' +
             '/orders — мои заказы\n' +
-            '/payments — мои оплаты\n\n' +
+            '/pay — отправить чек об оплате\n' +
+            '/payments — мои оплаты\n' +
+            '/cancel — отменить отправку оплаты\n\n' +
             'По вопросам обращайтесь сюда: @kind_of_girl',
     );
 }

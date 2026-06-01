@@ -7,7 +7,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, Package } from 'lucide-react';
+import {
+    DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
+    PURCHASE_FULFILLMENT_LABELS,
+    isGramSupplierPackProduct,
+    isPurchasePaymentOpen,
+    type PurchaseFulfillmentStatus,
+} from '@zakupki/types';
+import { PackDiscountBanner } from '../../components/pack-discount-banner';
 import { usePurchasePaymentDetail } from './hooks';
 import { QuantityModal, ProductCard, OrdersSummaryCard, PaymentDialog } from './components';
 
@@ -17,7 +25,12 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const [selectedItem, setSelectedItem] = useState<number | null>(null);
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
+    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
     const paymentDetail = usePurchasePaymentDetail(id);
+    const packDiscountPercent =
+        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+    const hasGramPackProducts =
+        purchase?.items.some((item) => isGramSupplierPackProduct(item.product)) ?? false;
 
     const orderedItems = new Set(paymentDetail.myOrdersInPurchase.map((o) => o.purchaseItemId));
 
@@ -47,6 +60,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         );
     }
 
+    const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
+    const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
+    const paymentOpen = isPurchasePaymentOpen(fulfillmentStatus);
+
     return (
         <div className="space-y-6">
             <div className="flex items-start gap-4">
@@ -67,6 +84,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         >
                             {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                         </Badge>
+                        <Badge variant="outline">
+                            <Package className="mr-1 h-3 w-3" />
+                            {fulfillmentLabel}
+                        </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
                         {purchase.tag} · До{' '}
@@ -74,6 +95,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     </p>
                 </div>
             </div>
+
+            {hasGramPackProducts && (
+                <PackDiscountBanner discountPercent={packDiscountPercent} />
+            )}
 
             <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">Товаров: {purchase.items.length}</p>
@@ -90,11 +115,13 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <OrdersSummaryCard
                     paymentDetail={paymentDetail}
                     purchaseItems={purchase.items}
+                    fulfillmentLabel={fulfillmentLabel}
                     paymentDialog={
                         <PaymentDialog
                             purchaseId={id}
                             remaining={paymentDetail.remaining}
                             hasPending={paymentDetail.hasPending}
+                            paymentOpen={paymentOpen}
                         />
                     }
                 />
@@ -106,6 +133,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     <ProductCard
                         key={item.id}
                         item={item}
+                        packDiscountPercent={packDiscountPercent}
                         isOrdered={orderedItems.has(item.id)}
                         isSupplement={purchase.status === 'SUPPLEMENT'}
                         onSelect={setSelectedItem}
@@ -129,6 +157,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <QuantityModal
                     purchaseItemId={selectedItem}
                     purchaseId={id}
+                    packDiscountPercent={packDiscountPercent}
                     currentQuantity={(() => {
                         const order = paymentDetail.myOrders?.find((o) => o.purchaseItemId === selectedItem);
                         return order ? Number(order.quantity) : undefined;

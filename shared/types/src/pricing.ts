@@ -1,3 +1,6 @@
+import { computeDiscountedPackPrice } from './app-settings';
+import { getSupplierPackSize, normalizeSupplierPackUnit } from './pack-discount-pricing';
+
 export type PriceTier = {
     amount: number;
     unit?: string;
@@ -31,18 +34,50 @@ export function parsePriceTiers(raw: unknown): PriceTier[] {
  * Сумма заказа по количеству и ценовым ступеням.
  * Ступени — фасовки: 10 гр → 340 ₽. Сначала крупные фасовки, остаток — по цене мелкой.
  */
-export function calculateOrderAmount(
-    quantity: number,
-    options: {
-        priceTiers?: unknown;
-        pricePerUnit: number;
-        priceOverride?: number | null;
-    },
-): number {
+export type CalculateOrderAmountOptions = {
+    priceTiers?: unknown;
+    pricePerUnit: number;
+    priceOverride?: number | null;
+    supplierPackageAmount?: unknown;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: unknown;
+    packDiscountPercent?: number | null;
+};
+
+export function calculateOrderAmount(quantity: number, options: CalculateOrderAmountOptions): number {
     if (!isPositive(quantity)) return 0;
 
     if (options.priceOverride != null && isPositive(Number(options.priceOverride))) {
         return roundMoney(quantity * Number(options.priceOverride));
+    }
+
+    const packSize = getSupplierPackSize(options);
+    const packPrice = positiveOrNull(options.supplierPackagePrice);
+    const packUnit = normalizeSupplierPackUnit(options.supplierPackageUnit);
+    const discountPercent = options.packDiscountPercent;
+
+    if (
+        packSize != null &&
+        packUnit === 'гр' &&
+        packPrice != null &&
+        discountPercent != null &&
+        Number.isFinite(discountPercent) &&
+        discountPercent >= 0 &&
+        discountPercent <= 100
+    ) {
+        const fullPacks = Math.floor((quantity + 1e-9) / packSize);
+        if (fullPacks > 0) {
+            const remainder = quantity - fullPacks * packSize;
+            const discountedPack = computeDiscountedPackPrice(packPrice, discountPercent);
+            let total = fullPacks * discountedPack;
+            if (remainder > 1e-6) {
+                total += calculateOrderAmount(remainder, {
+                    priceTiers: options.priceTiers,
+                    pricePerUnit: options.pricePerUnit,
+                });
+            }
+            return roundMoney(total);
+        }
     }
 
     const tiers = parsePriceTiers(options.priceTiers).sort((a, b) => b.amount - a.amount);

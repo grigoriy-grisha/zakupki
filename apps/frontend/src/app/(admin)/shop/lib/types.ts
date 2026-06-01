@@ -1,8 +1,11 @@
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+
 export interface ShopPurchaseSummary {
     id: number;
     supplier: string;
     tag: string;
     status: string;
+    fulfillmentStatus?: PurchaseFulfillmentStatus | null;
     deadline: string | Date;
 }
 

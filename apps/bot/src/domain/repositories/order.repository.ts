@@ -60,6 +60,63 @@ export class OrderRepository {
         });
     }
 
+    findAllByUserId(userId: number) {
+        return db.orderLine.findMany({
+            where: { userId },
+            select: {
+                amountDue: true,
+                purchaseItem: {
+                    select: {
+                        purchaseId: true,
+                        purchase: { select: { id: true, tag: true } },
+                    },
+                },
+            },
+        });
+    }
+
+    findActiveOrdersByUserId(userId: number) {
+        return db.orderLine.findMany({
+            where: {
+                userId,
+                purchaseItem: {
+                    purchase: { status: { in: ['ACTIVE', 'SUPPLEMENT'] } },
+                },
+            },
+            include: {
+                purchaseItem: {
+                    include: {
+                        product: { include: { unit: true } },
+                        purchase: {
+                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    findByUserAndPurchase(userId: number, purchaseId: number) {
+        return db.orderLine.findMany({
+            where: {
+                userId,
+                purchaseItem: { purchaseId },
+            },
+            include: {
+                purchaseItem: {
+                    include: {
+                        product: { include: { unit: true } },
+                        purchase: {
+                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'asc' },
+        });
+    }
+
     findByPurchaseItemAndUser(purchaseItemId: number, userId: number) {
         return db.orderLine.findUnique({
             where: { purchaseItemId_userId: { purchaseItemId, userId } },

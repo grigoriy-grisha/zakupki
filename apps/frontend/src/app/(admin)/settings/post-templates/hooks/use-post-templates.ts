@@ -21,6 +21,7 @@ export function useUpdatePostTemplate() {
     return trpc.postTemplates.update.useMutation({
         onSuccess: async () => {
             await utils.postTemplates.list.invalidate();
+            toast.success('Шаблон сохранён');
         },
         onError: (err) => toast.error(err.message),
     });

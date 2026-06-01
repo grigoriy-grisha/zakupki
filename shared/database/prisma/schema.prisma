@@ -338,6 +338,12 @@ model PromoCode {
   @@index([purchaseId])
 }
 
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Role {
   id    Int        @id @default(autoincrement())
   kind  RoleKind   @unique

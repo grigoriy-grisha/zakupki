@@ -33,7 +33,12 @@ export class UserRepository {
     async list() {
         return dbClient.user.findMany({
             include: {
-                orderLines: true,
+                orderLines: {
+                    select: {
+                        id: true,
+                        purchaseItem: { select: { purchaseId: true } },
+                    },
+                },
                 payments: true,
                 ...USER_CREDENTIALS_INCLUDE,
             },

@@ -23,7 +23,7 @@ export default function UsersPage() {
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">Участники</h1>
                     <p className="text-sm text-muted-foreground">
-                        {users?.length ?? 0} участников · стрелка — заказы, имя — профиль
+                        {users?.length ?? 0} участников · стрелка — закупки, имя — профиль
                     </p>
                 </div>
             </div>
@@ -43,7 +43,7 @@ export default function UsersPage() {
                                     <TableHead className="w-12" />
                                     <TableHead>Имя</TableHead>
                                     <TableHead>Роль</TableHead>
-                                    <TableHead>Заказы</TableHead>
+                                    <TableHead>Закупки</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

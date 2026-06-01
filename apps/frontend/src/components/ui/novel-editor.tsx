@@ -66,6 +66,7 @@ export function NovelEditor({
     const lastEmittedHtml = useRef<string>('');
     const prevValueRef = useRef<string | undefined>(value);
     const editorRef = useRef<EditorInstance | null>(null);
+    const isFocusedRef = useRef(false);
 
     const extensions = useMemo(
         () => [
@@ -106,6 +107,9 @@ export function NovelEditor({
         const currentHtml = editor.isEmpty ? '' : normalizeNovelHtml(editor.getHTML());
         if (incoming === currentHtml) return;
 
+        // Пока пользователь печатает — не подменяем документ снаружи (refetch / нормализация HTML).
+        if (isFocusedRef.current || editor.isFocused) return;
+
         editor.commands.setContent(incoming, false);
         lastEmittedHtml.current = incoming;
     }, [value]);
@@ -127,6 +131,12 @@ export function NovelEditor({
                     slotBefore={<EditorToolbar />}
                     onCreate={({ editor }) => {
                         editorRef.current = editor;
+                        editor.on('focus', () => {
+                            isFocusedRef.current = true;
+                        });
+                        editor.on('blur', () => {
+                            isFocusedRef.current = false;
+                        });
                         if (value) {
                             const normalized = normalizeNovelHtml(value);
                             editor.commands.setContent(normalized, false);

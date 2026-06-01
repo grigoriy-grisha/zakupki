@@ -1,3 +1,4 @@
+import { isPurchasePaymentOpen, ValidationError } from '@zakupki/types';
 import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
@@ -15,6 +16,11 @@ export const paymentsRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
+            const purchase = await ctx.services.purchase.getById(input.purchaseId);
+            if (!isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
+                throw new ValidationError('Оплата ещё не открыта. Ждём начала оплаты.');
+            }
+
             const proofData = input.proofBase64 ? Buffer.from(input.proofBase64, 'base64') : undefined;
 
             let promoCodeId: number | undefined;

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { NovelEditor } from '@/components/ui/novel-editor';
-import { ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronRight, Loader2, Trash2 } from 'lucide-react';
 import { useUpdatePostTemplate } from '../hooks';
 
 export function PostTemplateRow({
@@ -22,22 +22,23 @@ export function PostTemplateRow({
     useEffect(() => {
         setName(template.name);
         setBody(template.body);
-    }, [template.id, template.name, template.body]);
+    }, [template.id]);
 
-    function commitName() {
-        const trimmed = name.trim();
-        if (trimmed && trimmed !== template.name) {
-            update.mutate({ id: template.id, name: trimmed });
-        } else {
-            setName(template.name);
-        }
-    }
+    const trimmedName = name.trim();
+    const isDirty = trimmedName !== template.name || body !== template.body;
+    const canSave = trimmedName.length > 0 && isDirty;
 
-    function saveBody(html: string) {
-        setBody(html);
-        if (html !== template.body) {
-            update.mutate({ id: template.id, body: html });
-        }
+    function handleSave() {
+        if (!canSave) return;
+        update.mutate(
+            { id: template.id, name: trimmedName, body },
+            {
+                onSuccess: (saved) => {
+                    setName(saved.name);
+                    setBody(saved.body);
+                },
+            },
+        );
     }
 
     return (
@@ -54,8 +55,6 @@ export function PostTemplateRow({
                 <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    onBlur={commitName}
-                    onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
                     className="h-8 flex-1 border-transparent bg-transparent font-medium shadow-none hover:border-input focus-visible:border-input"
                 />
                 <Button
@@ -68,8 +67,17 @@ export function PostTemplateRow({
                 </Button>
             </div>
             {expanded && (
-                <div className="border-t px-3 pb-3 pt-2">
-                    <NovelEditor value={body} onChange={saveBody} placeholder="Текст шаблона поста…" />
+                <div className="space-y-3 border-t px-3 pb-3 pt-2">
+                    <NovelEditor
+                        key={template.id}
+                        value={body}
+                        onChange={setBody}
+                        placeholder="Текст шаблона поста…"
+                    />
+                    <Button className="w-full sm:w-auto" disabled={!canSave || update.isPending} onClick={handleSave}>
+                        {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Сохранить шаблон
+                    </Button>
                 </div>
             )}
         </div>

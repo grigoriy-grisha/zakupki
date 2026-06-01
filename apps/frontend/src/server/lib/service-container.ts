@@ -17,11 +17,13 @@ import { PostTemplateRepository } from '../domain/post-template.repository';
 import { ProductAttributeRepository } from '../domain/product-attribute.repository';
 import { PromoCodeRepository } from '../domain/promo-code.repository';
 import { SupplierRepository } from '../domain/supplier.repository';
+import { AppSettingRepository } from '../domain/app-setting.repository';
 import { UnitRepository } from '../domain/unit.repository';
 import { AttributeTypeService } from '../services/attribute-type.service';
 import { CharacteristicService } from '../services/characteristic.service';
 import { ProductAttributeService } from '../services/product-attribute.service';
 import { SupplierService } from '../services/supplier.service';
+import { AppSettingService } from '../services/app-setting.service';
 import { UnitService } from '../services/unit.service';
 import { PostTemplateService } from '../services/post-template.service';
 
@@ -38,10 +40,14 @@ export class ServiceContainer {
     private readonly characteristicRepo = new CharacteristicRepository();
     private readonly productAttributeRepo = new ProductAttributeRepository();
     private readonly postTemplateRepo = new PostTemplateRepository();
+    private readonly appSettingRepo = new AppSettingRepository();
 
+    public readonly telegramPublish = new TelegramPublishService();
     public readonly user = new UserService(this.userRepo);
-    public readonly order = new OrderService(this.orderRepo, this.purchaseRepo);
-    public readonly purchase = new PurchaseService(this.purchaseRepo, this.productRepo);
+    public readonly order = new OrderService(this.orderRepo, this.purchaseRepo, () =>
+        this.appSetting.getBeadPackPriceDiscountPercent(),
+    );
+    public readonly purchase = new PurchaseService(this.purchaseRepo, this.productRepo, this.telegramPublish);
     public readonly product = new ProductService(this.productRepo);
     public readonly payment = new PaymentService(this.paymentRepo);
     public readonly promoCode = new PromoCodeService(this.promoCodeRepo);
@@ -50,8 +56,8 @@ export class ServiceContainer {
     public readonly attributeType = new AttributeTypeService(this.attributeTypeRepo);
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);
-    public readonly telegramPublish = new TelegramPublishService();
     public readonly postTemplate = new PostTemplateService(this.postTemplateRepo);
+    public readonly appSetting = new AppSettingService(this.appSettingRepo);
 }
 
 export const serviceContainer = new ServiceContainer();

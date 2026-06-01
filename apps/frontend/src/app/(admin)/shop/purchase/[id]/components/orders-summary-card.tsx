@@ -3,9 +3,11 @@
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import type { ProductLabelSource } from '@/app/(admin)/products/lib';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { getProductPhotoId, type ProductLabelSource } from '@/app/(admin)/products/lib';
 import { cn } from '@/lib/utils';
-import { CircleCheck, Clock, CircleX, AlertCircle, Trash2 } from 'lucide-react';
+import { CircleCheck, Clock, CircleX, AlertCircle, Trash2, Package } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
@@ -17,9 +19,15 @@ interface OrdersSummaryCardProps {
     paymentDetail: ReturnType<typeof usePurchasePaymentDetail>;
     paymentDialog: ReactNode;
     purchaseItems?: { id: number; product: ProductLabelSource }[];
+    fulfillmentLabel: string;
 }
 
-export function OrdersSummaryCard({ paymentDetail, paymentDialog, purchaseItems }: OrdersSummaryCardProps) {
+export function OrdersSummaryCard({
+    paymentDetail,
+    paymentDialog,
+    purchaseItems,
+    fulfillmentLabel,
+}: OrdersSummaryCardProps) {
     const { myOrdersInPurchase, totalDue, purchasePayments, hasPending, totalPaid, remaining } = paymentDetail;
     const productByItemId = useMemo(
         () => new Map(purchaseItems?.map((item) => [item.id, item.product]) ?? []),
@@ -29,26 +37,46 @@ export function OrdersSummaryCard({ paymentDetail, paymentDialog, purchaseItems 
     return (
         <Card>
             <CardContent className="p-5 space-y-4">
-                <h3 className="font-semibold">Ваши заказы</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-semibold">Ваши заказы</h3>
+                    <Badge variant="outline" className="font-normal">
+                        <Package className="mr-1 h-3 w-3" />
+                        {fulfillmentLabel}
+                    </Badge>
+                </div>
 
                 <div className="space-y-2">
                     {myOrdersInPurchase.map((order) => {
                         const product = productByItemId.get(order.purchaseItemId);
+                        const photoId =
+                            product != null
+                                ? getProductPhotoId(product)
+                                : (order.purchaseItem?.product?.photos?.[0]?.id ?? null);
+                        const label =
+                            product != null
+                                ? undefined
+                                : (order.purchaseItem?.product?.name ?? 'Товар');
 
                         return (
                             <div
                                 key={order.id}
                                 className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2"
                             >
-                                {product ? (
-                                    <PurchaseProductLabel product={product} className="min-w-0 text-sm" />
-                                ) : (
-                                    <span className="text-sm">{order.purchaseItem?.product?.name ?? 'Товар'}</span>
-                                )}
-                                <span className="shrink-0 text-sm font-medium">
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                    <ProductPhotoPreview photoId={photoId} alt={label ?? 'Фото товара'} />
+                                    {product ? (
+                                        <PurchaseProductLabel product={product} className="min-w-0 text-sm" />
+                                    ) : (
+                                        <span className="text-sm">{label}</span>
+                                    )}
+                                </div>
+                                <span className="shrink-0 text-right text-sm font-medium">
                                     {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                    {order.purchaseItem?.product?.unit?.shortName ?? ''} ·{' '}
-                                    {Number(order.amountDue).toLocaleString('ru-RU')} ₽
+                                    {order.purchaseItem?.product?.unit?.shortName ?? ''}
+                                    <br />
+                                    <span className="text-muted-foreground">
+                                        {Number(order.amountDue).toLocaleString('ru-RU')} ₽
+                                    </span>
                                 </span>
                             </div>
                         );

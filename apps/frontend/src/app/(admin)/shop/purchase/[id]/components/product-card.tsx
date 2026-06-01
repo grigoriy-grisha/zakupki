@@ -7,6 +7,7 @@ import { PurchaseProductLabel } from '@/components/shared/purchase-product-label
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { formatMinPackageOrderHint } from '@zakupki/types';
 import { ShoppingCart, Plus, Check } from 'lucide-react';
+import { PackDiscountHint } from '../../../components/pack-discount-hint';
 
 interface ShopPurchaseItemProductCardProps {
     item: {
@@ -16,18 +17,22 @@ interface ShopPurchaseItemProductCardProps {
         minQty: string | number | null;
         product: ProductLabelSource & {
             pricePerUnit: string | number;
+            supplierPackageAmount?: string | number | null;
+            supplierPackageUnit?: string | null;
+            supplierPackagePrice?: string | number | null;
             unit: { shortName: string; multiplicity: string | number } | null;
             minPackageAmount: string | number | null;
             minPackageUnit: string | null;
             photos: { id: number }[];
         };
     };
+    packDiscountPercent: number;
     isOrdered: boolean;
     isSupplement: boolean;
     onSelect: (itemId: number) => void;
 }
 
-export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPurchaseItemProductCardProps) {
+export function ProductCard({ item, packDiscountPercent, isOrdered, isSupplement, onSelect }: ShopPurchaseItemProductCardProps) {
     const price = Number(item.priceOverride ?? item.product.pricePerUnit);
     const photo = item.product.photos?.[0];
     const shortName = item.product.unit?.shortName ?? '';
@@ -83,6 +88,11 @@ export function ProductCard({ item, isOrdered, isSupplement, onSelect }: ShopPur
                                 <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
                             ) : null;
                         })()}
+                        <PackDiscountHint
+                            product={item.product}
+                            discountPercent={packDiscountPercent}
+                            className="mt-1.5"
+                        />
                     </div>
                 </div>
 

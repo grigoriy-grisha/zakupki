@@ -1,13 +1,14 @@
 import type { Api } from 'grammy';
 import type { RedisClient } from '@zakupki/queue';
 import { GrammyError } from 'grammy';
-import { TelegramChannelPostQueue, UnrecoverableError } from '@zakupki/queue';
+import { getRedisConnection, TelegramChannelPostQueue, UnrecoverableError } from '@zakupki/queue';
 import { loadProductPhoto } from '@zakupki/storage';
 
 import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
 import type { ChannelPostPhoto } from '../domain/types';
 
+import { waitUntilShopCommentPosted } from '../lib/post-shop-comment';
 import {
     buildProductPostText,
     getChannelIdFromEnv,
@@ -39,14 +40,21 @@ export class ChannelPostService {
 
         queue.setupWorker({
             handler: async (job) => {
+                if (job.data.type === 'PURCHASE_ITEM_CHANNEL_POST_DELETE') {
+                    await this.deletePost(job.data.tgChannelId, job.data.tgMessageId);
+                    return;
+                }
+
                 const { purchaseItemId } = job.data;
-                const isEdit = (job.data as any).type === 'PURCHASE_ITEM_CHANNEL_POST_EDIT';
+                const isEdit = job.data.type === 'PURCHASE_ITEM_CHANNEL_POST_EDIT';
                 await this.processPost(purchaseItemId, isEdit);
             },
             onFailed: (job, err) => {
-                console.error(
-                    `[TG queue] Failed job ${job.id} (purchaseItemId=${job.data.purchaseItemId}): ${err.message}`,
-                );
+                const target =
+                    job.data.type === 'PURCHASE_ITEM_CHANNEL_POST_DELETE'
+                        ? `messageId=${job.data.tgMessageId}`
+                        : `purchaseItemId=${job.data.purchaseItemId}`;
+                console.error(`[TG queue] Failed job ${job.id} (${target}): ${err.message}`);
             },
         });
 
@@ -181,6 +189,22 @@ export class ChannelPostService {
 
         await this.repo.updateTelegramMessage(purchaseItemId, String(messageId), this.channelId!);
 
+        try {
+            const redis = getRedisConnection();
+            const cacheKey = `tg_post_to_item:${this.channelId}:${messageId}`;
+            await redis.set(cacheKey, String(purchaseItemId), 'EX', 86400);
+        } catch (err) {
+            console.warn('[TG queue] Redis cache for post mapping failed:', err);
+        }
+
+        const commentPosted = await waitUntilShopCommentPosted(messageId, 20_000);
+        if (!commentPosted) {
+            console.warn(
+                `[TG] Комментарий с кнопкой не появился под постом ${messageId}. ` +
+                    'Бот в группе обсуждений? Group Privacy выключен?',
+            );
+        }
+
         console.log(`[TG queue] Posted item ${purchaseItemId} → message ${messageId}`);
     }
 
@@ -189,6 +213,26 @@ export class ChannelPostService {
             return await sendChannelPost(this.api, this.channelId!, text, photo);
         } catch (err) {
             console.error('[TG queue] sendChannelPost failed:', err);
+            throw err;
+        }
+    }
+
+    private async deletePost(tgChannelId: string, tgMessageId: string) {
+        const chatId = tgChannelId;
+        const messageId = Number(tgMessageId);
+        if (!Number.isFinite(messageId)) {
+            throw new UnrecoverableError(`Invalid tgMessageId: ${tgMessageId}`);
+        }
+
+        try {
+            await this.api.deleteMessage(chatId, messageId);
+            console.log(`[TG queue] Deleted channel message ${messageId}`);
+        } catch (err) {
+            if (err instanceof GrammyError && err.description.includes('message to delete not found')) {
+                console.log(`[TG queue] Message ${messageId} already deleted, skipped`);
+                return;
+            }
+            console.error(`[TG queue] Delete failed for message ${messageId}:`, err);
             throw err;
         }
     }

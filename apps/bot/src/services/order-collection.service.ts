@@ -1,3 +1,4 @@
+import { getBeadPackPriceDiscountPercent } from '@zakupki/database/bead-pack-discount';
 import { calculateOrderAmount, getOrderQuantityValidationError } from '@zakupki/types';
 import type { Redis } from 'ioredis';
 import { getRedisConnection } from '@zakupki/queue';
@@ -165,10 +166,15 @@ export class OrderCollectionService {
 
         const user = await this.users.createOrGetUser(params.telegramId, params.userInfo);
         const unitShort = purchaseItem.product.unit?.shortName ?? 'ед.';
+        const packDiscountPercent = await getBeadPackPriceDiscountPercent();
         const pricing = {
             priceTiers: purchaseItem.product.priceTiers,
             pricePerUnit: Number(purchaseItem.product.pricePerUnit),
             priceOverride: purchaseItem.priceOverride != null ? Number(purchaseItem.priceOverride) : null,
+            supplierPackageAmount: purchaseItem.product.supplierPackageAmount,
+            supplierPackageUnit: purchaseItem.product.supplierPackageUnit,
+            supplierPackagePrice: purchaseItem.product.supplierPackagePrice,
+            packDiscountPercent,
         };
 
         const existingLine = await this.orders.findByPurchaseItemAndUser(purchaseItem.id, user.id);

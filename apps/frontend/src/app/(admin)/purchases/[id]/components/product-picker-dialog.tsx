@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Loader2, Package, Plus, Search } from 'lucide-react';
+import { Package, Plus, Search } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useAddPurchaseItems } from '../hooks';
@@ -25,7 +24,6 @@ type PickerProduct = ProductLabelSource & { id: number };
 export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductIds }: ProductPickerDialogProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const utils = trpc.useUtils();
@@ -41,24 +39,13 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
         [allProducts, existingProductIds],
     );
 
-    function toggleProduct(id: number) {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    }
-
-    function handleAdd(productIdsOverride?: number[]) {
-        const ids = productIdsOverride ?? Array.from(selectedIds);
-        if (ids.length === 0) return;
+    function handleAdd(productIds: number[]) {
+        if (productIds.length === 0) return;
         addItems.mutate(
-            { purchaseId, productIds: ids },
+            { purchaseId, productIds },
             {
                 onSuccess: () => {
                     setOpen(false);
-                    setSelectedIds(new Set());
                     setDetailProduct(null);
                 },
             },
@@ -110,7 +97,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
 
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-xs text-muted-foreground">
-                                Если товара нет в каталоге — создайте его прямо здесь.
+                                Нажмите на товар, чтобы настроить и добавить в закупку.
                             </p>
                             <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
                                 <Plus className="mr-2 h-4 w-4" />
@@ -133,20 +120,10 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                                 <ProductPickerRow
                                     key={product.id}
                                     product={product}
-                                    selected={selectedIds.has(product.id)}
-                                    onToggle={() => toggleProduct(product.id)}
                                     onOpenDetail={() => setDetailProduct(product.id)}
                                 />
                             ))}
                         </div>
-                        <Button
-                            className="w-full"
-                            disabled={selectedIds.size === 0 || addItems.isPending}
-                            onClick={() => handleAdd()}
-                        >
-                            {addItems.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Добавить {selectedIds.size > 0 && `(${selectedIds.size})`}
-                        </Button>
                     </>
                 )}
             </DialogContent>
@@ -165,51 +142,42 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
 
 function ProductPickerRow({
     product,
-    selected,
-    onToggle,
     onOpenDetail,
 }: {
     product: PickerProduct;
-    selected: boolean;
-    onToggle: () => void;
     onOpenDetail: () => void;
 }) {
     const photoId = getProductPhotoId(product);
     const attributesLine = formatProductAttributesLine(product);
 
     return (
-        <div className="flex items-start gap-3 rounded-md border p-3 hover:bg-accent">
-            <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
-                <Checkbox checked={selected} onCheckedChange={onToggle} />
+        <button
+            type="button"
+            className="flex w-full items-start gap-3 rounded-md border p-3 text-left hover:bg-accent"
+            onClick={onOpenDetail}
+        >
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                {photoId ? (
+                    <img
+                        src={`/api/photos/${photoId}`}
+                        alt=""
+                        className="h-full w-full object-cover"
+                    />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-6 w-6 text-muted-foreground/40" />
+                    </div>
+                )}
             </div>
-            <button
-                type="button"
-                className="flex min-w-0 flex-1 items-start gap-3 text-left"
-                onClick={onOpenDetail}
-            >
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
-                    {photoId ? (
-                        <img
-                            src={`/api/photos/${photoId}`}
-                            alt=""
-                            className="h-full w-full object-cover"
-                        />
-                    ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                            <Package className="h-6 w-6 text-muted-foreground/40" />
-                        </div>
-                    )}
-                </div>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="font-medium leading-snug">{product.name}</p>
-                    {attributesLine ? (
-                        <p className="text-xs text-muted-foreground leading-relaxed">{attributesLine}</p>
-                    ) : (
-                        <p className="text-xs text-muted-foreground">Атрибуты не указаны</p>
-                    )}
-                </div>
-            </button>
-        </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="font-medium leading-snug">{product.name}</p>
+                {attributesLine ? (
+                    <p className="text-xs text-muted-foreground leading-relaxed">{attributesLine}</p>
+                ) : (
+                    <p className="text-xs text-muted-foreground">Атрибуты не указаны</p>
+                )}
+            </div>
+        </button>
     );
 }
 
@@ -222,7 +190,7 @@ function ProductDetail({
 }: {
     productId: number;
     purchaseTag: string;
-    onAdd: (productIds?: number[]) => void;
+    onAdd: (productIds: number[]) => void;
     onBack: () => void;
     isAdding: boolean;
 }) {

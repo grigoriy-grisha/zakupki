@@ -19,7 +19,7 @@ export type UserListItem = {
     phone: string | null;
     role: 'ADMIN' | 'CLIENT';
     createdAt: Date | string;
-    orderLines: { id: number }[];
+    orderLines: { id: number; purchaseItem?: { purchaseId: number } | null }[];
     telegramCredential: {
         telegramId: string;
         username: string | null;

@@ -7,6 +7,11 @@
             "types": "./src/database.ts",
             "source": "./src/database.ts",
             "default": "./src/database.ts"
+        },
+        "./bead-pack-discount": {
+            "types": "./src/bead-pack-discount.ts",
+            "source": "./src/bead-pack-discount.ts",
+            "default": "./src/bead-pack-discount.ts"
         }
     },
     "scripts": {

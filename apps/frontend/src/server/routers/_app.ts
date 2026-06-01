@@ -1,4 +1,5 @@
 import { router } from '../trpc';
+import { appSettingsRouter } from './app-settings';
 import { attributeTypesRouter } from './attribute-types';
 import { characteristicsRouter } from './characteristics';
 import { ordersRouter } from './orders';
@@ -13,6 +14,7 @@ import { unitsRouter } from './units';
 import { usersRouter } from './users';
 
 export const appRouter = router({
+    appSettings: appSettingsRouter,
     attributeTypes: attributeTypesRouter,
     characteristics: characteristicsRouter,
     productAttributes: productAttributesRouter,

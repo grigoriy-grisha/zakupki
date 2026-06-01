@@ -1,3 +1,5 @@
+import { computeDiscountedPackPrice, isGramSupplierPackProduct } from '@zakupki/types';
+
 import type { ProductLabelSource } from './format-product-label';
 import {
     getProductAttributeNames,
@@ -29,6 +31,8 @@ export interface DescriptionFields {
     availableAmount?: number | null;
     availableUnit?: string | null;
     purchaseTag?: string;
+    /** Скидка за целую пачку бисера, % (из настроек). */
+    packDiscountPercent?: number | null;
 }
 
 export function productToDescriptionFields(
@@ -230,6 +234,7 @@ export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'мин фасовка' },
     { key: 'цены' },
     { key: 'фасовка поставщика' },
+    { key: 'цена со скидкой за пачку' },
     { key: 'свободно' },
     { key: 'тег' },
 ];
@@ -262,6 +267,7 @@ const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
     'Минимальная фасовка — например: 5 гр',
     'Список цен — например: 5 гр - 100 руб',
     'Фасовка поставщика — например: 111 гр - 111 руб',
+    'Цена со скидкой за пачку — например: 50 гр - 1229 руб (только бисер в гр)',
     'Свободный остаток — например: СВОБОДНО: 10 гр',
     'Тег закупки — например: #закупка_май',
 ];
@@ -290,6 +296,16 @@ function formatSupplierPackageLine(fields: DescriptionFields): string {
         return '';
     }
     return `${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatRubles(fields.supplierPackagePrice)} руб`;
+}
+
+/** Целая пачка со скидкой из настроек — только фасовка в гр. */
+function formatDiscountedPackLine(fields: DescriptionFields): string {
+    if (!isGramSupplierPackProduct(fields)) return '';
+    const packPrice = Number(fields.supplierPackagePrice);
+    const discount = fields.packDiscountPercent ?? 3;
+    if (!Number.isFinite(discount) || discount < 0 || discount > 100) return '';
+    const discounted = computeDiscountedPackPrice(packPrice, discount);
+    return `${formatNumber(fields.supplierPackageAmount!)} ${fields.supplierPackageUnit} - ${formatRubles(discounted)} руб`;
 }
 
 /** Подставляет поля товара в шаблон поста по меткам {{ключ}}. Только значения полей, без подписей. */
@@ -356,6 +372,10 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
                 : '',
         фасовка_поставщика: (() => {
             const line = formatSupplierPackageLine(fields);
+            return line ? escapeHtml(line) : '';
+        })(),
+        цена_со_скидкой_за_пачку: (() => {
+            const line = formatDiscountedPackLine(fields);
             return line ? escapeHtml(line) : '';
         })(),
         свободно:

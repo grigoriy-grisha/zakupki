@@ -76,4 +76,14 @@ export class TelegramPublishService {
         const queued = await this.enqueuePurchaseItems([purchaseItemId]);
         return { queued: queued > 0 };
     }
+
+    async enqueueDeleteChannelPost(tgChannelId: string, tgMessageId: string): Promise<void> {
+        this.assertChannelConfigured();
+        await this.queue.addPurchaseItemPost({
+            type: 'PURCHASE_ITEM_CHANNEL_POST_DELETE',
+            tgChannelId,
+            tgMessageId,
+        });
+        console.log(`[TG queue] Enqueued delete for message ${tgMessageId}`);
+    }
 }

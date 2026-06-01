@@ -41,9 +41,9 @@ export function getPurchaseItemOrderStats(item: PurchaseItemOrderStatsSource) {
     let freeRemainder: number | null = null;
 
     if (pack != null) {
-        packsToOrder = totalQuantity > 0 ? Math.ceil(totalQuantity / pack.size) : 0;
-        orderedPacks = packsToOrder;
-        orderedQuantity = packsToOrder * pack.size;
+        packsToOrder = totalQuantity > 0 ? totalQuantity / pack.size : 0;
+        orderedPacks = totalQuantity > 0 ? Math.ceil(totalQuantity / pack.size) : 0;
+        orderedQuantity = orderedPacks * pack.size;
         freeRemainder = orderedQuantity - totalQuantity;
     }
 

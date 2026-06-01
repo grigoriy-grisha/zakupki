@@ -13,9 +13,11 @@ import {
 } from '@/components/ui/dialog';
 import {
     calculateOrderAmount,
+    countFullSupplierPacks,
     formatMinPackageOrderHint,
     getMinOrderQuantity,
     getOrderQuantityStep,
+    getPackDiscountPricingInfo,
     isValidOrderQuantity,
     snapOrderQuantity,
 } from '@zakupki/types';
@@ -26,11 +28,18 @@ import { toast } from 'sonner';
 interface QuantityModalProps {
     purchaseItemId: number;
     purchaseId: number;
+    packDiscountPercent: number;
     currentQuantity?: number;
     onClose: () => void;
 }
 
-export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onClose }: QuantityModalProps) {
+export function QuantityModal({
+    purchaseItemId,
+    purchaseId,
+    packDiscountPercent,
+    currentQuantity,
+    onClose,
+}: QuantityModalProps) {
     const utils = trpc.useUtils();
 
     const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
@@ -84,15 +93,26 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
         priceTiers?: unknown;
         minPackageAmount?: unknown;
         minPackageUnit?: string | null;
+        supplierPackageAmount?: unknown;
+        supplierPackageUnit?: string | null;
+        supplierPackagePrice?: unknown;
     };
 
     const shortName = unit.shortName;
     const unitPrice = Number(item.priceOverride ?? product.pricePerUnit);
-    const total = calculateOrderAmount(quantity, {
+    const pricingOptions = {
         priceTiers: product.priceTiers,
         pricePerUnit: Number(product.pricePerUnit),
         priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-    });
+        supplierPackageAmount: product.supplierPackageAmount,
+        supplierPackageUnit: product.supplierPackageUnit,
+        supplierPackagePrice: product.supplierPackagePrice,
+        packDiscountPercent,
+    };
+    const total = calculateOrderAmount(quantity, pricingOptions);
+    const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
+    const fullPacks =
+        packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
 
     // availableQty = remaining stock in DB (already decremented for current user's order in supplement mode)
     // But if the order was placed BEFORE supplement mode, availableQty doesn't account for it.
@@ -210,6 +230,21 @@ export function QuantityModal({ purchaseItemId, purchaseId, currentQuantity, onC
                         <p className="mt-1 text-xs text-muted-foreground">
                             {quantity} {shortName} · {total.toLocaleString('ru-RU')} ₽
                         </p>
+                        {packDiscountInfo != null && fullPacks > 0 && (
+                            <p className="mt-2 text-xs text-success">
+                                В сумму входит скидка за {fullPacks}{' '}
+                                {fullPacks === 1 ? 'целую пачку' : 'целые пачки'} по{' '}
+                                {packDiscountInfo.packSize} гр (
+                                {packDiscountInfo.discountedPackPrice.toLocaleString('ru-RU')} ₽ за пачку, −
+                                {packDiscountInfo.discountPercent}%)
+                            </p>
+                        )}
+                        {packDiscountInfo != null && fullPacks === 0 && quantity > 0 && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                Скидка за целую пачку {packDiscountInfo.packSize} гр — при заказе ровно{' '}
+                                {packDiscountInfo.packSize} гр или кратно этому количеству
+                            </p>
+                        )}
                     </div>
                 </div>
 

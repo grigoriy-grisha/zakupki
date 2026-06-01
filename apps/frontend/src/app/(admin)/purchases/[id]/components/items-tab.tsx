@@ -12,9 +12,11 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '../../../products/lib';
+import { DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT } from '@zakupki/types';
 import {
     formatPrice510Cell,
     formatRubPrice,
+    getDiscountedPackPriceRub,
     getPackPriceRub,
     getProductPriceTiers,
     getPurchaseItemPrice1Gr,
@@ -67,6 +69,9 @@ const purchaseItemOrdersCellClass = 'text-center align-middle';
 
 export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
+    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
+    const packDiscountPercent =
+        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
     const removeItem = useRemovePurchaseItem(purchaseId);
     const togglePublish = useToggleShouldPublish(purchaseId);
     const publishToTelegram = usePublishToTelegram(purchaseId);
@@ -77,6 +82,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
         id: number;
         product: ProductLabelSource;
         orderCount: number;
+        published: boolean;
     } | null>(null);
 
     if (isLoading || !purchase) {
@@ -87,6 +93,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
     const isSupplement = purchase.status === 'SUPPLEMENT';
     const canTogglePublish = (status: string) => status !== 'DONE';
     const canAddItems = purchase.status !== 'DONE';
+    const canRemoveItem = purchase.status !== 'DONE';
     const existingProductIds = new Set(purchase.items.map((item) => item.productId));
     const publishCount = purchase.items.filter((item) => item.shouldPublish && !item.tgMessageId).length;
 
@@ -157,6 +164,11 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                 в рублях
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
+                                Цена за пачку
+                                <br />
+                                со скидкой
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
                                 Цена за 5/10 гр
                                 <br />
                                 в рублях
@@ -209,7 +221,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                         {purchase.items.length === 0 && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={isSupplement ? 17 : 16}
+                                    colSpan={isSupplement ? 18 : 17}
                                     className="h-24 text-center text-muted-foreground"
                                 >
                                     Нет товаров
@@ -257,6 +269,9 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatRubPrice(getPackPriceRub(item.product))}
+                                    </TableCell>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatRubPrice(getDiscountedPackPriceRub(item.product, packDiscountPercent))}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatPrice510Cell(tiers)}
@@ -322,7 +337,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                         </TableCell>
                                     )}
                                     <TableCell onClick={(e) => e.stopPropagation()}>
-                                        {(!isActive || !published) && (
+                                        {canRemoveItem && (
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -332,6 +347,7 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                                         id: item.id,
                                                         product: item.product,
                                                         orderCount: item.orderLines.length,
+                                                        published,
                                                     })
                                                 }
                                             >
@@ -367,10 +383,16 @@ export function ItemsTab({ purchaseId, onEditSupplement }: ItemsTabProps) {
                                 <PurchaseProductLabel product={deleteTarget.product} as="span" />
                             </strong>{' '}
                             будет удалён из закупки.
+                            {deleteTarget.published && (
+                                <>
+                                    {' '}
+                                    Пост в Telegram будет удалён.
+                                </>
+                            )}
                             {deleteTarget.orderCount > 0 && (
                                 <>
                                     {' '}
-                                    Также будут удалены заказы участников ({deleteTarget.orderCount}).
+                                    Заказы участников в корзине будут сняты ({deleteTarget.orderCount}).
                                 </>
                             )}
                         </>
