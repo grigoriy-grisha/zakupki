@@ -7,14 +7,20 @@ export async function orderReplyHandler(ctx: CustomContext) {
     if (!ctx.message || !('text' in ctx.message) || !ctx.message.text) return;
     if (!ctx.chat || !ctx.from || ctx.from.is_bot) return;
 
-    if (!/^[-+]?\d/.test(ctx.message.text.trim())) return;
-
     const replyTo = ctx.message.reply_to_message;
     const threadId = getChannelPostThreadId(ctx.message);
 
     if (!replyTo && threadId == null) return;
 
     if (!isOrderCollectionMessage(ctx.chat.id, ctx.message)) {
+        return;
+    }
+
+    if (!/^[-+]?\d/.test(ctx.message.text.trim())) {
+        await ctx.reply(
+            'Напишите количество числом. Например:\n• 10 — добавить 10\n• +10 — добавить 10\n• -5 — убрать 5',
+            { reply_parameters: { message_id: ctx.message.message_id } },
+        );
         return;
     }
 

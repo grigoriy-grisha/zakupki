@@ -150,6 +150,10 @@ export function QuantityModal({
         ? isValidSupplementOrderQuantity(quantity, orderQtyOptions, supplementBounds)
         : isValidOrderQuantity(quantity, orderQtyOptions);
 
+    // На доборе: если остаток < минималки или закончен — можно только пачками
+    const supplementOnlyPacks = isSupplementMode && supplementBounds != null && packSize != null &&
+        effectiveAvailableQty != null && effectiveAvailableQty + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY;
+
     function handleQuantityChange(delta: number) {
         setQuantity((prev) => {
             const next = Number((prev + delta).toFixed(3));
@@ -218,72 +222,81 @@ export function QuantityModal({
                             </p>
                         )}
 
-                        {isSupplementMode && maxQty != null && quantity < maxQty && (
-                            <div className="flex justify-center">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setQuantity(maxQty)}>
-                                    Взять весь остаток ({maxQty} {shortName})
-                                </Button>
-                            </div>
-                        )}
-
-                        {isSupplementMode && packSize != null && (
-                            <div className="flex justify-center gap-2">
-                                {Math.abs(quantity - packSize) > 1e-6 && (
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => setQuantity(packSize)}
-                                    >
-                                        1 пачка ({packSize} {shortName})
-                                    </Button>
-                                )}
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => setQuantity((prev) => prev + packSize)}
-                                >
-                                    +1 пачка
-                                </Button>
-                            </div>
-                        )}
-
                         <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
-                            <Button
-                                variant="outline"
-                                className="h-11 rounded-xl px-1 text-xs sm:text-sm"
-                                onClick={() => handleQuantityChange(-(orderStep * 10))}
-                                disabled={quantity <= effectiveMinQty}
-                            >
-                                −{orderStep * 10}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-11 w-full rounded-xl"
-                                onClick={() => handleQuantityChange(-orderStep)}
-                                disabled={quantity <= effectiveMinQty}
-                            >
-                                <Minus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-11 w-full rounded-xl"
-                                onClick={() => handleQuantityChange(orderStep)}
-                                disabled={maxQty !== null && quantity >= maxQty}
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="h-11 rounded-xl px-1 text-xs sm:text-sm"
-                                onClick={() => handleQuantityChange(orderStep * 10)}
-                                disabled={maxQty !== null && quantity >= maxQty}
-                            >
-                                +{orderStep * 10}
-                            </Button>
+                            {isSupplementMode && packSize != null ? (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 rounded-xl px-1 text-xs"
+                                        onClick={() => setQuantity((prev) => Math.max(0, prev - packSize))}
+                                        disabled={quantity <= packSize}
+                                    >
+                                        −пачка({packSize})
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-11 w-full rounded-xl"
+                                        onClick={() => handleQuantityChange(-orderStep)}
+                                        disabled={supplementOnlyPacks || quantity <= effectiveMinQty}
+                                    >
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-11 w-full rounded-xl"
+                                        onClick={() => handleQuantityChange(orderStep)}
+                                        disabled={supplementOnlyPacks || (maxQty !== null && quantity >= maxQty)}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 rounded-xl px-1 text-xs"
+                                        onClick={() => setQuantity((prev) => prev + packSize)}
+                                    >
+                                        +пачка({packSize})
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 rounded-xl px-1 text-xs sm:text-sm"
+                                        onClick={() => handleQuantityChange(-(orderStep * 10))}
+                                        disabled={quantity <= effectiveMinQty}
+                                    >
+                                        −{orderStep * 10}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-11 w-full rounded-xl"
+                                        onClick={() => handleQuantityChange(-orderStep)}
+                                        disabled={quantity <= effectiveMinQty}
+                                    >
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-11 w-full rounded-xl"
+                                        onClick={() => handleQuantityChange(orderStep)}
+                                        disabled={maxQty !== null && quantity >= maxQty}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="h-11 rounded-xl px-1 text-xs sm:text-sm"
+                                        onClick={() => handleQuantityChange(orderStep * 10)}
+                                        disabled={maxQty !== null && quantity >= maxQty}
+                                    >
+                                        +{orderStep * 10}
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -305,7 +318,7 @@ export function QuantityModal({
                             </p>
                         )}
                         {packDiscountInfo != null && fullPacks === 0 && quantity > 0 && (
-                            <p className="mt-2 text-xs text-muted-foreground">
+                            <p className="mt-2 text-xs text-success">
                                 Скидка за целую пачку {packDiscountInfo.packSize} гр — при заказе ровно{' '}
                                 {packDiscountInfo.packSize} гр или кратно этому количеству
                             </p>
