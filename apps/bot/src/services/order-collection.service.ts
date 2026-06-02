@@ -20,6 +20,8 @@ export type OrderCollectionResult =
     | {
           ok: true;
           productName: string;
+          purchaseItemId: number;
+          internalUserId: number;
           quantity: number;
           unitShort: string;
           amountDue: number;
@@ -222,6 +224,8 @@ export class OrderCollectionService {
                 return {
                     ok: true,
                     productName: purchaseItem.product.name,
+                    purchaseItemId: purchaseItem.id,
+                    internalUserId: user.id,
                     quantity: 0,
                     unitShort,
                     amountDue: 0,
@@ -279,6 +283,8 @@ export class OrderCollectionService {
             return {
                 ok: true,
                 productName: purchaseItem.product.name,
+                purchaseItemId: purchaseItem.id,
+                internalUserId: user.id,
                 quantity: newQuantity,
                 unitShort,
                 amountDue,

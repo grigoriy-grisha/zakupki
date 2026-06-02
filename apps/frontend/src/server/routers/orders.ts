@@ -24,4 +24,10 @@ export const ordersRouter = router({
     deleteOrder: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.order.deleteAndRestoreStock(input.id, ctx.userId, { throwIfNotFound: true });
     }),
+
+    removeAllByUserFromPurchase: adminProcedure
+        .input(z.object({ userId: z.number(), purchaseId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.removeAllByUserFromPurchase(input.userId, input.purchaseId);
+        }),
 });

@@ -18,6 +18,7 @@ import {
     productPhotoToAttachment,
     sendChannelPost,
 } from '../lib/telegram-post';
+import { UserOrdersRejectService } from './user-orders-reject.service';
 
 export class ChannelPostService {
     private repo = new PurchaseItemRepository();
@@ -45,6 +46,12 @@ export class ChannelPostService {
             handler: async (job) => {
                 if (job.data.type === 'PURCHASE_ITEM_CHANNEL_POST_DELETE') {
                     await this.deletePost(job.data.tgChannelId, job.data.tgMessageId);
+                    return;
+                }
+
+                if (job.data.type === 'USER_ORDERS_REJECT') {
+                    const rejectService = new UserOrdersRejectService(this.api);
+                    await rejectService.rejectUserOrders(job.data.purchaseId, job.data.userId);
                     return;
                 }
 

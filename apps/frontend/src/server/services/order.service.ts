@@ -9,6 +9,7 @@ import {
     ValidationError,
 } from '@zakupki/types';
 
+import { getTelegramChannelPostQueue } from '../lib/telegram-channel-post-queue';
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
 
@@ -130,5 +131,32 @@ export class OrderService {
 
     async getByPurchaseItem(purchaseItemId: number) {
         return this.repo.getByPurchaseItem(purchaseItemId);
+    }
+
+    async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
+        const lines = await this.repo.findByUserAndPurchase(userId, purchaseId);
+        if (lines.length === 0) return 0;
+
+        const purchase = (lines[0] as any)?.purchaseItem?.purchase;
+        const purchaseStatus = purchase?.status as string | undefined;
+        const fulfillmentStatus = purchase?.fulfillmentStatus as string | undefined;
+        const isSupplement = purchaseStatus === 'SUPPLEMENT' || fulfillmentStatus === 'REORDER';
+
+        for (const line of lines) {
+            await this.repo.deleteAndRestoreStock(line.id, { isSupplement });
+        }
+
+        try {
+            const queue = getTelegramChannelPostQueue();
+            await queue.addPurchaseItemPost({
+                type: 'USER_ORDERS_REJECT',
+                purchaseId,
+                userId,
+            });
+        } catch (err) {
+            console.warn('[order] Failed to enqueue USER_ORDERS_REJECT:', err);
+        }
+
+        return lines.length;
     }
 }

@@ -1,10 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, ChevronDown, ChevronRight, CircleCheck, CircleX, Clock } from 'lucide-react';
+import { Eye, ChevronDown, ChevronRight, CircleCheck, CircleX, Clock, Trash2, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { trpc } from '@/lib/client/trpc';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { paymentTotal } from '../../lib/utils';
 
@@ -12,6 +16,7 @@ interface ParticipantRowProps {
     userId: number;
     name: string;
     username?: string;
+    purchaseId: number;
     onOpenProfile: (userId: number) => void;
     orders: {
         id: number;
@@ -42,6 +47,7 @@ export function ParticipantRow({
     userId,
     name,
     username,
+    purchaseId,
     onOpenProfile,
     orders,
     payments,
@@ -51,6 +57,19 @@ export function ParticipantRow({
     onPaymentClick,
 }: ParticipantRowProps) {
     const [open, setOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const utils = trpc.useUtils();
+
+    const removeMutation = trpc.orders.removeAllByUserFromPurchase.useMutation({
+        onSuccess: (count) => {
+            utils.orders.getAllByPurchase.invalidate({ purchaseId });
+            utils.purchases.getById.invalidate({ id: purchaseId });
+            toast.success(`Удалено заказов: ${count}`);
+            setDeleteOpen(false);
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
     const isPaid = paid >= due;
     const hasPending = pending > 0 && !isPaid;
 
@@ -117,11 +136,21 @@ export function ParticipantRow({
                         </Badge>
                     )}
                 </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        onClick={() => setDeleteOpen(true)}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </TableCell>
             </TableRow>
 
             {open && (
                 <TableRow>
-                    <TableCell colSpan={6} className="bg-muted/30 p-0">
+                    <TableCell colSpan={7} className="bg-muted/30 p-0">
                         <div className="p-4 pl-4 sm:pl-14">
                             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                                 {/* Left: Orders */}
@@ -226,6 +255,22 @@ export function ParticipantRow({
                     </TableCell>
                 </TableRow>
             )}
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                title="Удалить участника из закупки?"
+                description={
+                    <>
+                        {name} будет удалён из закупки со всеми заказами ({orders.length} поз.).
+                        {due > 0 && <> К оплате было {due.toLocaleString('ru-RU')} ₽.</>}
+                    </>
+                }
+                loading={removeMutation.isPending}
+                onConfirm={() => {
+                    removeMutation.mutate({ userId, purchaseId });
+                }}
+            />
         </>
     );
 }

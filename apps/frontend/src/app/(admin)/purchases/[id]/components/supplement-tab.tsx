@@ -59,10 +59,10 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                         <TableRow>
                             <TableHead className="w-14">Фото</TableHead>
                             <TableHead>Название</TableHead>
+                            <TableHead className="text-center">В пачке</TableHead>
                             <TableHead className="text-center">Заказов</TableHead>
                             <TableHead className="text-right">Набрано</TableHead>
                             <TableHead className="text-right">Своб. остаток</TableHead>
-                            <TableHead className="text-right">Доступно</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -100,6 +100,11 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                                     <TableCell className="min-w-[12rem] whitespace-normal">
                                         <PurchaseProductLabel product={item.product} />
                                     </TableCell>
+                                    <TableCell className="text-center text-sm tabular-nums">
+                                        {item.product.supplierPackageAmount != null && item.product.supplierPackageUnit
+                                            ? `${Number(item.product.supplierPackageAmount)} ${item.product.supplierPackageUnit}`
+                                            : '—'}
+                                    </TableCell>
                                     <TableCell className="text-center">
                                         <Badge variant="secondary">{item.orderLines.length}</Badge>
                                     </TableCell>
@@ -110,15 +115,6 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                                         {stats.freeRemainder != null && stats.freeRemainder > 0
                                             ? `${formatOrderStatValue(stats.freeRemainder)} ${packUnit}`
                                             : '—'}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {hasSupplementStock(item.availableQty) ? (
-                                            <Badge variant="outline" className="font-mono">
-                                                {Number(item.availableQty)} {shortName}
-                                            </Badge>
-                                        ) : (
-                                            <span className="text-muted-foreground">—</span>
-                                        )}
                                     </TableCell>
                                 </TableRow>
                             );

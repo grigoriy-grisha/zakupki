@@ -146,6 +146,20 @@ export class OrderRepository {
         return dbClient.orderLine.delete({ where: { id } });
     }
 
+    async findByUserAndPurchase(userId: number, purchaseId: number) {
+        return dbClient.orderLine.findMany({
+            where: {
+                userId,
+                purchaseItem: { purchaseId },
+            },
+            include: {
+                purchaseItem: {
+                    include: { purchase: { select: { status: true, fulfillmentStatus: true } } },
+                },
+            },
+        });
+    }
+
     async getByPurchaseItem(purchaseItemId: number) {
         return dbClient.orderLine.findMany({
             where: { purchaseItemId },

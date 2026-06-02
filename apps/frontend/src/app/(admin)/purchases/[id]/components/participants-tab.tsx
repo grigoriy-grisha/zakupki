@@ -82,6 +82,7 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                             <TableHead className="text-right">К оплате</TableHead>
                             <TableHead className="text-right">Покрыто</TableHead>
                             <TableHead className="text-center">Статус</TableHead>
+                            <TableHead className="w-10" />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -100,6 +101,7 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                                     userId={userId}
                                     name={name}
                                     username={info?.username}
+                                    purchaseId={purchaseId}
                                     onOpenProfile={setProfileUserId}
                                     orders={userOrdersList}
                                     payments={userPaymentsList}
