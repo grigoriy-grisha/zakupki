@@ -268,15 +268,16 @@ model PurchaseItem {
 }
 
 model OrderLine {
-  id             Int          @id @default(autoincrement())
-  purchaseItemId Int
-  userId         Int
-  quantity       Decimal      @db.Decimal(10, 3)
-  amountDue      Decimal      @db.Decimal(10, 2)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  id               Int          @id @default(autoincrement())
+  purchaseItemId   Int
+  userId           Int
+  quantity         Decimal      @db.Decimal(10, 3)
+  amountDue        Decimal      @db.Decimal(10, 2)
+  tgChatMessageId  BigInt?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  purchaseItem     PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+  user             User         @relation(fields: [userId], references: [id])
 
   @@unique([purchaseItemId, userId])
   @@index([userId])

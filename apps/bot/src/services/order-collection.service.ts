@@ -139,6 +139,7 @@ export class OrderCollectionService {
         text: string;
         telegramId: string;
         userInfo: { firstName: string; lastName?: string; username?: string };
+        messageId?: number;
     }): Promise<OrderCollectionResult> {
         const parsed = parseOrderQuantity(params.text);
         if (parsed === null) {
@@ -276,8 +277,10 @@ export class OrderCollectionService {
             }
 
             const amountDue = calculateOrderAmount(newQuantity, pricing);
+            const tgChatMessageId = params.messageId != null ? BigInt(params.messageId) : undefined;
             await this.orders.upsertWithStock(purchaseItem.id, user.id, newQuantity, amountDue, {
                 isSupplement,
+                tgChatMessageId,
             });
 
             return {

@@ -10,6 +10,5 @@ export type TelegramChannelPostJob =
       }
     | {
           type: 'USER_ORDERS_REJECT';
-          purchaseId: number;
-          userId: number;
+          messageIds: string[];
       };

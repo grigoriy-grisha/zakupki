@@ -118,6 +118,7 @@ export class OrderRepository {
     async getByUser(userId: number) {
         return dbClient.orderLine.findMany({
             where: { userId },
+            omit: { tgChatMessageId: true },
             include: {
                 purchaseItem: {
                     include: {
@@ -133,6 +134,7 @@ export class OrderRepository {
     async getByPurchase(purchaseId: number) {
         return dbClient.orderLine.findMany({
             where: { purchaseItem: { purchaseId } },
+            omit: { tgChatMessageId: true },
             include: {
                 user: { include: USER_CREDENTIALS_INCLUDE },
                 purchaseItem: {
@@ -152,6 +154,7 @@ export class OrderRepository {
                 userId,
                 purchaseItem: { purchaseId },
             },
+            omit: { tgChatMessageId: true },
             include: {
                 purchaseItem: {
                     include: { purchase: { select: { status: true, fulfillmentStatus: true } } },
@@ -160,9 +163,22 @@ export class OrderRepository {
         });
     }
 
+    async findMessageIdsByUserAndPurchase(userId: number, purchaseId: number): Promise<bigint[]> {
+        const lines = await dbClient.orderLine.findMany({
+            where: {
+                userId,
+                purchaseItem: { purchaseId },
+                tgChatMessageId: { not: null },
+            },
+            select: { tgChatMessageId: true },
+        });
+        return lines.map((l) => l.tgChatMessageId!);
+    }
+
     async getByPurchaseItem(purchaseItemId: number) {
         return dbClient.orderLine.findMany({
             where: { purchaseItemId },
+            omit: { tgChatMessageId: true },
             include: { user: true },
         });
     }

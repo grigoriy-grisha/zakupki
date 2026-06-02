@@ -28,7 +28,7 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: true,
+                        orderLines: { select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true } },
                     },
                 },
             },
@@ -43,7 +43,7 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: true,
+                        orderLines: { select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true } },
                     },
                 },
             },
@@ -61,7 +61,7 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: true,
+                        orderLines: { select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true } },
                     },
                 },
             },
@@ -76,7 +76,7 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: { include: { user: true } },
+                        orderLines: { include: { user: true }, omit: { tgChatMessageId: true } },
                     },
                 },
                 payments: { include: { user: true } },

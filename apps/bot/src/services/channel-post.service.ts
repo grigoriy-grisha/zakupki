@@ -51,7 +51,7 @@ export class ChannelPostService {
 
                 if (job.data.type === 'USER_ORDERS_REJECT') {
                     const rejectService = new UserOrdersRejectService(this.api);
-                    await rejectService.rejectUserOrders(job.data.purchaseId, job.data.userId);
+                    await rejectService.rejectUserOrders(job.data.messageIds);
                     return;
                 }
 
@@ -63,7 +63,9 @@ export class ChannelPostService {
                 const target =
                     job.data.type === 'PURCHASE_ITEM_CHANNEL_POST_DELETE'
                         ? `messageId=${job.data.tgMessageId}`
-                        : `purchaseItemId=${job.data.purchaseItemId}`;
+                        : job.data.type === 'USER_ORDERS_REJECT'
+                          ? `reject messages=${job.data.messageIds.length}`
+                          : `purchaseItemId=${job.data.purchaseItemId}`;
                 console.error(`[TG queue] Failed job ${job.id} (${target}): ${err.message}`);
             },
         });

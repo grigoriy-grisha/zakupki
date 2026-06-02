@@ -1,5 +1,4 @@
 import type { CustomContext } from '../domain/types';
-import { getRedisConnection } from '@zakupki/queue';
 import { reactOrderAccepted } from '../lib/order-ack';
 import { getChannelPostThreadId, isOrderCollectionMessage } from '../lib/telegram-chat';
 import { OrderCollectionService } from '../services/order-collection.service';
@@ -37,6 +36,7 @@ export async function orderReplyHandler(ctx: CustomContext) {
             lastName: ctx.from.last_name,
             username: ctx.from.username,
         },
+        messageId: ctx.message.message_id,
     });
 
     if (!result.ok) {
@@ -52,15 +52,4 @@ export async function orderReplyHandler(ctx: CustomContext) {
     );
 
     await reactOrderAccepted(ctx);
-
-    // Cache user's message for future rejection (dislike on removal)
-    if (result.purchaseItemId && result.internalUserId) {
-        try {
-            const redis = getRedisConnection();
-            const cacheKey = `user_order_msg:${ctx.chat.id}:${result.purchaseItemId}:${result.internalUserId}`;
-            await redis.set(cacheKey, String(ctx.message.message_id), 'EX', 86400 * 30); // 30 days
-        } catch {
-            // ignore cache errors
-        }
-    }
 }

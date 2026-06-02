@@ -12,7 +12,7 @@ export class OrderRepository {
         userId: number,
         quantity: number,
         amountDue: number,
-        options?: { isSupplement?: boolean },
+        options?: { isSupplement?: boolean; tgChatMessageId?: bigint },
     ) {
         return dbClient.$transaction(async (tx) => {
             const existingLine = await tx.orderLine.findUnique({
@@ -57,10 +57,12 @@ export class OrderRepository {
                 }
             }
 
+            const tgChatMessageId = options?.tgChatMessageId;
+
             return tx.orderLine.upsert({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
-                update: { quantity, amountDue },
-                create: { purchaseItemId, userId, quantity, amountDue },
+                update: { quantity, amountDue, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
+                create: { purchaseItemId, userId, quantity, amountDue, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
             });
         });
     }

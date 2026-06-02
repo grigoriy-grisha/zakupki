@@ -142,19 +142,23 @@ export class OrderService {
         const fulfillmentStatus = purchase?.fulfillmentStatus as string | undefined;
         const isSupplement = purchaseStatus === 'SUPPLEMENT' || fulfillmentStatus === 'REORDER';
 
+        // Read message IDs before deleting lines
+        const messageIds = await this.repo.findMessageIdsByUserAndPurchase(userId, purchaseId);
+
         for (const line of lines) {
             await this.repo.deleteAndRestoreStock(line.id, { isSupplement });
         }
 
-        try {
-            const queue = getTelegramChannelPostQueue();
-            await queue.addPurchaseItemPost({
-                type: 'USER_ORDERS_REJECT',
-                purchaseId,
-                userId,
-            });
-        } catch (err) {
-            console.warn('[order] Failed to enqueue USER_ORDERS_REJECT:', err);
+        if (messageIds.length > 0) {
+            try {
+                const queue = getTelegramChannelPostQueue();
+                await queue.addPurchaseItemPost({
+                    type: 'USER_ORDERS_REJECT',
+                    messageIds: messageIds.map(String),
+                });
+            } catch (err) {
+                console.warn('[order] Failed to enqueue USER_ORDERS_REJECT:', err);
+            }
         }
 
         return lines.length;
