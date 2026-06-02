@@ -15,8 +15,8 @@ const productWithAttributes = {
             },
         },
     },
-    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' }, { characteristicId: 'asc' }] },
-} as const;
+    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }] },
+};
 
 export class PurchaseRepository {
     constructor() {}

@@ -170,8 +170,8 @@ const productInclude = {
             },
         },
     },
-    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' }, { characteristicId: 'asc' }] },
-} as const;
+    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }] },
+};
 
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
     const { unitId, priceTiers, attributeIds, characteristics, brandId, ...rest } = data;

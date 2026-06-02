@@ -12,6 +12,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import {
+    SUPPLEMENT_MIN_ORDER_QTY,
     calculateFreeRemainder,
     calculateOrderAmount,
     countFullSupplierPacks,
@@ -66,10 +67,11 @@ export function QuantityModal({
     };
     const orderStep = getOrderQuantityStep(orderQtyOptions);
     const minOrderQty = getMinOrderQuantity(orderQtyOptions);
+    const isSupplementMode = isSupplementModeProp ?? purchase?.status === 'SUPPLEMENT';
+    const effectiveMinQty = isSupplementMode ? Math.max(minOrderQty, SUPPLEMENT_MIN_ORDER_QTY) : minOrderQty;
     const rawAvailableQty =
         item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
     const currentQty = currentQuantity ?? 0;
-    const isSupplementMode = isSupplementModeProp ?? purchase?.status === 'SUPPLEMENT';
 
     // Рассчитываем свободный остаток из пачек как fallback для availableQty
     const packSize =
@@ -91,7 +93,7 @@ export function QuantityModal({
     const startQty =
         currentQuantity != null
             ? Math.max(currentQuantity, minOrderQty)
-            : minOrderQty;
+            : effectiveMinQty;
     const effectiveStart = supplementBounds
         ? snapSupplementOrderQuantity(startQty, orderQtyOptions, supplementBounds)
         : snapOrderQuantity(startQty, orderQtyOptions);
@@ -229,7 +231,7 @@ export function QuantityModal({
                                 variant="outline"
                                 className="h-11 rounded-xl px-1 text-xs sm:text-sm"
                                 onClick={() => handleQuantityChange(-(orderStep * 10))}
-                                disabled={quantity <= minOrderQty}
+                                disabled={quantity <= effectiveMinQty}
                             >
                                 −{orderStep * 10}
                             </Button>
@@ -238,7 +240,7 @@ export function QuantityModal({
                                 size="icon"
                                 className="h-11 w-full rounded-xl"
                                 onClick={() => handleQuantityChange(-orderStep)}
-                                disabled={quantity <= minOrderQty}
+                                disabled={quantity <= effectiveMinQty}
                             >
                                 <Minus className="h-4 w-4" />
                             </Button>

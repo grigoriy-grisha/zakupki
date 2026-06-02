@@ -69,6 +69,7 @@ export {
 } from './pricing';
 
 export {
+    SUPPLEMENT_MIN_ORDER_QTY,
     calculateFreeRemainder,
     getSupplementDisplayMax,
     getSupplementMaxQuantity,

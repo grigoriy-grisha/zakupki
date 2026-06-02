@@ -136,7 +136,11 @@ export function PurchaseProductEditForm({
 
     const userPickedTemplateRef = useRef(false);
     const lastAppliedSignatureRef = useRef<string | null>(null);
-    const lastAutoDescriptionRef = useRef<string | null>(null);
+    /** Если загружено сохранённое описание — считаем его «последним автотекстом»,
+     *  чтобы mergeTemplateIntoDescription корректно отслеживал изменения полей. */
+    const lastAutoDescriptionRef = useRef<string | null>(
+        loadSavedDescription && !!normalizeNovelHtml(initial.description) ? initial.description : null,
+    );
     /** При редактировании: не затирать уже сохранённое описание при автовыборе шаблона. */
     const preserveSavedDescriptionRef = useRef(
         loadSavedDescription && !!normalizeNovelHtml(initial.description),
@@ -161,11 +165,13 @@ export function PurchaseProductEditForm({
         userPickedTemplateRef.current = false;
         preserveSavedDescriptionRef.current =
             loadSavedDescription && !!normalizeNovelHtml(next.description);
+        lastAutoDescriptionRef.current =
+            preserveSavedDescriptionRef.current ? next.description : null;
         setTemplateId('none');
         setDescriptionRevision(0);
         lastAppliedSignatureRef.current = null;
-        lastAutoDescriptionRef.current = null;
-    }, [product.id, loadSavedDescription, product, initialTiers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps — сброс только при смене товара
+    }, [product.id]);
 
     useEffect(() => {
         if (!loadSavedDescription) return;
@@ -240,7 +246,8 @@ export function PurchaseProductEditForm({
 
             if (preserveSavedDescriptionRef.current) {
                 lastAppliedSignatureRef.current = `${id}:${body}`;
-                lastAutoDescriptionRef.current = nextHtml;
+                // Не затираем lastAutoDescriptionRef — он уже указывает на сохранённое описание,
+                // чтобы mergeTemplateIntoDescription корректно обновлял описание при смене полей.
                 preserveSavedDescriptionRef.current = false;
                 return false;
             }

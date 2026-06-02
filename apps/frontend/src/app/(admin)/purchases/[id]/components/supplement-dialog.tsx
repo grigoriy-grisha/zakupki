@@ -27,10 +27,12 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
 
     const [quantities, setQuantities] = useState<Record<number, string>>({});
 
+    const supplementItems = (purchase as { items?: any[] })?.items ?? [];
+
     useEffect(() => {
         if (purchase && open) {
             const map: Record<number, string> = {};
-            for (const item of purchase.items) {
+            for (const item of supplementItems) {
                 map[item.id] =
                     item.availableQty !== null && item.availableQty !== undefined
                         ? String(Number(item.availableQty))
@@ -51,7 +53,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
 
     function handleSubmit() {
         if (!purchase) return;
-        const items = purchase.items.map((item) => {
+        const items = supplementItems.map((item: any) => {
             const val = quantities[item.id];
             return {
                 purchaseItemId: item.id,
@@ -74,7 +76,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">
-                    {purchase.items.map((item) => {
+                    {supplementItems.map((item: any) => {
                         const orderedTotal = item.orderLines.reduce((sum: number, ol: any) => sum + Number(ol.quantity), 0);
                         const shortName = item.product.unit?.shortName ?? '';
                         const val = quantities[item.id] ?? '';

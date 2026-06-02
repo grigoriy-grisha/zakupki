@@ -28,7 +28,7 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
         }
 
         return {
-            purchase,
+            purchase: purchase as any,
             orders: orders ?? [],
             payments: payments ?? [],
             attributeTypes: attributeTypes ?? [],

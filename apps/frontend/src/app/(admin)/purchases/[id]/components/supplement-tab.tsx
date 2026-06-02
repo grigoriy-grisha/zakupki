@@ -33,9 +33,11 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const [editItem, setEditItem] = useState<number | null>(null);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allItems = (purchase as any)?.items ?? [];
     const remainderItems = useMemo(
-        () => purchase?.items.filter((item) => isOnRemainder(item)) ?? [],
-        [purchase?.items],
+        () => allItems.filter((item: any) => isOnRemainder(item)),
+        [allItems],
     );
 
     if (isLoading || !purchase) {
@@ -72,7 +74,7 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {remainderItems.map((item) => {
+                        {remainderItems.map((item: any) => {
                             const shortName = item.product.unit?.shortName ?? '';
                             const stats = getPurchaseItemOrderStats(item);
                             const packUnit = stats.packUnit ?? shortName;
@@ -127,7 +129,7 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
 
             {remainderItems.length > 0 && (
                 <p className="text-sm text-muted-foreground">
-                    Показано: {remainderItems.length} из {purchase.items.length}
+                    Показано: {remainderItems.length} из {allItems.length}
                 </p>
             )}
 

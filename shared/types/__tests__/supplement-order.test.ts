@@ -61,10 +61,10 @@ describe('supplement order quantity', () => {
         );
     });
 
-    it('when remainder < pack and user already has partial: allows up to max', () => {
+    it('when remainder < pack and user already has partial: allows up to max or adding exactly one pack', () => {
         // Пользователь уже заказал 5, остаток 11 при пачке 12.
-        // max = 5 + 11 = 16. Можно: до 16 (max) или ровно 12 (пачка).
-        // Нельзя: 17 (между max и пачкой).
+        // max = 5 + 11 = 16. Можно: до 16 (max), ровно 12 (итог = пачка), или 5+12=17 (добавка = пачка).
+        // Нельзя: 18+ (добавка > пачки и итог > max).
         const bounds = { availableQty: 11, currentQuantity: 5, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
@@ -72,8 +72,10 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(11, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(13, minPack1, bounds)).toBeNull();
-        // 17 > max (16) и не равно пачке (12)
-        expect(getSupplementOrderQuantityValidationError(17, minPack1, bounds)).toMatch(/новый остаток|не более/);
+        // 17 = 5 + 12: добавляется ровно одна пачка — разрешено
+        expect(getSupplementOrderQuantityValidationError(17, minPack1, bounds)).toBeNull();
+        // 18: добавка 13, не пачка, и итог > max
+        expect(getSupplementOrderQuantityValidationError(18, minPack1, bounds)).toMatch(/новый остаток|не более/);
     });
 
     it('stock 20 pack 50: rejects 30 (intermediate between stock and pack)', () => {
@@ -179,15 +181,16 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
     });
 
-    it('stock 5 pack 12 existing order 2: allows up to max (7) or pack (12)', () => {
+    it('stock 5 pack 12 existing order 2: enforces supplement min 10, allows pack (12)', () => {
         // Остаток 5, уже заказано 2, пачка 12.
-        // max = 2 + 5 = 7. Можно: ≤ 7 или ровно 12. Нельзя: 8–11, 10.
+        // max = 2 + 5 = 7. Мин. добор = 10. Можно: ровно 12 или ≤ 2 (уменьшение).
+        // 7 — ниже минимума добора (10). 12 — ровно одна пачка (ОК).
         const bounds = { availableQty: 5, currentQuantity: 2, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
-        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toBeNull();
-        expect(getSupplementOrderQuantityValidationError(5, minPack1, bounds)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toMatch(/Минимальный заказ на добор/);
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(2, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(10, minPack1, bounds)).toMatch(/новый остаток|не более/);
         expect(getSupplementOrderQuantityValidationError(8, minPack1, bounds)).toMatch(/новый остаток|не более/);
     });

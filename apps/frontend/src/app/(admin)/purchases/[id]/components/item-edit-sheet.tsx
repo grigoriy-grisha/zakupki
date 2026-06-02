@@ -19,7 +19,8 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
         { id: purchaseId },
         { enabled: open },
     );
-    const item = purchase?.items.find((i) => i.id === purchaseItemId);
+    const items = (purchase as { items?: any[] })?.items ?? [];
+    const item = items.find((i: any) => i.id === purchaseItemId);
 
     const updateMutation = trpc.purchases.updateItemProduct.useMutation({
         onSuccess: () => {

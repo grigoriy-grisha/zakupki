@@ -88,13 +88,15 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
         return <Skeleton className="h-64" />;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const items = (purchase as any).items ?? [];
     const isActive = purchase.status === 'ACTIVE';
     const isSupplement = purchase.status === 'SUPPLEMENT';
     const canTogglePublish = (status: string) => status !== 'DONE';
     const canAddItems = purchase.status !== 'DONE';
     const canRemoveItem = purchase.status !== 'DONE';
-    const existingProductIds = new Set(purchase.items.map((item) => item.productId));
-    const publishCount = purchase.items.filter((item) => item.shouldPublish && !item.tgMessageId).length;
+    const existingProductIds = new Set<number>(items.map((item: any) => item.productId as number));
+    const publishCount = items.filter((item: { shouldPublish: boolean; tgMessageId: string | null }) => item.shouldPublish && !item.tgMessageId).length;
 
     return (
         <div className="space-y-4">
@@ -211,7 +213,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {purchase.items.length === 0 && (
+                        {items.length === 0 && (
                             <TableRow>
                                 <TableCell
                                     colSpan={isSupplement ? 18 : 17}
@@ -221,7 +223,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {purchase.items.map((item) => {
+                        {items.map((item: any) => {
                             const shortName = item.product.unit?.shortName ?? '';
                             const published = !!item.tgMessageId;
                             const tiers = getProductPriceTiers(item.product.priceTiers);

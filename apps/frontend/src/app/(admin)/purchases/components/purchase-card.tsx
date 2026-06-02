@@ -18,12 +18,12 @@ interface AdminPurchaseListCardProps {
         status: string;
         fulfillmentStatus?: PurchaseFulfillmentStatus | null;
         deadline: string;
-        items: { orderLines: { amountDue: unknown }[] }[];
+        items?: { orderLines: { amountDue: unknown }[] }[];
     };
 }
 
 export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
-    const utils = trpc.useUtils();
+    const items = purchase.items ?? [];    const utils = trpc.useUtils();
     const updateFulfillmentStatus = trpc.purchases.updateFulfillmentStatus.useMutation({
         onSuccess: () => {
             void utils.purchases.list.invalidate();
@@ -33,8 +33,8 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
     });
 
     const daysLeft = daysLeftUntil(purchase.deadline);
-    const totalOrders = purchase.items.reduce((sum, item) => sum + item.orderLines.length, 0);
-    const totalAmount = purchase.items.reduce(
+    const totalOrders = items.reduce((sum, item) => sum + item.orderLines.length, 0);
+    const totalAmount = items.reduce(
         (sum, item) => sum + item.orderLines.reduce((s, ol) => s + Number(ol.amountDue), 0),
         0,
     );
@@ -62,7 +62,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                         )}
                     </div>
                     <div className="mt-2 flex items-center gap-4 text-sm">
-                        <span>{purchase.items.length} товаров</span>
+                        <span>{items.length} товаров</span>
                         <span>{totalOrders} заказов</span>
                         <span className="font-medium">{totalAmount.toLocaleString('ru-RU')} ₽</span>
                     </div>
