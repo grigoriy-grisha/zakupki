@@ -226,6 +226,29 @@ export function QuantityModal({
                             </div>
                         )}
 
+                        {isSupplementMode && packSize != null && (
+                            <div className="flex justify-center gap-2">
+                                {Math.abs(quantity - packSize) > 1e-6 && (
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setQuantity(packSize)}
+                                    >
+                                        1 пачка ({packSize} {shortName})
+                                    </Button>
+                                )}
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setQuantity((prev) => prev + packSize)}
+                                >
+                                    +1 пачка
+                                </Button>
+                            </div>
+                        )}
+
                         <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
                             <Button
                                 variant="outline"

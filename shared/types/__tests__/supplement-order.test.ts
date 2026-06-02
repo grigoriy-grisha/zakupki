@@ -21,28 +21,28 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(30, minPack10, bounds40)).toBeNull();
     });
 
-    it('rejects over remainder when not a single pack', () => {
+    it('rejects over remainder when not whole packs', () => {
         expect(getSupplementOrderQuantityValidationError(45, minPack10, bounds40)).toMatch(
             /На добор можно заказать не более 40/,
         );
-        expect(getSupplementOrderQuantityValidationError(60, minPack10, bounds45)).toMatch(
-            /На добор можно заказать не более 45/,
-        );
-        expect(getSupplementOrderQuantityValidationError(50, minPack10, bounds40)).toMatch(
-            /На добор можно заказать не более 40/,
-        );
+        // 60 при packSize=10 — 6 пачок, кратно → разрешено
+        expect(getSupplementOrderQuantityValidationError(60, minPack10, bounds45)).toBeNull();
+        // 50 при packSize=10 — 5 пачок, кратно → разрешено
+        expect(getSupplementOrderQuantityValidationError(50, minPack10, bounds40)).toBeNull();
     });
 
-    it('allows exactly one pack size even above remainder', () => {
+    it('allows any whole pack multiple', () => {
+        // pack size = 10
         expect(getSupplementOrderQuantityValidationError(10, minPack10, bounds40)).toBeNull();
-        expect(getSupplementOrderQuantityValidationError(10, minPack10, bounds45)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(20, minPack10, bounds40)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(30, minPack10, bounds40)).toBeNull();
     });
 
     it('allows partial from remainder in multiples of min step', () => {
         expect(getSupplementOrderQuantityValidationError(20, minPack10, bounds40)).toBeNull();
     });
 
-    it('when remainder is less than pack: up to remainder or exactly one pack (шт/гр)', () => {
+    it('when remainder is less than pack: up to remainder or whole packs', () => {
         const bounds11pack12 = { availableQty: 11, currentQuantity: 0, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
         const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
@@ -51,54 +51,57 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(11, minPack1, bounds11pack12)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(10, minPack1, bounds11pack12)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(13, minPack1, bounds11pack12)).toMatch(
-            /новый остаток|не более 11/,
+            /не более 11|целыми пачками/,
         );
+        // 24 = 2 пачки — кратно, разрешено
+        expect(getSupplementOrderQuantityValidationError(24, minPack1, bounds11pack12)).toBeNull();
 
         expect(getSupplementOrderQuantityValidationError(12, minPack10g, bounds11pack12)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(11, minPack10g, bounds11pack12)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(13, minPack10g, bounds11pack12)).toMatch(
-            /новый остаток|не более 11/,
+            /не более 11|целыми пачками/,
         );
     });
 
-    it('when remainder < pack and user already has partial: allows up to max or adding exactly one pack', () => {
-        // Пользователь уже заказал 5, остаток 11 при пачке 12.
-        // max = 5 + 11 = 16. Можно: до 16 (max), ровно 12 (итог = пачка), или 5+12=17 (добавка = пачка).
-        // Нельзя: 18+ (добавка > пачки и итог > max).
+    it('when remainder < pack and user already has partial: min 10 on delta, allows packs', () => {
         const bounds = { availableQty: 11, currentQuantity: 5, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
+        // Добавка 11 (16 - 5) >= 10 — ОК
         expect(getSupplementOrderQuantityValidationError(16, minPack1, bounds)).toBeNull();
+        // Итого = пачка (12) — ОК
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
-        expect(getSupplementOrderQuantityValidationError(11, minPack1, bounds)).toBeNull();
-        expect(getSupplementOrderQuantityValidationError(13, minPack1, bounds)).toBeNull();
+        // Добавка 6 (11 - 5) < 10 — блокируется
+        expect(getSupplementOrderQuantityValidationError(11, minPack1, bounds)).toMatch(/от 10/);
+        // Добавка 8 (13 - 5) < 10 — блокируется
+        expect(getSupplementOrderQuantityValidationError(13, minPack1, bounds)).toMatch(/от 10/);
         // 17 = 5 + 12: добавляется ровно одна пачка — разрешено
         expect(getSupplementOrderQuantityValidationError(17, minPack1, bounds)).toBeNull();
-        // 18: добавка 13, не пачка, и итог > max
-        expect(getSupplementOrderQuantityValidationError(18, minPack1, bounds)).toMatch(/новый остаток|не более/);
+        // 29 = 5 + 24: добавляется 2 пачки — разрешено
+        expect(getSupplementOrderQuantityValidationError(29, minPack1, bounds)).toBeNull();
+        // 18: добавка 13, не кратно пачке, и итог > max
+        expect(getSupplementOrderQuantityValidationError(18, minPack1, bounds)).toMatch(/не более|целыми пачками/);
     });
 
     it('stock 20 pack 50: rejects 30 (intermediate between stock and pack)', () => {
         const bounds20pack50 = { availableQty: 20, currentQuantity: 0, supplierPackageAmount: 50 };
         const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
 
-        // Можно: ≤ 20 (остаток) или 50 (пачка)
         expect(getSupplementOrderQuantityValidationError(10, minPack10g, bounds20pack50)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(20, minPack10g, bounds20pack50)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(50, minPack10g, bounds20pack50)).toBeNull();
+        // 100 = 2 пачки — кратно, разрешено
+        expect(getSupplementOrderQuantityValidationError(100, minPack10g, bounds20pack50)).toBeNull();
 
-        // Нельзя: 30 (между остатком и пачкой)
         expect(getSupplementOrderQuantityValidationError(30, minPack10g, bounds20pack50)).toMatch(
-            /новый остаток/,
+            /не более 20|целыми пачками/,
         );
         expect(getSupplementOrderQuantityValidationError(40, minPack10g, bounds20pack50)).toMatch(
-            /новый остаток/,
+            /не более 20|целыми пачками/,
         );
     });
 
     it('stock 20 pack 50 with existing order: allows up to max, rejects between max and pack', () => {
-        // Уже заказано 10, остаток 20, пачка 50.
-        // max = 10 + 20 = 30. Можно: ≤ 30 или ровно 50. Нельзя: 31–49.
         const bounds = { availableQty: 20, currentQuantity: 10, supplierPackageAmount: 50 };
         const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
 
@@ -106,39 +109,44 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(20, minPack10g, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(50, minPack10g, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(10, minPack10g, bounds)).toBeNull();
-        expect(getSupplementOrderQuantityValidationError(40, minPack10g, bounds)).toMatch(/новый остаток/);
+        expect(getSupplementOrderQuantityValidationError(40, minPack10g, bounds)).toMatch(/не более|целыми пачками/);
     });
 
-    it('when remainder is zero only exactly one pack', () => {
+    it('when remainder is zero: only whole pack multiples', () => {
         const depleted = { availableQty: 0, currentQuantity: 0, supplierPackageAmount: 10 };
-        expect(getSupplementOrderQuantityValidationError(15, minPack10, depleted)).toMatch(/только одну пачку/);
-        expect(getSupplementOrderQuantityValidationError(20, minPack10, depleted)).toMatch(/только одну пачку/);
+        expect(getSupplementOrderQuantityValidationError(15, minPack10, depleted)).toMatch(/целыми пачками/);
+        expect(getSupplementOrderQuantityValidationError(25, minPack10, depleted)).toMatch(/целыми пачками/);
+        // 10, 20, 30 — целые пачки
         expect(getSupplementOrderQuantityValidationError(10, minPack10, depleted)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(20, minPack10, depleted)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(30, minPack10, depleted)).toBeNull();
     });
 
-    it('does not decrement stock for exact one-pack order', () => {
+    it('does not decrement stock for whole pack orders', () => {
         expect(shouldDecrementSupplementStock(10, 10, 45, 10)).toBe(false);
+        expect(shouldDecrementSupplementStock(20, 20, 45, 10)).toBe(false);
         expect(shouldDecrementSupplementStock(25, 25, 40, 10)).toBe(true);
     });
 
-    it('snaps to remainder cap', () => {
+    it('snaps to remainder cap or keeps whole pack multiples', () => {
         expect(snapSupplementOrderQuantity(45, minPack10, bounds40)).toBe(40);
-        expect(snapSupplementOrderQuantity(60, minPack10, bounds45)).toBe(45);
+        // 60 при packSize=10 — 6 пачок, кратно → оставляем как есть
+        expect(snapSupplementOrderQuantity(60, minPack10, bounds45)).toBe(60);
         expect(snapSupplementOrderQuantity(10, minPack10, bounds45)).toBe(10);
     });
 
     it('snaps intermediate quantity down to remainder when stock < pack', () => {
-        // Остаток 20, пачка 50. 30 → snap до 20 (остаток), не 30.
         const bounds = { availableQty: 20, currentQuantity: 0, supplierPackageAmount: 50 };
         const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
 
         expect(snapSupplementOrderQuantity(30, minPack10g, bounds)).toBe(20);
         expect(snapSupplementOrderQuantity(50, minPack10g, bounds)).toBe(50);
         expect(snapSupplementOrderQuantity(20, minPack10g, bounds)).toBe(20);
+        // 100 = 2 пачки — кратно
+        expect(snapSupplementOrderQuantity(100, minPack10g, bounds)).toBe(100);
     });
 
     it('snaps to max (= current + stock) with existing order', () => {
-        // Уже 10, остаток 20, пачка 50. max = 30. Попытка 40 → snap до 30.
         const bounds = { availableQty: 20, currentQuantity: 10, supplierPackageAmount: 50 };
         const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
 
@@ -148,50 +156,47 @@ describe('supplement order quantity', () => {
     });
 
     it('allows reducing existing order when stock is zero', () => {
-        // Уже заказано 5, остаток 0, пачка 12. Можно уменьшить до 1–5.
         const bounds = { availableQty: 0, currentQuantity: 5, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
         expect(getSupplementOrderQuantityValidationError(3, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(1, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(5, minPack1, bounds)).toBeNull();
-        // Увеличение без остатка — только пачка
-        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toMatch(/только одну пачку/);
+        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toMatch(/целыми пачками/);
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
+        // 24 = 2 пачки — тоже разрешено
+        expect(getSupplementOrderQuantityValidationError(24, minPack1, bounds)).toBeNull();
     });
 
     it('snaps to valid step when reducing order with zero stock', () => {
-        // Уже 5, остаток 0, пачка 12, шаг 1.
         const bounds = { availableQty: 0, currentQuantity: 5, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
         expect(snapSupplementOrderQuantity(3, minPack1, bounds)).toBe(3);
         expect(snapSupplementOrderQuantity(5, minPack1, bounds)).toBe(5);
-        // Попытка увеличить без остатка → snap к пачке
         expect(snapSupplementOrderQuantity(7, minPack1, bounds)).toBe(12);
         expect(snapSupplementOrderQuantity(12, minPack1, bounds)).toBe(12);
     });
 
-    it('treats null availableQty as zero stock: only pack or reduce', () => {
-        // availableQty=null (не установлен) → treated as 0
+    it('treats null availableQty as zero stock: only pack multiples or reduce', () => {
         const bounds = { availableQty: 0, currentQuantity: 0, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
-        expect(getSupplementOrderQuantityValidationError(3, minPack1, bounds)).toMatch(/только одну пачку/);
+        expect(getSupplementOrderQuantityValidationError(3, minPack1, bounds)).toMatch(/целыми пачками/);
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(24, minPack1, bounds)).toBeNull();
     });
 
-    it('stock 5 pack 12 existing order 2: enforces supplement min 10, allows pack (12)', () => {
-        // Остаток 5, уже заказано 2, пачка 12.
-        // max = 2 + 5 = 7. Мин. добор = 10. Можно: ровно 12 или ≤ 2 (уменьшение).
-        // 7 — ниже минимума добора (10). 12 — ровно одна пачка (ОК).
+    it('stock 5 pack 12 existing order 2: stock below min → only packs allowed', () => {
         const bounds = { availableQty: 5, currentQuantity: 2, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
-        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toMatch(/Минимальный заказ на добор/);
+        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toMatch(/целыми пачками/);
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(2, minPack1, bounds)).toBeNull();
-        expect(getSupplementOrderQuantityValidationError(10, minPack1, bounds)).toMatch(/новый остаток|не более/);
-        expect(getSupplementOrderQuantityValidationError(8, minPack1, bounds)).toMatch(/новый остаток|не более/);
+        expect(getSupplementOrderQuantityValidationError(10, minPack1, bounds)).toMatch(/целыми пачками/);
+        expect(getSupplementOrderQuantityValidationError(8, minPack1, bounds)).toMatch(/целыми пачками/);
+        // 24 = 2 пачки — кратно, разрешено
+        expect(getSupplementOrderQuantityValidationError(24, minPack1, bounds)).toBeNull();
     });
 });

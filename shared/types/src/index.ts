@@ -78,6 +78,7 @@ export {
     getSupplementStockDecrement,
     isFullSupplierPackOrder,
     isExactSupplierPackOrder,
+    isWholePackMultiple,
     isWholePackOrder,
     isValidSupplementOrderQuantity,
     shouldDecrementSupplementStock,
