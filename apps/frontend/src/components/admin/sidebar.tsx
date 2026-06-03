@@ -29,7 +29,6 @@ const navItems = [
     { href: '/products', label: 'Каталог товаров', icon: Package, admin: true },
     { href: '/users', label: 'Участники', icon: Users, admin: true },
     { href: '/settings', label: 'Настройки', icon: Settings, admin: true },
-    { href: '/shop', label: 'Мои закупки', icon: ShoppingBag, admin: false },
 ];
 
 export function SidebarBrand() {
