@@ -26,8 +26,10 @@ interface ProductPhotoPreviewProps {
     photoId: number | null | undefined;
     alt?: string;
     thumbClassName?: string;
-    /** Кнопка на всю область (превью в карточке каталога) с иконкой лупы. */
+    /** Фото на всю область карточки; лупа отдельно, клик по фото не открывает лайтбокс. */
     fill?: boolean;
+    /** Размер кнопки лупы в режиме fill. */
+    zoomSize?: 'sm' | 'lg';
 }
 
 export function ProductPhotoPreview({
@@ -35,6 +37,7 @@ export function ProductPhotoPreview({
     alt = 'Фото товара',
     thumbClassName,
     fill = false,
+    zoomSize = 'sm',
 }: ProductPhotoPreviewProps) {
     const [open, setOpen] = useState(false);
     const src = photoId != null ? absoluteProductPhotoUrl(photoId) : null;
@@ -123,25 +126,33 @@ export function ProductPhotoPreview({
     if (fill) {
         return (
             <>
-                <button
-                    type="button"
+                <div
                     className={cn(
-                        'relative block size-full overflow-hidden bg-muted transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset touch-manipulation',
+                        'relative block size-full overflow-hidden bg-muted',
                         thumbClassName,
                     )}
-                    onClick={openPhoto}
-                    aria-label="Увеличить фото товара"
                 >
                     <img
                         src={src}
                         alt={alt}
-                        className="absolute inset-0 size-full object-cover"
+                        className="pointer-events-none absolute inset-0 size-full object-cover"
                         loading="lazy"
                     />
-                    <span className="pointer-events-none absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white shadow-sm">
-                        <ZoomIn className="h-4 w-4" aria-hidden />
-                    </span>
-                </button>
+                    <button
+                        type="button"
+                        className={cn(
+                            'absolute z-[2] flex items-center justify-center rounded-full bg-black/50 text-white shadow-sm transition-opacity hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation',
+                            zoomSize === 'lg'
+                                ? 'bottom-4 right-4 h-11 w-11'
+                                : 'bottom-2 right-2 h-8 w-8',
+                        )}
+                        onClick={openPhoto}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        aria-label="Увеличить фото товара"
+                    >
+                        <ZoomIn className={cn(zoomSize === 'lg' ? 'h-5 w-5' : 'h-4 w-4')} aria-hidden />
+                    </button>
+                </div>
                 {lightbox}
             </>
         );

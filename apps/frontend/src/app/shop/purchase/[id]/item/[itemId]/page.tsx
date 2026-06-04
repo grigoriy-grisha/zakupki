@@ -21,8 +21,8 @@ import {
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { ProductPricePanel } from '@/app/shop/components/product-price-panel';
-import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { toast } from 'sonner';
 import {
     buildShopItemDescriptionRows,
@@ -100,40 +100,45 @@ export default function ItemDetailPage({
     const packDiscountInfo = product ? getPackDiscountPricingInfo(product, packDiscountPercent) : null;
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
 
-    const upsertMutation = trpc.orders.upsertOrder.useMutation({
+    const deleteMutation = trpc.orders.deleteOrder.useMutation({
         onSuccess: () => {
-            utils.orders.getMyOrders.invalidate();
-            utils.purchases.getById.invalidate({ id: purchaseId });
+            setQuantity(0);
+            void utils.orders.getMyOrders.invalidate();
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const upsertMutation = trpc.orders.upsertOrder.useMutation({
+        onSuccess: (_data, variables) => {
+            setQuantity(variables.quantity);
+            void utils.orders.getMyOrders.invalidate();
+            void utils.purchases.getById.invalidate({ id: purchaseId });
         },
         onError: (err) => toast.error(err.message),
     });
 
     useEffect(() => {
-        if (upsertMutation.isPending) return;
         setQuantity(currentQty);
-    }, [currentQty, purchaseItemId, upsertMutation.isPending]);
+    }, [currentQty, purchaseItemId]);
 
     function snap(qty: number) {
         return snapOrderQuantity(qty, orderQtyOptions);
     }
 
+    const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
+
     function submit(qty: number) {
-        if (qty <= 0 || qty < minOrderQty) {
+        if (qty < minOrderQty) {
             if (existingOrder) {
-                const deleteMut = trpc.orders.deleteOrder.useMutation();
-                deleteMut.mutate(
-                    { id: existingOrder.id },
-                    {
-                        onSuccess: () => {
-                            utils.orders.getMyOrders.invalidate();
-                            utils.purchases.getById.invalidate({ id: purchaseId });
-                        },
-                    },
-                );
+                deleteMutation.mutate({ id: existingOrder.id });
+            } else {
+                setQuantity(0);
             }
             return;
         }
         if (!isValidOrderQuantity(qty, orderQtyOptions)) return;
+        setQuantity(qty);
         setIsFlying(true);
         upsertMutation.mutate(
             { purchaseItemId, quantity: qty },
@@ -142,33 +147,22 @@ export default function ItemDetailPage({
     }
 
     function handleAdd(step: number) {
-        const next = snap(quantity + step);
-        setQuantity(next);
-        submit(next);
+        if (orderBusy) return;
+        submit(snap(quantity + step));
     }
 
     function handleRemove(step: number) {
+        if (orderBusy) return;
         const next = quantity - step;
         if (next < minOrderQty) {
-            setQuantity(0);
             if (existingOrder) {
-                const deleteMut = trpc.orders.deleteOrder.useMutation();
-                deleteMut.mutate(
-                    { id: existingOrder.id },
-                    {
-                        onSuccess: () => {
-                            utils.orders.getMyOrders.invalidate();
-                            utils.purchases.getById.invalidate({ id: purchaseId });
-                        },
-                        onError: (err) => toast.error(err.message),
-                    },
-                );
+                deleteMutation.mutate({ id: existingOrder.id });
+            } else {
+                setQuantity(0);
             }
             return;
         }
-        const snapped = snap(next);
-        setQuantity(snapped);
-        submit(snapped);
+        submit(snap(next));
     }
 
     if (isLoading) {
@@ -223,10 +217,12 @@ export default function ItemDetailPage({
                 {/* Photo */}
                 <div className="relative h-72 w-full shrink-0 overflow-hidden rounded-xl bg-muted lg:h-96 lg:w-96">
                     {product.photos?.[0] ? (
-                        <img
-                            src={absoluteProductPhotoUrl(product.photos[0].id)}
+                        <ProductPhotoPreview
+                            photoId={product.photos[0].id}
                             alt={product.name}
-                            className="h-full w-full object-cover"
+                            fill
+                            zoomSize="lg"
+                            className="size-full"
                         />
                     ) : (
                         <div className="flex h-full items-center justify-center">
@@ -234,7 +230,7 @@ export default function ItemDetailPage({
                         </div>
                     )}
                     {isFlying && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
                             <div className="animate-bounce rounded-full bg-primary p-3 text-primary-foreground shadow-lg">
                                 <ShoppingCart className="h-6 w-6" />
                             </div>
@@ -314,7 +310,7 @@ export default function ItemDetailPage({
                                 <Button
                                     variant="outline"
                                     className="flex-1"
-                                    disabled={upsertMutation.isPending || quantity <= 0}
+                                    disabled={orderBusy || quantity <= 0}
                                     onClick={() => handleRemove(orderStep)}
                                 >
                                     <Minus className="mr-1 h-4 w-4" />
@@ -323,7 +319,7 @@ export default function ItemDetailPage({
                                 <Button
                                     variant="outline"
                                     className="flex-1"
-                                    disabled={upsertMutation.isPending}
+                                    disabled={orderBusy}
                                     onClick={() => handleAdd(orderStep)}
                                 >
                                     <Plus className="mr-1 h-4 w-4" />
@@ -337,14 +333,14 @@ export default function ItemDetailPage({
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={upsertMutation.isPending || quantity < packSize}
+                                        disabled={orderBusy || quantity < packSize}
                                         onClick={() => handleRemove(packSize)}
                                     >
                                         −Пачка ({packSize} {shortName})
                                     </Button>
                                     <Button
                                         className="flex-1"
-                                        disabled={upsertMutation.isPending}
+                                        disabled={orderBusy}
                                         onClick={() => handleAdd(packSize)}
                                     >
                                         +Пачка ({packSize} {shortName})

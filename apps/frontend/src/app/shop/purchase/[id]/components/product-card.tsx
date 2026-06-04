@@ -88,14 +88,27 @@ export function ProductCard({
     const hasOrder = currentQuantity > 0;
     const photo = product.photos?.[0];
 
-    const upsertMutation = trpc.orders.upsertOrder.useMutation({
+    const deleteMutation = trpc.orders.deleteOrder.useMutation({
         onSuccess: () => {
-            utils.orders.getMyOrders.invalidate();
-            utils.purchases.getById.invalidate({ id: purchaseId });
+            setQuantity(0);
+            void utils.orders.getMyOrders.invalidate();
+            void utils.purchases.getById.invalidate({ id: purchaseId });
             onOrderChange?.();
         },
         onError: (err) => toast.error(err.message),
     });
+
+    const upsertMutation = trpc.orders.upsertOrder.useMutation({
+        onSuccess: (_data, variables) => {
+            setQuantity(variables.quantity);
+            void utils.orders.getMyOrders.invalidate();
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            onOrderChange?.();
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
 
     const pricingOptions = {
         priceTiers: product.priceTiers,
@@ -117,68 +130,47 @@ export function ProductCard({
 
     function submit(qty: number) {
         if (qty < minOrderQty) {
-            // delete the order instead
             if (hasOrder) {
-                // Find the order line and delete it
-                const myOrders = utils.orders.getMyOrders.getData();
-                const line = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
+                const line = utils.orders.getMyOrders.getData()?.find(
+                    (o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId,
+                );
                 if (line) {
-                    trpc.orders.deleteOrder.useMutation().mutate(
-                        { id: line.id },
-                        {
-                            onSuccess: () => {
-                                utils.orders.getMyOrders.invalidate();
-                                utils.purchases.getById.invalidate({ id: purchaseId });
-                                onOrderChange?.();
-                            },
-                        },
-                    );
+                    deleteMutation.mutate({ id: line.id });
                 }
+            } else {
+                setQuantity(0);
             }
             return;
         }
         if (!isValidOrderQuantity(qty, orderQtyOptions)) return;
+        setQuantity(qty);
         setIsFlying(true);
         upsertMutation.mutate(
             { purchaseItemId, quantity: qty },
-            {
-                onSettled: () => setTimeout(() => setIsFlying(false), 400),
-            },
+            { onSettled: () => setTimeout(() => setIsFlying(false), 400) },
         );
     }
 
     function handleAdd(step: number) {
-        const next = snap(quantity + step);
-        setQuantity(next);
-        submit(next);
+        if (orderBusy) return;
+        submit(snap(quantity + step));
     }
 
     function handleRemove(step: number) {
+        if (orderBusy) return;
         const next = quantity - step;
         if (next < minOrderQty) {
-            setQuantity(0);
-            // delete
-            const myOrders = utils.orders.getMyOrders.getData();
-            const line = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
+            const line = utils.orders.getMyOrders.getData()?.find(
+                (o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId,
+            );
             if (line) {
-                const deleteMut = trpc.orders.deleteOrder.useMutation();
-                deleteMut.mutate(
-                    { id: line.id },
-                    {
-                        onSuccess: () => {
-                            utils.orders.getMyOrders.invalidate();
-                            utils.purchases.getById.invalidate({ id: purchaseId });
-                            onOrderChange?.();
-                        },
-                        onError: (err) => toast.error(err.message),
-                    },
-                );
+                deleteMutation.mutate({ id: line.id });
+            } else {
+                setQuantity(0);
             }
             return;
         }
-        const snapped = snap(next);
-        setQuantity(snapped);
-        submit(snapped);
+        submit(snap(next));
     }
 
     return (
@@ -296,7 +288,7 @@ export function ProductCard({
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={upsertMutation.isPending || !hasOrder}
+                                disabled={orderBusy || !hasOrder}
                                 onClick={() => handleRemove(orderStep)}
                             >
                                 <Minus className="mr-1 h-3 w-3" />
@@ -308,7 +300,7 @@ export function ProductCard({
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={upsertMutation.isPending}
+                                disabled={orderBusy}
                                 onClick={() => handleAdd(orderStep)}
                             >
                                 <Plus className="mr-1 h-3 w-3" />
@@ -324,7 +316,7 @@ export function ProductCard({
                                     variant="outline"
                                     size="sm"
                                     className="h-9 flex-1 text-[11px]"
-                                    disabled={upsertMutation.isPending || quantity < packSize}
+                                    disabled={orderBusy || quantity < packSize}
                                     onClick={() => handleRemove(packSize)}
                                 >
                                     −Пачка ({packSize} {shortName})
@@ -333,7 +325,7 @@ export function ProductCard({
                                 <Button
                                     size="sm"
                                     className="h-9 flex-1 text-[11px]"
-                                    disabled={upsertMutation.isPending}
+                                    disabled={orderBusy}
                                     onClick={() => handleAdd(packSize)}
                                 >
                                     +Пачка ({packSize} {shortName})
