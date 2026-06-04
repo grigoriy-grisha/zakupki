@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     calculateOrderAmount,
+    formatMinPackageHint,
     formatMinPackageOrderHint,
     getOrderQuantityValidationError,
     parsePriceTiers,
@@ -161,6 +162,7 @@ describe('order quantity validation', () => {
     });
 
     it('formats min package hint', () => {
+        expect(formatMinPackageHint(minPack10)).toBe('Мин. фасовка: 10 гр');
         expect(formatMinPackageOrderHint(minPack10)).toBe('Мин. фасовка: 10 гр · заказ кратно 10 гр');
     });
 });

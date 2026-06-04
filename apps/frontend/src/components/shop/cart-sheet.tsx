@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ShoppingCart, Trash2, ArrowRight, CircleCheck, Clock, CreditCard } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
+import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-controls';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     // Group by purchase
     const grouped = new Map<number, {
         id: number;
+        orderNumber: number | null;
         tag: string;
         supplier: string;
         orders: NonNullable<typeof myOrders>;
@@ -44,9 +46,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
             const purchase = (order as any).purchaseItem?.purchase;
             if (!purchase) continue;
             const pid = purchase.id as number;
+            const purchaseOrderId = (order as { purchaseOrderId?: number | null }).purchaseOrderId ?? null;
             if (!grouped.has(pid)) {
                 grouped.set(pid, {
                     id: pid,
+                    orderNumber: purchaseOrderId,
                     tag: purchase.tag,
                     supplier: purchase.supplier,
                     orders: [],
@@ -55,6 +59,9 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                 });
             }
             const group = grouped.get(pid)!;
+            if (group.orderNumber == null && purchaseOrderId != null) {
+                group.orderNumber = purchaseOrderId;
+            }
             group.orders.push(order);
             group.total += Number(order.amountDue);
         }
@@ -109,26 +116,37 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
                                 return (
                                     <div key={group.id}>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <button
-                                                onClick={() => { onOpenChange(false); router.push(`/shop/purchase/${group.id}`); }}
-                                                className="font-semibold text-sm hover:text-primary transition-colors text-left"
-                                            >
-                                                {group.supplier}
-                                            </button>
-                                            <Badge variant="outline" className="text-xs font-normal">{group.tag}</Badge>
+                                        <div className="mb-2">
+                                            <div className="flex items-center justify-between">
+                                                <button
+                                                    onClick={() => { onOpenChange(false); router.push(`/shop/purchase/${group.id}`); }}
+                                                    className="font-semibold text-sm hover:text-primary transition-colors text-left"
+                                                >
+                                                    {group.supplier}
+                                                </button>
+                                                <Badge variant="outline" className="text-xs font-normal">{group.tag}</Badge>
+                                            </div>
                                         </div>
 
                                         {group.orders.map((order) => {
-                                            const product = (order as any).purchaseItem?.product as
-                                                (ProductLabelSource & { photos: { id: number }[]; unit: { shortName: string } | null }) | undefined;
-                                            const shortName = product?.unit?.shortName ?? '';
+                                            const purchaseItem = (order as { purchaseItem?: {
+                                                id: number;
+                                                minQty: unknown;
+                                                product?: ProductLabelSource & {
+                                                    photos: { id: number }[];
+                                                    unit: { shortName: string; multiplicity: string | number } | null;
+                                                    minPackageAmount: string | number | null;
+                                                    minPackageUnit: string | null;
+                                                };
+                                            } }).purchaseItem;
+                                            const product = purchaseItem?.product;
+                                            const shortName = product?.unit?.shortName ?? 'ед.';
                                             const photo = product?.photos?.[0];
                                             const qty = Number(order.quantity);
                                             const amount = Number(order.amountDue);
 
                                             return (
-                                                <div key={order.id} className="flex items-center gap-2 py-2">
+                                                <div key={order.id} className="flex gap-2 py-2">
                                                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
                                                         {photo ? (
                                                             <img src={absoluteProductPhotoUrl(photo.id)} alt="" className="h-full w-full object-cover" />
@@ -138,28 +156,60 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        {product && (
-                                                            <PurchaseProductLabel product={product} as="span" className="text-sm truncate" />
-                                                        )}
-                                                        <p className="text-xs text-muted-foreground">
-                                                            <span className="text-muted-foreground/60">#{order.id}</span> · {qty} {shortName} · {amount.toLocaleString('ru-RU')} ₽
-                                                        </p>
+                                                    <div className="min-w-0 flex-1 space-y-2">
+                                                        <div className="min-w-0 overflow-hidden">
+                                                            {product && (
+                                                                <PurchaseProductLabel
+                                                                    product={product}
+                                                                    omitArticle
+                                                                    primaryClassName="text-sm font-medium leading-snug line-clamp-2"
+                                                                    secondaryClassName="text-xs text-muted-foreground line-clamp-2"
+                                                                />
+                                                            )}
+                                                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                                                {amount.toLocaleString('ru-RU')} ₽
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            {purchaseItem && product?.unit ? (
+                                                                <CartLineQuantityControls
+                                                                    orderId={order.id}
+                                                                    purchaseItemId={purchaseItem.id}
+                                                                    purchaseId={group.id}
+                                                                    quantity={qty}
+                                                                    unitShort={shortName}
+                                                                    multiplicity={Number(product.unit.multiplicity)}
+                                                                    minPackageAmount={
+                                                                        product.minPackageAmount != null
+                                                                            ? Number(product.minPackageAmount)
+                                                                            : null
+                                                                    }
+                                                                    minPackageUnit={product.minPackageUnit}
+                                                                    purchaseItemMinQty={
+                                                                        purchaseItem.minQty != null
+                                                                            ? Number(purchaseItem.minQty)
+                                                                            : null
+                                                                    }
+                                                                />
+                                                            ) : (
+                                                                <span />
+                                                            )}
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon-sm"
+                                                                className="shrink-0 text-muted-foreground hover:text-destructive"
+                                                                disabled={deleteOrder.isPending}
+                                                                onClick={() => {
+                                                                    deleteOrder.mutate(
+                                                                        { id: order.id },
+                                                                        { onSuccess: () => utils.orders.getMyOrders.invalidate() },
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                                                        disabled={deleteOrder.isPending}
-                                                        onClick={() => {
-                                                            deleteOrder.mutate(
-                                                                { id: order.id },
-                                                                { onSuccess: () => utils.orders.getMyOrders.invalidate() },
-                                                            );
-                                                        }}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
                                                 </div>
                                             );
                                         })}

@@ -229,6 +229,10 @@ function ProductDetail({
                             supplierPackageAmount: data.supplierPackageAmount ?? undefined,
                             supplierPackageUnit: data.supplierPackageUnit ?? undefined,
                             supplierPackagePrice: data.supplierPackagePrice ?? undefined,
+                            supplierPackageTiers:
+                                data.supplierPackageTiers.length > 0
+                                    ? data.supplierPackageTiers
+                                    : undefined,
                             availableAmount: data.availableAmount ?? undefined,
                             availableUnit: data.availableUnit ?? undefined,
                         },

@@ -179,6 +179,15 @@ export const purchasesRouter = router({
                     supplierPackageAmount: z.number().nullable().optional(),
                     supplierPackageUnit: z.string().nullable().optional(),
                     supplierPackagePrice: z.number().nullable().optional(),
+                    supplierPackageTiers: z
+                        .array(
+                            z.object({
+                                amount: z.number().positive(),
+                                unit: z.string().min(1),
+                                price: z.number().nonnegative(),
+                            }),
+                        )
+                        .optional(),
                     availableAmount: z.number().nullable().optional(),
                     availableUnit: z.string().nullable().optional(),
                 }),

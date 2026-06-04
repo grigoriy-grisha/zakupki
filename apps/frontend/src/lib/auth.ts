@@ -6,6 +6,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 export const dynamic = 'force-dynamic';
 
 import { serviceContainer } from '@/server/lib/service-container';
+import { resolveUsableAvatarUrl } from '@/server/lib/remote-avatar';
 import { verifyTelegramInitData } from '@/server/lib/telegram-init-data';
 
 export async function verifyVk(rawData: string) {
@@ -28,10 +29,11 @@ export async function verifyVk(rawData: string) {
     if (!userInfo.user) return null;
 
     const vkUser = userInfo.user;
+    const avatar = await resolveUsableAvatarUrl(vkUser.avatar || vkUser.photo_200 || null);
     return {
         providerAccountId: String(vkUser.user_id),
         name: [vkUser.first_name, vkUser.last_name].filter(Boolean).join(' '),
-        avatar: vkUser.avatar || vkUser.photo_200 || null,
+        avatar,
     };
 }
 
@@ -49,10 +51,14 @@ export async function verifyTelegram(rawData: string) {
     const lastName = typeof tgUser.last_name === 'string' ? tgUser.last_name : '';
     const username = typeof parsed.username === 'string' ? parsed.username : null;
 
+    const avatar = await resolveUsableAvatarUrl(
+        typeof tgUser.photo_url === 'string' ? tgUser.photo_url : null,
+    );
+
     return {
         providerAccountId: String(tgUser.id),
         name: [firstName, lastName].filter(Boolean).join(' ') || username || 'User',
-        avatar: typeof tgUser.photo_url === 'string' ? tgUser.photo_url : null,
+        avatar,
         username,
     };
 }
@@ -89,7 +95,7 @@ export const authOptions: NextAuthOptions = {
             credentials: { initData: { type: 'text' } },
             async authorize(credentials) {
                 if (!credentials?.initData) return null;
-                const verified = verifyTelegramInitData(credentials.initData);
+                const verified = await verifyTelegramInitData(credentials.initData);
                 if (!verified) return null;
                 return serviceContainer.user.signInWithTelegram(verified);
             },

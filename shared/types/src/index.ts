@@ -11,6 +11,11 @@ export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
     DONE: 'Завершена',
 };
 
+/** Закупка завершена организатором — заказы уходят в «прошлые». */
+export function isPurchaseCompleted(status: PurchaseStatus | string | null | undefined): boolean {
+    return status === 'DONE';
+}
+
 export type PurchaseFulfillmentStatus =
     | 'COLLECTION'
     | 'REORDER'
@@ -56,6 +61,7 @@ export function isPurchasePaymentOpen(status: PurchaseFulfillmentStatus | null |
 
 export {
     calculateOrderAmount,
+    formatMinPackageHint,
     formatMinPackageOrderHint,
     getMinOrderQuantity,
     getOrderQuantityStep,

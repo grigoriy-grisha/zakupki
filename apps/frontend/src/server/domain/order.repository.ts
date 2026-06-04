@@ -1,4 +1,4 @@
-import { dbClient } from '@zakupki/database';
+import { dbClient, deletePurchaseOrderIfNoLines, ensurePurchaseOrder } from '@zakupki/database';
 import {
     getSupplementStockDecrement,
     InsufficientStockError,
@@ -6,14 +6,26 @@ import {
     shouldDecrementSupplementStock,
 } from '@zakupki/types';
 
+import { productWithAttributes } from './purchase.repository';
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
 
 export class OrderRepository {
     async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return dbClient.orderLine.upsert({
-            where: { purchaseItemId_userId: { purchaseItemId, userId } },
-            update: { quantity, amountDue },
-            create: { purchaseItemId, userId, quantity, amountDue },
+        return dbClient.$transaction(async (tx) => {
+            const purchaseItem = await tx.purchaseItem.findUnique({
+                where: { id: purchaseItemId },
+                select: { purchaseId: true },
+            });
+            if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
+
+            await ensurePurchaseOrder(tx, userId, purchaseItem.purchaseId);
+
+            return tx.orderLine.upsert({
+                where: { purchaseItemId_userId: { purchaseItemId, userId } },
+                update: { quantity, amountDue },
+                create: { purchaseItemId, userId, quantity, amountDue },
+                omit: { tgChatMessageId: true },
+            });
         });
     }
 
@@ -67,10 +79,13 @@ export class OrderRepository {
                 }
             }
 
+            await ensurePurchaseOrder(tx, userId, purchaseItem.purchaseId);
+
             return tx.orderLine.upsert({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
                 update: { quantity, amountDue },
                 create: { purchaseItemId, userId, quantity, amountDue },
+                omit: { tgChatMessageId: true },
             });
         });
     }
@@ -111,8 +126,34 @@ export class OrderRepository {
                 }
             }
 
-            return tx.orderLine.delete({ where: { id } });
+            const purchaseItem = await tx.purchaseItem.findUnique({
+                where: { id: line.purchaseItemId },
+                select: { purchaseId: true },
+            });
+
+            const deleted = await tx.orderLine.delete({
+                where: { id },
+                omit: { tgChatMessageId: true },
+            });
+
+            if (purchaseItem) {
+                await deletePurchaseOrderIfNoLines(tx, line.userId, purchaseItem.purchaseId);
+            }
+
+            return deleted;
         });
+    }
+
+    async deletePurchaseOrder(userId: number, purchaseId: number) {
+        return dbClient.purchaseOrder.deleteMany({ where: { userId, purchaseId } });
+    }
+
+    findPurchaseOrdersByUser(userId: number) {
+        return dbClient.purchaseOrder.findMany({ where: { userId } });
+    }
+
+    findPurchaseOrdersByPurchase(purchaseId: number) {
+        return dbClient.purchaseOrder.findMany({ where: { purchaseId } });
     }
 
     async getByUser(userId: number) {
@@ -122,7 +163,7 @@ export class OrderRepository {
             include: {
                 purchaseItem: {
                     include: {
-                        product: { include: { unit: true } },
+                        product: { include: productWithAttributes },
                         purchase: { select: { id: true, tag: true, supplier: true, fulfillmentStatus: true, status: true } },
                     },
                 },
@@ -138,14 +179,17 @@ export class OrderRepository {
             include: {
                 user: { include: USER_CREDENTIALS_INCLUDE },
                 purchaseItem: {
-                    include: { product: { include: { unit: true } } },
+                    include: { product: { include: productWithAttributes } },
                 },
             },
         });
     }
 
     async delete(id: number) {
-        return dbClient.orderLine.delete({ where: { id } });
+        return dbClient.orderLine.delete({
+            where: { id },
+            omit: { tgChatMessageId: true },
+        });
     }
 
     async findByUserAndPurchase(userId: number, purchaseId: number) {

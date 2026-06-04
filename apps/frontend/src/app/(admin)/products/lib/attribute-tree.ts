@@ -382,3 +382,18 @@ function matchesSegment(product: AttrProduct, segment: PathSegment): boolean {
 export function matchesPath(product: AttrProduct, path: PathSegment[]): boolean {
     return path.every((segment) => matchesSegment(product, segment));
 }
+
+/** Все конечные пути фильтра внутри узла (значения под типом/брендом). */
+function collectLeafFilterPaths(node: TreeNode): PathSegment[][] {
+    if (!node.isTypeFolder) {
+        return [node.path];
+    }
+    return node.children.flatMap((child) => collectLeafFilterPaths(child));
+}
+
+/** Товар подходит под выбранный узел дерева (значение, тип или бренд). */
+export function productMatchesTreeNode(product: AttrProduct, node: TreeNode): boolean {
+    const paths = collectLeafFilterPaths(node);
+    if (paths.length === 0) return false;
+    return paths.some((path) => matchesPath(product, path));
+}

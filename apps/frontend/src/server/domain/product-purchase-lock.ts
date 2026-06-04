@@ -3,8 +3,9 @@ import { BusinessRuleError } from '@zakupki/types';
 
 export const ACTIVE_PURCHASE_STATUS = 'ACTIVE' as const;
 
-function formatPurchaseTag(tag: string): string {
-    return tag.startsWith('#') ? tag : `#${tag}`;
+export function formatPurchaseTag(tag: string): string {
+    const trimmed = tag.trim();
+    return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
 }
 
 export async function findActivePurchaseTagsForProduct(db: PrismaClient, productId: number): Promise<string[]> {

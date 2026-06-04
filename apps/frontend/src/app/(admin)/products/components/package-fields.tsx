@@ -34,15 +34,21 @@ function integerInputValue(value: number | null | undefined, emptyWhenZero = fal
 export function PriceTierEditor({
     tiers,
     onChange,
+    label = 'Цены',
+    required = true,
+    addTierLabel = 'Добавить тир',
 }: {
     tiers: { amount: number; unit: string; price: number }[];
     onChange: (tiers: { amount: number; unit: string; price: number }[]) => void;
+    label?: string;
+    required?: boolean;
+    addTierLabel?: string;
 }) {
     return (
         <div className="space-y-1">
             <div className="flex items-center justify-between">
                 <Label>
-                    Цены <span className="text-destructive">*</span>
+                    {label} {required && <span className="text-destructive">*</span>}
                 </Label>
                 <Button
                     type="button"
@@ -51,7 +57,7 @@ export function PriceTierEditor({
                     onClick={() => onChange([...tiers, { amount: 0, unit: PACKAGE_UNITS[0], price: 0 }])}
                 >
                     <Plus className="mr-1 h-3.5 w-3.5" />
-                    Добавить тир
+                    {addTierLabel}
                 </Button>
             </div>
             <div className="space-y-2">
@@ -63,7 +69,6 @@ export function PriceTierEditor({
                             min={1}
                             inputMode="numeric"
                             className="w-20"
-                            placeholder="1"
                             value={numInputValue(tier.amount)}
                             onChange={(e) => {
                                 const next = [...tiers];
@@ -85,7 +90,6 @@ export function PriceTierEditor({
                             step="0.01"
                             min={0}
                             className="flex-1"
-                            placeholder="Цена"
                             value={numInputValue(tier.price)}
                             onChange={(e) => {
                                 const next = [...tiers];

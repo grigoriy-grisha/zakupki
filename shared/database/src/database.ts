@@ -17,6 +17,7 @@ import { Prisma } from '@prisma/client';
 export * from '@prisma/client';
 export { Prisma };
 export type TransactionClient = Prisma.TransactionClient;
+export { ensurePurchaseOrder, deletePurchaseOrderIfNoLines } from './purchase-order';
 
 const globalForPrisma = globalThis as unknown as { db?: PrismaClient };
 

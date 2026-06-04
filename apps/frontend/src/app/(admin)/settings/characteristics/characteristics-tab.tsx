@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { useCharacteristicList, useDeleteCharacteristic, useMoveCharacteristic } from './hooks';
+import { useCharacteristicList, useDeleteCharacteristic } from './hooks';
 import { CharacteristicFormDialog } from './components';
 
 export function CharacteristicsTab() {
     const { data: items, isLoading } = useCharacteristicList();
     const deleteMutation = useDeleteCharacteristic();
-    const moveMutation = useMoveCharacteristic();
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
     if (isLoading) {
@@ -22,8 +21,8 @@ export function CharacteristicsTab() {
         <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between gap-4">
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                    Справочник характеристик для товаров. Порядок строк задаёт порядок по умолчанию; у каждого
-                    значения в справочниках товаров можно уточнить порядок отдельно.
+                    Справочник характеристик для товаров. У каждого значения в справочниках товаров выберите
+                    нужные характеристики — при создании товара появятся поля для ввода значений.
                 </p>
                 <CharacteristicFormDialog mode="create" />
             </div>
@@ -32,7 +31,6 @@ export function CharacteristicsTab() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-20 text-center">Порядок</TableHead>
                             <TableHead>Название</TableHead>
                             <TableHead className="w-24 text-center">Действия</TableHead>
                         </TableRow>
@@ -40,39 +38,13 @@ export function CharacteristicsTab() {
                     <TableBody>
                         {items?.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
                                     Характеристик пока нет
                                 </TableCell>
                             </TableRow>
                         )}
-                        {items?.map((item, index) => (
+                        {items?.map((item) => (
                             <TableRow key={item.id}>
-                                <TableCell className="text-center">
-                                    <div className="flex items-center justify-center gap-0.5">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8"
-                                            disabled={index === 0 || moveMutation.isPending}
-                                            title="Выше"
-                                            onClick={() => moveMutation.mutate({ id: item.id, direction: 'up' })}
-                                        >
-                                            <ChevronUp className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8"
-                                            disabled={
-                                                index === (items?.length ?? 0) - 1 || moveMutation.isPending
-                                            }
-                                            title="Ниже"
-                                            onClick={() => moveMutation.mutate({ id: item.id, direction: 'down' })}
-                                        >
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
                                 <TableCell className="font-medium">{item.name}</TableCell>
                                 <TableCell className="text-center">
                                     <div className="flex items-center justify-center gap-1">

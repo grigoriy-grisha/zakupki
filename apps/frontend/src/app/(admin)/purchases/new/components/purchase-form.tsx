@@ -61,6 +61,9 @@ export function PurchaseForm() {
                     <div className="space-y-2">
                         <Label htmlFor="tag">Тег</Label>
                         <Input id="tag" placeholder="#СЗ10" {...register('tag')} />
+                        <p className="text-xs text-muted-foreground">
+                            Уникальный идентификатор закупки (например #СЗ11). Нельзя повторить уже существующий тег.
+                        </p>
                         {errors.tag && <p className="text-xs text-destructive">{errors.tag.message}</p>}
                     </div>
 

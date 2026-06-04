@@ -27,17 +27,6 @@ export function useUpdateCharacteristic() {
     });
 }
 
-export function useMoveCharacteristic() {
-    const utils = trpc.useUtils();
-    return trpc.characteristics.move.useMutation({
-        onSuccess: async () => {
-            await utils.characteristics.list.invalidate();
-            await utils.productAttributes.list.invalidate();
-        },
-        onError: (err) => toast.error(err.message),
-    });
-}
-
 export function useDeleteCharacteristic() {
     const utils = trpc.useUtils();
     return trpc.characteristics.delete.useMutation({

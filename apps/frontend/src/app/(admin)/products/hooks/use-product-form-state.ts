@@ -142,8 +142,18 @@ export function useProductFormState(editId: number | null, existing: ProductForm
 
     const selectedAttrsKey = useMemo(() => JSON.stringify(selectedAttrs), [selectedAttrs]);
 
+    const savedCharValuesById = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const cv of existing?.characteristicValues ?? []) {
+            const value = cv.value?.trim();
+            if (value) map.set(cv.characteristicId, cv.value);
+        }
+        return map;
+    }, [existing?.characteristicValues]);
+
     useEffect(() => {
         if (!attributesList?.length || !attributeTypes?.length || !allCharacteristics?.length) return;
+        if (linkedCharIdsOrdered.length === 0) return;
 
         const suggested = buildAutoCharacteristicValues(
             selectedAttrs,
@@ -155,10 +165,13 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         setCharValues((prev) => {
             const next: Record<number, string> = {};
             for (const cid of linkedCharIdsOrdered) {
-                const suggestedVal = suggested[cid]?.trim();
                 const prevVal = prev[cid]?.trim();
+                const savedVal = savedCharValuesById.get(cid)?.trim();
+                const suggestedVal = suggested[cid]?.trim();
                 if (prevVal) {
                     next[cid] = prev[cid];
+                } else if (savedVal) {
+                    next[cid] = savedCharValuesById.get(cid)!;
                 } else if (suggestedVal) {
                     next[cid] = suggestedVal;
                 } else {
@@ -167,7 +180,15 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             }
             return next;
         });
-    }, [selectedAttrsKey, linkedCharIdsKey, attributeTypes, allCharacteristics, attributesList, linkedCharIdsOrdered]);
+    }, [
+        selectedAttrsKey,
+        linkedCharIdsKey,
+        attributeTypes,
+        allCharacteristics,
+        attributesList,
+        linkedCharIdsOrdered,
+        savedCharValuesById,
+    ]);
 
     useEffect(() => {
         return () => revokePendingFiles(pendingFilesRef.current);
@@ -205,14 +226,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         }
         if (shouldReset) {
             setSelectedAttrs(map);
-            const linked = new Set(collectLinkedCharacteristicIds(map, attributesList ?? []));
-            const chars: Record<number, string> = {};
-            for (const cv of existing.characteristicValues ?? []) {
-                if (linked.has(cv.characteristicId)) {
-                    chars[cv.characteristicId] = cv.value;
-                }
-            }
-            setCharValues(chars);
         } else if (existingBrandId != null && allAttributes?.length) {
             setSelectedAttrs((prev) => {
                 const brandAttr = (allAttributes as AttributeListItem[]).find((a) => a.id === existingBrandId);

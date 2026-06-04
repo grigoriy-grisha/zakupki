@@ -1,3 +1,4 @@
+import { parsePriceTiers } from '@zakupki/types';
 import { PACKAGE_UNITS, type PackageUnit } from '../../../products/lib';
 
 export type PurchasePriceTier = { amount: number; unit: string; price: number };
@@ -9,6 +10,7 @@ export type PurchaseProductFieldSource = {
     supplierPackageAmount?: string | number | null;
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: string | number | null;
+    supplierPackageTiers?: unknown;
     availableAmount?: string | number | null;
     availableUnit?: string | null;
     unit?: { shortName?: string | null; name?: string | null } | null;
@@ -56,8 +58,11 @@ function withCatalogPackageUnits(
             ...t,
             unit: normalizePackageUnit(t.unit) ?? catalogUnit,
         })),
+        supPkgTiers: state.supPkgTiers.map((t) => ({
+            ...t,
+            unit: normalizePackageUnit(t.unit) ?? catalogUnit,
+        })),
         minPkgUnit: normalizePackageUnit(state.minPkgUnit) ?? catalogUnit,
-        supPkgUnit: normalizePackageUnit(state.supPkgUnit) ?? catalogUnit,
         availUnit: normalizePackageUnit(state.availUnit) ?? catalogUnit,
     };
 }
@@ -74,14 +79,73 @@ export function validatePurchasePriceTiers(tiers: PurchasePriceTier[]): string |
     return null;
 }
 
+export function getInitialSupplierTiers(
+    product: PurchaseProductFieldSource,
+    catalogUnit: PackageUnit,
+): PurchasePriceTier[] {
+    const fromJson = parsePriceTiers(product.supplierPackageTiers);
+    if (fromJson.length > 0) {
+        return fromJson.map((t) => ({
+            amount: Math.max(0, Math.trunc(t.amount)),
+            unit: normalizePackageUnit(t.unit) ?? catalogUnit,
+            price: Number(t.price),
+        }));
+    }
+    if (product.supplierPackageAmount != null && product.supplierPackageUnit) {
+        return [
+            {
+                amount: Math.max(0, Math.trunc(Number(product.supplierPackageAmount))),
+                unit: normalizePackageUnit(product.supplierPackageUnit) ?? catalogUnit,
+                price: product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : 0,
+            },
+        ];
+    }
+    return [{ amount: 0, unit: catalogUnit, price: 0 }];
+}
+
+/** Валидные тиры фасовки поставщика + основная фасовка (первая строка) для заказа по пачке. */
+export function normalizeSupplierTiersForSave(tiers: PurchasePriceTier[]): {
+    supplierPackageTiers: PurchasePriceTier[];
+    supplierPackageAmount: number | null;
+    supplierPackageUnit: string | null;
+    supplierPackagePrice: number | null;
+} {
+    const valid = tiers
+        .filter((t) => t.amount > 0 && t.price > 0 && t.unit.trim())
+        .map((t) => ({
+            amount: Math.trunc(t.amount),
+            unit: t.unit.trim(),
+            price: t.price,
+        }));
+    const first = valid[0];
+    return {
+        supplierPackageTiers: valid,
+        supplierPackageAmount: first ? first.amount : null,
+        supplierPackageUnit: first?.unit ?? null,
+        supplierPackagePrice: first ? first.price : null,
+    };
+}
+
+export function primarySupplierPackageFromTiers(tiers: PurchasePriceTier[]): {
+    amount: number | null;
+    unit: string | null;
+    price: number | null;
+} {
+    const { supplierPackageAmount, supplierPackageUnit, supplierPackagePrice } =
+        normalizeSupplierTiersForSave(tiers);
+    return {
+        amount: supplierPackageAmount,
+        unit: supplierPackageUnit,
+        price: supplierPackagePrice,
+    };
+}
+
 export type PurchaseProductFormState = {
     description: string;
     tiers: PurchasePriceTier[];
     minPkgAmount: number | null;
     minPkgUnit: string;
-    supPkgAmount: number | null;
-    supPkgUnit: string;
-    supPkgPrice: number | null;
+    supPkgTiers: PurchasePriceTier[];
     availAmount: number | null;
     availUnit: string;
 };
@@ -124,9 +188,7 @@ export function emptyPurchaseFields(unit?: string): PurchaseProductFormState {
         tiers: [{ amount: 0, unit: u, price: 0 }],
         minPkgAmount: null,
         minPkgUnit: u,
-        supPkgAmount: null,
-        supPkgUnit: u,
-        supPkgPrice: null,
+        supPkgTiers: [{ amount: 0, unit: u, price: 0 }],
         availAmount: null,
         availUnit: u,
     };
@@ -151,11 +213,7 @@ export function savedPurchaseFields(
             tiers,
             minPkgAmount: product.minPackageAmount != null ? Math.trunc(Number(product.minPackageAmount)) : null,
             minPkgUnit: product.minPackageUnit ?? catalogUnit,
-            supPkgAmount:
-                product.supplierPackageAmount != null ? Math.trunc(Number(product.supplierPackageAmount)) : null,
-            supPkgUnit: product.supplierPackageUnit ?? catalogUnit,
-            supPkgPrice:
-                product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
+            supPkgTiers: getInitialSupplierTiers(product, catalogUnit),
             availAmount: product.availableAmount != null ? Math.trunc(Number(product.availableAmount)) : null,
             availUnit: product.availableUnit ?? catalogUnit,
         },

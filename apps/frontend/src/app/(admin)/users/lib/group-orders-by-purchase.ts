@@ -8,6 +8,7 @@ export type UserOrderLine = RouterOutputs['orders']['getByUser'][number];
 
 export type UserPurchaseGroup = {
     purchaseId: number;
+    orderNumber: number | null;
     tag: string;
     supplier: string | null;
     orders: UserOrderLine[];
@@ -22,8 +23,10 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
         const purchaseId = purchase?.id ?? order.purchaseItem?.purchaseId;
         if (!purchaseId) continue;
 
+        const purchaseOrderId = order.purchaseOrderId ?? null;
         const existing = map.get(purchaseId) ?? {
             purchaseId,
+            orderNumber: purchaseOrderId,
             tag: purchase?.tag ?? `Закупка #${purchaseId}`,
             supplier: purchase?.supplier ?? null,
             orders: [],
@@ -32,6 +35,9 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
 
         existing.orders.push(order);
         existing.totalDue += Number(order.amountDue);
+        if (existing.orderNumber == null && purchaseOrderId != null) {
+            existing.orderNumber = purchaseOrderId;
+        }
         if (purchase?.tag) existing.tag = purchase.tag;
         if (purchase?.supplier) existing.supplier = purchase.supplier;
 

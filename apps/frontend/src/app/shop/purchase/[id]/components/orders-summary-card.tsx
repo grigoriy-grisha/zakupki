@@ -29,6 +29,8 @@ export function OrdersSummaryCard({
     fulfillmentLabel,
 }: OrdersSummaryCardProps) {
     const { myOrdersInPurchase, totalDue, purchasePayments, hasPending, totalPaid, remaining } = paymentDetail;
+    const purchaseOrderId =
+        (myOrdersInPurchase[0] as { purchaseOrderId?: number | null } | undefined)?.purchaseOrderId ?? null;
     const productByItemId = useMemo(
         () => new Map(purchaseItems?.map((item) => [item.id, item.product]) ?? []),
         [purchaseItems],
@@ -38,7 +40,14 @@ export function OrdersSummaryCard({
         <Card>
             <CardContent className="p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-semibold">Ваши заказы</h3>
+                    <div>
+                        {purchaseOrderId != null && (
+                            <p className="text-sm font-medium tabular-nums text-muted-foreground">
+                                Заказ №{purchaseOrderId}
+                            </p>
+                        )}
+                        <h3 className="font-semibold">Ваши заказы</h3>
+                    </div>
                     <Badge variant="outline" className="font-normal">
                         <Package className="mr-1 h-3 w-3" />
                         {fulfillmentLabel}

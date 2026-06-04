@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
+import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { paymentTotal } from '../../lib/utils';
 
@@ -18,13 +20,14 @@ interface ParticipantRowProps {
     username?: string;
     purchaseId: number;
     onOpenProfile: (userId: number) => void;
+    purchaseOrderId?: number | null;
     orders: {
         id: number;
         purchaseItemId: number;
         quantity: unknown;
         amountDue: unknown;
         purchaseItem?: {
-            product?: { name?: string; unit?: { shortName: string }; pricePerUnit: unknown };
+            product?: ProductLabelSource & { unit?: { shortName: string } };
             priceOverride?: unknown;
         };
     }[];
@@ -48,6 +51,7 @@ export function ParticipantRow({
     name,
     username,
     purchaseId,
+    purchaseOrderId,
     onOpenProfile,
     orders,
     payments,
@@ -90,6 +94,9 @@ export function ParticipantRow({
                     >
                         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </button>
+                </TableCell>
+                <TableCell className="text-center font-medium tabular-nums">
+                    {purchaseOrderId != null ? purchaseOrderId : '—'}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                     <button
@@ -150,12 +157,16 @@ export function ParticipantRow({
 
             {open && (
                 <TableRow>
-                    <TableCell colSpan={7} className="bg-muted/30 p-0">
+                    <TableCell colSpan={8} className="bg-muted/30 p-0">
                         <div className="p-4 pl-4 sm:pl-14">
                             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                                 {/* Left: Orders */}
                                 <div>
-                                    <p className="mb-2 text-sm font-medium text-muted-foreground">Заказы</p>
+                                    <p className="mb-2 text-sm font-medium text-muted-foreground">
+                                        {purchaseOrderId != null
+                                            ? `Заказ №${purchaseOrderId} · позиции`
+                                            : 'Заказы'}
+                                    </p>
                                     <div className="rounded-md border bg-background">
                                         <Table>
                                             <TableHeader>
@@ -168,9 +179,18 @@ export function ParticipantRow({
                                             <TableBody>
                                                 {orders.map((order) => (
                                                     <TableRow key={order.id}>
-                                                        <TableCell className="font-medium">
-                                                            {order.purchaseItem?.product?.name ??
-                                                                `Товар #${order.purchaseItemId}`}
+                                                        <TableCell className="min-w-[18rem] max-w-xl whitespace-normal">
+                                                            {order.purchaseItem?.product ? (
+                                                                <PurchaseProductLabel
+                                                                    product={order.purchaseItem.product}
+                                                                    primaryClassName="text-sm font-medium"
+                                                                    secondaryClassName="text-xs text-muted-foreground"
+                                                                />
+                                                            ) : (
+                                                                <span className="font-medium">
+                                                                    {`Товар #${order.purchaseItemId}`}
+                                                                </span>
+                                                            )}
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             {Number(order.quantity).toLocaleString('ru-RU')}{' '}
@@ -262,7 +282,9 @@ export function ParticipantRow({
                 title="Удалить участника из закупки?"
                 description={
                     <>
-                        {name} будет удалён из закупки со всеми заказами ({orders.length} поз.).
+                        {name} будет удалён из закупки
+                        {purchaseOrderId != null ? ` (заказ №${purchaseOrderId})` : ''} со всеми позициями (
+                        {orders.length}).
                         {due > 0 && <> К оплате было {due.toLocaleString('ru-RU')} ₽.</>}
                     </>
                 }

@@ -3,5 +3,4 @@ export {
     useCreateCharacteristic,
     useUpdateCharacteristic,
     useDeleteCharacteristic,
-    useMoveCharacteristic,
 } from './use-characteristics';

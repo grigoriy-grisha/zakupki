@@ -159,6 +159,7 @@ model User {
   role               RoleKind            @default(CLIENT)
   createdAt          DateTime            @default(now())
   orderLines         OrderLine[]
+  purchaseOrders     PurchaseOrder[]
   payments           Payment[]
   userRole           UserRole?
   telegramCredential TelegramCredential?
@@ -204,6 +205,7 @@ model Product {
   supplierPackageAmount Decimal?                     @db.Decimal(10, 3)
   supplierPackageUnit   String?
   supplierPackagePrice  Decimal?                     @db.Decimal(10, 2)
+  supplierPackageTiers  Json?
   availableAmount       Decimal?                     @db.Decimal(10, 3)
   availableUnit         String?
   createdAt             DateTime                     @default(now())
@@ -241,12 +243,28 @@ model Purchase {
   minAmount          Decimal                    @db.Decimal(10, 2)
   deadline   DateTime
   createdAt  DateTime       @default(now())
-  items      PurchaseItem[]
-  payments   Payment[]
-  promoCodes PromoCode[]
+  items           PurchaseItem[]
+  payments        Payment[]
+  promoCodes      PromoCode[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([status])
   @@index([createdAt])
+}
+
+// Один заказ участника в закупке (все строки OrderLine по этой СЗ).
+model PurchaseOrder {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  purchaseId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+
+  @@unique([userId, purchaseId])
+  @@index([userId])
+  @@index([purchaseId])
 }
 
 model PurchaseItem {

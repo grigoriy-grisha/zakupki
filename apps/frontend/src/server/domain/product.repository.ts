@@ -21,6 +21,7 @@ export interface ProductWriteData {
     supplierPackageAmount?: number | null;
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: number | null;
+    supplierPackageTiers?: PriceTier[] | null;
     availableAmount?: number | null;
     availableUnit?: string | null;
 }
@@ -174,10 +175,11 @@ const productInclude = {
 };
 
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { unitId, priceTiers, attributeIds, characteristics, brandId, ...rest } = data;
+    const { unitId, priceTiers, supplierPackageTiers, attributeIds, characteristics, brandId, ...rest } = data;
     return {
         ...rest,
         priceTiers: priceTiers ?? Prisma.JsonNull,
+        supplierPackageTiers: supplierPackageTiers ?? Prisma.JsonNull,
         unit: { connect: { id: unitId } },
         ...(brandId != null ? { brand: { connect: { id: brandId } } } : {}),
         ...(attributeIds && attributeIds.length > 0
@@ -188,10 +190,21 @@ function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
 }
 
 function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
-    const { unitId, priceTiers, brandId, attributeIds: _attributeIds, characteristics: _characteristics, ...rest } = data;
+    const {
+        unitId,
+        priceTiers,
+        supplierPackageTiers,
+        brandId,
+        attributeIds: _attributeIds,
+        characteristics: _characteristics,
+        ...rest
+    } = data;
     const update: Prisma.ProductUpdateInput = { ...rest };
     if (priceTiers !== undefined) {
         update.priceTiers = priceTiers ?? Prisma.JsonNull;
+    }
+    if (supplierPackageTiers !== undefined) {
+        update.supplierPackageTiers = supplierPackageTiers ?? Prisma.JsonNull;
     }
     if (unitId !== undefined) {
         update.unit = { connect: { id: unitId } };

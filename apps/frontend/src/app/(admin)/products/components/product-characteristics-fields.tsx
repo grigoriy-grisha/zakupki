@@ -18,13 +18,12 @@ export function ProductCharacteristicsFields({ fields, values, onChange }: Produ
         <div className="space-y-3">
             <Label>Характеристики</Label>
             {fields.map((field) => (
-                <div key={field.id} className="space-y-1">
+                <div key={field.id} className="flex flex-col gap-1.5">
                     <Label htmlFor={`char-${field.id}`} className="text-muted-foreground">
                         {field.name}
                     </Label>
                     <Input
                         id={`char-${field.id}`}
-                        placeholder={`Введите «${field.name}»`}
                         value={values[field.id] ?? ''}
                         onChange={(e) => onChange(field.id, e.target.value)}
                     />

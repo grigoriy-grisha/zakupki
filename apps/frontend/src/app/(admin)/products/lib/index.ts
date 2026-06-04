@@ -1,12 +1,14 @@
 export type { PathSegment, AttributeTypeRow, AttrProduct, TreeNode } from './types';
-export { buildAttributeTree, collectExpandableIds, matchesPath } from './attribute-tree';
+export { buildAttributeTree, collectExpandableIds, matchesPath, productMatchesTreeNode } from './attribute-tree';
 export {
     getAttributeCharacteristicIds,
+    resolveProductCharacteristics,
     buildAttributesTreeByType,
     findAttributeDisplayName,
     groupAttributesByType,
     revokePendingFiles,
     type AttributeListItem,
+    type ProductCharacteristicsSource,
     type AttributeBrandNode,
     type AttributesTreeForType,
     type PendingFile,
@@ -24,6 +26,8 @@ export {
     formatProductAttributesLine,
     getProductCatalogAttributeLabels,
     formatProductCatalogCardLines,
+    type CatalogCardLine,
+    type CatalogCardLineRole,
     formatPurchaseProductLabel,
     buildShopItemDescriptionRows,
     type ShopItemDescriptionRow,
@@ -48,4 +52,5 @@ export {
     normalizeNovelHtml,
     POST_TEMPLATE_PLACEHOLDERS,
     type DescriptionFields,
+    type ProductCharacteristicsCatalog,
 } from './build-product-description';

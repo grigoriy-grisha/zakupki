@@ -8,6 +8,11 @@ import {
     type AttributeTypeMeta,
     type ShowInTitleByTypeId,
 } from './format-product-label';
+import {
+    resolveProductCharacteristics,
+    type AttributeListItem,
+    type ProductCharacteristicsSource,
+} from './product-form-utils';
 import { isPositive, formatNumber, formatRubles } from '@/lib/utils/format';
 import { escapeHtml, escapeRegExp } from '@/lib/utils/html';
 
@@ -28,6 +33,7 @@ export interface DescriptionFields {
     supplierPackageAmount?: number | null;
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: number | null;
+    supplierPackageTiers?: { amount?: number; unit?: string; price?: number }[];
     availableAmount?: number | null;
     availableUnit?: string | null;
     purchaseTag?: string;
@@ -35,17 +41,23 @@ export interface DescriptionFields {
     packDiscountPercent?: number | null;
 }
 
+export type ProductCharacteristicsCatalog = {
+    attributes: AttributeListItem[];
+    characteristics: { id: number; name: string }[];
+};
+
 export function productToDescriptionFields(
     product: ProductLabelSource,
     showInTitleByTypeId?: ShowInTitleByTypeId,
     attributeTypes?: AttributeTypeMeta[],
+    catalog?: ProductCharacteristicsCatalog,
 ): Omit<DescriptionFields, 'name'> {
     return {
         articleNumber: product.articleNumber ?? undefined,
         brandName: getProductBrandName(product) || undefined,
         titleAttributes: getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes),
         attributeNames: getProductAttributeNames(product, attributeTypes),
-        productCharacteristics: getProductCharacteristics(product),
+        productCharacteristics: getProductCharacteristics(product, catalog, attributeTypes),
     };
 }
 
@@ -61,7 +73,19 @@ function getProductBrandName(product: ProductLabelSource): string {
     return '';
 }
 
-function getProductCharacteristics(product: ProductLabelSource): { name: string; value: string }[] {
+function getProductCharacteristics(
+    product: ProductLabelSource,
+    catalog?: ProductCharacteristicsCatalog,
+    attributeTypes?: AttributeTypeMeta[],
+): { name: string; value: string }[] {
+    if (catalog?.attributes.length && catalog.characteristics.length && attributeTypes?.length) {
+        return resolveProductCharacteristics(
+            product as ProductCharacteristicsSource,
+            catalog.attributes,
+            attributeTypes,
+            catalog.characteristics,
+        );
+    }
     return (product.characteristicValues ?? [])
         .map((v) => ({
             name: v.characteristic.name?.trim() ?? '',
@@ -107,16 +131,13 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
         }
     }
 
-    if (
-        isPositive(input.supplierPackageAmount) &&
-        input.supplierPackageUnit &&
-        isPositive(input.supplierPackagePrice)
-    ) {
+    const supplierLines = formatSupplierPackageLines(input);
+    if (supplierLines.length > 0) {
         lines.push('');
         lines.push('Фасовка поставщика:');
-        lines.push(
-            `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatRubles(input.supplierPackagePrice)} руб`,
-        );
+        for (const line of supplierLines) {
+            lines.push(line);
+        }
     }
 
     if (input.availableAmount != null && Number(input.availableAmount) >= 0 && input.availableUnit) {
@@ -169,18 +190,15 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         );
     }
 
-    if (
-        isPositive(input.supplierPackageAmount) &&
-        input.supplierPackageUnit &&
-        isPositive(input.supplierPackagePrice)
-    ) {
+    const supplierLines = formatSupplierPackageLines(input);
+    if (supplierLines.length > 0) {
         blocks.push(blankParagraph());
-        blocks.push(
-            mixedParagraph(
-                'Фасовка поставщика:',
-                `${formatNumber(input.supplierPackageAmount)} ${input.supplierPackageUnit} - ${formatRubles(input.supplierPackagePrice)} руб`,
-            ),
-        );
+        if (supplierLines.length === 1) {
+            blocks.push(mixedParagraph('Фасовка поставщика:', supplierLines[0]!));
+        } else {
+            blocks.push(boldParagraph('Фасовка поставщика:'));
+            blocks.push(linesParagraph(supplierLines));
+        }
     }
 
     if (input.availableAmount != null && Number(input.availableAmount) >= 0 && input.availableUnit) {
@@ -287,15 +305,32 @@ function normalizePlaceholderKey(key: string): string {
     return key.trim().toLowerCase().replace(/\s+/g, '_');
 }
 
-function formatSupplierPackageLine(fields: DescriptionFields): string {
-    if (
-        !isPositive(fields.supplierPackageAmount) ||
-        !fields.supplierPackageUnit ||
-        !isPositive(fields.supplierPackagePrice)
-    ) {
-        return '';
+function formatSupplierPackageLines(fields: DescriptionFields): string[] {
+    const tiers =
+        fields.supplierPackageTiers?.filter(
+            (t) => t && isPositive(t.amount) && t.unit && isPositive(t.price),
+        ) ?? [];
+    if (tiers.length > 0) {
+        return tiers.map(
+            (tier) =>
+                `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`,
+        );
     }
-    return `${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatRubles(fields.supplierPackagePrice)} руб`;
+    if (
+        isPositive(fields.supplierPackageAmount) &&
+        fields.supplierPackageUnit &&
+        isPositive(fields.supplierPackagePrice)
+    ) {
+        return [
+            `${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatRubles(fields.supplierPackagePrice)} руб`,
+        ];
+    }
+    return [];
+}
+
+function formatSupplierPackageLine(fields: DescriptionFields): string {
+    const lines = formatSupplierPackageLines(fields);
+    return lines.length > 0 ? lines.join('\n') : '';
 }
 
 /** Целая пачка со скидкой из настроек — только фасовка в гр. */
@@ -371,8 +406,8 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
                   )
                 : '',
         фасовка_поставщика: (() => {
-            const line = formatSupplierPackageLine(fields);
-            return line ? escapeHtml(line) : '';
+            const lines = formatSupplierPackageLines(fields);
+            return lines.length > 0 ? linesInline(lines) : '';
         })(),
         цена_со_скидкой_за_пачку: (() => {
             const line = formatDiscountedPackLine(fields);

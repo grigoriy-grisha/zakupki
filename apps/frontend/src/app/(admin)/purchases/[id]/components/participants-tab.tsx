@@ -77,6 +77,7 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-8" />
+                            <TableHead className="w-24 text-center">№ заказа</TableHead>
                             <TableHead>Участник</TableHead>
                             <TableHead className="text-center">Позиций</TableHead>
                             <TableHead className="text-right">К оплате</TableHead>
@@ -94,6 +95,9 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                             const info = data.userMap.get(userId);
                             const name = info?.name ?? `Участник #${userId}`;
                             const userPaymentsList = data.userPayments.get(userId) ?? [];
+                            const purchaseOrderId =
+                                (userOrdersList[0] as { purchaseOrderId?: number | null } | undefined)
+                                    ?.purchaseOrderId ?? null;
 
                             return (
                                 <ParticipantRow
@@ -102,6 +106,7 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                                     name={name}
                                     username={info?.username}
                                     purchaseId={purchaseId}
+                                    purchaseOrderId={purchaseOrderId}
                                     onOpenProfile={setProfileUserId}
                                     orders={userOrdersList}
                                     payments={userPaymentsList}

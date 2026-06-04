@@ -10,6 +10,7 @@ import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
 import {
     formatProductCatalogCardLines,
+    type CatalogCardLineRole,
     type ProductCatalogCardSource,
 } from '../lib';
 import { productPhotoUrl } from '@/lib/product-photo-url';
@@ -29,12 +30,26 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const utils = trpc.useUtils();
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
 
-    const descriptionLines = useMemo(
-        () => formatProductCatalogCardLines(product, attributeTypes),
-        [product, attributeTypes],
-    );
+    const { nameLine, titleLine, metaLines } = useMemo(() => {
+        const lines = formatProductCatalogCardLines(product, attributeTypes);
+        return {
+            nameLine: lines.find((l) => l.role === 'name'),
+            titleLine: lines.find((l) => l.role === 'title'),
+            metaLines: lines.filter((l) => l.role === 'meta'),
+        };
+    }, [product, attributeTypes]);
 
     const photo = product.photos?.[0];
+
+    function catalogLineClass(role: CatalogCardLineRole): string {
+        if (role === 'name') {
+            return 'line-clamp-3 text-sm font-semibold leading-snug sm:min-h-[3rem] sm:text-base';
+        }
+        if (role === 'title') {
+            return 'line-clamp-2 text-xs font-medium leading-snug text-muted-foreground';
+        }
+        return 'line-clamp-1 text-[11px] leading-snug text-muted-foreground';
+    }
 
     async function handleDelete() {
         try {
@@ -50,10 +65,10 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     return (
         <>
             <Card
-                className="group flex cursor-pointer flex-row overflow-hidden transition-all hover:border-primary/20 hover:shadow-md sm:flex-col"
+                className="group flex cursor-pointer flex-row gap-0 overflow-hidden py-0 transition-all hover:border-primary/20 hover:shadow-md sm:flex-col"
                 onClick={onClick}
             >
-                <div className="relative aspect-square w-28 shrink-0 bg-muted sm:aspect-auto sm:h-44 sm:w-full">
+                <div className="relative aspect-square w-20 shrink-0 bg-muted sm:w-full">
                     {photo ? (
                         <img
                             src={productPhotoUrl(photo.id, `${product.id}-${photo.sortOrder}`)}
@@ -62,43 +77,36 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         />
                     ) : (
                         <div className="flex h-full items-center justify-center">
-                            <Package className="h-10 w-10 text-muted-foreground/30 sm:h-12 sm:w-12" />
+                            <Package className="h-8 w-8 text-muted-foreground/30 sm:h-10 sm:w-10" />
                         </div>
                     )}
                     {!product.inActivePurchase && (
                         <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-2 right-2 h-8 w-8 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                            className="absolute top-1.5 right-1.5 h-7 w-7 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmOpen(true);
                             }}
                         >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                     )}
                 </div>
 
-                <CardContent className="flex min-w-0 flex-1 flex-col justify-center space-y-0.5 p-3 sm:space-y-1 sm:p-4">
-                    {descriptionLines.length > 0 ? (
-                        descriptionLines.map((line, index) => (
-                            <p
-                                key={`${index}-${line}`}
-                                className={
-                                    index === 0
-                                        ? 'line-clamp-2 text-sm font-semibold leading-snug sm:line-clamp-none'
-                                        : 'line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:line-clamp-none'
-                                }
-                            >
-                                {line}
-                            </p>
-                        ))
+                <CardContent className="flex min-w-0 flex-1 flex-col justify-start gap-0.5 px-2 py-2 sm:flex-none sm:px-2.5 sm:py-2">
+                    {nameLine ? (
+                        <p className={catalogLineClass('name')}>{nameLine.text}</p>
                     ) : (
-                        <p className="line-clamp-2 text-sm font-semibold leading-snug sm:line-clamp-none">
-                            {product.name}
-                        </p>
+                        <p className={catalogLineClass('name')}>{product.name}</p>
                     )}
+                    {titleLine && <p className={catalogLineClass('title')}>{titleLine.text}</p>}
+                    {metaLines.map((line, index) => (
+                        <p key={`${index}-${line.text}`} className={catalogLineClass('meta')}>
+                            {line.text}
+                        </p>
+                    ))}
                 </CardContent>
             </Card>
 

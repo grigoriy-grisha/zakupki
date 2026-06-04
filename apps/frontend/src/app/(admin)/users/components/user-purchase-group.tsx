@@ -27,6 +27,11 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                     {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
+                    {group.orderNumber != null && (
+                        <p className="text-xs font-medium tabular-nums text-muted-foreground">
+                            Заказ №{group.orderNumber}
+                        </p>
+                    )}
                     <p className="font-medium leading-tight">{group.tag}</p>
                     {group.supplier && (
                         <p className="truncate text-xs text-muted-foreground">{group.supplier}</p>

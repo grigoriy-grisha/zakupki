@@ -5,7 +5,7 @@ import { trpc } from '@/lib/client/trpc';
 import {
     buildAttributeTree,
     collectExpandableIds,
-    matchesPath,
+    productMatchesTreeNode,
 } from '@/app/(admin)/products/lib/attribute-tree';
 import { buildAttributesTreeByType, type AttributeListItem } from '@/app/(admin)/products/lib/product-form-utils';
 import type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from '@/app/(admin)/products/lib/types';
@@ -16,8 +16,7 @@ type PurchaseItem = {
 };
 
 export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
-    const [selectedPath, setSelectedPath] = useState<PathSegment[]>([]);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
@@ -47,9 +46,14 @@ export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
 
     const filteredItems = useMemo(() => {
         if (!items) return [];
-        if (selectedPath.length === 0) return items;
-        return items.filter((item) => matchesPath(item.product, selectedPath));
-    }, [items, selectedPath]);
+        if (!selectedNode) return items;
+        return items.filter((item) => productMatchesTreeNode(item.product, selectedNode));
+    }, [items, selectedNode]);
+
+    const selectedId = selectedNode?.id ?? null;
+    const selectedPath: PathSegment[] = selectedNode && !selectedNode.isTypeFolder ? selectedNode.path : [];
+    const selectedFolderLabel = selectedNode?.isTypeFolder ? selectedNode.label : null;
+    const ancestorPath: PathSegment[] = selectedNode?.isTypeFolder ? selectedNode.path : [];
 
     function handleToggle(id: string) {
         setExpandedIds((prev) => {
@@ -61,23 +65,22 @@ export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
     }
 
     function handleSelectNode(node: TreeNode) {
-        if (node.isTypeFolder) return;
-        setSelectedId(node.id);
-        setSelectedPath(node.path);
+        setSelectedNode(node);
         if (node.children.length > 0) {
             setExpandedIds((prev) => new Set(prev).add(node.id));
         }
     }
 
     function clearSelection() {
-        setSelectedId(null);
-        setSelectedPath([]);
+        setSelectedNode(null);
     }
 
     return {
         tree,
         selectedPath,
         selectedId,
+        selectedFolderLabel,
+        ancestorPath,
         expandedIds,
         filteredItems,
         handleToggle,

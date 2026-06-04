@@ -20,6 +20,8 @@ export default function ProductsPage() {
         tree,
         selectedPath,
         selectedId,
+        selectedFolderLabel,
+        ancestorPath,
         expandedIds,
         filteredProducts,
         handleToggle,
@@ -97,12 +99,37 @@ export default function ProductsPage() {
                         />
                     </div>
 
-                    {selectedPath.length > 0 && (
+                    {selectedId != null && (
                         <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                            {selectedPath.map((segment, i) => (
+                            {ancestorPath.map((segment, i) => (
                                 <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
                                     {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                                    <span className={cn(i === selectedPath.length - 1 && 'font-medium')}>
+                                    <span>
+                                        <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
+                                        {segment.name}
+                                    </span>
+                                </span>
+                            ))}
+                            {selectedFolderLabel != null && (
+                                <span className="flex items-center gap-1.5">
+                                    {ancestorPath.length > 0 && (
+                                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                    )}
+                                    <span className="font-medium">{selectedFolderLabel}</span>
+                                </span>
+                            )}
+                            {selectedPath.map((segment, i) => (
+                                <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
+                                    {(ancestorPath.length > 0 || i > 0) && (
+                                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                    )}
+                                    <span
+                                        className={cn(
+                                            i === selectedPath.length - 1 &&
+                                                selectedFolderLabel == null &&
+                                                'font-medium',
+                                        )}
+                                    >
                                         <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
                                         {segment.name}
                                     </span>
@@ -116,9 +143,9 @@ export default function ProductsPage() {
                     )}
 
                     {isLoading ? (
-                        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-                            {Array.from({ length: 8 }).map((_, i) => (
-                                <Skeleton key={i} className="h-28 sm:h-64" />
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                                <Skeleton key={i} className="aspect-square w-full rounded-lg" />
                             ))}
                         </div>
                     ) : filteredProducts.length === 0 ? (
@@ -136,7 +163,7 @@ export default function ProductsPage() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5">
                             {filteredProducts.map((product) => (
                                 <ProductCard
                                     key={product.id}

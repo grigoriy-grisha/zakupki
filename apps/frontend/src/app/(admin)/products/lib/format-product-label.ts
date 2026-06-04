@@ -350,10 +350,10 @@ export function getProductTitleAttributeNames(
 }
 
 export function buildShowInTitleByTypeId(
-    types: { id: number; showInTitle: boolean }[] | undefined,
+    types: Pick<AttributeTypeMeta, 'id' | 'showInTitle'>[] | undefined,
 ): ShowInTitleByTypeId | undefined {
     if (!types?.length) return undefined;
-    return Object.fromEntries(types.map((t) => [t.id, t.showInTitle]));
+    return Object.fromEntries(types.map((t) => [t.id, t.showInTitle !== false]));
 }
 
 /** Подпись: MIYUKI · Delica 11/0 · Цилиндр · 11/0 · DB-0002 */
@@ -378,47 +378,54 @@ export type ProductCatalogCardSource = ProductLabelSource & {
     minPackageUnit?: string | null;
 };
 
+export type CatalogCardLineRole = 'title' | 'name' | 'meta';
+
+export type CatalogCardLine = {
+    text: string;
+    role: CatalogCardLineRole;
+};
+
 /** Строки полного описания для карточки товара в каталоге. */
 export function formatProductCatalogCardLines(
     product: ProductCatalogCardSource,
     attributeTypes?: AttributeTypeMeta[],
-): string[] {
-    const lines: string[] = [];
+): CatalogCardLine[] {
+    const lines: CatalogCardLine[] = [];
     const showInTitleByTypeId = buildShowInTitleByTypeId(attributeTypes);
+
+    const article = product.articleNumber?.trim() ?? '';
+    const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
+    const nameLine = [article, displayName].filter(Boolean).join(' ');
+    if (nameLine) lines.push({ text: nameLine, role: 'name' });
 
     const title = getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
         .map((part) => part.trim())
         .filter(Boolean)
         .join(' ');
-    if (title) lines.push(title);
-
-    const article = product.articleNumber?.trim() ?? '';
-    const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
-    const nameLine = [article, displayName].filter(Boolean).join(' ');
-    if (nameLine) lines.push(nameLine);
+    if (title) lines.push({ text: title, role: 'title' });
 
     const attributeLabels = getProductCatalogAttributeLabels(product, attributeTypes);
     if (attributeLabels.length > 0) {
-        lines.push(attributeLabels.join(' · '));
+        lines.push({ text: attributeLabels.join(' · '), role: 'meta' });
     } else {
         const attributesLine = formatProductAttributesLine(product, attributeTypes);
-        if (attributesLine) lines.push(attributesLine);
+        if (attributesLine) lines.push({ text: attributesLine, role: 'meta' });
     }
 
     for (const cv of product.characteristicValues ?? []) {
         const name = cv.characteristic.name?.trim();
         const value = cv.value?.trim();
-        if (name && value) lines.push(`${name}: ${value}`);
+        if (name && value) lines.push({ text: `${name}: ${value}`, role: 'meta' });
     }
 
     if (product.unit?.name) {
         const unitLabel = product.unit.shortName
             ? `${product.unit.name} (${product.unit.shortName})`
             : product.unit.name;
-        lines.push(`Ед. учёта: ${unitLabel}`);
+        lines.push({ text: `Ед. учёта: ${unitLabel}`, role: 'meta' });
     }
 
-    return lines.map((l) => l.trim()).filter(Boolean);
+    return lines.map((l) => ({ ...l, text: l.text.trim() })).filter((l) => l.text.length > 0);
 }
 
 function formatPurchaseProductLine1(product: ProductLabelSource): string {

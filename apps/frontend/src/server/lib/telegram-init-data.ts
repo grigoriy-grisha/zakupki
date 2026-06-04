@@ -1,6 +1,7 @@
 import { isValid } from '@tma.js/init-data-node';
 
 import type { VerifiedAccount } from '@/server/domain/user.types';
+import { resolveUsableAvatarUrl } from '@/server/lib/remote-avatar';
 
 const BEARER_PREFIX = 'Bearer ';
 
@@ -34,7 +35,7 @@ export function parseTelegramWebAppUser(initData: string): TelegramWebAppUser | 
     }
 }
 
-export function verifyTelegramInitData(initData: string): VerifiedAccount | null {
+export async function verifyTelegramInitData(initData: string): Promise<VerifiedAccount | null> {
     const botToken = process.env.BOT_TOKEN;
     if (!botToken) return null;
 
@@ -51,10 +52,12 @@ export function verifyTelegramInitData(initData: string): VerifiedAccount | null
     const lastName = userData.last_name ?? '';
     const username = userData.username ?? null;
 
+    const avatar = await resolveUsableAvatarUrl(userData.photo_url ?? null);
+
     return {
         providerAccountId: String(userData.id),
         name: [firstName, lastName].filter(Boolean).join(' ') || username || 'User',
-        avatar: userData.photo_url ?? null,
+        avatar,
         username,
     };
 }

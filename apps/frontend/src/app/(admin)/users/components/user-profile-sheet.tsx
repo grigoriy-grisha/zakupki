@@ -1,14 +1,18 @@
 'use client';
 
+import { useMemo } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 import { TelegramIcon, VkIcon } from '@/components/icons';
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
 import { resolveAvatarUrl, displayName } from '@/lib/utils/user';
+
+import { groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
+import { UserPurchaseGroupBlock } from './user-purchase-group';
 
 export type UserListItem = {
     id: number;
@@ -51,6 +55,9 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
         { enabled: open && user != null },
     );
 
+    const purchaseGroups = useMemo(() => (orders ? groupOrdersByPurchase(orders) : []), [orders]);
+    const ordersTotal = orders?.reduce((s, o) => s + Number(o.amountDue), 0) ?? 0;
+
     if (!open) return null;
 
     if (profileLoading && userProp == null && userId != null) {
@@ -87,13 +94,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
 
                 <div className="flex flex-col gap-6 px-4 pb-6">
                     <div className="flex items-center gap-4">
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
-                        ) : (
-                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl font-medium text-primary">
-                                {name.charAt(0)}
-                            </div>
-                        )}
+                        <UserAvatar src={avatarUrl} className="size-20" iconClassName="size-9" />
                         <div className="min-w-0">
                             <p className="truncate text-xl font-semibold">{name}</p>
                             {user.username && (
@@ -117,17 +118,11 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                 Telegram
                             </div>
                             <div className="flex items-start gap-3">
-                                {user.telegramCredential.avatarUrl ? (
-                                    <img
-                                        src={user.telegramCredential.avatarUrl}
-                                        alt=""
-                                        className="h-12 w-12 rounded-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#26A5E4]/10 text-sm font-medium text-[#26A5E4]">
-                                        TG
-                                    </div>
-                                )}
+                                <UserAvatar
+                                    src={user.telegramCredential.avatarUrl}
+                                    className="size-12"
+                                    iconClassName="size-6"
+                                />
                                 <div className="min-w-0 space-y-1 text-sm">
                                     {tgUsername && <p className="font-medium">@{tgUsername.replace(/^@/, '')}</p>}
                                     <p className="text-muted-foreground">TG ID: {user.telegramCredential.telegramId}</p>
@@ -158,17 +153,11 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                 VK
                             </div>
                             <div className="flex items-center gap-3">
-                                {user.vkCredential.avatarUrl ? (
-                                    <img
-                                        src={user.vkCredential.avatarUrl}
-                                        alt=""
-                                        className="h-12 w-12 rounded-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0077FF]/10 text-sm font-medium text-[#0077FF]">
-                                        VK
-                                    </div>
-                                )}
+                                <UserAvatar
+                                    src={user.vkCredential.avatarUrl}
+                                    className="size-12"
+                                    iconClassName="size-6"
+                                />
                                 <a
                                     href={`https://vk.com/id${user.vkCredential.vkId}`}
                                     target="_blank"
@@ -205,44 +194,13 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                 Нет заказов
                             </p>
                         ) : (
-                            <div className="rounded-md border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Товар</TableHead>
-                                            <TableHead className="text-right">Сумма</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {orders.map((order) => (
-                                            <TableRow key={order.id}>
-                                                <TableCell>
-                                                    <p className="font-medium leading-tight">
-                                                        {order.purchaseItem?.product?.name ??
-                                                            `Товар #${order.purchaseItemId}`}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {order.purchaseItem?.purchase?.tag ?? '—'} ·{' '}
-                                                        {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                                        {order.purchaseItem?.product?.unit?.shortName ?? ''}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">
-                                                    {Number(order.amountDue).toLocaleString('ru-RU')} ₽
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        <TableRow className="bg-muted/50 font-bold">
-                                            <TableCell>Итого</TableCell>
-                                            <TableCell className="text-right">
-                                                {orders
-                                                    .reduce((s, o) => s + Number(o.amountDue), 0)
-                                                    .toLocaleString('ru-RU')}{' '}
-                                                ₽
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
+                            <div className="space-y-2">
+                                {purchaseGroups.map((group) => (
+                                    <UserPurchaseGroupBlock key={group.purchaseId} group={group} />
+                                ))}
+                                <p className="pt-1 text-right text-sm font-medium">
+                                    Итого: {ordersTotal.toLocaleString('ru-RU')} ₽
+                                </p>
                             </div>
                         )}
                     </section>

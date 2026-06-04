@@ -1,6 +1,6 @@
 import { dbClient } from '@zakupki/database';
 
-const productWithAttributes = {
+export const productWithAttributes = {
     photos: { select: { id: true, sortOrder: true } },
     unit: true,
     brand: { select: { id: true, name: true, typeId: true, showInTitle: true, isBrand: true } },
@@ -82,6 +82,10 @@ export class PurchaseRepository {
                 payments: { include: { user: true } },
             },
         });
+    }
+
+    findByTag(tag: string) {
+        return dbClient.purchase.findUnique({ where: { tag }, select: { id: true, tag: true } });
     }
 
     async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {

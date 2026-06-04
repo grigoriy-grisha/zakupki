@@ -1,7 +1,9 @@
 import { NotFoundError, ValidationError } from '@zakupki/types';
 
+import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import { PurchaseRepository } from '../domain/purchase.repository';
 import { ProductRepository } from '../domain/product.repository';
+import { handleDbConflict } from '../lib/error-utils';
 import type { TelegramPublishService } from './telegram-publish.service';
 
 export class PurchaseService {
@@ -30,7 +32,17 @@ export class PurchaseService {
     }
 
     async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {
-        return this.repo.create(data);
+        const tag = formatPurchaseTag(data.tag);
+        const existing = await this.repo.findByTag(tag);
+        if (existing) {
+            throw new ValidationError(`Закупка с тегом «${tag}» уже существует. Укажите другой тег.`);
+        }
+
+        try {
+            return await this.repo.create({ ...data, tag });
+        } catch (err) {
+            handleDbConflict(err);
+        }
     }
 
     async updateStatus(id: number, status: string) {

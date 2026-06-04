@@ -72,19 +72,21 @@ function ValueRow({
 }) {
     return (
         <div
-            className={`group/v flex flex-wrap items-center gap-1 rounded-md py-1 pr-1 hover:bg-accent/40 ${nested ? 'ml-3' : ''}`}
+            className={`group/v grid grid-cols-[1.5rem_14rem_minmax(0,1fr)_auto] items-start gap-x-2 rounded-md py-1 pr-1 hover:bg-accent/40 ${nested ? 'ml-3' : ''}`}
         >
-            <span className="flex w-6 shrink-0 justify-center text-muted-foreground">•</span>
-            <span className="min-w-[4rem] shrink-0 px-1 text-sm font-medium">{item.name}</span>
+            <span className="flex w-6 justify-center pt-1.5 text-muted-foreground">•</span>
+            <span className="truncate px-1 pt-1.5 text-sm font-medium" title={item.name}>
+                {item.name}
+            </span>
             <CharacteristicOrderedPicker
                 options={characteristics}
                 selectedIds={getOrderedCharacteristicIds(item.characteristics)}
                 onChange={(ids) => updateValue.mutate({ id: item.id, characteristicIds: ids })}
                 placeholder="Характеристики"
-                triggerClassName="h-8 min-h-8 flex-1 text-xs"
+                triggerClassName="h-8 min-h-8 w-full text-xs"
                 emptyMessage="Создайте характеристики в настройках"
             />
-            <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/v:opacity-100">
+            <div className="flex items-center gap-0.5 self-start pt-0.5 opacity-0 transition-opacity group-hover/v:opacity-100">
                 <AttributeFormDialog
                     typeId={type.id}
                     typeName={type.name}

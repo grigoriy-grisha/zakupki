@@ -12,6 +12,7 @@ import {
     CircleCheck, Clock, CreditCard,
 } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
+import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-controls';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
@@ -140,9 +141,18 @@ export default function CartPage() {
                         </CardHeader>
                         <CardContent className="space-y-0">
                             {group.orders.map((order, idx) => {
-                                const product = (order as any).purchaseItem?.product as
-                                    (ProductLabelSource & { photos: { id: number }[]; unit: { shortName: string } | null }) | undefined;
-                                const shortName = product?.unit?.shortName ?? '';
+                                const purchaseItem = (order as { purchaseItem?: {
+                                    id: number;
+                                    minQty: unknown;
+                                    product?: ProductLabelSource & {
+                                        photos: { id: number }[];
+                                        unit: { shortName: string; multiplicity: string | number } | null;
+                                        minPackageAmount: string | number | null;
+                                        minPackageUnit: string | null;
+                                    };
+                                } }).purchaseItem;
+                                const product = purchaseItem?.product;
+                                const shortName = product?.unit?.shortName ?? 'ед.';
                                 const photo = product?.photos?.[0];
                                 const qty = Number(order.quantity);
                                 const amount = Number(order.amountDue);
@@ -150,7 +160,7 @@ export default function CartPage() {
                                 return (
                                     <div key={order.id}>
                                         {idx > 0 && <Separator />}
-                                        <div className="flex items-center gap-3 py-3">
+                                        <div className="flex items-start gap-3 py-3">
                                             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                                                 {photo ? (
                                                     <img
@@ -164,28 +174,56 @@ export default function CartPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="min-w-0 flex-1">
+                                            <div className="min-w-0 flex-1 overflow-hidden">
                                                 {product && (
-                                                    <PurchaseProductLabel product={product} className="text-sm font-medium" />
+                                                    <PurchaseProductLabel
+                                                        product={product}
+                                                        omitArticle
+                                                        primaryClassName="text-sm font-medium leading-snug line-clamp-2"
+                                                        secondaryClassName="text-xs text-muted-foreground line-clamp-2"
+                                                    />
                                                 )}
-                                                <p className="text-xs text-muted-foreground">
-                                                    {qty} {shortName} · {amount.toLocaleString('ru-RU')} ₽
+                                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                                    {amount.toLocaleString('ru-RU')} ₽
                                                 </p>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon-sm"
-                                                className="shrink-0 text-muted-foreground hover:text-destructive"
-                                                disabled={deleteOrder.isPending}
-                                                onClick={() => {
-                                                    deleteOrder.mutate(
-                                                        { id: order.id },
-                                                        { onSuccess: () => utils.orders.getMyOrders.invalidate() },
-                                                    );
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                                {purchaseItem && product?.unit && (
+                                                    <CartLineQuantityControls
+                                                        orderId={order.id}
+                                                        purchaseItemId={purchaseItem.id}
+                                                        purchaseId={group.id}
+                                                        quantity={qty}
+                                                        unitShort={shortName}
+                                                        multiplicity={Number(product.unit.multiplicity)}
+                                                        minPackageAmount={
+                                                            product.minPackageAmount != null
+                                                                ? Number(product.minPackageAmount)
+                                                                : null
+                                                        }
+                                                        minPackageUnit={product.minPackageUnit}
+                                                        purchaseItemMinQty={
+                                                            purchaseItem.minQty != null
+                                                                ? Number(purchaseItem.minQty)
+                                                                : null
+                                                        }
+                                                    />
+                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    className="text-muted-foreground hover:text-destructive"
+                                                    disabled={deleteOrder.isPending}
+                                                    onClick={() => {
+                                                        deleteOrder.mutate(
+                                                            { id: order.id },
+                                                            { onSuccess: () => utils.orders.getMyOrders.invalidate() },
+                                                        );
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 );

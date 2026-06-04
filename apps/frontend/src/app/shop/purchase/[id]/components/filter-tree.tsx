@@ -62,18 +62,12 @@ function FilterTreeNode({
             {nodes.map((node) => {
                 const hasChildren = node.children.length > 0;
                 const isExpanded = expandedIds.has(node.id);
-                const isSelected = !node.isTypeFolder && selectedId === node.id;
+                const isSelected = selectedId === node.id;
                 return (
                     <div key={node.id}>
                         <button
                             type="button"
-                            onClick={() => {
-                                if (node.isTypeFolder) {
-                                    if (hasChildren) onToggle(node.id);
-                                } else {
-                                    onSelect(node);
-                                }
-                            }}
+                            onClick={() => onSelect(node)}
                             className={cn(
                                 'flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:bg-accent transition-colors',
                                 isSelected && 'bg-accent font-medium',

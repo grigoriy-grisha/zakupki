@@ -22,7 +22,9 @@ import {
 } from '../../../products/lib';
 import {
     buildPurchaseFormState,
+    normalizeSupplierTiersForSave,
     persistTemplateChoice,
+    primarySupplierPackageFromTiers,
     resolveDefaultTemplateId,
     validatePurchasePriceTiers,
     type PurchaseProductFormState,
@@ -37,6 +39,7 @@ export type PurchaseProductSaveData = {
     supplierPackageAmount: number | null;
     supplierPackageUnit: string | null;
     supplierPackagePrice: number | null;
+    supplierPackageTiers: { amount: number; unit: string; price: number }[];
     availableAmount: number | null;
     availableUnit: string | null;
 };
@@ -49,6 +52,7 @@ interface PurchaseProductEditFormProps {
         supplierPackageAmount?: string | number | null;
         supplierPackageUnit?: string | null;
         supplierPackagePrice?: string | number | null;
+        supplierPackageTiers?: unknown;
         availableAmount?: string | number | null;
         availableUnit?: string | null;
         description?: string | null;
@@ -70,9 +74,7 @@ function applyPurchaseFields(
         setTiers: (v: PurchaseProductFormState['tiers']) => void;
         setMinPkgAmount: (v: number | null) => void;
         setMinPkgUnit: (v: string | null) => void;
-        setSupPkgAmount: (v: number | null) => void;
-        setSupPkgUnit: (v: string | null) => void;
-        setSupPkgPrice: (v: number | null) => void;
+        setSupPkgTiers: (v: PurchaseProductFormState['supPkgTiers']) => void;
         setAvailAmount: (v: number | null) => void;
         setAvailUnit: (v: string | null) => void;
     },
@@ -82,9 +84,7 @@ function applyPurchaseFields(
     setters.setTiers(next.tiers);
     setters.setMinPkgAmount(next.minPkgAmount);
     setters.setMinPkgUnit(next.minPkgUnit);
-    setters.setSupPkgAmount(next.supPkgAmount);
-    setters.setSupPkgUnit(next.supPkgUnit);
-    setters.setSupPkgPrice(next.supPkgPrice);
+    setters.setSupPkgTiers(next.supPkgTiers);
     setters.setAvailAmount(next.availAmount);
     setters.setAvailUnit(next.availUnit);
 }
@@ -120,9 +120,7 @@ export function PurchaseProductEditForm({
     const [tiers, setTiers] = useState(initial.tiers);
     const [minPkgAmount, setMinPkgAmount] = useState<number | null>(initial.minPkgAmount);
     const [minPkgUnit, setMinPkgUnit] = useState<string | null>(initial.minPkgUnit);
-    const [supPkgAmount, setSupPkgAmount] = useState<number | null>(initial.supPkgAmount);
-    const [supPkgUnit, setSupPkgUnit] = useState<string | null>(initial.supPkgUnit);
-    const [supPkgPrice, setSupPkgPrice] = useState<number | null>(initial.supPkgPrice);
+    const [supPkgTiers, setSupPkgTiers] = useState(initial.supPkgTiers);
     const [availAmount, setAvailAmount] = useState<number | null>(initial.availAmount);
     const [availUnit, setAvailUnit] = useState<string | null>(initial.availUnit);
     const [templateId, setTemplateId] = useState('none');
@@ -154,9 +152,7 @@ export function PurchaseProductEditForm({
                 setTiers,
                 setMinPkgAmount,
                 setMinPkgUnit,
-                setSupPkgAmount,
-                setSupPkgUnit,
-                setSupPkgPrice,
+                setSupPkgTiers,
                 setAvailAmount,
                 setAvailUnit,
             },
@@ -184,21 +180,39 @@ export function PurchaseProductEditForm({
     }, [product.id, postTemplates, loadSavedDescription]);
 
     const { data: attributeTypes, isSuccess: attributeTypesReady } = trpc.attributeTypes.list.useQuery();
+    const { data: allAttributes } = trpc.productAttributes.list.useQuery();
+    const { data: allCharacteristics } = trpc.characteristics.list.useQuery();
     const showInTitleByTypeId = useMemo(
         () => buildShowInTitleByTypeId(attributeTypes),
         [attributeTypes],
     );
 
+    const characteristicsCatalog = useMemo(() => {
+        if (!allAttributes?.length || !allCharacteristics?.length) return undefined;
+        return { attributes: allAttributes, characteristics: allCharacteristics };
+    }, [allAttributes, allCharacteristics]);
+
+    const primarySupplierPack = useMemo(
+        () => primarySupplierPackageFromTiers(supPkgTiers),
+        [supPkgTiers],
+    );
+
     const descriptionFields = useMemo(
         () => ({
-            ...productToDescriptionFields(product, showInTitleByTypeId, attributeTypes),
+            ...productToDescriptionFields(
+                product,
+                showInTitleByTypeId,
+                attributeTypes,
+                characteristicsCatalog,
+            ),
             name: product.name,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
             priceTiers: tiers,
-            supplierPackageAmount: supPkgAmount,
-            supplierPackageUnit: supPkgUnit,
-            supplierPackagePrice: supPkgPrice,
+            supplierPackageTiers: supPkgTiers,
+            supplierPackageAmount: primarySupplierPack.amount,
+            supplierPackageUnit: primarySupplierPack.unit,
+            supplierPackagePrice: primarySupplierPack.price,
             availableAmount: availAmount,
             availableUnit: availUnit,
             purchaseTag,
@@ -208,12 +222,12 @@ export function PurchaseProductEditForm({
             product,
             showInTitleByTypeId,
             attributeTypes,
+            characteristicsCatalog,
             minPkgAmount,
             minPkgUnit,
             tiers,
-            supPkgAmount,
-            supPkgUnit,
-            supPkgPrice,
+            supPkgTiers,
+            primarySupplierPack,
             availAmount,
             availUnit,
             purchaseTag,
@@ -235,9 +249,11 @@ export function PurchaseProductEditForm({
     const selectedTemplateBody =
         templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
 
+    const catalogReady = characteristicsCatalog != null;
+
     const syncDescriptionFromTemplate = useCallback(
         (id: string, options: { replace: boolean; bumpEditor: boolean }) => {
-            if (id === 'none' || !attributeTypesReady) return false;
+            if (id === 'none' || !attributeTypesReady || !catalogReady) return false;
 
             const body = getTemplateBody(id)?.trim();
             if (!body) return false;
@@ -262,7 +278,7 @@ export function PurchaseProductEditForm({
             }
             return true;
         },
-        [attributeTypesReady, getTemplateBody],
+        [attributeTypesReady, catalogReady, getTemplateBody],
     );
 
     useEffect(() => {
@@ -271,7 +287,7 @@ export function PurchaseProductEditForm({
             lastAutoDescriptionRef.current = null;
             return;
         }
-        if (!attributeTypesReady || !selectedTemplateBody) return;
+        if (!attributeTypesReady || !catalogReady || !selectedTemplateBody) return;
 
         const signature = `${templateId}:${selectedTemplateBody}`;
         const isNewTemplate = lastAppliedSignatureRef.current !== signature;
@@ -283,6 +299,7 @@ export function PurchaseProductEditForm({
     }, [
         templateId,
         attributeTypesReady,
+        catalogReady,
         selectedTemplateBody,
         descriptionFields,
         syncDescriptionFromTemplate,
@@ -317,6 +334,7 @@ export function PurchaseProductEditForm({
         const validTiers = tiers.filter((t) => t.amount > 0 && t.price > 0 && t.unit.trim());
         const firstTier = validTiers[0]!;
         const pricePerUnit = firstTier.price / firstTier.amount;
+        const supplierPack = normalizeSupplierTiersForSave(supPkgTiers);
 
         onSave({
             description: description || undefined,
@@ -324,9 +342,7 @@ export function PurchaseProductEditForm({
             priceTiers: validTiers,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
-            supplierPackageAmount: supPkgAmount,
-            supplierPackageUnit: supPkgUnit,
-            supplierPackagePrice: supPkgPrice,
+            ...supplierPack,
             availableAmount: availAmount,
             availableUnit: availUnit,
         });
@@ -383,15 +399,11 @@ export function PurchaseProductEditForm({
                 {priceError && <p className="text-xs text-destructive">{priceError}</p>}
             </div>
 
-            <PackageEditor
+            <PriceTierEditor
                 label="Фасовка поставщика"
-                amount={supPkgAmount}
-                unit={supPkgUnit ?? PACKAGE_UNITS[0]}
-                price={supPkgPrice}
-                onAmountChange={setSupPkgAmount}
-                onUnitChange={setSupPkgUnit}
-                onPriceChange={setSupPkgPrice}
-                showPrice
+                required={false}
+                tiers={supPkgTiers}
+                onChange={setSupPkgTiers}
             />
 
             <PackageEditor

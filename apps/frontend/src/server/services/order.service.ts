@@ -101,11 +101,27 @@ export class OrderService {
     }
 
     async getByUser(userId: number) {
-        return this.repo.getByUser(userId);
+        const [lines, purchaseOrders] = await Promise.all([
+            this.repo.getByUser(userId),
+            this.repo.findPurchaseOrdersByUser(userId),
+        ]);
+        const orderIdByPurchase = new Map(purchaseOrders.map((o) => [o.purchaseId, o.id]));
+        return lines.map((line) => ({
+            ...line,
+            purchaseOrderId: orderIdByPurchase.get(line.purchaseItem.purchase.id) ?? null,
+        }));
     }
 
     async getByPurchase(purchaseId: number) {
-        return this.repo.getByPurchase(purchaseId);
+        const [lines, purchaseOrders] = await Promise.all([
+            this.repo.getByPurchase(purchaseId),
+            this.repo.findPurchaseOrdersByPurchase(purchaseId),
+        ]);
+        const orderIdByUser = new Map(purchaseOrders.map((o) => [o.userId, o.id]));
+        return lines.map((line) => ({
+            ...line,
+            purchaseOrderId: orderIdByUser.get(line.userId) ?? null,
+        }));
     }
 
     /** Admin-only: delete without ownership check */
@@ -148,6 +164,8 @@ export class OrderService {
         for (const line of lines) {
             await this.repo.deleteAndRestoreStock(line.id, { isSupplement });
         }
+
+        await this.repo.deletePurchaseOrder(userId, purchaseId);
 
         if (messageIds.length > 0) {
             try {

@@ -20,6 +20,7 @@ export interface ProductCreateInput {
     supplierPackageAmount?: number;
     supplierPackageUnit?: string;
     supplierPackagePrice?: number;
+    supplierPackageTiers?: { amount: number; unit: string; price: number }[];
     availableAmount?: number;
     availableUnit?: string;
 }
@@ -40,6 +41,7 @@ export interface ProductUpdateInput {
     supplierPackageAmount?: number;
     supplierPackageUnit?: string;
     supplierPackagePrice?: number;
+    supplierPackageTiers?: { amount: number; unit: string; price: number }[];
     availableAmount?: number;
     availableUnit?: string;
 }
@@ -67,6 +69,7 @@ const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     supplierPackageAmount: z.number().optional(),
     supplierPackageUnit: z.string().optional(),
     supplierPackagePrice: z.number().optional(),
+    supplierPackageTiers: z.array(priceTierSchema).optional(),
     availableAmount: z.number().optional(),
     availableUnit: z.string().optional(),
 });
@@ -89,6 +92,7 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     supplierPackageAmount: z.number().optional(),
     supplierPackageUnit: z.string().optional(),
     supplierPackagePrice: z.number().optional(),
+    supplierPackageTiers: z.array(priceTierSchema).optional(),
     availableAmount: z.number().optional(),
     availableUnit: z.string().optional(),
 });

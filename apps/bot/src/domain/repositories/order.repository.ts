@@ -1,4 +1,4 @@
-import { dbClient } from '@zakupki/database';
+import { dbClient, deletePurchaseOrderIfNoLines, ensurePurchaseOrder } from '@zakupki/database';
 import {
     getSupplementStockDecrement,
     InsufficientStockError,
@@ -58,6 +58,8 @@ export class OrderRepository {
             }
 
             const tgChatMessageId = options?.tgChatMessageId;
+
+            await ensurePurchaseOrder(tx, userId, purchaseItem.purchaseId);
 
             return tx.orderLine.upsert({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
@@ -166,7 +168,24 @@ export class OrderRepository {
                 }
             }
 
-            return tx.orderLine.delete({ where: { id } });
+            const purchaseItem = await tx.purchaseItem.findUnique({
+                where: { id: line.purchaseItemId },
+                select: { purchaseId: true },
+            });
+
+            const deleted = await tx.orderLine.delete({ where: { id } });
+
+            if (purchaseItem) {
+                await deletePurchaseOrderIfNoLines(tx, line.userId, purchaseItem.purchaseId);
+            }
+
+            return deleted;
+        });
+    }
+
+    findPurchaseOrder(userId: number, purchaseId: number) {
+        return dbClient.purchaseOrder.findUnique({
+            where: { userId_purchaseId: { userId, purchaseId } },
         });
     }
 }

@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
-import { buildAttributeTree, collectExpandableIds, matchesPath } from '../lib/attribute-tree';
+import { buildAttributeTree, collectExpandableIds, productMatchesTreeNode } from '../lib/attribute-tree';
 import { buildAttributesTreeByType, type AttributeListItem } from '../lib/product-form-utils';
 import type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from '../lib/types';
 
 export function useProductTree<T extends AttrProduct>(products: T[] | undefined) {
-    const [selectedPath, setSelectedPath] = useState<PathSegment[]>([]);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
@@ -36,9 +35,14 @@ export function useProductTree<T extends AttrProduct>(products: T[] | undefined)
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        if (selectedPath.length === 0) return products;
-        return products.filter((p) => matchesPath(p, selectedPath));
-    }, [products, selectedPath]);
+        if (!selectedNode) return products;
+        return products.filter((p) => productMatchesTreeNode(p, selectedNode));
+    }, [products, selectedNode]);
+
+    const selectedId = selectedNode?.id ?? null;
+    const selectedPath: PathSegment[] = selectedNode && !selectedNode.isTypeFolder ? selectedNode.path : [];
+    const selectedFolderLabel = selectedNode?.isTypeFolder ? selectedNode.label : null;
+    const ancestorPath: PathSegment[] = selectedNode?.isTypeFolder ? selectedNode.path : [];
 
     function handleToggle(id: string) {
         setExpandedIds((prev) => {
@@ -50,23 +54,22 @@ export function useProductTree<T extends AttrProduct>(products: T[] | undefined)
     }
 
     function handleSelectNode(node: TreeNode) {
-        if (node.isTypeFolder) return;
-        setSelectedId(node.id);
-        setSelectedPath(node.path);
+        setSelectedNode(node);
         if (node.children.length > 0) {
             setExpandedIds((prev) => new Set(prev).add(node.id));
         }
     }
 
     function clearSelection() {
-        setSelectedId(null);
-        setSelectedPath([]);
+        setSelectedNode(null);
     }
 
     return {
         tree,
         selectedPath,
         selectedId,
+        selectedFolderLabel,
+        ancestorPath,
         expandedIds,
         filteredProducts,
         handleToggle,

@@ -210,9 +210,18 @@ export function snapOrderQuantity(
     return qty;
 }
 
-export function formatMinPackageOrderHint(options: OrderQuantityOptions): string | null {
+/** Только «Мин. фасовка: …» — для превью карточки в каталоге. */
+export function formatMinPackageHint(options: OrderQuantityOptions): string | null {
     const step = positiveOrNull(options.minPackageAmount);
     if (step == null) return null;
     const unit = options.minPackageUnit ?? options.unitShort ?? 'ед.';
-    return `Мин. фасовка: ${formatQtyLabel(step)} ${unit} · заказ кратно ${formatQtyLabel(step)} ${unit}`;
+    return `Мин. фасовка: ${formatQtyLabel(step)} ${unit}`;
+}
+
+export function formatMinPackageOrderHint(options: OrderQuantityOptions): string | null {
+    const hint = formatMinPackageHint(options);
+    if (!hint) return null;
+    const step = positiveOrNull(options.minPackageAmount)!;
+    const unit = options.minPackageUnit ?? options.unitShort ?? 'ед.';
+    return `${hint} · заказ кратно ${formatQtyLabel(step)} ${unit}`;
 }

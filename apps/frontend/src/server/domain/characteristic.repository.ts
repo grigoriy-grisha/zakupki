@@ -22,16 +22,4 @@ export class CharacteristicRepository {
     async delete(id: number) {
         return dbClient.characteristic.delete({ where: { id } });
     }
-
-    async swapPositions(id: number, otherId: number) {
-        const [a, b] = await Promise.all([
-            dbClient.characteristic.findUnique({ where: { id } }),
-            dbClient.characteristic.findUnique({ where: { id: otherId } }),
-        ]);
-        if (!a || !b) return;
-        await dbClient.$transaction([
-            dbClient.characteristic.update({ where: { id: a.id }, data: { position: b.position } }),
-            dbClient.characteristic.update({ where: { id: b.id }, data: { position: a.position } }),
-        ]);
-    }
 }

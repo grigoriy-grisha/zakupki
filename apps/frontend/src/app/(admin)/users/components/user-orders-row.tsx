@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -53,13 +54,7 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                         className="flex items-center gap-2 rounded-md text-left transition-colors hover:bg-accent/60 -m-1 p-1"
                         onClick={() => onOpenProfile(user)}
                     >
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
-                        ) : (
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                                {name.charAt(0)}
-                            </div>
-                        )}
+                        <UserAvatar src={avatarUrl} className="size-8 shrink-0" iconClassName="size-4" />
                         <div className="min-w-0">
                             <p className="font-medium">{name}</p>
                             {tgUsername && (

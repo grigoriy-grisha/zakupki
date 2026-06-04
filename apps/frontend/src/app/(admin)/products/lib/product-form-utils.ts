@@ -110,6 +110,68 @@ export function buildAutoCharacteristicValues(
     return values;
 }
 
+export type ProductCharacteristicsSource = {
+    attributeValues?: { attribute: { id: number; typeId?: number; type?: { id: number } } }[];
+    brand?: { id: number } | null;
+    brandId?: number | null;
+    characteristicValues?: {
+        characteristicId?: number;
+        value: string;
+        characteristic: { id?: number; name: string };
+    }[];
+};
+
+/** Характеристики товара в порядке справочника (как в форме карточки). */
+export function resolveProductCharacteristics(
+    product: ProductCharacteristicsSource,
+    allAttributes: AttributeListItem[],
+    attributeTypes: { id: number; name: string }[],
+    allCharacteristics: { id: number; name: string }[],
+): { name: string; value: string }[] {
+    const selectedAttrs: Record<number, number | null> = {};
+    for (const v of product.attributeValues ?? []) {
+        const typeId = v.attribute.typeId ?? v.attribute.type?.id;
+        if (typeId != null) selectedAttrs[typeId] = v.attribute.id;
+    }
+
+    const brandId = product.brand?.id ?? product.brandId ?? null;
+    if (brandId != null) {
+        const brandAttr = allAttributes.find((a) => a.id === brandId);
+        if (brandAttr?.typeId != null && selectedAttrs[brandAttr.typeId] == null) {
+            selectedAttrs[brandAttr.typeId] = brandId;
+        }
+    }
+
+    const linkedIds = collectLinkedCharacteristicIds(selectedAttrs, allAttributes);
+    const charNameById = new Map(allCharacteristics.map((c) => [c.id, c.name.trim()]));
+    const savedById = new Map<number, string>();
+    for (const cv of product.characteristicValues ?? []) {
+        const id = cv.characteristicId ?? cv.characteristic.id;
+        if (id == null) continue;
+        savedById.set(id, cv.value?.trim() ?? '');
+    }
+
+    const auto = buildAutoCharacteristicValues(
+        selectedAttrs,
+        allAttributes,
+        attributeTypes,
+        allCharacteristics,
+    );
+
+    return linkedIds
+        .map((id) => {
+            const name =
+                charNameById.get(id) ??
+                product.characteristicValues
+                    ?.find((cv) => (cv.characteristicId ?? cv.characteristic.id) === id)
+                    ?.characteristic.name?.trim() ??
+                '';
+            const value = (savedById.get(id) || auto[id] || '').trim();
+            return { name, value };
+        })
+        .filter((c) => c.name && c.value);
+}
+
 export function revokePendingFiles(files: PendingFile[]) {
     for (const f of files) URL.revokeObjectURL(f.preview);
 }

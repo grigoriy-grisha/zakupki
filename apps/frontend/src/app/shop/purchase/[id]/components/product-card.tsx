@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import {
     calculateOrderAmount,
     countFullSupplierPacks,
-    formatMinPackageOrderHint,
+    formatMinPackageHint,
     getMinOrderQuantity,
     getOrderQuantityStep,
     getPackDiscountPricingInfo,
@@ -17,12 +17,10 @@ import {
     snapOrderQuantity,
 } from '@zakupki/types';
 import { ShoppingCart, Minus, Plus, Loader2 } from 'lucide-react';
-import { PackDiscountHint } from '../../../components/pack-discount-hint';
-import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { AppLink } from '@/components/app-link';
 
 interface ShopPurchaseItemProductCardProps {
     item: {
@@ -81,6 +79,10 @@ export function ProductCard({
 
     const [quantity, setQuantity] = useState(currentQuantity);
     const [isFlying, setIsFlying] = useState(false);
+
+    useEffect(() => {
+        setQuantity(currentQuantity);
+    }, [currentQuantity]);
 
     const isSoldOut = item.availableQty !== null && item.availableQty !== undefined && Number(item.availableQty) <= 0;
     const hasOrder = currentQuantity > 0;
@@ -182,9 +184,10 @@ export function ProductCard({
     return (
         <Card
             className={cn(
-                'group overflow-hidden transition-all relative',
-                isSoldOut && !hasOrder && 'opacity-60',
-                hasOrder && 'ring-2 ring-primary/20',
+                'group relative flex h-full flex-col gap-0 overflow-hidden rounded-lg border py-0 transition-all',
+                isSoldOut && !hasOrder && 'opacity-60 border-transparent',
+                hasOrder && 'border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]',
+                !hasOrder && 'border-transparent',
                 !isSoldOut && 'hover:shadow-md',
             )}
             onClick={() => {
@@ -203,27 +206,24 @@ export function ProductCard({
                 </div>
             )}
 
-            <div className="relative h-48 bg-muted">
-                {photo ? (
-                    <img
-                        src={absoluteProductPhotoUrl(photo.id)}
-                        alt={product.name}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                    />
-                ) : (
-                    <div className="flex h-full items-center justify-center">
-                        <ShoppingCart className="h-12 w-12 text-muted-foreground/30" />
-                    </div>
-                )}
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
                 {hasOrder && !isSoldOut && (
-                    <div className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <span className="text-xs font-bold">{quantity}</span>
-                    </div>
+                    <>
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
+                            В корзине
+                        </div>
+                        <div className="pointer-events-none absolute top-1.5 right-1.5 z-[1] flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 text-primary-foreground shadow-sm">
+                            <span className="text-[11px] font-bold leading-none tabular-nums">{quantity}</span>
+                        </div>
+                    </>
                 )}
                 {isSupplement && (
                     <Badge
-                        className={`absolute bottom-2 left-2 ${isSoldOut ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
+                        className={cn(
+                            'pointer-events-none absolute bottom-1.5 left-1.5 z-[1] max-w-[calc(100%-0.75rem)] truncate px-1.5 py-0 text-[10px]',
+                            isSoldOut ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning',
+                        )}
                     >
                         {item.availableQty == null
                             ? packSize != null
@@ -238,52 +238,64 @@ export function ProductCard({
                 )}
             </div>
 
-            <CardContent className="p-4">
-                <div>
-                    <PurchaseProductLabel product={product} primaryClassName="font-semibold" />
+            <CardContent className="flex flex-1 flex-col p-3">
+                <div className="min-h-0 flex-1">
+                    <PurchaseProductLabel
+                        product={product}
+                        className="min-w-0 overflow-hidden"
+                        primaryClassName="block truncate text-sm font-semibold leading-snug"
+                        secondaryClassName="block truncate text-xs text-muted-foreground"
+                    />
                     {(() => {
-                        const hint = formatMinPackageOrderHint({
+                        const hint = formatMinPackageHint({
                             minPackageAmount,
                             minPackageUnit,
                             unitShort: shortName,
                         });
-                        return hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null;
+                        return hint ? (
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</p>
+                        ) : null;
                     })()}
-                    <PackDiscountHint product={product} discountPercent={packDiscountPercent} className="mt-1.5" />
-                </div>
-
-                <div className="mt-2">
-                    <span className="text-xl font-bold text-primary">{price.toLocaleString('ru-RU')} ₽</span>
-                    <span className="text-sm text-muted-foreground">/{shortName}</span>
+                    <div className="mt-2">
+                        <span className="text-lg font-bold text-primary">{price.toLocaleString('ru-RU')} ₽</span>
+                        <span className="text-sm text-muted-foreground">/{shortName}</span>
+                    </div>
                 </div>
 
                 {isSoldOut && !hasOrder ? (
-                    <Button className="mt-3 w-full" variant="secondary" disabled>
+                    <Button className="mt-2.5 h-9 w-full shrink-0 text-xs" variant="secondary" disabled>
                         Разобрано
                     </Button>
                 ) : (
-                    <div className="mt-3 space-y-2">
-                        {/* Quantity display + total */}
-                        {hasOrder && (
-                            <div className="text-center">
-                                <span className="text-sm text-muted-foreground">
-                                    {quantity} {shortName} · <span className="font-semibold text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
-                                </span>
-                                {packDiscountInfo != null && fullPacks > 0 && (
-                                    <p className="text-[11px] text-success">
-                                        Скидка за {fullPacks} {fullPacks === 1 ? 'пачку' : 'пачки'}
-                                    </p>
-                                )}
-                            </div>
-                        )}
+                    <div className="mt-auto shrink-0 space-y-2 pt-2.5">
+                        <div className="flex min-h-[2.75rem] flex-col justify-center text-center">
+                            {hasOrder && (
+                                <>
+                                    <span className="text-sm text-muted-foreground">
+                                        {quantity} {shortName} ·{' '}
+                                        <span className="font-semibold text-foreground">
+                                            {total.toLocaleString('ru-RU')} ₽
+                                        </span>
+                                    </span>
+                                    {packDiscountInfo != null && fullPacks > 0 ? (
+                                        <p className="text-[10px] text-success">
+                                            Скидка за {fullPacks} {fullPacks === 1 ? 'пачку' : 'пачки'}
+                                        </p>
+                                    ) : (
+                                        <span className="block text-[10px] leading-snug opacity-0" aria-hidden>
+                                            —
+                                        </span>
+                                    )}
+                                </>
+                            )}
+                        </div>
 
-                        {/* Controls */}
                         <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                             {/* - min package */}
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-xs"
+                                className="h-9 flex-1 text-xs"
                                 disabled={upsertMutation.isPending || !hasOrder}
                                 onClick={() => handleRemove(orderStep)}
                             >
@@ -295,7 +307,7 @@ export function ProductCard({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-xs"
+                                className="h-9 flex-1 text-xs"
                                 disabled={upsertMutation.isPending}
                                 onClick={() => handleAdd(orderStep)}
                             >
@@ -311,7 +323,7 @@ export function ProductCard({
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 text-xs"
+                                    className="h-9 flex-1 text-[11px]"
                                     disabled={upsertMutation.isPending || quantity < packSize}
                                     onClick={() => handleRemove(packSize)}
                                 >
@@ -320,7 +332,7 @@ export function ProductCard({
                                 {/* + pack */}
                                 <Button
                                     size="sm"
-                                    className="flex-1 text-xs"
+                                    className="h-9 flex-1 text-[11px]"
                                     disabled={upsertMutation.isPending}
                                     onClick={() => handleAdd(packSize)}
                                 >

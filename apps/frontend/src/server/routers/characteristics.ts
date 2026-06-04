@@ -32,10 +32,4 @@ export const characteristicsRouter = router({
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.characteristic.delete(input.id);
     }),
-
-    move: adminProcedure
-        .input(z.object({ id: z.number(), direction: z.enum(['up', 'down']) }))
-        .mutation(async ({ ctx, input }) => {
-            await ctx.services.characteristic.move(input.id, input.direction);
-        }),
 });

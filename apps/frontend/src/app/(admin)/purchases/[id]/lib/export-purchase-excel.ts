@@ -56,6 +56,7 @@ type ExportPurchase = {
 type ExportOrder = {
     id: number;
     userId: number;
+    purchaseOrderId?: number | null;
     quantity: unknown;
     amountDue: unknown;
     user?: ExportUser;
@@ -162,6 +163,7 @@ function formatSupplierPackage(product: ExportProduct) {
 
 type ExportParticipant = {
     userId: number;
+    purchaseOrderId: number | null;
     name: string;
     phone: string;
     tgUsername: string;
@@ -185,6 +187,7 @@ function buildParticipants(orders: ExportOrder[]): ExportParticipant[] {
         if (map.has(order.userId)) return;
         map.set(order.userId, {
             userId: order.userId,
+            purchaseOrderId: order.purchaseOrderId ?? null,
             name: userName(order.user) || `Участник #${order.userId}`,
             phone: order.user?.phone?.trim() ?? '',
             ...extractParticipantCredentials(order.user),
@@ -759,7 +762,12 @@ function applyOrdersCellFill(cell: ExcelJS.Cell, fillArgb: string) {
 }
 
 function participantBlockTitle(participant: ExportParticipant): ExcelJS.CellRichTextValue {
-    const richText: ExcelJS.RichText[] = [{ text: participant.name, font: { bold: true } }];
+    const richText: ExcelJS.RichText[] = [];
+    if (participant.purchaseOrderId != null) {
+        richText.push({ text: `Заказ №${participant.purchaseOrderId}`, font: { bold: true } });
+        richText.push({ text: '\n', font: { bold: true } });
+    }
+    richText.push({ text: participant.name, font: { bold: true } });
     if (participant.tgUsername) {
         richText.push({ text: '\n', font: { bold: true } });
         richText.push({ text: `@${participant.tgUsername}`, font: { color: { argb: 'FFFF0000' }, bold: true } });

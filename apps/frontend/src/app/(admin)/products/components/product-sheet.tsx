@@ -43,7 +43,12 @@ export function ProductSheet({ open, onOpenChange, editId: propEditId }: Product
                         <Skeleton className="h-10 w-full" />
                     </div>
                 ) : (
-                    <ProductForm editId={editId} existing={existing} onSuccess={() => onOpenChange(false)} />
+                    <ProductForm
+                        key={editId ?? 'new'}
+                        editId={editId}
+                        existing={existing}
+                        onSuccess={() => onOpenChange(false)}
+                    />
                 )}
             </SheetContent>
         </Sheet>

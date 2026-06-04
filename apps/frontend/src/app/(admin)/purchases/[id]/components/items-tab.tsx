@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '../../../products/lib';
-import { DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT } from '@zakupki/types';
+import { DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT, parsePriceTiers } from '@zakupki/types';
 import {
     formatPrice510Cell,
     formatRubPrice,
@@ -40,18 +40,32 @@ interface ItemsTabProps {
     purchaseId: number;
 }
 
+function formatPackAmountWithUnit(amount: unknown, unit: string | null | undefined): string | null {
+    const n = Number(amount);
+    const u = unit?.trim();
+    if (!u || !Number.isFinite(n) || n <= 0) return null;
+    return `${Math.trunc(n)} ${u}`;
+}
+
+/** Фасовки поставщика без цены: «100 гр», «1 шт» и т.д. */
 function formatSupplierPackageCell(product: {
     supplierPackageAmount?: unknown;
     supplierPackageUnit?: string | null;
-    supplierPackagePrice?: unknown;
+    supplierPackageTiers?: unknown;
 }) {
-    if (product.supplierPackageAmount == null || !product.supplierPackageUnit) return '—';
-    const amount = Number(product.supplierPackageAmount);
-    const base = `${amount} ${product.supplierPackageUnit}`;
-    if (product.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0) {
-        return `${base} · ${Number(product.supplierPackagePrice).toLocaleString('ru-RU')} ₽`;
+    const lines: string[] = [];
+    for (const tier of parsePriceTiers(product.supplierPackageTiers)) {
+        const line = formatPackAmountWithUnit(tier.amount, tier.unit);
+        if (line) lines.push(line);
     }
-    return base;
+    if (lines.length > 0) {
+        return lines.join(', ');
+    }
+    const fallback = formatPackAmountWithUnit(
+        product.supplierPackageAmount,
+        product.supplierPackageUnit,
+    );
+    return fallback ?? '—';
 }
 
 const purchaseItemTextClass = 'text-sm font-semibold text-foreground';
@@ -64,8 +78,6 @@ const purchaseItemTgHeadClass = `${purchaseItemHeadClass} ${purchaseItemTgColumn
 const purchaseItemStatsLeadHeadClass = `${purchaseItemHeadClass} pl-4`;
 const purchaseItemTgCellClass = `${purchaseItemTgColumnClass} text-center`;
 const purchaseItemStatsLeadCellClass = `${purchaseItemNumericClass} pl-4`;
-const purchaseItemOrdersCellClass = 'text-center align-middle';
-
 export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
@@ -146,12 +158,22 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                             <TableHead className={purchaseItemHeadClass}>
                                 Мин.
                                 <br />
-                                фасовка
+                                фасовка, гр/шт
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Фасовка
                                 <br />
-                                поставщика
+                                поставщика, гр/шт
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Цена за 1 гр/шт
+                                <br />
+                                в рублях
+                            </TableHead>
+                            <TableHead className={purchaseItemHeadClass}>
+                                Цена за 5/10 гр
+                                <br />
+                                в рублях
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Цена за пачку
@@ -163,17 +185,6 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 <br />
                                 со скидкой
                             </TableHead>
-                            <TableHead className={purchaseItemHeadClass}>
-                                Цена за 5/10 гр
-                                <br />
-                                в рублях
-                            </TableHead>
-                            <TableHead className={purchaseItemHeadClass}>
-                                Цена за 1 гр/шт
-                                <br />
-                                в рублях
-                            </TableHead>
-                            <TableHead className={purchaseItemHeadClass}>Заказов</TableHead>
                             <TableHead className={purchaseItemTgHeadClass}>
                                 <div className="flex justify-center">TG</div>
                             </TableHead>
@@ -183,13 +194,9 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 гр/шт
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
-                                Гр/шт в
+                                Заказано
                                 <br />
-                                пачке
-                            </TableHead>
-                            <TableHead className={purchaseItemHeadClass}>
-                                Кол-во пачек
-                                <br />к заказу
+                                гр/шт
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Заказано
@@ -197,9 +204,8 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 пачек
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
-                                Заказано
-                                <br />
-                                гр/шт
+                                Кол-во пачек
+                                <br />к заказу
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Свободный
@@ -216,7 +222,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                         {items.length === 0 && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={isSupplement ? 18 : 17}
+                                    colSpan={isSupplement ? 16 : 15}
                                     className="h-24 text-center text-muted-foreground"
                                 >
                                     Нет товаров
@@ -263,21 +269,16 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                         {formatSupplierPackageCell(item.product)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatRubPrice(getPackPriceRub(item.product))}
-                                    </TableCell>
-                                    <TableCell className={purchaseItemNumericClass}>
-                                        {formatRubPrice(getDiscountedPackPriceRub(item.product, packDiscountPercent))}
+                                        {formatRubPrice(getPurchaseItemPrice1Gr(item))}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatPrice510Cell(tiers)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatRubPrice(getPurchaseItemPrice1Gr(item))}
+                                        {formatRubPrice(getPackPriceRub(item.product))}
                                     </TableCell>
-                                    <TableCell className={purchaseItemOrdersCellClass}>
-                                        <div className="flex justify-center">
-                                            <Badge variant="secondary">{item.orderLines.length}</Badge>
-                                        </div>
+                                    <TableCell className={purchaseItemNumericClass}>
+                                        {formatRubPrice(getDiscountedPackPriceRub(item.product, packDiscountPercent))}
                                     </TableCell>
                                     <TableCell className={purchaseItemTgCellClass} onClick={(e) => e.stopPropagation()}>
                                         <div className="flex justify-center">
@@ -303,16 +304,13 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                         {formatOrderStatValue(stats.totalQuantity)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.packSize)}
-                                    </TableCell>
-                                    <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.packsToOrder)}
+                                        {formatOrderStatValue(stats.orderedQuantity)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatOrderStatValue(stats.orderedPacks)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.orderedQuantity)}
+                                        {formatOrderStatValue(stats.packsToOrder)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
                                         {formatOrderStatValue(stats.freeRemainder)}

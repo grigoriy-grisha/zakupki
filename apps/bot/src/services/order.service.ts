@@ -17,6 +17,7 @@ export type ActivePurchaseSummary = {
 
 export type PurchaseOrderDetail = {
     purchaseId: number;
+    purchaseOrderId: number | null;
     tag: string;
     supplier: string | null;
     lines: OrderLineWithRelations[];
@@ -83,9 +84,11 @@ export class OrderService {
         });
 
         const totalDue = sorted.reduce((s, o) => s + Number(o.amountDue), 0);
+        const purchaseOrder = await this.repo.findPurchaseOrder(userId, purchaseId);
 
         return {
             purchaseId: purchase.id,
+            purchaseOrderId: purchaseOrder?.id ?? null,
             tag: purchase.tag,
             supplier: purchase.supplier,
             lines: sorted,
@@ -116,6 +119,7 @@ export class OrderService {
         const status = fulfillmentStatus ?? 'COLLECTION';
         const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[status];
         const parts = [
+            detail.purchaseOrderId != null ? `📦 Заказ №${detail.purchaseOrderId}` : null,
             `🛒 <b>${escapeHtml(detail.tag)}</b>`,
             `📋 Статус: ${escapeHtml(fulfillmentLabel)}`,
             detail.supplier ? `Поставщик: ${escapeHtml(detail.supplier)}` : null,

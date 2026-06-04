@@ -52,24 +52,28 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                                     key={purchase.id}
                                     onClick={() => router.push(`/shop/purchase/${purchase.id}`)}
                                     className={cn(
-                                        'flex w-full flex-col gap-0.5 rounded-lg px-3 py-2.5 text-base font-medium transition-all text-left',
+                                        'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition-all',
                                         isActive
                                             ? 'bg-primary/10 text-primary'
                                             : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                                     )}
                                 >
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="min-w-0 truncate">{purchase.tag || purchase.supplier}</span>
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                        <span className="truncate text-base font-semibold">
+                                            {purchase.tag || purchase.supplier}
+                                        </span>
                                         {isSupplement && (
                                             <span className="shrink-0 rounded bg-warning/10 px-1 py-0.5 text-xs font-medium text-warning">
                                                 добор
                                             </span>
                                         )}
                                     </div>
-                                    <span className={cn(
-                                        'text-xs leading-tight',
-                                        isActive ? 'text-primary/70' : 'text-muted-foreground/70',
-                                    )}>
+                                    <span
+                                        className={cn(
+                                            'shrink-0 text-right text-xs leading-tight',
+                                            isActive ? 'text-primary/80' : 'text-muted-foreground',
+                                        )}
+                                    >
                                         {fulfillmentLabel}
                                     </span>
                                 </button>

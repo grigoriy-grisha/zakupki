@@ -41,7 +41,7 @@ async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' |
     if (req) {
         const initData = extractTelegramInitData(req);
         if (initData) {
-            const verified = verifyTelegramInitData(initData);
+            const verified = await verifyTelegramInitData(initData);
             if (verified) {
                 const user = await serviceContainer.user.signInWithTelegram(verified);
                 const userId = Number(user.id);

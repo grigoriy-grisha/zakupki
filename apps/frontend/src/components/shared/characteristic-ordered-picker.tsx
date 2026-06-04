@@ -38,7 +38,7 @@ export function CharacteristicOrderedPicker({
     }
 
     return (
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex min-w-0 w-full flex-col gap-1">
             <CharacteristicMultiPicker
                 options={options}
                 selectedIds={selectedIds}
@@ -51,14 +51,19 @@ export function CharacteristicOrderedPicker({
             {selectedIds.length > 1 && (
                 <ul className="space-y-0.5 rounded-md border border-border/60 bg-muted/30 px-1 py-1">
                     {selectedIds.map((id, index) => (
-                        <li key={id} className="flex items-center gap-0.5 text-xs">
-                            <span className="w-4 shrink-0 text-center text-muted-foreground">{index + 1}.</span>
-                            <span className="min-w-0 flex-1 truncate">{names.get(id) ?? `#${id}`}</span>
+                        <li
+                            key={id}
+                            className="grid grid-cols-[1.25rem_minmax(0,1fr)_1.5rem_1.5rem] items-center gap-x-0.5 text-xs"
+                        >
+                            <span className="text-center text-muted-foreground">{index + 1}.</span>
+                            <span className="truncate" title={names.get(id)}>
+                                {names.get(id) ?? `#${id}`}
+                            </span>
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 shrink-0"
+                                className="h-6 w-6"
                                 disabled={index === 0}
                                 title="Выше"
                                 onClick={() => move(id, 'up')}
@@ -69,7 +74,7 @@ export function CharacteristicOrderedPicker({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 shrink-0"
+                                className="h-6 w-6"
                                 disabled={index === selectedIds.length - 1}
                                 title="Ниже"
                                 onClick={() => move(id, 'down')}

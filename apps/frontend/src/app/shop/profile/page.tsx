@@ -1,8 +1,9 @@
 'use client';
 
-import { Link2, Unlink, User } from 'lucide-react';
+import { Link2, Unlink } from 'lucide-react';
 
 import { TelegramIcon, VkIcon } from '@/components/icons';
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { trpc } from '@/lib/client/trpc';
@@ -23,13 +24,7 @@ export default function ProfilePage() {
         <div className="space-y-6">
             <Card>
                 <CardContent className="flex items-center gap-4 pt-6">
-                    {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
-                    ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                            <User className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                    )}
+                    <UserAvatar src={user.avatarUrl} className="size-16" iconClassName="size-8" />
                     <div>
                         <p className="text-xl font-semibold">
                             {user.firstName} {user.lastName ?? ''}
@@ -51,17 +46,11 @@ export default function ProfilePage() {
                         {user.vkCredential ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    {user.vkCredential.avatarUrl ? (
-                                        <img
-                                            src={user.vkCredential.avatarUrl}
-                                            alt=""
-                                            className="h-9 w-9 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0077FF]/10 text-[#0077FF] text-sm font-medium">
-                                            VK
-                                        </div>
-                                    )}
+                                    <UserAvatar
+                                        src={user.vkCredential.avatarUrl}
+                                        className="size-9"
+                                        iconClassName="size-4"
+                                    />
                                     <div className="flex items-center gap-2">
                                         <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
                                         <span className="text-sm">Привязан</span>
@@ -101,17 +90,11 @@ export default function ProfilePage() {
                         {user.telegramCredential ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    {user.telegramCredential.avatarUrl ? (
-                                        <img
-                                            src={user.telegramCredential.avatarUrl}
-                                            alt=""
-                                            className="h-9 w-9 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26A5E4]/10 text-[#26A5E4] text-sm font-medium">
-                                            TG
-                                        </div>
-                                    )}
+                                    <UserAvatar
+                                        src={user.telegramCredential.avatarUrl}
+                                        className="size-9"
+                                        iconClassName="size-4"
+                                    />
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-2">
                                             <div className="h-2.5 w-2.5 rounded-full bg-green-500" />

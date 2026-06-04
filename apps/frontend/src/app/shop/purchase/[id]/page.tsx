@@ -34,6 +34,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         tree,
         selectedPath,
         selectedId,
+        selectedFolderLabel,
+        ancestorPath,
         expandedIds,
         filteredItems,
         handleToggle,
@@ -50,9 +52,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         return (
             <div className="space-y-4">
                 <Skeleton className="h-8 w-64" />
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <Skeleton key={i} className="h-264" />
+                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <Skeleton key={i} className="aspect-[4/3] w-full rounded-lg" />
                     ))}
                 </div>
             </div>
@@ -131,12 +133,37 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
                     {/* Product grid */}
                     <div className="min-w-0 flex-1 space-y-4">
-                        {selectedPath.length > 0 && (
+                        {selectedId != null && (
                             <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                                {selectedPath.map((segment, i) => (
+                                {ancestorPath.map((segment, i) => (
                                     <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
                                         {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                                        <span className={cn(i === selectedPath.length - 1 && 'font-medium')}>
+                                        <span>
+                                            <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
+                                            {segment.name}
+                                        </span>
+                                    </span>
+                                ))}
+                                {selectedFolderLabel != null && (
+                                    <span className="flex items-center gap-1.5">
+                                        {ancestorPath.length > 0 && (
+                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                        )}
+                                        <span className="font-medium">{selectedFolderLabel}</span>
+                                    </span>
+                                )}
+                                {selectedPath.map((segment, i) => (
+                                    <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
+                                        {(ancestorPath.length > 0 || i > 0) && (
+                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                        )}
+                                        <span
+                                            className={cn(
+                                                i === selectedPath.length - 1 &&
+                                                    selectedFolderLabel == null &&
+                                                    'font-medium',
+                                            )}
+                                        >
                                             <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
                                             {segment.name}
                                         </span>
@@ -153,7 +180,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             Товаров: {filteredItems.length}
                         </p>
 
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-2 items-stretch gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredItems.map((item) => (
                                 <ProductCard
                                     key={item.id}
