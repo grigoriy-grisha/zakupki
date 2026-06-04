@@ -4,6 +4,7 @@ import {
     ForbiddenError,
     getOrderQuantityValidationError,
     getSupplementOrderQuantityValidationError,
+    isSupplementRemainderOnlyPhase,
     NotFoundError,
     PurchaseNotActiveError,
     ValidationError,
@@ -81,6 +82,7 @@ export class OrderService {
                       availableQty: effectiveAvailableQty,
                       currentQuantity: currentQty,
                       supplierPackageAmount: packAmount,
+                      remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
                   })
                 : getOrderQuantityValidationError(quantity, orderQtyOptions);
         if (validationError) {

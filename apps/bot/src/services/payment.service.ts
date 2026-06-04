@@ -179,7 +179,7 @@ export class PaymentService {
                 remaining: 0,
                 tag,
             };
-            if (status === 'CONFIRMED' || status === 'PENDING') {
+            if (status === 'CONFIRMED') {
                 existing.paid += total;
             }
             if (status === 'PENDING') {

@@ -16,7 +16,7 @@ import { PaymentActionButton } from './payment-action-button';
 
 export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
     const isDone = purchase.status === 'DONE';
-    const isPaid = payment.remaining === 0;
+    const isPaid = payment.isFullyPaid;
     const daysLeft = daysLeftUntil(purchase.deadline);
     const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];

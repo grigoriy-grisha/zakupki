@@ -210,7 +210,10 @@ export function snapOrderQuantity(
     return qty;
 }
 
-/** Только «Мин. фасовка: …» — для превью карточки в каталоге. */
+/**
+ * Только «Мин. фасовка: …» — фасовка из карточки товара (minPackageAmount).
+ * Не использовать минимум добора (SUPPLEMENT_MIN_ORDER_QTY) и не getMinOrderQuantity.
+ */
 export function formatMinPackageHint(options: OrderQuantityOptions): string | null {
     const step = positiveOrNull(options.minPackageAmount);
     if (step == null) return null;

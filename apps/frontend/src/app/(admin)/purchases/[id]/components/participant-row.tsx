@@ -229,7 +229,10 @@ export function ParticipantRow({
                                                 const child = children[0];
                                                 const childAmount = child ? Number(child.amount) : 0;
                                                 const promoCode = child?.promoCode;
-                                                const hasProof = !!p.proofData;
+                                                const hasProof = Boolean(
+                                                    (p as { proofObjectKey?: string | null })
+                                                        .proofObjectKey || p.proofData,
+                                                );
 
                                                 return (
                                                     <div

@@ -14,6 +14,9 @@ import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
+import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
+import { MyPaymentRow } from '@/components/shop/my-payment-row';
+import { summarizePurchasePayments, type ShopPaymentView } from '@/components/shop/payment-proof';
 import {
     PURCHASE_FULFILLMENT_LABELS,
     PURCHASE_STATUS_LABELS,
@@ -125,17 +128,9 @@ function PurchaseOrderCard({
     const completed = isPurchaseCompleted(purchaseStatus);
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
-    const totalPaid = purchasePayments
-        .filter((p) => p.status === 'CONFIRMED' || p.status === 'PENDING')
-        .reduce((sum, p) => {
-            const children = p.children ?? [];
-            const childAmount = children.reduce((s, c) => s + Number(c.amount), 0);
-            return sum + Number(p.amount) + childAmount;
-        }, 0);
-    const remaining = Math.max(0, total - totalPaid);
-    const hasPending = purchasePayments.some((p) => p.status === 'PENDING');
+    const paymentSummary = summarizePurchasePayments(total, purchasePayments);
+    const { remaining, hasPending, isFullyPaid } = paymentSummary;
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
-    const isFullyPaid = remaining <= 0 && purchasePayments.length > 0;
 
     return (
         <Card>
@@ -215,6 +210,15 @@ function PurchaseOrderCard({
 
                 <Separator />
 
+                {purchasePayments.length > 0 && (
+                    <div className="space-y-2 py-3">
+                        <p className="text-xs font-medium text-muted-foreground">Ваши оплаты</p>
+                        {purchasePayments.map((p) => (
+                            <MyPaymentRow key={p.id} payment={p as ShopPaymentView} />
+                        ))}
+                    </div>
+                )}
+
                 <div className="rounded-lg bg-muted/50 p-3 text-sm">
                     {isFullyPaid ? (
                         <div className="flex items-center justify-between">
@@ -256,12 +260,13 @@ function PurchaseOrderCard({
                                     </span>
                                 </span>
                             </div>
-                            <AppLink href={`/shop/purchase/${group.id}`}>
-                                <button className="flex items-center gap-1 font-medium text-primary hover:underline">
-                                    <CreditCard className="h-3.5 w-3.5" />
-                                    Оплатить
-                                </button>
-                            </AppLink>
+                            <PurchasePaymentDialog
+                                purchaseId={group.id}
+                                remaining={remaining}
+                                hasPending={hasPending}
+                                paymentOpen={paymentOpen}
+                                triggerVariant="link"
+                            />
                         </div>
                     ) : paymentOpen ? (
                         <div className="flex items-center justify-between">

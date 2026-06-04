@@ -12,7 +12,6 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import {
-    SUPPLEMENT_MIN_ORDER_QTY,
     calculateFreeRemainder,
     calculateOrderAmount,
     countFullSupplierPacks,
@@ -20,6 +19,11 @@ import {
     formatSupplementOrderHint,
     getMinOrderQuantity,
     getOrderQuantityStep,
+    getSupplementEffectiveMinQty,
+    getSupplementUiOrderStep,
+    isSupplementOnlyPacksOrder,
+    isSupplementPacksAllowed,
+    isSupplementRemainderOnlyPhase,
     getPackDiscountPricingInfo,
     getSupplementDisplayMax,
     isValidOrderQuantity,
@@ -68,7 +72,10 @@ export function QuantityModal({
     const orderStep = getOrderQuantityStep(orderQtyOptions);
     const minOrderQty = getMinOrderQuantity(orderQtyOptions);
     const isSupplementMode = isSupplementModeProp ?? purchase?.status === 'SUPPLEMENT';
-    const effectiveMinQty = isSupplementMode ? Math.max(minOrderQty, SUPPLEMENT_MIN_ORDER_QTY) : minOrderQty;
+    const uiStep = isSupplementMode ? getSupplementUiOrderStep(orderStep, orderQtyOptions) : orderStep;
+    const effectiveMinQty = isSupplementMode
+        ? getSupplementEffectiveMinQty(minOrderQty, orderQtyOptions)
+        : minOrderQty;
     const rawAvailableQty =
         item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
     const currentQty = currentQuantity ?? 0;
@@ -85,8 +92,11 @@ export function QuantityModal({
               availableQty: effectiveAvailableQty,
               currentQuantity: currentQty,
               supplierPackageAmount: packSize,
+              remainderOnly: isSupplementRemainderOnlyPhase(purchase?.fulfillmentStatus),
           }
         : null;
+
+    const supplementPacksAllowed = supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
 
     const maxQty = supplementBounds ? getSupplementDisplayMax(supplementBounds) : null;
 
@@ -150,9 +160,10 @@ export function QuantityModal({
         ? isValidSupplementOrderQuantity(quantity, orderQtyOptions, supplementBounds)
         : isValidOrderQuantity(quantity, orderQtyOptions);
 
-    // На доборе: если остаток < минималки или закончен — можно только пачками
-    const supplementOnlyPacks = isSupplementMode && supplementBounds != null && packSize != null &&
-        effectiveAvailableQty != null && effectiveAvailableQty + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY;
+    const supplementOnlyPacks =
+        isSupplementMode &&
+        supplementBounds != null &&
+        isSupplementOnlyPacksOrder(supplementBounds, orderQtyOptions);
 
     function handleQuantityChange(delta: number) {
         setQuantity((prev) => {
@@ -223,7 +234,7 @@ export function QuantityModal({
                         )}
 
                         <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
-                            {isSupplementMode && packSize != null ? (
+                            {isSupplementMode && packSize != null && supplementPacksAllowed ? (
                                 <>
                                     <Button
                                         variant="outline"
@@ -237,7 +248,7 @@ export function QuantityModal({
                                         variant="outline"
                                         size="icon"
                                         className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(-orderStep)}
+                                        onClick={() => handleQuantityChange(-uiStep)}
                                         disabled={supplementOnlyPacks || quantity <= effectiveMinQty}
                                     >
                                         <Minus className="h-4 w-4" />
@@ -246,7 +257,7 @@ export function QuantityModal({
                                         variant="outline"
                                         size="icon"
                                         className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(orderStep)}
+                                        onClick={() => handleQuantityChange(uiStep)}
                                         disabled={supplementOnlyPacks || (maxQty !== null && quantity >= maxQty)}
                                     >
                                         <Plus className="h-4 w-4" />
@@ -273,7 +284,7 @@ export function QuantityModal({
                                         variant="outline"
                                         size="icon"
                                         className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(-orderStep)}
+                                        onClick={() => handleQuantityChange(-uiStep)}
                                         disabled={quantity <= effectiveMinQty}
                                     >
                                         <Minus className="h-4 w-4" />
@@ -282,7 +293,7 @@ export function QuantityModal({
                                         variant="outline"
                                         size="icon"
                                         className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(orderStep)}
+                                        onClick={() => handleQuantityChange(uiStep)}
                                         disabled={maxQty !== null && quantity >= maxQty}
                                     >
                                         <Plus className="h-4 w-4" />

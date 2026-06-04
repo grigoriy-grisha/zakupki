@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-controls';
+import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
+import { MyPaymentRow } from '@/components/shop/my-payment-row';
+import { summarizePurchasePayments, type ShopPaymentView } from '@/components/shop/payment-proof';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
@@ -103,22 +106,11 @@ export default function CartPage() {
 
             {groups.map((group) => {
                 const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
-                const totalPaid = purchasePayments
-                    .filter((p) => {
-                        const s = (p as { status: string }).status;
-                        return s === 'CONFIRMED' || s === 'PENDING';
-                    })
-                    .reduce((sum, p) => {
-                        const children = (p as { children?: { amount: unknown }[] }).children ?? [];
-                        const childAmount = children.reduce((s: number, c: { amount: unknown }) => s + Number(c.amount), 0);
-                        return sum + Number(p.amount) + childAmount;
-                    }, 0);
-                const remaining = Math.max(0, group.total - totalPaid);
-                const hasPending = purchasePayments.some((p) => (p as { status: string }).status === 'PENDING');
+                const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
+                const { confirmedPaid: totalPaid, remaining, hasPending, isFullyPaid } = paymentSummary;
                 const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
                 const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fs];
                 const paymentOpen = isPurchasePaymentOpen(fs);
-                const isFullyPaid = remaining <= 0 && purchasePayments.length > 0;
 
                 return (
                     <Card key={group.id}>
@@ -253,41 +245,9 @@ export default function CartPage() {
                                 {/* Payments list */}
                                 {purchasePayments.length > 0 && (
                                     <div className="space-y-2 pt-2 border-t">
-                                        {purchasePayments.map((p) => {
-                                            const status = (p as { status: string }).status;
-                                            const children = (p as { children?: { amount: unknown; promoCode: { code: string } | null }[] }).children ?? [];
-                                            const child = children[0];
-                                            const childAmount = child ? Number(child.amount) : 0;
-                                            const promoCode = child?.promoCode;
-
-                                            const statusCfg = {
-                                                PENDING: { label: 'Ожидает проверки', icon: Clock, cls: 'text-warning' },
-                                                CONFIRMED: { label: 'Подтверждено', icon: CircleCheck, cls: 'text-success' },
-                                            }[status] ?? { label: status, icon: Clock, cls: 'text-muted-foreground' };
-                                            const StatusIcon = statusCfg.icon;
-
-                                            return (
-                                                <div key={p.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <StatusIcon className={cn('h-4 w-4', statusCfg.cls)} />
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-sm font-medium">
-                                                                    {(Number(p.amount) + childAmount).toLocaleString('ru-RU')} ₽
-                                                                </span>
-                                                                <span className={cn('text-xs font-medium', statusCfg.cls)}>{statusCfg.label}</span>
-                                                            </div>
-                                                            {childAmount > 0 && (
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Оплачено {Number(p.amount).toLocaleString('ru-RU')} ₽
-                                                                    <span className="text-success"> + промокод {promoCode?.code ?? ''} {childAmount.toLocaleString('ru-RU')} ₽</span>
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                        {purchasePayments.map((p) => (
+                                            <MyPaymentRow key={p.id} payment={p as ShopPaymentView} />
+                                        ))}
                                     </div>
                                 )}
 
@@ -303,12 +263,13 @@ export default function CartPage() {
                                         <span className="text-sm font-medium">Ожидает подтверждения оплаты</span>
                                     </div>
                                 ) : paymentOpen && remaining > 0 ? (
-                                    <AppLink href={`/shop/purchase/${group.id}`}>
-                                        <Button className="w-full gap-2">
-                                            <CreditCard className="h-4 w-4" />
-                                            Оплатить {remaining.toLocaleString('ru-RU')} ₽
-                                        </Button>
-                                    </AppLink>
+                                    <PurchasePaymentDialog
+                                        purchaseId={group.id}
+                                        remaining={remaining}
+                                        hasPending={hasPending}
+                                        paymentOpen={paymentOpen}
+                                        buttonSize="default"
+                                    />
                                 ) : remaining > 0 ? (
                                     <div className="flex items-center justify-center gap-2 rounded-lg bg-muted py-2 text-muted-foreground">
                                         <Clock className="h-4 w-4" />

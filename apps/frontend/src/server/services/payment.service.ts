@@ -1,4 +1,4 @@
-import { ForbiddenError } from '@zakupki/types';
+import { ForbiddenError, ValidationError } from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
 
@@ -21,6 +21,20 @@ export class PaymentService {
         promoCodeId?: number;
         discountAmount?: number;
     }) {
+        if (!data.proofData?.length) {
+            throw new ValidationError('Прикрепите подтверждение оплаты (чек)');
+        }
+
+        const existingPending = await this.repo.findPendingByUserAndPurchase(
+            data.userId,
+            data.purchaseId,
+        );
+        if (existingPending) {
+            throw new ValidationError(
+                'Оплата уже отправлена и ожидает подтверждения администратором',
+            );
+        }
+
         // Upload proof to storage before creating the payment record
         let proofObjectKey: string | undefined;
         if (data.proofData) {

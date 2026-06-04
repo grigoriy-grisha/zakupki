@@ -13,13 +13,13 @@ import {
     PURCHASE_FULFILLMENT_LABELS,
     calculateOrderAmount,
     countFullSupplierPacks,
-    getMinOrderQuantity,
-    getOrderQuantityStep,
+    formatMinPackageHint,
+    formatSupplementCardPreviewHint,
+    formatSupplementPhotoRemainderBadge,
     getPackDiscountPricingInfo,
-    isValidOrderQuantity,
-    snapOrderQuantity,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
+import { buildShopOrderQuantityContext } from '@/app/shop/lib/order-quantity';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { ProductPricePanel } from '@/app/shop/components/product-price-panel';
@@ -71,6 +71,9 @@ export default function ItemDetailPage({
     const packSize = product?.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
     const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product?.minPackageUnit ?? null;
+    const isSupplement =
+        purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
+
     const orderQtyOptions = {
         multiplicity,
         minPackageAmount,
@@ -78,8 +81,6 @@ export default function ItemDetailPage({
         purchaseItemMinQty: item?.minQty != null ? Number(item.minQty) : null,
         unitShort: shortName,
     };
-    const orderStep = getOrderQuantityStep(orderQtyOptions);
-    const minOrderQty = getMinOrderQuantity(orderQtyOptions);
 
     const [quantity, setQuantity] = useState(0);
     const [isFlying, setIsFlying] = useState(false);
@@ -122,14 +123,22 @@ export default function ItemDetailPage({
         setQuantity(currentQty);
     }, [currentQty, purchaseItemId]);
 
-    function snap(qty: number) {
-        return snapOrderQuantity(qty, orderQtyOptions);
-    }
+    const qtyCtx = buildShopOrderQuantityContext({
+        isSupplement: Boolean(isSupplement),
+        fulfillmentStatus: purchase?.fulfillmentStatus,
+        orderQtyOptions,
+        currentQuantity: currentQty,
+        availableQty: item?.availableQty,
+        packSize,
+        orderLines: (item as { orderLines?: { quantity: unknown }[] } | undefined)?.orderLines,
+    });
+    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed } =
+        qtyCtx;
 
     const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
 
     function submit(qty: number) {
-        if (qty < minOrderQty) {
+        if (qty < effectiveMinQty) {
             if (existingOrder) {
                 deleteMutation.mutate({ id: existingOrder.id });
             } else {
@@ -137,7 +146,7 @@ export default function ItemDetailPage({
             }
             return;
         }
-        if (!isValidOrderQuantity(qty, orderQtyOptions)) return;
+        if (!isValid(qty)) return;
         setQuantity(qty);
         setIsFlying(true);
         upsertMutation.mutate(
@@ -154,7 +163,7 @@ export default function ItemDetailPage({
     function handleRemove(step: number) {
         if (orderBusy) return;
         const next = quantity - step;
-        if (next < minOrderQty) {
+        if (next < effectiveMinQty) {
             if (existingOrder) {
                 deleteMutation.mutate({ id: existingOrder.id });
             } else {
@@ -210,6 +219,32 @@ export default function ItemDetailPage({
             {/* Title */}
             <div>
                 <PurchaseProductLabel product={product} primaryClassName="text-2xl font-semibold" />
+                {(() => {
+                    const catalogMinHint = formatMinPackageHint({
+                        minPackageAmount,
+                        minPackageUnit,
+                        unitShort: shortName,
+                    });
+                    const isItemSoldOut =
+                        item.availableQty != null && Number(item.availableQty) <= 0;
+                    const supplementHint =
+                        isSupplement && supplementBounds
+                            ? formatSupplementCardPreviewHint(supplementBounds, orderQtyOptions, {
+                                  soldOut: isItemSoldOut && quantity <= 0,
+                              })
+                            : null;
+                    if (!catalogMinHint && !supplementHint) return null;
+                    return (
+                        <div className="mt-1 space-y-0.5">
+                            {catalogMinHint ? (
+                                <p className="text-sm text-muted-foreground">{catalogMinHint}</p>
+                            ) : null}
+                            {supplementHint ? (
+                                <p className="text-sm text-warning">{supplementHint}</p>
+                            ) : null}
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Photo + description + order */}
@@ -229,6 +264,20 @@ export default function ItemDetailPage({
                             <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
                         </div>
                     )}
+                    {isSupplement && supplementBounds && (() => {
+                        const remainderBadge = formatSupplementPhotoRemainderBadge(
+                            supplementBounds,
+                            orderQtyOptions,
+                        );
+                        if (!remainderBadge) return null;
+                        return (
+                            <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-[1]">
+                                <div className="rounded-md bg-warning-50 px-2 py-1 text-center text-xs font-semibold text-warning shadow-sm">
+                                    {remainderBadge}
+                                </div>
+                            </div>
+                        );
+                    })()}
                     {isFlying && (
                         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
                             <div className="animate-bounce rounded-full bg-primary p-3 text-primary-foreground shadow-lg">
@@ -311,24 +360,24 @@ export default function ItemDetailPage({
                                     variant="outline"
                                     className="flex-1"
                                     disabled={orderBusy || quantity <= 0}
-                                    onClick={() => handleRemove(orderStep)}
+                                    onClick={() => handleRemove(uiStep)}
                                 >
                                     <Minus className="mr-1 h-4 w-4" />
-                                    {orderStep} {shortName}
+                                    {uiStep} {shortName}
                                 </Button>
                                 <Button
                                     variant="outline"
                                     className="flex-1"
-                                    disabled={orderBusy}
-                                    onClick={() => handleAdd(orderStep)}
+                                    disabled={orderBusy || supplementOnlyPacks}
+                                    onClick={() => handleAdd(uiStep)}
                                 >
                                     <Plus className="mr-1 h-4 w-4" />
-                                    {orderStep} {shortName}
+                                    {uiStep} {shortName}
                                 </Button>
                             </div>
 
                             {/* Pack buttons */}
-                            {packSize != null && (
+                            {packSize != null && supplementPacksAllowed && (
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"

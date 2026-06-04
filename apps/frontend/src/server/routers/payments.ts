@@ -10,8 +10,8 @@ export const paymentsRouter = router({
                 purchaseId: z.number(),
                 amount: z.number().positive(),
                 userComment: z.string().optional(),
-                proofBase64: z.string().optional(),
-                proofMimeType: z.string().optional(),
+                proofBase64: z.string().min(1, 'Прикрепите чек'),
+                proofMimeType: z.string().min(1),
                 promoCode: z.string().optional(),
             }),
         )

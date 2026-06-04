@@ -88,6 +88,12 @@ export class PaymentRepository {
         return dbClient.payment.findUnique({ where: { id } });
     }
 
+    async findPendingByUserAndPurchase(userId: number, purchaseId: number) {
+        return dbClient.payment.findFirst({
+            where: { userId, purchaseId, status: 'PENDING', parentId: null },
+        });
+    }
+
     async updateStatus(id: number, status: 'CONFIRMED' | 'REJECTED', adminNote?: string) {
         return dbClient.$transaction(async (tx) => {
             const updated = await tx.payment.update({

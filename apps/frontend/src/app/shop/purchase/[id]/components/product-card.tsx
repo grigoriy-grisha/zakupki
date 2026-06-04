@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
@@ -10,12 +9,11 @@ import {
     calculateOrderAmount,
     countFullSupplierPacks,
     formatMinPackageHint,
-    getMinOrderQuantity,
-    getOrderQuantityStep,
+    formatSupplementCardPreviewHint,
+    formatSupplementPhotoRemainderBadge,
     getPackDiscountPricingInfo,
-    isValidOrderQuantity,
-    snapOrderQuantity,
 } from '@zakupki/types';
+import { buildShopOrderQuantityContext } from '@/app/shop/lib/order-quantity';
 import { ShoppingCart, Minus, Plus, Loader2 } from 'lucide-react';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { trpc } from '@/lib/client/trpc';
@@ -29,6 +27,7 @@ interface ShopPurchaseItemProductCardProps {
         priceOverride: string | null;
         availableQty: string | number | null;
         minQty: string | number | null;
+        orderLines?: { quantity: unknown }[];
         product: ProductLabelSource & {
             pricePerUnit: string | number;
             supplierPackageAmount?: string | number | null;
@@ -44,6 +43,7 @@ interface ShopPurchaseItemProductCardProps {
     packDiscountPercent: number;
     currentQuantity?: number;
     isSupplement: boolean;
+    fulfillmentStatus?: string | null;
     onOrderChange?: () => void;
 }
 
@@ -53,6 +53,7 @@ export function ProductCard({
     packDiscountPercent,
     currentQuantity = 0,
     isSupplement,
+    fulfillmentStatus,
     onOrderChange,
 }: ShopPurchaseItemProductCardProps) {
     const utils = trpc.useUtils();
@@ -74,8 +75,17 @@ export function ProductCard({
         purchaseItemMinQty: item.minQty != null ? Number(item.minQty) : null,
         unitShort: shortName,
     };
-    const orderStep = getOrderQuantityStep(orderQtyOptions);
-    const minOrderQty = getMinOrderQuantity(orderQtyOptions);
+    const qtyCtx = buildShopOrderQuantityContext({
+        isSupplement,
+        fulfillmentStatus,
+        orderQtyOptions,
+        currentQuantity,
+        availableQty: item.availableQty,
+        packSize,
+        orderLines: item.orderLines,
+    });
+    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed } =
+        qtyCtx;
 
     const [quantity, setQuantity] = useState(currentQuantity);
     const [isFlying, setIsFlying] = useState(false);
@@ -124,12 +134,8 @@ export function ProductCard({
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
 
-    function snap(qty: number) {
-        return snapOrderQuantity(qty, orderQtyOptions);
-    }
-
     function submit(qty: number) {
-        if (qty < minOrderQty) {
+        if (qty < effectiveMinQty) {
             if (hasOrder) {
                 const line = utils.orders.getMyOrders.getData()?.find(
                     (o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId,
@@ -142,7 +148,7 @@ export function ProductCard({
             }
             return;
         }
-        if (!isValidOrderQuantity(qty, orderQtyOptions)) return;
+        if (!isValid(qty)) return;
         setQuantity(qty);
         setIsFlying(true);
         upsertMutation.mutate(
@@ -159,7 +165,7 @@ export function ProductCard({
     function handleRemove(step: number) {
         if (orderBusy) return;
         const next = quantity - step;
-        if (next < minOrderQty) {
+        if (next < effectiveMinQty) {
             const line = utils.orders.getMyOrders.getData()?.find(
                 (o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId,
             );
@@ -200,6 +206,20 @@ export function ProductCard({
 
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                 <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
+                {isSupplement && supplementBounds && (() => {
+                    const remainderBadge = formatSupplementPhotoRemainderBadge(
+                        supplementBounds,
+                        orderQtyOptions,
+                    );
+                    if (!remainderBadge) return null;
+                    return (
+                        <div className="pointer-events-none absolute bottom-1.5 left-1.5 right-1.5 z-[1]">
+                            <div className="truncate rounded-md bg-warning-50 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-tight text-warning shadow-sm">
+                                {remainderBadge}
+                            </div>
+                        </div>
+                    );
+                })()}
                 {hasOrder && !isSoldOut && (
                     <>
                         <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
@@ -209,24 +229,6 @@ export function ProductCard({
                             <span className="text-[11px] font-bold leading-none tabular-nums">{quantity}</span>
                         </div>
                     </>
-                )}
-                {isSupplement && (
-                    <Badge
-                        className={cn(
-                            'pointer-events-none absolute bottom-1.5 left-1.5 z-[1] max-w-[calc(100%-0.75rem)] truncate px-1.5 py-0 text-[10px]',
-                            isSoldOut ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning',
-                        )}
-                    >
-                        {item.availableQty == null
-                            ? packSize != null
-                                ? `Пачка: ${packSize} ${shortName}`
-                                : 'Добор'
-                            : isSoldOut
-                                ? 'Разобрано'
-                                : packSize != null
-                                    ? `Остаток: ${Number(item.availableQty)} ${shortName}`
-                                    : `Доступно: ${Number(item.availableQty)} ${shortName}`}
-                    </Badge>
                 )}
             </div>
 
@@ -239,14 +241,28 @@ export function ProductCard({
                         secondaryClassName="block truncate text-xs text-muted-foreground"
                     />
                     {(() => {
-                        const hint = formatMinPackageHint({
+                        const catalogMinHint = formatMinPackageHint({
                             minPackageAmount,
                             minPackageUnit,
                             unitShort: shortName,
                         });
-                        return hint ? (
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</p>
-                        ) : null;
+                        const supplementHint =
+                            isSupplement && supplementBounds
+                                ? formatSupplementCardPreviewHint(supplementBounds, orderQtyOptions, {
+                                      soldOut: isSoldOut && !hasOrder,
+                                  })
+                                : null;
+                        if (!catalogMinHint && !supplementHint) return null;
+                        return (
+                            <div className="mt-0.5 space-y-0.5">
+                                {catalogMinHint ? (
+                                    <p className="truncate text-xs text-muted-foreground">{catalogMinHint}</p>
+                                ) : null}
+                                {supplementHint ? (
+                                    <p className="truncate text-xs text-warning">{supplementHint}</p>
+                                ) : null}
+                            </div>
+                        );
                     })()}
                     <div className="mt-2">
                         <span className="text-lg font-bold text-primary">{price.toLocaleString('ru-RU')} ₽</span>
@@ -289,10 +305,10 @@ export function ProductCard({
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
                                 disabled={orderBusy || !hasOrder}
-                                onClick={() => handleRemove(orderStep)}
+                                onClick={() => handleRemove(uiStep)}
                             >
                                 <Minus className="mr-1 h-3 w-3" />
-                                {orderStep} {shortName}
+                                {uiStep} {shortName}
                             </Button>
 
                             {/* + min package */}
@@ -300,16 +316,16 @@ export function ProductCard({
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={orderBusy}
-                                onClick={() => handleAdd(orderStep)}
+                                disabled={orderBusy || supplementOnlyPacks}
+                                onClick={() => handleAdd(uiStep)}
                             >
                                 <Plus className="mr-1 h-3 w-3" />
-                                {orderStep} {shortName}
+                                {uiStep} {shortName}
                             </Button>
                         </div>
 
                         {/* Pack buttons */}
-                        {packSize != null && (
+                        {packSize != null && supplementPacksAllowed && (
                             <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                                 {/* - pack */}
                                 <Button

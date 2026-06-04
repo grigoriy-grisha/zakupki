@@ -81,7 +81,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     return (
         <div className="space-y-6">
             <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-3xl font-bold tracking-tight">{purchase.tag}</h1>
                     <Badge
                         className={
@@ -131,7 +131,6 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         </div>
                     )}
 
-                    {/* Product grid */}
                     <div className="min-w-0 flex-1 space-y-4">
                         {selectedId != null && (
                             <div className="flex flex-wrap items-center gap-1.5 text-sm">
@@ -189,6 +188,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                                     packDiscountPercent={packDiscountPercent}
                                     currentQuantity={orderQtyMap.get(item.id)}
                                     isSupplement={isSupplement}
+                                    fulfillmentStatus={purchase.fulfillmentStatus}
                                 />
                             ))}
                         </div>

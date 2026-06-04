@@ -1,3 +1,4 @@
+import { normalizeSupplierPackUnit } from './pack-discount-pricing';
 import {
     getOrderQuantityStep,
     getOrderQuantityValidationError,
@@ -5,8 +6,51 @@ import {
     type OrderQuantityOptions,
 } from './pricing';
 
-/** Минимальный заказ на доборе (гр / ед.). */
+/** Минимальный заказ на доборе для весовых товаров (гр). */
 export const SUPPLEMENT_MIN_ORDER_QTY = 10;
+
+/** Минимальный заказ на доборе для штучных товаров. */
+export const SUPPLEMENT_MIN_ORDER_QTY_PIECES = 1;
+
+function isPieceOrderUnit(unit: string | null | undefined): boolean {
+    if (!unit) return false;
+    const n = unit.trim().toLowerCase().replace(/\./g, '');
+    if (n === 'шт' || n.startsWith('шт')) return true;
+    if (n.includes('туб')) return true;
+    return false;
+}
+
+/** Минимальная добавка на доборе: 1 шт (штучный товар) или 10 гр. */
+export function getSupplementMinOrderQty(options: OrderQuantityOptions): number {
+    if (isPieceOrderUnit(options.minPackageUnit) || isPieceOrderUnit(options.unitShort)) {
+        return SUPPLEMENT_MIN_ORDER_QTY_PIECES;
+    }
+    if (
+        normalizeSupplierPackUnit(options.minPackageUnit) === 'гр' ||
+        normalizeSupplierPackUnit(options.unitShort) === 'гр'
+    ) {
+        return SUPPLEMENT_MIN_ORDER_QTY;
+    }
+    const raw = (options.unitShort ?? options.minPackageUnit ?? '').trim().toLowerCase();
+    if (raw.startsWith('гр') || raw === 'g') return SUPPLEMENT_MIN_ORDER_QTY;
+    if (isPieceOrderUnit(options.unitShort) || isPieceOrderUnit(options.minPackageUnit)) {
+        return SUPPLEMENT_MIN_ORDER_QTY_PIECES;
+    }
+    return SUPPLEMENT_MIN_ORDER_QTY;
+}
+
+/** Минимальное количество в заказе на доборе (не ниже каталожного минимума). */
+export function getSupplementEffectiveMinQty(
+    catalogMinQty: number,
+    options: OrderQuantityOptions,
+): number {
+    return Math.max(catalogMinQty, getSupplementMinOrderQty(options));
+}
+
+/** Шаг на кнопках ± в UI на доборе. */
+export function getSupplementUiOrderStep(catalogStep: number, options: OrderQuantityOptions): number {
+    return Math.max(catalogStep, getSupplementMinOrderQty(options));
+}
 
 function isPositive(n: number): boolean {
     return Number.isFinite(n) && n > 0;
@@ -45,6 +89,8 @@ export type SupplementOrderBounds = {
     availableQty: number | null;
     currentQuantity: number;
     supplierPackageAmount?: number | null;
+    /** С «Оплаты» до «Фасовки»: добор только из остатка, пачки запрещены. */
+    remainderOnly?: boolean;
 };
 
 export function getSupplementMaxQuantity(bounds: SupplementOrderBounds): number | null {
@@ -86,9 +132,35 @@ export function getSupplementRemainderPool(bounds: SupplementOrderBounds): numbe
     return Math.max(0, bounds.availableQty);
 }
 
+/** Остаток на доборе закончился или меньше мин. — кнопка «+» по шагу недоступна; на этапе REORDER ещё +пачка. */
+export function isSupplementOnlyPacksOrder(
+    bounds: SupplementOrderBounds,
+    options: OrderQuantityOptions,
+): boolean {
+    if (bounds.availableQty == null) return false;
+
+    const remainderPool = getSupplementRemainderPool(bounds) ?? 0;
+    if (remainderPool <= 0) {
+        if (bounds.remainderOnly) return true;
+        return positiveOrNull(bounds.supplierPackageAmount) != null;
+    }
+
+    if (remainderPool + 1e-9 < getSupplementMinOrderQty(options)) {
+        if (bounds.remainderOnly) return true;
+        return positiveOrNull(bounds.supplierPackageAmount) != null;
+    }
+
+    return false;
+}
+
+/** Целые пачки на доборе разрешены (этап «Доборы»). */
+export function isSupplementPacksAllowed(bounds: SupplementOrderBounds): boolean {
+    return !bounds.remainderOnly;
+}
+
 /**
  * Добор:
- * — минимум SUPPLEMENT_MIN_ORDER_QTY (от 10, не кратно);
+ * — минимум на добавку: 10 гр или 1 шт (штучный товар);
  * — с остатка: не больше свободного остатка (кроме целых пачек);
  * — остаток меньше пачки (напр. 11 при пачке 12): только до остатка или целые пачки;
  * — остаток 0 или < минималки: только целые пачки (кратно размеру поставщика).
@@ -104,12 +176,13 @@ export function getSupplementOrderQuantityValidationError(
         positiveOrNull(options.minPackageAmount) != null && options.minPackageUnit
             ? options.minPackageUnit
             : (options.unitShort ?? 'ед.');
-    const minLabel = `${formatQtyLabel(SUPPLEMENT_MIN_ORDER_QTY)} ${unit}`;
+    const supplementMin = getSupplementMinOrderQty(options);
+    const minLabel = `${formatQtyLabel(supplementMin)} ${unit}`;
 
     const max = getSupplementMaxQuantity(bounds);
     if (max == null) {
         const delta = quantity - bounds.currentQuantity;
-        if (delta > 1e-9 && delta + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY) {
+        if (delta > 1e-9 && delta + 1e-9 < supplementMin) {
             return `На доборе можно заказывать от ${minLabel}`;
         }
         return null;
@@ -119,14 +192,22 @@ export function getSupplementOrderQuantityValidationError(
     const packSize = bounds.supplierPackageAmount;
     const packLabel = positiveOrNull(packSize);
     const delta = quantity - bounds.currentQuantity;
+    const remainderOnly = Boolean(bounds.remainderOnly);
     // Целые пачки: итог или добавка кратна размеру пачки
     const wholePack =
         isWholePackMultiple(quantity, packSize) ||
         (packLabel != null && delta > 1e-9 && isWholePackMultiple(delta, packSize));
 
+    if (remainderOnly && wholePack && delta > 1e-9) {
+        return 'На этом этапе добор только из свободного остатка, целыми пачками заказать нельзя';
+    }
+
     if (remainderPool <= 0) {
         if (quantity <= bounds.currentQuantity + 1e-9) {
             return null;
+        }
+        if (remainderOnly) {
+            return 'Свободный остаток закончился';
         }
         if (!wholePack) {
             return packLabel != null
@@ -136,10 +217,13 @@ export function getSupplementOrderQuantityValidationError(
         return null;
     }
 
-    // Остаток меньше минималки — с остатка не заказать, только пачки
-    if (remainderPool + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY) {
+    // Остаток меньше минималки — с остатка не заказать; на REORDER ещё пачки
+    if (remainderPool + 1e-9 < supplementMin) {
         if (quantity <= bounds.currentQuantity + 1e-9) {
             return null;
+        }
+        if (remainderOnly) {
+            return `Остаток ${formatQtyLabel(remainderPool)} ${unit} — меньше минимального заказа (${minLabel})`;
         }
         if (!wholePack) {
             return packLabel != null
@@ -149,12 +233,17 @@ export function getSupplementOrderQuantityValidationError(
         return null;
     }
 
-    if (wholePack) {
+    if (wholePack && !remainderOnly) {
         return null;
     }
 
-    // Когда остаток < пачки: не больше остатка или целые пачки
+    if (remainderOnly && quantity > max + 1e-9) {
+        return `На добор можно заказать не более ${formatQtyLabel(remainderPool)} ${unit} (свободный остаток)`;
+    }
+
+    // Когда остаток < пачки: не больше остатка или целые пачки (только REORDER)
     if (
+        !remainderOnly &&
         packLabel != null &&
         remainderPool < packLabel &&
         quantity > max + 1e-9
@@ -163,11 +252,13 @@ export function getSupplementOrderQuantityValidationError(
     }
 
     if (quantity > max + 1e-9) {
-        return `На добор можно заказать не более ${formatQtyLabel(remainderPool)} ${unit} (свободный остаток) или целыми пачками`;
+        return remainderOnly
+            ? `На добор можно заказать не более ${formatQtyLabel(remainderPool)} ${unit} (свободный остаток)`
+            : `На добор можно заказать не более ${formatQtyLabel(remainderPool)} ${unit} (свободный остаток) или целыми пачками`;
     }
 
     // Минимальный заказ на добор при увеличении (проверяем добавку, не итог)
-    if (delta > 1e-9 && delta + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY) {
+    if (delta > 1e-9 && delta + 1e-9 < supplementMin) {
         return `На доборе можно заказывать от ${minLabel}`;
     }
 
@@ -204,12 +295,13 @@ export function snapSupplementOrderQuantity(
     options: OrderQuantityOptions,
     bounds: SupplementOrderBounds,
 ): number {
+    const supplementMin = getSupplementMinOrderQty(options);
     const max = getSupplementMaxQuantity(bounds);
     if (max == null) {
         // Для добора — только минимальный порог на добавку, без привязки к шагу
         const delta = quantity - bounds.currentQuantity;
-        if (delta > 1e-9 && delta + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY) {
-            return bounds.currentQuantity + SUPPLEMENT_MIN_ORDER_QTY;
+        if (delta > 1e-9 && delta + 1e-9 < supplementMin) {
+            return bounds.currentQuantity + supplementMin;
         }
         return quantity;
     }
@@ -219,8 +311,8 @@ export function snapSupplementOrderQuantity(
     // При увеличении заказа — добавка не меньше минимального на добор
     {
         const delta = quantity - bounds.currentQuantity;
-        if (delta > 1e-9 && delta + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY) {
-            quantity = bounds.currentQuantity + SUPPLEMENT_MIN_ORDER_QTY;
+        if (delta > 1e-9 && delta + 1e-9 < supplementMin) {
+            quantity = bounds.currentQuantity + supplementMin;
         }
     }
 
@@ -228,15 +320,25 @@ export function snapSupplementOrderQuantity(
     const packSize = bounds.supplierPackageAmount;
 
     if (remainderPool <= 0) {
-        // Уменьшение заказа: возвращаем как есть в пределах currentQuantity
         if (quantity <= bounds.currentQuantity + 1e-9) {
             return quantity;
+        }
+        if (bounds.remainderOnly) {
+            return bounds.currentQuantity;
         }
         const pack = positiveOrNull(packSize);
         if (pack != null) {
             return pack;
         }
         return 0;
+    }
+
+    if (bounds.remainderOnly && isWholePackMultiple(quantity, packSize) && quantity > bounds.currentQuantity + 1e-9) {
+        const capped = Math.min(quantity, max);
+        if (isValidSupplementOrderQuantity(capped, options, bounds)) {
+            return capped;
+        }
+        return bounds.currentQuantity;
     }
 
     if (isWholePackMultiple(quantity, packSize)) {
@@ -256,6 +358,66 @@ export function snapSupplementOrderQuantity(
     return 0;
 }
 
+/** Подпись на миниатюре фото: сколько свободного остатка на доборе. */
+export function formatSupplementPhotoRemainderBadge(
+    bounds: SupplementOrderBounds,
+    orderQtyOptions: OrderQuantityOptions,
+): string | null {
+    if (bounds.availableQty == null) return null;
+
+    const unit = orderQtyOptions.minPackageUnit ?? orderQtyOptions.unitShort ?? 'ед.';
+    const remainderPool = getSupplementRemainderPool(bounds) ?? 0;
+    if (remainderPool <= 0) {
+        return bounds.remainderOnly ? 'остаток 0' : 'остаток 0 · пачки';
+    }
+    return `остаток ${formatQtyLabel(remainderPool)} ${unit}`;
+}
+
+/** Краткая строка превью карточки: добор, остаток, мин. заказ (не «Мин. фасовка»). */
+export function formatSupplementCardPreviewHint(
+    bounds: SupplementOrderBounds,
+    orderQtyOptions: OrderQuantityOptions,
+    options?: { soldOut?: boolean },
+): string {
+    const unit = orderQtyOptions.minPackageUnit ?? orderQtyOptions.unitShort ?? 'ед.';
+    const supplementMin = getSupplementMinOrderQty(orderQtyOptions);
+    const minLabel = `от ${formatQtyLabel(supplementMin)} ${unit}`;
+
+    if (bounds.availableQty == null) {
+        return `Добор · ${minLabel}`;
+    }
+
+    const remainderPool = getSupplementRemainderPool(bounds) ?? 0;
+
+    if (remainderPool <= 0) {
+        return bounds.remainderOnly ? 'Добор · остаток закончился' : 'Добор · только пачками';
+    }
+
+    if (isSupplementOnlyPacksOrder(bounds, orderQtyOptions)) {
+        return bounds.remainderOnly
+            ? `Добор · остаток ${formatQtyLabel(remainderPool)} ${unit} · добавить нельзя`
+            : `Добор · остаток ${formatQtyLabel(remainderPool)} ${unit} · только пачками`;
+    }
+
+    if (bounds.remainderOnly) {
+        return `Добор · остаток ${formatQtyLabel(remainderPool)} ${unit} · ${minLabel}`;
+    }
+
+    if (options?.soldOut) {
+        return 'Добор · разобрано';
+    }
+
+    return `Добор · остаток ${formatQtyLabel(remainderPool)} ${unit} · ${minLabel}`;
+}
+
+/** @deprecated используйте formatSupplementCardPreviewHint */
+export function formatSupplementMinOrderPreviewHint(unitShort: string): string {
+    return formatSupplementCardPreviewHint(
+        { availableQty: null, currentQuantity: 0, supplierPackageAmount: null },
+        { unitShort },
+    );
+}
+
 export function formatSupplementOrderHint(bounds: SupplementOrderBounds, options: OrderQuantityOptions): string {
     const max = getSupplementMaxQuantity(bounds);
     const unit = options.unitShort ?? 'ед.';
@@ -263,22 +425,28 @@ export function formatSupplementOrderHint(bounds: SupplementOrderBounds, options
     const packSize = positiveOrNull(bounds.supplierPackageAmount);
     const remainderPool = getSupplementRemainderPool(bounds) ?? 0;
 
+    const supplementMin = getSupplementMinOrderQty(options);
+
     if (remainderPool <= 0) {
-        return packSize != null
-            ? `Добор: остаток закончился · целыми пачками по ${formatQtyLabel(packSize)} ${unit}`
-            : 'Добор: остаток закончился · только целыми пачками';
+        return bounds.remainderOnly
+            ? 'Добор: остаток закончился'
+            : packSize != null
+              ? `Добор: остаток закончился · целыми пачками по ${formatQtyLabel(packSize)} ${unit}`
+              : 'Добор: остаток закончился · только целыми пачками';
     }
 
-    if (remainderPool + 1e-9 < SUPPLEMENT_MIN_ORDER_QTY) {
-        return packSize != null
-            ? `Добор: остаток ${formatQtyLabel(remainderPool)} ${unit} · целыми пачками по ${formatQtyLabel(packSize)} ${unit}`
-            : `Добор: остаток ${formatQtyLabel(remainderPool)} ${unit} · только целыми пачками`;
+    if (remainderPool + 1e-9 < supplementMin) {
+        return bounds.remainderOnly
+            ? `Добор: остаток ${formatQtyLabel(remainderPool)} ${unit} — меньше мин. заказа (${formatQtyLabel(supplementMin)} ${unit})`
+            : packSize != null
+              ? `Добор: остаток ${formatQtyLabel(remainderPool)} ${unit} · целыми пачками по ${formatQtyLabel(packSize)} ${unit}`
+              : `Добор: остаток ${formatQtyLabel(remainderPool)} ${unit} · только целыми пачками`;
     }
 
     const displayMax = getSupplementDisplayMax(bounds) ?? max!;
-    const parts = [`мин. ${formatQtyLabel(SUPPLEMENT_MIN_ORDER_QTY)} ${unit}`];
+    const parts = [`заказ от ${formatQtyLabel(supplementMin)} ${unit}`];
     parts.push(`можно до ${formatQtyLabel(displayMax)} ${unit}`);
-    if (packSize != null) {
+    if (packSize != null && !bounds.remainderOnly) {
         parts.push(`или пачками по ${formatQtyLabel(packSize)} ${unit}`);
     }
     return `Добор: остаток ${formatQtyLabel(remainderPool)} ${unit} · ${parts.join(', ')}`;

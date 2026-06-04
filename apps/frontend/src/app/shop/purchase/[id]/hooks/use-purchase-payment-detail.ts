@@ -1,5 +1,6 @@
 'use client';
 
+import { summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { trpc } from '@/lib/client/trpc';
 
 /**
@@ -14,30 +15,19 @@ export function usePurchasePaymentDetail(purchaseId: number) {
     const totalDue = myOrdersInPurchase.reduce((sum, o) => sum + Number(o.amountDue), 0);
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === purchaseId) ?? [];
-    const hasPending = purchasePayments.some((p) => (p as { status: string }).status === 'PENDING');
     const hasRejected = purchasePayments.some((p) => (p as { status: string }).status === 'REJECTED');
-
-    const totalPaid = purchasePayments
-        .filter((p) => {
-            const status = (p as { status: string }).status;
-            return status === 'CONFIRMED' || status === 'PENDING';
-        })
-        .reduce((sum, p) => {
-            const children = (p as { children?: { amount: unknown }[] }).children ?? [];
-            const childAmount = children.reduce((s: number, c: { amount: unknown }) => s + Number(c.amount), 0);
-            return sum + Number(p.amount) + childAmount;
-        }, 0);
-
-    const remaining = Math.max(0, totalDue - totalPaid);
+    const summary = summarizePurchasePayments(totalDue, purchasePayments);
 
     return {
         myOrders,
         myOrdersInPurchase,
         totalDue,
         purchasePayments,
-        hasPending,
+        hasPending: summary.hasPending,
         hasRejected,
-        totalPaid,
-        remaining,
+        totalPaid: summary.confirmedPaid,
+        pendingPaid: summary.pendingPaid,
+        remaining: summary.remaining,
+        isFullyPaid: summary.isFullyPaid,
     };
 }

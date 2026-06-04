@@ -17,6 +17,8 @@ import {
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
+import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
+import { summarizePurchasePayments } from '@/components/shop/payment-proof';
 
 interface CartSheetProps {
     open: boolean;
@@ -97,22 +99,13 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
                             {groups.map((group) => {
                                 const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
-                                const totalPaid = purchasePayments
-                                    .filter((p) => {
-                                        const s = (p as { status: string }).status;
-                                        return s === 'CONFIRMED' || s === 'PENDING';
-                                    })
-                                    .reduce((sum, p) => {
-                                        const children = (p as { children?: { amount: unknown }[] }).children ?? [];
-                                        const childAmount = children.reduce((s: number, c: { amount: unknown }) => s + Number(c.amount), 0);
-                                        return sum + Number(p.amount) + childAmount;
-                                    }, 0);
-                                const remaining = Math.max(0, group.total - totalPaid);
-                                const hasPending = purchasePayments.some((p) => (p as { status: string }).status === 'PENDING');
+                                const { remaining, hasPending, isFullyPaid } = summarizePurchasePayments(
+                                    group.total,
+                                    purchasePayments,
+                                );
                                 const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
                                 const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fs];
                                 const paymentOpen = isPurchasePaymentOpen(fs);
-                                const isFullyPaid = remaining <= 0 && purchasePayments.length > 0;
 
                                 return (
                                     <div key={group.id}>
@@ -227,17 +220,17 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                     <span className="font-medium">Ожидает подтверждения</span>
                                                 </div>
                                             ) : remaining > 0 && paymentOpen ? (
-                                                <div className="flex items-center justify-between">
+                                                <div className="flex items-center justify-between gap-2">
                                                     <span className="text-muted-foreground">
                                                         К оплате: <span className="font-medium text-foreground">{remaining.toLocaleString('ru-RU')} ₽</span>
                                                     </span>
-                                                    <button
-                                                        onClick={() => { onOpenChange(false); router.push(`/shop/purchase/${group.id}`); }}
-                                                        className="flex items-center gap-1 font-medium text-primary hover:underline"
-                                                    >
-                                                        <CreditCard className="h-3 w-3" />
-                                                        Оплатить
-                                                    </button>
+                                                    <PurchasePaymentDialog
+                                                        purchaseId={group.id}
+                                                        remaining={remaining}
+                                                        hasPending={hasPending}
+                                                        paymentOpen={paymentOpen}
+                                                        triggerVariant="link"
+                                                    />
                                                 </div>
                                             ) : paymentOpen ? (
                                                 <span className="text-muted-foreground">

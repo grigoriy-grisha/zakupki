@@ -2,6 +2,7 @@
 
 import { AppLink } from '@/components/app-link';
 import { Button } from '@/components/ui/button';
+import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { CreditCard, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -73,11 +74,14 @@ export function PaymentActionButton({
     }
 
     return (
-        <Button variant="default" className={cn('mt-4 w-full', className)} asChild>
-            <AppLink href={`/shop/purchase/${purchaseId}`}>
-                {hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`}
-                <ArrowRight className="ml-2 h-4 w-4" />
-            </AppLink>
-        </Button>
+        <div className={cn('mt-4 w-full', className)}>
+            <PurchasePaymentDialog
+                purchaseId={purchaseId}
+                remaining={remaining}
+                hasPending={hasPending}
+                paymentOpen={paymentOpen}
+                buttonSize="default"
+            />
+        </div>
     );
 }

@@ -59,6 +59,21 @@ export function isPurchasePaymentOpen(status: PurchaseFulfillmentStatus | null |
     return idx >= 0 && paymentIdx >= 0 && idx >= paymentIdx;
 }
 
+/**
+ * Добор с этапа «Оплата заказов» до «Фасовка»: только свободный остаток, без целых пачек.
+ * На этапе «Доборы» (REORDER) пачки по-прежнему разрешены.
+ */
+export function isSupplementRemainderOnlyPhase(
+    fulfillmentStatus: PurchaseFulfillmentStatus | string | null | undefined,
+): boolean {
+    const current = (fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
+    const idx = PURCHASE_FULFILLMENT_STATUSES.indexOf(current);
+    if (idx < 0) return false;
+    const paymentIdx = PURCHASE_FULFILLMENT_STATUSES.indexOf('PAYMENT');
+    const packagingIdx = PURCHASE_FULFILLMENT_STATUSES.indexOf('PACKAGING');
+    return idx >= paymentIdx && packagingIdx >= 0 && idx < packagingIdx;
+}
+
 export {
     calculateOrderAmount,
     formatMinPackageHint,
@@ -76,6 +91,10 @@ export {
 
 export {
     SUPPLEMENT_MIN_ORDER_QTY,
+    SUPPLEMENT_MIN_ORDER_QTY_PIECES,
+    getSupplementMinOrderQty,
+    getSupplementEffectiveMinQty,
+    getSupplementUiOrderStep,
     calculateFreeRemainder,
     getSupplementDisplayMax,
     getSupplementMaxQuantity,
@@ -86,9 +105,14 @@ export {
     isExactSupplierPackOrder,
     isWholePackMultiple,
     isWholePackOrder,
+    isSupplementOnlyPacksOrder,
+    isSupplementPacksAllowed,
     isValidSupplementOrderQuantity,
     shouldDecrementSupplementStock,
     snapSupplementOrderQuantity,
+    formatSupplementPhotoRemainderBadge,
+    formatSupplementCardPreviewHint,
+    formatSupplementMinOrderPreviewHint,
     formatSupplementOrderHint,
     type SupplementOrderBounds,
 } from './supplement-order';

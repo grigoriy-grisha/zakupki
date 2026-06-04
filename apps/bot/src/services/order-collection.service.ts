@@ -4,6 +4,7 @@ import {
     calculateOrderAmount,
     getOrderQuantityValidationError,
     getSupplementOrderQuantityValidationError,
+    isSupplementRemainderOnlyPhase,
 } from '@zakupki/types';
 import type { Redis } from 'ioredis';
 import { getRedisConnection } from '@zakupki/queue';
@@ -266,6 +267,7 @@ export class OrderCollectionService {
                           availableQty: effectiveAvailableQty,
                           currentQuantity: currentQty,
                           supplierPackageAmount: packAmount,
+                          remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
                       })
                     : getOrderQuantityValidationError(newQuantity, orderQtyOptions);
             if (validationError) {

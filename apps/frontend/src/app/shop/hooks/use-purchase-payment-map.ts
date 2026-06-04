@@ -1,10 +1,13 @@
+import { summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { trpc } from '@/lib/client/trpc';
 
 export type PurchasePaymentInfo = {
     due: number;
     paid: number;
+    pendingPaid: number;
     hasPending: boolean;
     remaining: number;
+    isFullyPaid: boolean;
 };
 
 /**
@@ -21,32 +24,32 @@ export function usePurchasePaymentMap() {
     myOrders?.forEach((o) => {
         const pid = o.purchaseItem?.purchaseId;
         if (!pid) return;
-        const existing = map.get(pid) ?? { due: 0, paid: 0, hasPending: false, remaining: 0 };
+        const existing = map.get(pid) ?? {
+            due: 0,
+            paid: 0,
+            pendingPaid: 0,
+            hasPending: false,
+            remaining: 0,
+            isFullyPaid: false,
+        };
         existing.due += Number(o.amountDue);
         map.set(pid, existing);
     });
 
-    // Sum payments per purchase
+    const paymentsByPurchase = new Map<number, typeof myPayments>();
     myPayments?.forEach((p) => {
-        const pid = p.purchaseId;
-        const status = (p as { status: string }).status;
-        const children = (p as { children?: { amount: unknown }[] }).children ?? [];
-        const childAmount = children.reduce((s: number, c: { amount: unknown }) => s + Number(c.amount), 0);
-        const total = Number(p.amount) + childAmount;
-
-        const existing = map.get(pid) ?? { due: 0, paid: 0, hasPending: false, remaining: 0 };
-        if (status === 'CONFIRMED' || status === 'PENDING') {
-            existing.paid += total;
-        }
-        if (status === 'PENDING') {
-            existing.hasPending = true;
-        }
-        map.set(pid, existing);
+        const list = paymentsByPurchase.get(p.purchaseId) ?? [];
+        list.push(p);
+        paymentsByPurchase.set(p.purchaseId, list);
     });
 
-    // Calculate remaining
-    map.forEach((val) => {
-        val.remaining = Math.max(0, val.due - val.paid);
+    map.forEach((val, pid) => {
+        const summary = summarizePurchasePayments(val.due, paymentsByPurchase.get(pid) ?? []);
+        val.paid = summary.confirmedPaid;
+        val.pendingPaid = summary.pendingPaid;
+        val.hasPending = summary.hasPending;
+        val.remaining = summary.remaining;
+        val.isFullyPaid = summary.isFullyPaid;
     });
 
     return { map, myOrders, myPayments };

@@ -5,12 +5,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { getProductPhotoId, type ProductLabelSource } from '@/app/(admin)/products/lib';
-import { cn } from '@/lib/utils';
-import { CircleCheck, Clock, CircleX, AlertCircle, Trash2, Package } from 'lucide-react';
+import { CircleCheck, Package, Trash2 } from 'lucide-react';
+import { MyPaymentRow } from '@/components/shop/my-payment-row';
+import type { ShopPaymentView } from '@/components/shop/payment-proof';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
+import { cn } from '@/lib/utils';
 
 import type { ReactNode } from 'react';
 import type { usePurchasePaymentDetail } from '../hooks/use-purchase-payment-detail';
@@ -28,7 +30,8 @@ export function OrdersSummaryCard({
     purchaseItems,
     fulfillmentLabel,
 }: OrdersSummaryCardProps) {
-    const { myOrdersInPurchase, totalDue, purchasePayments, hasPending, totalPaid, remaining } = paymentDetail;
+    const { myOrdersInPurchase, totalDue, purchasePayments, hasPending, totalPaid, remaining, isFullyPaid } =
+        paymentDetail;
     const purchaseOrderId =
         (myOrdersInPurchase[0] as { purchaseOrderId?: number | null } | undefined)?.purchaseOrderId ?? null;
     const productByItemId = useMemo(
@@ -115,14 +118,27 @@ export function OrdersSummaryCard({
                     {purchasePayments.length > 0 && (
                         <div className="space-y-2 pt-2 border-t">
                             {purchasePayments.map((p) => (
-                                <PaymentRow key={p.id} payment={p} />
+                                <MyPaymentRow
+                                    key={p.id}
+                                    payment={p as ShopPaymentView}
+                                    trailing={
+                                        (p as { status: string }).status === 'PENDING' ? (
+                                            <CancelPaymentButton paymentId={p.id} />
+                                        ) : null
+                                    }
+                                />
                             ))}
                         </div>
                     )}
 
-                    {/* Pay button or fully paid */}
-                    {remaining > 0 && paymentDialog}
-                    {remaining <= 0 && purchasePayments.length > 0 && (
+                    {/* Pay button or status */}
+                    {!isFullyPaid && !hasPending && remaining > 0 && paymentDialog}
+                    {hasPending && (
+                        <div className="flex items-center justify-center gap-2 rounded-lg bg-warning/10 py-2 text-warning">
+                            <span className="text-sm font-medium">Ожидает подтверждения оплаты</span>
+                        </div>
+                    )}
+                    {isFullyPaid && (
                         <div className="flex items-center justify-center gap-2 rounded-lg bg-success-50 py-2 text-success">
                             <CircleCheck className="h-4 w-4" />
                             <span className="text-sm font-medium">Полностью оплачено</span>
@@ -131,47 +147,6 @@ export function OrdersSummaryCard({
                 </div>
             </CardContent>
         </Card>
-    );
-}
-
-function PaymentRow({ payment }: { payment: any }) {
-    const status = payment.status as string;
-    const children = (payment.children ?? []) as { amount: unknown; promoCode: { code: string } | null }[];
-    const child = children[0];
-    const childAmount = child ? Number(child.amount) : 0;
-    const promoCode = child?.promoCode;
-
-    const statusCfg = {
-        PENDING: { label: 'Ожидает проверки', icon: Clock, cls: 'text-warning' },
-        CONFIRMED: { label: 'Подтверждено', icon: CircleCheck, cls: 'text-success' },
-        REJECTED: { label: 'Отклонено', icon: CircleX, cls: 'text-error' },
-    }[status] ?? { label: status, icon: AlertCircle, cls: 'text-muted-foreground' };
-    const StatusIcon = statusCfg.icon;
-
-    return (
-        <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-            <div className="flex items-center gap-2">
-                <StatusIcon className={cn('h-4 w-4', statusCfg.cls)} />
-                <div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                            {(Number(payment.amount) + childAmount).toLocaleString('ru-RU')} ₽
-                        </span>
-                        <span className={cn('text-xs font-medium', statusCfg.cls)}>{statusCfg.label}</span>
-                    </div>
-                    {childAmount > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                            Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽
-                            <span className="text-success">
-                                {' '}
-                                + промокод {promoCode?.code ?? ''} {childAmount.toLocaleString('ru-RU')} ₽
-                            </span>
-                        </p>
-                    )}
-                </div>
-            </div>
-            {status === 'PENDING' && <CancelPaymentButton paymentId={payment.id} />}
-        </div>
     );
 }
 

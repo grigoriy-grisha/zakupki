@@ -1,16 +1,204 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    SUPPLEMENT_MIN_ORDER_QTY,
+    formatSupplementPhotoRemainderBadge,
+    formatSupplementCardPreviewHint,
+    formatSupplementMinOrderPreviewHint,
+    getSupplementEffectiveMinQty,
+    getSupplementMinOrderQty,
     getSupplementOrderQuantityValidationError,
+    isSupplementOnlyPacksOrder,
+    isSupplementPacksAllowed,
+    getSupplementUiOrderStep,
     shouldDecrementSupplementStock,
     snapSupplementOrderQuantity,
 } from '../src/supplement-order';
+import { isSupplementRemainderOnlyPhase } from '../src/index';
 
 const minPack10 = {
     minPackageAmount: 10,
     minPackageUnit: 'гр',
     unitShort: 'гр',
 };
+
+describe('formatSupplementPhotoRemainderBadge', () => {
+    it('shows remainder on thumbnail', () => {
+        expect(
+            formatSupplementPhotoRemainderBadge(
+                { availableQty: 40, currentQuantity: 0, supplierPackageAmount: 45 },
+                { minPackageUnit: 'гр', unitShort: 'гр' },
+            ),
+        ).toBe('остаток 40 гр');
+    });
+
+    it('zero remainder on PAYMENT phase', () => {
+        expect(
+            formatSupplementPhotoRemainderBadge(
+                { availableQty: 0, currentQuantity: 0, supplierPackageAmount: 45, remainderOnly: true },
+                { unitShort: 'гр' },
+            ),
+        ).toBe('остаток 0');
+    });
+});
+
+describe('formatSupplementCardPreviewHint', () => {
+    it('combines remainder and min order in one line', () => {
+        expect(
+            formatSupplementCardPreviewHint(
+                { availableQty: 40, currentQuantity: 0, supplierPackageAmount: 45 },
+                { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' },
+            ),
+        ).toBe('Добор · остаток 40 гр · от 10 гр');
+    });
+
+    it('when remainder is zero: only packs, not «от …»', () => {
+        expect(
+            formatSupplementCardPreviewHint(
+                { availableQty: 0, currentQuantity: 0, supplierPackageAmount: 45 },
+                { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' },
+                { soldOut: true },
+            ),
+        ).toBe('Добор · только пачками');
+    });
+
+    it('when remainder is zero on PAYMENT phase: no packs hint', () => {
+        expect(
+            formatSupplementCardPreviewHint(
+                {
+                    availableQty: 0,
+                    currentQuantity: 0,
+                    supplierPackageAmount: 45,
+                    remainderOnly: true,
+                },
+                { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' },
+            ),
+        ).toBe('Добор · остаток закончился');
+    });
+
+    it('low remainder: only packs without «от …»', () => {
+        expect(
+            formatSupplementCardPreviewHint(
+                { availableQty: 3, currentQuantity: 0, supplierPackageAmount: 45 },
+                { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' },
+            ),
+        ).toBe('Добор · остаток 3 гр · только пачками');
+    });
+
+    it('shows unlimited stock', () => {
+        expect(
+            formatSupplementCardPreviewHint(
+                { availableQty: null, currentQuantity: 0, supplierPackageAmount: null },
+                { unitShort: 'гр' },
+            ),
+        ).toBe('Добор · от 10 гр');
+    });
+
+    it('piece product: от 1 шт', () => {
+        expect(
+            formatSupplementCardPreviewHint(
+                { availableQty: 5, currentQuantity: 0, supplierPackageAmount: 12 },
+                { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' },
+            ),
+        ).toBe('Добор · остаток 5 шт · от 1 шт');
+    });
+});
+
+describe('supplement UI step and min', () => {
+    const optsGr = { minPackageAmount: 5, minPackageUnit: 'гр', unitShort: 'гр' };
+    const optsSht = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
+
+    it('raises catalog step 5 to 10 on доборе (гр)', () => {
+        expect(getSupplementUiOrderStep(5, optsGr)).toBe(SUPPLEMENT_MIN_ORDER_QTY);
+        expect(getSupplementEffectiveMinQty(5, optsGr)).toBe(SUPPLEMENT_MIN_ORDER_QTY);
+    });
+
+    it('piece product: min 1 шт on доборе', () => {
+        expect(getSupplementMinOrderQty(optsSht)).toBe(1);
+        expect(getSupplementUiOrderStep(1, optsSht)).toBe(1);
+        expect(getSupplementEffectiveMinQty(1, optsSht)).toBe(1);
+    });
+
+    it('keeps step when already >= supplement min', () => {
+        expect(getSupplementUiOrderStep(10, optsGr)).toBe(10);
+        expect(getSupplementEffectiveMinQty(12, optsGr)).toBe(12);
+    });
+});
+
+describe('isSupplementRemainderOnlyPhase', () => {
+    it('true from PAYMENT until before PACKAGING', () => {
+        expect(isSupplementRemainderOnlyPhase('PAYMENT')).toBe(true);
+        expect(isSupplementRemainderOnlyPhase('IN_TRANSIT_TO_ORGANIZER')).toBe(true);
+        expect(isSupplementRemainderOnlyPhase('PACKAGING')).toBe(false);
+        expect(isSupplementRemainderOnlyPhase('REORDER')).toBe(false);
+        expect(isSupplementRemainderOnlyPhase('COLLECTION')).toBe(false);
+    });
+});
+
+describe('remainder-only supplement (PAYMENT…before PACKAGING)', () => {
+    const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
+    const bounds20pack50 = {
+        availableQty: 20,
+        currentQuantity: 0,
+        supplierPackageAmount: 50,
+        remainderOnly: true,
+    };
+
+    it('rejects whole pack on increase', () => {
+        expect(getSupplementOrderQuantityValidationError(50, minPack10g, bounds20pack50)).toMatch(
+            /только из свободного остатка/,
+        );
+        expect(getSupplementOrderQuantityValidationError(20, minPack10g, bounds20pack50)).toBeNull();
+    });
+
+    it('packs not allowed in UI flag', () => {
+        expect(isSupplementPacksAllowed(bounds20pack50)).toBe(false);
+    });
+
+    it('snap does not jump to pack size', () => {
+        expect(snapSupplementOrderQuantity(50, minPack10g, bounds20pack50)).toBe(20);
+    });
+});
+
+describe('isSupplementOnlyPacksOrder', () => {
+    const optsGr = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
+
+    it('true when remainder is zero', () => {
+        expect(
+            isSupplementOnlyPacksOrder(
+                { availableQty: 0, currentQuantity: 0, supplierPackageAmount: 45 },
+                optsGr,
+            ),
+        ).toBe(true);
+    });
+
+    it('true when remainder below supplement min', () => {
+        expect(
+            isSupplementOnlyPacksOrder(
+                { availableQty: 8, currentQuantity: 0, supplierPackageAmount: 45 },
+                optsGr,
+            ),
+        ).toBe(true);
+    });
+
+    it('false when unlimited stock', () => {
+        expect(
+            isSupplementOnlyPacksOrder(
+                { availableQty: null, currentQuantity: 0, supplierPackageAmount: 45 },
+                optsGr,
+            ),
+        ).toBe(false);
+    });
+
+    it('false when enough remainder for partial order', () => {
+        expect(
+            isSupplementOnlyPacksOrder(
+                { availableQty: 40, currentQuantity: 0, supplierPackageAmount: 45 },
+                optsGr,
+            ),
+        ).toBe(false);
+    });
+});
 
 describe('supplement order quantity', () => {
     const bounds40 = { availableQty: 40, currentQuantity: 0, supplierPackageAmount: 10 };
@@ -63,18 +251,14 @@ describe('supplement order quantity', () => {
         );
     });
 
-    it('when remainder < pack and user already has partial: min 10 on delta, allows packs', () => {
+    it('when remainder < pack and user already has partial: min 1 шт on delta for pieces, allows packs', () => {
         const bounds = { availableQty: 11, currentQuantity: 5, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
-        // Добавка 11 (16 - 5) >= 10 — ОК
         expect(getSupplementOrderQuantityValidationError(16, minPack1, bounds)).toBeNull();
-        // Итого = пачка (12) — ОК
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
-        // Добавка 6 (11 - 5) < 10 — блокируется
-        expect(getSupplementOrderQuantityValidationError(11, minPack1, bounds)).toMatch(/от 10/);
-        // Добавка 8 (13 - 5) < 10 — блокируется
-        expect(getSupplementOrderQuantityValidationError(13, minPack1, bounds)).toMatch(/от 10/);
+        expect(getSupplementOrderQuantityValidationError(11, minPack1, bounds)).toBeNull();
+        expect(getSupplementOrderQuantityValidationError(13, minPack1, bounds)).toBeNull();
         // 17 = 5 + 12: добавляется ровно одна пачка — разрешено
         expect(getSupplementOrderQuantityValidationError(17, minPack1, bounds)).toBeNull();
         // 29 = 5 + 24: добавляется 2 пачки — разрешено
@@ -187,11 +371,11 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(24, minPack1, bounds)).toBeNull();
     });
 
-    it('stock 5 pack 12 existing order 2: stock below min → only packs allowed', () => {
+    it('stock 5 pack 12 existing order 2 шт: partial from remainder allowed (min 1 шт)', () => {
         const bounds = { availableQty: 5, currentQuantity: 2, supplierPackageAmount: 12 };
         const minPack1 = { minPackageAmount: 1, minPackageUnit: 'шт', unitShort: 'шт' };
 
-        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toMatch(/целыми пачками/);
+        expect(getSupplementOrderQuantityValidationError(7, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(12, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(2, minPack1, bounds)).toBeNull();
         expect(getSupplementOrderQuantityValidationError(10, minPack1, bounds)).toMatch(/целыми пачками/);
