@@ -7,11 +7,7 @@ export class AttributeTypeService {
         return this.repo.list();
     }
 
-    create(data: {
-        name: string;
-        parentId?: number | null;
-        showInTitle?: boolean;
-    }) {
+    create(data: { name: string; parentId?: number | null; showInTitle?: boolean }) {
         return this.repo.create(data);
     }
 

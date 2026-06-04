@@ -12,7 +12,11 @@ export function useUserRole() {
     const isSessionLoading = status === 'loading';
     const hasSession = status === 'authenticated';
 
-    const { data, isLoading: isQueryLoading, refetch } = trpc.users.getRole.useQuery(undefined, {
+    const {
+        data,
+        isLoading: isQueryLoading,
+        refetch,
+    } = trpc.users.getRole.useQuery(undefined, {
         enabled: hasSession,
         staleTime: 1000 * 60 * 5,
     });

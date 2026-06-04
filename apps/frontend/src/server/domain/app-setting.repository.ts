@@ -1,8 +1,5 @@
 import { dbClient } from '@zakupki/database';
-import {
-    APP_SETTING_KEYS,
-    DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
-} from '@zakupki/types';
+import { APP_SETTING_KEYS, DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT } from '@zakupki/types';
 
 export class AppSettingRepository {
     private tableReady: Promise<void> | null = null;

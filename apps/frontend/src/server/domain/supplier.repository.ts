@@ -19,4 +19,3 @@ export class SupplierRepository {
         return dbClient.supplier.delete({ where: { id } });
     }
 }
-

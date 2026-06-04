@@ -19,12 +19,7 @@ export function useProductTree<T extends AttrProduct>(products: T[] | undefined)
     );
 
     const tree = useMemo(
-        () =>
-            buildAttributeTree(
-                (attributeTypes ?? []) as AttributeTypeRow[],
-                products ?? [],
-                catalogByType,
-            ),
+        () => buildAttributeTree((attributeTypes ?? []) as AttributeTypeRow[], products ?? [], catalogByType),
         [attributeTypes, products, catalogByType],
     );
 

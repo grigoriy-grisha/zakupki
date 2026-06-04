@@ -100,7 +100,10 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
     const article = (input.articleNumber ?? '').trim();
     const displayName = stripAttributesFromName(input.name ?? '', input.articleNumber, input.attributeNames ?? []);
 
-    const line1 = (input.titleAttributes ?? []).map((s) => s.trim()).filter(Boolean).join(' ');
+    const line1 = (input.titleAttributes ?? [])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(' ');
     if (line1) lines.push(line1);
 
     const line2Parts: string[] = [];
@@ -154,7 +157,10 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
     const article = (input.articleNumber ?? '').trim();
     const displayName = stripAttributesFromName(input.name ?? '', input.articleNumber, input.attributeNames ?? []);
 
-    const line1 = (input.titleAttributes ?? []).map((s) => s.trim()).filter(Boolean).join(' ');
+    const line1 = (input.titleAttributes ?? [])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(' ');
     const line2Parts: string[] = [];
     if (article) line2Parts.push(article);
     if (displayName) line2Parts.push(displayName);
@@ -307,14 +313,9 @@ function normalizePlaceholderKey(key: string): string {
 
 function formatSupplierPackageLines(fields: DescriptionFields): string[] {
     const tiers =
-        fields.supplierPackageTiers?.filter(
-            (t) => t && isPositive(t.amount) && t.unit && isPositive(t.price),
-        ) ?? [];
+        fields.supplierPackageTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
     if (tiers.length > 0) {
-        return tiers.map(
-            (tier) =>
-                `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`,
-        );
+        return tiers.map((tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`);
     }
     if (
         isPositive(fields.supplierPackageAmount) &&
@@ -358,12 +359,11 @@ export function applyPostTemplate(templateHtml: string, fields: DescriptionField
 
 function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Record<string, string> {
     const article = (fields.articleNumber ?? '').trim();
-    const displayName = stripAttributesFromName(
-        fields.name ?? '',
-        fields.articleNumber,
-        fields.attributeNames ?? [],
-    );
-    const line1 = (fields.titleAttributes ?? []).map((s) => s.trim()).filter(Boolean).join(' ');
+    const displayName = stripAttributesFromName(fields.name ?? '', fields.articleNumber, fields.attributeNames ?? []);
+    const line1 = (fields.titleAttributes ?? [])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(' ');
     const attributesLine = (fields.attributeNames ?? [])
         .map((s) => s.trim())
         .filter(Boolean)
@@ -400,8 +400,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
             validTiers.length > 0
                 ? linesInline(
                       validTiers.map(
-                          (tier) =>
-                              `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`,
+                          (tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`,
                       ),
                   )
                 : '',
@@ -414,9 +413,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
             return line ? escapeHtml(line) : '';
         })(),
         свободно:
-            fields.availableAmount != null &&
-            Number(fields.availableAmount) >= 0 &&
-            fields.availableUnit
+            fields.availableAmount != null && Number(fields.availableAmount) >= 0 && fields.availableUnit
                 ? escapeHtml(`${formatNumber(fields.availableAmount)} ${fields.availableUnit}`)
                 : '',
         тег: tag ? escapeHtml(tag) : '',

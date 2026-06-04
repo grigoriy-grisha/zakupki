@@ -23,7 +23,8 @@ interface AdminPurchaseListCardProps {
 }
 
 export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
-    const items = purchase.items ?? [];    const utils = trpc.useUtils();
+    const items = purchase.items ?? [];
+    const utils = trpc.useUtils();
     const updateFulfillmentStatus = trpc.purchases.updateFulfillmentStatus.useMutation({
         onSuccess: () => {
             void utils.purchases.list.invalidate();
@@ -68,11 +69,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     </div>
                 </AppLink>
                 {!isDraft && (
-                    <div
-                        className="pt-1"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                    >
+                    <div className="pt-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <p className="mb-1 text-xs font-medium text-muted-foreground">Этап</p>
                         <PurchaseFulfillmentStatusSelect
                             value={purchase.fulfillmentStatus}

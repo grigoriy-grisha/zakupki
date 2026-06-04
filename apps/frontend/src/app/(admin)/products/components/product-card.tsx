@@ -8,11 +8,7 @@ import { Loader2, Package, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
-import {
-    formatProductCatalogCardLines,
-    type CatalogCardLineRole,
-    type ProductCatalogCardSource,
-} from '../lib';
+import { formatProductCatalogCardLines, type CatalogCardLineRole, type ProductCatalogCardSource } from '../lib';
 import { productPhotoUrl } from '@/lib/product-photo-url';
 
 interface CatalogProductCardProps {

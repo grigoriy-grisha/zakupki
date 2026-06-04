@@ -78,11 +78,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:justify-end">
                     {isDraft && (
                         <>
-                            <Button
-                                variant="outline"
-                                className="w-full sm:w-auto"
-                                onClick={() => setDeleteOpen(true)}
-                            >
+                            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setDeleteOpen(true)}>
                                 <Trash2 className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
                                 <span className="sm:hidden">Удалить</span>
                                 <span className="hidden sm:inline">Удалить черновик</span>
@@ -160,8 +156,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 title="Вы уверены, что хотите завершить закупку?"
                 description={
                     <>
-                        Закупка <strong>{purchase.tag}</strong> будет переведена в статус «Завершена». Участники
-                        больше не смогут оформлять и менять заказы.
+                        Закупка <strong>{purchase.tag}</strong> будет переведена в статус «Завершена». Участники больше
+                        не смогут оформлять и менять заказы.
                     </>
                 }
                 confirmLabel="Завершить закупку"

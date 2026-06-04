@@ -48,9 +48,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
 
     function buildExistingSnapshot(product: ProductFormExisting) {
         const attrIds = (product.attributeValues ?? []).map((v) => v.attribute.id).join(',');
-        const charIds = (product.characteristicValues ?? [])
-            .map((v) => `${v.characteristicId}:${v.value}`)
-            .join(',');
+        const charIds = (product.characteristicValues ?? []).map((v) => `${v.characteristicId}:${v.value}`).join(',');
         const photoIds = product.photos.map((p) => p.id).join(',');
         return `${product.name}|${resolveProductUnitId(product)}|${product.articleNumber ?? ''}|${attrIds}|${charIds}|${photoIds}`;
     }

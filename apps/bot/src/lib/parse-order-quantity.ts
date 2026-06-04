@@ -1,6 +1,4 @@
-export type ParsedOrderQuantity =
-    | { kind: 'add'; amount: number }
-    | { kind: 'subtract'; amount: number };
+export type ParsedOrderQuantity = { kind: 'add'; amount: number } | { kind: 'subtract'; amount: number };
 
 /**
  * Parses quantity from a reply: "10", "+10", "10 гр" — добавить к заказу;

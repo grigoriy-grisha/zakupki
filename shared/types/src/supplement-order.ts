@@ -40,10 +40,7 @@ export function getSupplementMinOrderQty(options: OrderQuantityOptions): number 
 }
 
 /** Минимальное количество в заказе на доборе (не ниже каталожного минимума). */
-export function getSupplementEffectiveMinQty(
-    catalogMinQty: number,
-    options: OrderQuantityOptions,
-): number {
+export function getSupplementEffectiveMinQty(catalogMinQty: number, options: OrderQuantityOptions): number {
     return Math.max(catalogMinQty, getSupplementMinOrderQty(options));
 }
 
@@ -150,10 +147,7 @@ export function getSupplementRemainderPool(bounds: SupplementOrderBounds): numbe
 }
 
 /** Остаток на доборе закончился или меньше мин. — кнопка «+» по шагу недоступна; на этапе REORDER ещё +пачка. */
-export function isSupplementOnlyPacksOrder(
-    bounds: SupplementOrderBounds,
-    options: OrderQuantityOptions,
-): boolean {
+export function isSupplementOnlyPacksOrder(bounds: SupplementOrderBounds, options: OrderQuantityOptions): boolean {
     if (bounds.availableQty == null) return false;
 
     const remainderPool = getSupplementRemainderPool(bounds) ?? 0;
@@ -266,12 +260,7 @@ export function getSupplementOrderQuantityValidationError(
     }
 
     // Когда остаток < пачки: не больше остатка или целые пачки (только REORDER)
-    if (
-        !remainderOnly &&
-        packLabel != null &&
-        remainderPool < packLabel &&
-        quantity > max + 1e-9
-    ) {
+    if (!remainderOnly && packLabel != null && remainderPool < packLabel && quantity > max + 1e-9) {
         return `На добор можно заказать не более ${formatQtyLabel(remainderPool)} ${unit} или целыми пачками — ${formatQtyLabel(packLabel)} ${unit}`;
     }
 

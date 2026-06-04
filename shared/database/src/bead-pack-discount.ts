@@ -1,6 +1,5 @@
 import { dbClient } from './database';
 
-/** Дублирует @zakupki/types — без зависимости database → types (ломает запуск бота через tsx). */
 const BEAD_PACK_PRICE_DISCOUNT_PERCENT_KEY = 'bead_pack_price_discount_percent';
 const DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT = 3;
 

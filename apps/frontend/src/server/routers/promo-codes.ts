@@ -53,6 +53,10 @@ export const promoCodesRouter = router({
     validate: protectedProcedure
         .input(z.object({ code: z.string(), purchaseId: z.number(), orderAmount: z.number() }))
         .query(async ({ ctx, input }) => {
-            return ctx.services.promoCode.validate(input.code.toUpperCase().trim(), input.purchaseId, input.orderAmount);
+            return ctx.services.promoCode.validate(
+                input.code.toUpperCase().trim(),
+                input.purchaseId,
+                input.orderAmount,
+            );
         }),
 });

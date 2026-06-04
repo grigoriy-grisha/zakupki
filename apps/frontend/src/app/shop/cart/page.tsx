@@ -7,10 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { AppLink } from '@/components/app-link';
-import {
-    ShoppingCart, Trash2, ArrowRight,
-    CircleCheck, Clock, CreditCard,
-} from 'lucide-react';
+import { ShoppingCart, Trash2, ArrowRight, CircleCheck, Clock, CreditCard } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-controls';
 import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
@@ -20,11 +17,7 @@ import { PurchaseProductLabel } from '@/components/shared/purchase-product-label
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
-import {
-    PURCHASE_FULFILLMENT_LABELS,
-    isPurchasePaymentOpen,
-    type PurchaseFulfillmentStatus,
-} from '@zakupki/types';
+import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus } from '@zakupki/types';
 
 export default function CartPage() {
     const router = useAppRouter();
@@ -34,14 +27,17 @@ export default function CartPage() {
     const deleteOrder = trpc.orders.deleteOrder.useMutation();
 
     // Group orders by purchase
-    const grouped = new Map<number, {
-        id: number;
-        tag: string;
-        supplier: string;
-        orders: typeof myOrders extends (infer T)[] ? T[] : never;
-        total: number;
-        fulfillmentStatus: string | null;
-    }>();
+    const grouped = new Map<
+        number,
+        {
+            id: number;
+            tag: string;
+            supplier: string;
+            orders: typeof myOrders extends (infer T)[] ? T[] : never;
+            total: number;
+            fulfillmentStatus: string | null;
+        }
+    >();
 
     if (myOrders) {
         for (const order of myOrders) {
@@ -70,7 +66,9 @@ export default function CartPage() {
                 <Skeleton className="h-8 w-48" />
                 {Array.from({ length: 2 }).map((_, i) => (
                     <Card key={i}>
-                        <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+                        <CardHeader>
+                            <Skeleton className="h-6 w-40" />
+                        </CardHeader>
                         <CardContent className="space-y-3">
                             {Array.from({ length: 3 }).map((_, j) => (
                                 <Skeleton key={j} className="h-16 w-full" />
@@ -87,9 +85,7 @@ export default function CartPage() {
             <div className="flex flex-col items-center justify-center py-24 text-center">
                 <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
                 <h2 className="mt-4 text-lg font-medium">Корзина пуста</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    Вы ещё ничего не заказали
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Вы ещё ничего не заказали</p>
                 <Button className="mt-4" onClick={() => router.push('/shop')}>
                     К закупкам
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -133,16 +129,20 @@ export default function CartPage() {
                         </CardHeader>
                         <CardContent className="space-y-0">
                             {group.orders.map((order, idx) => {
-                                const purchaseItem = (order as { purchaseItem?: {
-                                    id: number;
-                                    minQty: unknown;
-                                    product?: ProductLabelSource & {
-                                        photos: { id: number }[];
-                                        unit: { shortName: string; multiplicity: string | number } | null;
-                                        minPackageAmount: string | number | null;
-                                        minPackageUnit: string | null;
-                                    };
-                                } }).purchaseItem;
+                                const purchaseItem = (
+                                    order as {
+                                        purchaseItem?: {
+                                            id: number;
+                                            minQty: unknown;
+                                            product?: ProductLabelSource & {
+                                                photos: { id: number }[];
+                                                unit: { shortName: string; multiplicity: string | number } | null;
+                                                minPackageAmount: string | number | null;
+                                                minPackageUnit: string | null;
+                                            };
+                                        };
+                                    }
+                                ).purchaseItem;
                                 const product = purchaseItem?.product;
                                 const shortName = product?.unit?.shortName ?? 'ед.';
                                 const photo = product?.photos?.[0];
@@ -232,11 +232,18 @@ export default function CartPage() {
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground">Покрыто</p>
-                                        <p className="text-lg font-bold text-success">{totalPaid.toLocaleString('ru-RU')} ₽</p>
+                                        <p className="text-lg font-bold text-success">
+                                            {totalPaid.toLocaleString('ru-RU')} ₽
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground">Осталось</p>
-                                        <p className={cn('text-lg font-bold', remaining > 0 ? 'text-warning' : 'text-success')}>
+                                        <p
+                                            className={cn(
+                                                'text-lg font-bold',
+                                                remaining > 0 ? 'text-warning' : 'text-success',
+                                            )}
+                                        >
                                             {remaining.toLocaleString('ru-RU')} ₽
                                         </p>
                                     </div>
@@ -284,7 +291,8 @@ export default function CartPage() {
 
             <div className="flex items-center justify-between rounded-lg border bg-card p-4">
                 <span className="text-muted-foreground">
-                    Всего {myOrders.length} {myOrders.length === 1 ? 'позиция' : myOrders.length < 5 ? 'позиции' : 'позиций'}
+                    Всего {myOrders.length}{' '}
+                    {myOrders.length === 1 ? 'позиция' : myOrders.length < 5 ? 'позиции' : 'позиций'}
                 </span>
                 <span className="text-lg font-bold">
                     {myOrders.reduce((sum, o) => sum + Number(o.amountDue), 0).toLocaleString('ru-RU')} ₽

@@ -17,13 +17,7 @@ const supplierSchema = z.object({
 });
 type SupplierFormValues = z.infer<typeof supplierSchema>;
 
-export function SupplierFormDialog({
-    mode,
-    item,
-}: {
-    mode: 'create' | 'edit';
-    item?: { id: number; name: string };
-}) {
+export function SupplierFormDialog({ mode, item }: { mode: 'create' | 'edit'; item?: { id: number; name: string } }) {
     const [open, setOpen] = useState(false);
     const createMutation = useCreateSupplier();
     const updateMutation = useUpdateSupplier();
@@ -85,12 +79,7 @@ export function SupplierFormDialog({
                     className="space-y-4"
                 >
                     <div className="space-y-2">
-                        <Input
-                            id="supplierName"
-                            autoFocus
-                            placeholder="Поставщик №1"
-                            {...form.register('name')}
-                        />
+                        <Input id="supplierName" autoFocus placeholder="Поставщик №1" {...form.register('name')} />
                         {form.formState.errors.name && (
                             <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
                         )}
@@ -107,4 +96,3 @@ export function SupplierFormDialog({
         </Dialog>
     );
 }
-

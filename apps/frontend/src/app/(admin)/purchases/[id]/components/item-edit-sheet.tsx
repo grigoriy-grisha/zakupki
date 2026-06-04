@@ -15,10 +15,7 @@ export interface ItemEditSheetProps {
 
 export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: ItemEditSheetProps) {
     const utils = trpc.useUtils();
-    const { data: purchase, isLoading } = trpc.purchases.getById.useQuery(
-        { id: purchaseId },
-        { enabled: open },
-    );
+    const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId }, { enabled: open });
     const items = (purchase as { items?: any[] })?.items ?? [];
     const item = items.find((i: any) => i.id === purchaseItemId);
 
@@ -64,9 +61,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                         loadSavedDescription
                         purchaseTag={purchase?.tag}
                         initialTiers={tiers}
-                        onSave={(data) =>
-                            updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })
-                        }
+                        onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
                         isSaving={updateMutation.isPending}
                         submitLabel={published ? 'Сохранить и обновить пост в TG' : 'Сохранить'}
                     />

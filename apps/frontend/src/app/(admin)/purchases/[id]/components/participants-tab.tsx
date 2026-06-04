@@ -45,31 +45,29 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                    <span className="text-lg font-medium text-foreground">Участники</span>
-                    <span>{data.userIds.length} чел.</span>
-                    <span>
-                        К оплате:{' '}
-                        <span className="font-medium text-foreground">{data.totalDue.toLocaleString('ru-RU')} ₽</span>
+                <span className="text-lg font-medium text-foreground">Участники</span>
+                <span>{data.userIds.length} чел.</span>
+                <span>
+                    К оплате:{' '}
+                    <span className="font-medium text-foreground">{data.totalDue.toLocaleString('ru-RU')} ₽</span>
+                </span>
+                <span>
+                    Покрыто:{' '}
+                    <span
+                        className={cn(
+                            'font-medium',
+                            data.totalPaid >= data.totalDue ? 'text-success' : 'text-foreground',
+                        )}
+                    >
+                        {data.totalPaid.toLocaleString('ru-RU')} ₽
                     </span>
+                </span>
+                {data.totalPending > 0 && (
                     <span>
-                        Покрыто:{' '}
-                        <span
-                            className={cn(
-                                'font-medium',
-                                data.totalPaid >= data.totalDue ? 'text-success' : 'text-foreground',
-                            )}
-                        >
-                            {data.totalPaid.toLocaleString('ru-RU')} ₽
-                        </span>
+                        Ожидает:{' '}
+                        <span className="font-medium text-warning">{data.totalPending.toLocaleString('ru-RU')} ₽</span>
                     </span>
-                    {data.totalPending > 0 && (
-                        <span>
-                            Ожидает:{' '}
-                            <span className="font-medium text-warning">
-                                {data.totalPending.toLocaleString('ru-RU')} ₽
-                            </span>
-                        </span>
-                    )}
+                )}
             </div>
 
             <div className="overflow-x-auto rounded-md border">

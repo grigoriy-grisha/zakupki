@@ -27,9 +27,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
     return (
         <aside className={cn('flex w-72 shrink-0 flex-col bg-card overflow-y-auto', className)}>
             <div className="p-3">
-                <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Закупки
-                </p>
+                <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Закупки</p>
 
                 {isLoading ? (
                     <div className="space-y-2 px-2">
@@ -44,7 +42,8 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                         {purchases.map((purchase) => {
                             const isActive = activePurchaseId === purchase.id;
                             const isSupplement = purchase.status === 'SUPPLEMENT';
-                            const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
+                            const fulfillmentStatus = (purchase.fulfillmentStatus ??
+                                'COLLECTION') as PurchaseFulfillmentStatus;
                             const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
 
                             return (

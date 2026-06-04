@@ -14,9 +14,7 @@ const ROLE_CACHE_TTL_MS = 60_000; // 1 minute
 export class UserService {
     private roleCache = new Map<number, { role: RoleKind; expiresAt: number }>();
 
-    constructor(
-        private repo: UserRepository,
-    ) {}
+    constructor(private repo: UserRepository) {}
 
     /**
      * Returns the user's role with in-memory TTL caching.

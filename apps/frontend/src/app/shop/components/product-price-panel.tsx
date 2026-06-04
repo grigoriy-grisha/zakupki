@@ -14,12 +14,7 @@ function formatQty(amount: number): string {
     return amount % 1 === 0 ? String(amount) : amount.toFixed(3).replace(/\.?0+$/, '');
 }
 
-export function ProductPricePanel({
-    product,
-    priceOverride,
-    unitShort,
-    packDiscountPercent,
-}: ProductPricePanelProps) {
+export function ProductPricePanel({ product, priceOverride, unitShort, packDiscountPercent }: ProductPricePanelProps) {
     const packInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
 
     if (priceOverride != null && priceOverride !== '') {
@@ -29,9 +24,7 @@ export function ProductPricePanel({
                 <div className="flex items-baseline justify-between gap-4">
                     <span className="text-lg text-muted-foreground">Цена</span>
                     <p>
-                        <span className="text-3xl font-bold text-primary">
-                            {override.toLocaleString('ru-RU')} ₽
-                        </span>
+                        <span className="text-3xl font-bold text-primary">{override.toLocaleString('ru-RU')} ₽</span>
                         <span className="text-lg text-muted-foreground">/{unitShort}</span>
                     </p>
                 </div>
@@ -45,11 +38,7 @@ export function ProductPricePanel({
     const packUnit = product.supplierPackageUnit;
     const packPrice = product.supplierPackagePrice;
     const hasSupplierPack =
-        packAmount != null &&
-        packUnit &&
-        packPrice != null &&
-        Number(packAmount) > 0 &&
-        Number(packPrice) > 0;
+        packAmount != null && packUnit && packPrice != null && Number(packAmount) > 0 && Number(packPrice) > 0;
 
     if (tiers.length === 0 && !hasSupplierPack) {
         const perUnit = Number(product.pricePerUnit);

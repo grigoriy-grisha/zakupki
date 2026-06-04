@@ -79,9 +79,7 @@ export function ShopHeader() {
                             </Button>
                         </>
                     ) : (
-                        <AppLink
-                            href={platform ? withPlatformPrefix('/login', platform) : '/login'}
-                        >
+                        <AppLink href={platform ? withPlatformPrefix('/login', platform) : '/login'}>
                             <Button variant="outline" size="sm">
                                 <LogIn className="mr-2 h-4 w-4" />
                                 Войти

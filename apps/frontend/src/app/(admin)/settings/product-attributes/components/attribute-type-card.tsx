@@ -13,7 +13,17 @@ import {
     DropdownMenuCheckboxItem,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ChevronUp, ChevronDown, ChevronRight, Trash2, Plus, FolderPlus, MoreVertical, Pencil, Tag } from 'lucide-react';
+import {
+    ChevronUp,
+    ChevronDown,
+    ChevronRight,
+    Trash2,
+    Plus,
+    FolderPlus,
+    MoreVertical,
+    Pencil,
+    Tag,
+} from 'lucide-react';
 import {
     useProductAttributeList,
     useDeleteProductAttribute,
@@ -42,14 +52,9 @@ type AttributeValueRowData = {
     characteristics?: { position?: number; characteristic: { id: number; name: string } }[];
 };
 
-function getOrderedCharacteristicIds(
-    links: AttributeValueRowData['characteristics'],
-): number[] {
+function getOrderedCharacteristicIds(links: AttributeValueRowData['characteristics']): number[] {
     return [...(links ?? [])]
-        .sort(
-            (a, b) =>
-                (a.position ?? 0) - (b.position ?? 0) || a.characteristic.id - b.characteristic.id,
-        )
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.characteristic.id - b.characteristic.id)
         .map((l) => l.characteristic.id);
 }
 
@@ -158,9 +163,7 @@ function BrandRow({
                         <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuCheckboxItem
                                 checked={brand.showInTitle !== false}
-                                onCheckedChange={(v) =>
-                                    updateValue.mutate({ id: brand.id, showInTitle: v === true })
-                                }
+                                onCheckedChange={(v) => updateValue.mutate({ id: brand.id, showInTitle: v === true })}
                             >
                                 Включать в заголовок описания
                             </DropdownMenuCheckboxItem>
@@ -268,12 +271,7 @@ export function AttributeTypeCard({
     return (
         <div>
             <div className="group flex items-center gap-1 rounded-md py-0.5 pr-1 hover:bg-accent/40">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => setExpanded((v) => !v)}
-                >
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setExpanded((v) => !v)}>
                     <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
                 </Button>
                 <Input
@@ -399,8 +397,8 @@ export function AttributeTypeCard({
                 title="Удалить тип атрибута"
                 description={
                     <>
-                        Удалить тип <strong>{type.name}</strong> со всеми значениями, брендами и подтипами? Эти
-                        атрибуты также пропадут у товаров.
+                        Удалить тип <strong>{type.name}</strong> со всеми значениями, брендами и подтипами? Эти атрибуты
+                        также пропадут у товаров.
                     </>
                 }
                 onConfirm={() => deleteType.mutate({ id: type.id }, { onSuccess: () => setDeleteTypeOpen(false) })}
@@ -419,10 +417,7 @@ export function AttributeTypeCard({
                 }
                 onConfirm={() => {
                     if (!deleteValueTarget) return;
-                    deleteValue.mutate(
-                        { id: deleteValueTarget.id },
-                        { onSuccess: () => setDeleteValueTarget(null) },
-                    );
+                    deleteValue.mutate({ id: deleteValueTarget.id }, { onSuccess: () => setDeleteValueTarget(null) });
                 }}
                 loading={deleteValue.isPending}
             />

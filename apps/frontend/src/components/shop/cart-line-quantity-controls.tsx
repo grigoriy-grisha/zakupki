@@ -5,11 +5,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/client/trpc';
-import {
-    getMinOrderQuantity,
-    getOrderQuantityStep,
-    snapOrderQuantity,
-} from '@zakupki/types';
+import { getMinOrderQuantity, getOrderQuantityStep, snapOrderQuantity } from '@zakupki/types';
 
 type CartLineQuantityControlsProps = {
     orderId: number;
@@ -93,9 +89,7 @@ export function CartLineQuantityControls({
             >
                 <Minus className="h-3.5 w-3.5" />
             </Button>
-            <span className="min-w-[2.5rem] px-0.5 text-center text-sm font-medium tabular-nums">
-                {quantity}
-            </span>
+            <span className="min-w-[2.5rem] px-0.5 text-center text-sm font-medium tabular-nums">{quantity}</span>
             <Button
                 type="button"
                 variant="outline"

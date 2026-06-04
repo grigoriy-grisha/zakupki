@@ -145,12 +145,10 @@ export const purchasesRouter = router({
             return { items, skippedCount, tgPublish };
         }),
 
-    publishItemToTg: adminProcedure
-        .input(z.object({ purchaseItemId: z.number() }))
-        .mutation(async ({ ctx, input }) => {
-            await ctx.services.purchase.ensureCanPublishItem(input.purchaseItemId);
-            return ctx.services.telegramPublish.publishPurchaseItem(input.purchaseItemId);
-        }),
+    publishItemToTg: adminProcedure.input(z.object({ purchaseItemId: z.number() })).mutation(async ({ ctx, input }) => {
+        await ctx.services.purchase.ensureCanPublishItem(input.purchaseItemId);
+        return ctx.services.telegramPublish.publishPurchaseItem(input.purchaseItemId);
+    }),
 
     removeItem: adminProcedure.input(z.object({ purchaseItemId: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.purchase.removeItem(input.purchaseItemId);

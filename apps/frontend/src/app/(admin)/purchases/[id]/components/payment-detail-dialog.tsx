@@ -32,9 +32,7 @@ interface PaymentDetailDialogProps {
 export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }: PaymentDetailDialogProps) {
     const status = payment.status;
     const cfg = PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING;
-    const hasProof = Boolean(
-        (payment as { proofObjectKey?: string | null }).proofObjectKey || payment.proofData,
-    );
+    const hasProof = Boolean((payment as { proofObjectKey?: string | null }).proofObjectKey || payment.proofData);
     const userName = payment.user
         ? [payment.user.firstName, payment.user.lastName].filter(Boolean).join(' ')
         : `User #${payment.userId}`;

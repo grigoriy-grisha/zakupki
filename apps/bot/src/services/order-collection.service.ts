@@ -252,24 +252,21 @@ export class OrderCollectionService {
                 purchaseItem.availableQty !== null && purchaseItem.availableQty !== undefined
                     ? Number(purchaseItem.availableQty)
                     : null;
-            const packAmount = purchaseItem.product.supplierPackageAmount != null
-                ? Number(purchaseItem.product.supplierPackageAmount)
-                : null;
-            const freeRemainder = calculateFreeRemainder(
-                purchaseItem.orderLines ?? [],
-                packAmount,
-            );
+            const packAmount =
+                purchaseItem.product.supplierPackageAmount != null
+                    ? Number(purchaseItem.product.supplierPackageAmount)
+                    : null;
+            const freeRemainder = calculateFreeRemainder(purchaseItem.orderLines ?? [], packAmount);
             const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainder;
 
-            const validationError =
-                isSupplement
-                    ? getSupplementOrderQuantityValidationError(newQuantity, orderQtyOptions, {
-                          availableQty: effectiveAvailableQty,
-                          currentQuantity: currentQty,
-                          supplierPackageAmount: packAmount,
-                          remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
-                      })
-                    : getOrderQuantityValidationError(newQuantity, orderQtyOptions);
+            const validationError = isSupplement
+                ? getSupplementOrderQuantityValidationError(newQuantity, orderQtyOptions, {
+                      availableQty: effectiveAvailableQty,
+                      currentQuantity: currentQty,
+                      supplierPackageAmount: packAmount,
+                      remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
+                  })
+                : getOrderQuantityValidationError(newQuantity, orderQtyOptions);
             if (validationError) {
                 return {
                     ok: false,

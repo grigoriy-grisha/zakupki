@@ -31,9 +31,7 @@ export function PurchasePaymentDialog({
 }: PurchasePaymentDialogProps) {
     const form = usePaymentForm(purchaseId, remaining);
 
-    const payLabel = hasPending
-        ? 'Ожидает подтверждения'
-        : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`;
+    const payLabel = hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`;
 
     const payButton = !paymentOpen ? (
         <div className={cn('relative w-full', buttonClassName)}>
@@ -161,14 +159,11 @@ export function PurchasePaymentDialog({
                                     </span>
                                 </div>
                                 <p className="text-xs font-medium text-success">
-                                    К оплате:{' '}
-                                    {(form.numAmount - form.appliedPromo.discount).toLocaleString('ru-RU')} ₽
+                                    К оплате: {(form.numAmount - form.appliedPromo.discount).toLocaleString('ru-RU')} ₽
                                 </p>
                             </div>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                            Максимум: {remaining.toLocaleString('ru-RU')} ₽
-                        </p>
+                        <p className="text-xs text-muted-foreground">Максимум: {remaining.toLocaleString('ru-RU')} ₽</p>
                     </div>
 
                     <div className="space-y-2">

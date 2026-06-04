@@ -21,8 +21,8 @@ export function CharacteristicsTab() {
         <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between gap-4">
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                    Справочник характеристик для товаров. У каждого значения в справочниках товаров выберите
-                    нужные характеристики — при создании товара появятся поля для ввода значений.
+                    Справочник характеристик для товаров. У каждого значения в справочниках товаров выберите нужные
+                    характеристики — при создании товара появятся поля для ввода значений.
                 </p>
                 <CharacteristicFormDialog mode="create" />
             </div>
@@ -77,10 +77,7 @@ export function CharacteristicsTab() {
                 }
                 onConfirm={() => {
                     if (!deleteTarget) return;
-                    deleteMutation.mutate(
-                        { id: deleteTarget.id },
-                        { onSuccess: () => setDeleteTarget(null) },
-                    );
+                    deleteMutation.mutate({ id: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
                 }}
                 loading={deleteMutation.isPending}
             />

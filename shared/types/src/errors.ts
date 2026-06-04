@@ -12,10 +12,7 @@ export class AppError extends Error {
 /** Resource not found */
 export class NotFoundError extends AppError {
     constructor(resource: string, id?: string | number) {
-        super(
-            'NOT_FOUND',
-            id != null ? `${resource} #${id} не найден` : `${resource} не найден`,
-        );
+        super('NOT_FOUND', id != null ? `${resource} #${id} не найден` : `${resource} не найден`);
     }
 }
 
@@ -39,10 +36,7 @@ export class InsufficientStockError extends BusinessRuleError {
     public readonly requested: number;
 
     constructor(available: number, requested: number) {
-        super(
-            'INSUFFICIENT_STOCK',
-            `Свободный остаток: ${available}. Нельзя заказать ${requested}`,
-        );
+        super('INSUFFICIENT_STOCK', `Свободный остаток: ${available}. Нельзя заказать ${requested}`);
         this.available = available;
         this.requested = requested;
     }
@@ -51,20 +45,14 @@ export class InsufficientStockError extends BusinessRuleError {
 /** Purchase is not in a status that allows ordering */
 export class PurchaseNotActiveError extends BusinessRuleError {
     constructor(status: string) {
-        super(
-            'PURCHASE_NOT_ACTIVE',
-            `Закупка в статусе "${status}" — заказы не принимаются`,
-        );
+        super('PURCHASE_NOT_ACTIVE', `Закупка в статусе "${status}" — заказы не принимаются`);
     }
 }
 
 /** Payment status transition is invalid */
 export class InvalidPaymentTransitionError extends BusinessRuleError {
     constructor(from: string, to: string) {
-        super(
-            'INVALID_PAYMENT_TRANS',
-            `Нельзя перевести платёж из "${from}" в "${to}"`,
-        );
+        super('INVALID_PAYMENT_TRANS', `Нельзя перевести платёж из "${from}" в "${to}"`);
     }
 }
 

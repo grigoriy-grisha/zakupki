@@ -52,9 +52,7 @@ export class OrderService {
         const orderQtyOptions = {
             multiplicity: unit ? Number(unit.multiplicity) : 1,
             minPackageAmount:
-                purchaseItem.product.minPackageAmount != null
-                    ? Number(purchaseItem.product.minPackageAmount)
-                    : null,
+                purchaseItem.product.minPackageAmount != null ? Number(purchaseItem.product.minPackageAmount) : null,
             minPackageUnit: purchaseItem.product.minPackageUnit,
             purchaseItemMinQty: purchaseItem.minQty != null ? Number(purchaseItem.minQty) : null,
             unitShort: unit?.shortName ?? 'ед.',
@@ -68,13 +66,11 @@ export class OrderService {
             purchaseItem.availableQty !== null && purchaseItem.availableQty !== undefined
                 ? Number(purchaseItem.availableQty)
                 : null;
-        const packAmount = purchaseItem.product.supplierPackageAmount != null
-            ? Number(purchaseItem.product.supplierPackageAmount)
-            : null;
-        const freeRemainder = calculateFreeRemainder(
-            (purchaseItem as any).orderLines ?? [],
-            packAmount,
-        );
+        const packAmount =
+            purchaseItem.product.supplierPackageAmount != null
+                ? Number(purchaseItem.product.supplierPackageAmount)
+                : null;
+        const freeRemainder = calculateFreeRemainder((purchaseItem as any).orderLines ?? [], packAmount);
         const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainder;
 
         // Защита пачек на доборе
@@ -86,15 +82,19 @@ export class OrderService {
             };
         }
 
-        const validationError =
-            isSupplement
-                ? getSupplementOrderQuantityValidationError(quantity, orderQtyOptions, {
+        const validationError = isSupplement
+            ? getSupplementOrderQuantityValidationError(
+                  quantity,
+                  orderQtyOptions,
+                  {
                       availableQty: effectiveAvailableQty,
                       currentQuantity: currentQty,
                       supplierPackageAmount: packAmount,
                       remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
-                  }, packProtection)
-                : getOrderQuantityValidationError(quantity, orderQtyOptions);
+                  },
+                  packProtection,
+              )
+            : getOrderQuantityValidationError(quantity, orderQtyOptions);
         if (validationError) {
             throw new ValidationError(validationError);
         }

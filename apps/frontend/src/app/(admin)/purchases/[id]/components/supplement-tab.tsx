@@ -35,10 +35,7 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allItems = (purchase as any)?.items ?? [];
-    const remainderItems = useMemo(
-        () => allItems.filter((item: any) => isOnRemainder(item)),
-        [allItems],
-    );
+    const remainderItems = useMemo(() => allItems.filter((item: any) => isOnRemainder(item)), [allItems]);
 
     if (isLoading || !purchase) {
         return <Skeleton className="h-64" />;

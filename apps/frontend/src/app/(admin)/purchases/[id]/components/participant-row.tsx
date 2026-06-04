@@ -163,9 +163,7 @@ export function ParticipantRow({
                                 {/* Left: Orders */}
                                 <div>
                                     <p className="mb-2 text-sm font-medium text-muted-foreground">
-                                        {purchaseOrderId != null
-                                            ? `Заказ №${purchaseOrderId} · позиции`
-                                            : 'Заказы'}
+                                        {purchaseOrderId != null ? `Заказ №${purchaseOrderId} · позиции` : 'Заказы'}
                                     </p>
                                     <div className="rounded-md border bg-background">
                                         <Table>
@@ -230,8 +228,8 @@ export function ParticipantRow({
                                                 const childAmount = child ? Number(child.amount) : 0;
                                                 const promoCode = child?.promoCode;
                                                 const hasProof = Boolean(
-                                                    (p as { proofObjectKey?: string | null })
-                                                        .proofObjectKey || p.proofData,
+                                                    (p as { proofObjectKey?: string | null }).proofObjectKey ||
+                                                    p.proofData,
                                                 );
 
                                                 return (

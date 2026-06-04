@@ -61,17 +61,10 @@ async function showPurchaseDetail(ctx: CustomContext, purchaseId: number) {
         | PurchaseFulfillmentStatus
         | undefined;
     const paymentOpen = isPurchasePaymentOpen(fulfillmentStatus);
-    const canPay = Boolean(
-        paymentOpen && payment && payment.remaining > 0 && !payment.hasPending,
-    );
+    const canPay = Boolean(paymentOpen && payment && payment.remaining > 0 && !payment.hasPending);
 
     const text = orderService.formatPurchaseDetailMessage(detail, payment, fulfillmentStatus);
-    const keyboard = buildDetailKeyboard(
-        purchaseId,
-        canPay,
-        paymentOpen,
-        Boolean(payment && payment.remaining > 0),
-    );
+    const keyboard = buildDetailKeyboard(purchaseId, canPay, paymentOpen, Boolean(payment && payment.remaining > 0));
 
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(text, {

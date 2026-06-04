@@ -10,11 +10,7 @@ export async function ensurePurchaseOrder(tx: TransactionClient, userId: number,
     });
 }
 
-export async function deletePurchaseOrderIfNoLines(
-    tx: TransactionClient,
-    userId: number,
-    purchaseId: number,
-) {
+export async function deletePurchaseOrderIfNoLines(tx: TransactionClient, userId: number, purchaseId: number) {
     const count = await tx.orderLine.count({
         where: { userId, purchaseItem: { purchaseId } },
     });

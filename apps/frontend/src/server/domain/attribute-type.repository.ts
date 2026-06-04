@@ -6,18 +6,13 @@ export interface AttributeTypeWriteData {
 }
 
 export class AttributeTypeRepository {
-
     async list() {
         return dbClient.attributeType.findMany({
             orderBy: [{ position: 'asc' }, { id: 'asc' }],
         });
     }
 
-    async create(data: {
-        name: string;
-        parentId?: number | null;
-        showInTitle?: boolean;
-    }) {
+    async create(data: { name: string; parentId?: number | null; showInTitle?: boolean }) {
         const last = await dbClient.attributeType.findFirst({ orderBy: { position: 'desc' } });
         const position = (last?.position ?? -1) + 1;
         return dbClient.attributeType.create({

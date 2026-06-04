@@ -86,8 +86,17 @@ export function ProductCard({
         orderLines: item.orderLines,
         supplementPacksAdded: supplementPacksAddedProp,
     });
-    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed, canRemoveStep, canRemovePack } =
-        qtyCtx;
+    const {
+        uiStep,
+        effectiveMinQty,
+        snap,
+        isValid,
+        supplementBounds,
+        supplementOnlyPacks,
+        supplementPacksAllowed,
+        canRemoveStep,
+        canRemovePack,
+    } = qtyCtx;
 
     const [quantity, setQuantity] = useState(currentQuantity);
     const [isFlying, setIsFlying] = useState(false);
@@ -139,9 +148,9 @@ export function ProductCard({
     function submit(qty: number) {
         if (qty < effectiveMinQty) {
             if (hasOrder) {
-                const line = utils.orders.getMyOrders.getData()?.find(
-                    (o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId,
-                );
+                const line = utils.orders.getMyOrders
+                    .getData()
+                    ?.find((o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId);
                 if (line) {
                     deleteMutation.mutate({ id: line.id });
                 }
@@ -168,9 +177,9 @@ export function ProductCard({
         if (orderBusy) return;
         const next = quantity - step;
         if (next < effectiveMinQty) {
-            const line = utils.orders.getMyOrders.getData()?.find(
-                (o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId,
-            );
+            const line = utils.orders.getMyOrders
+                .getData()
+                ?.find((o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId);
             if (line) {
                 deleteMutation.mutate({ id: line.id });
             } else {
@@ -208,20 +217,19 @@ export function ProductCard({
 
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                 <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
-                {isSupplement && supplementBounds && (() => {
-                    const remainderBadge = formatSupplementPhotoRemainderBadge(
-                        supplementBounds,
-                        orderQtyOptions,
-                    );
-                    if (!remainderBadge) return null;
-                    return (
-                        <div className="pointer-events-none absolute bottom-1.5 left-1.5 right-1.5 z-[1]">
-                            <div className="truncate rounded-md bg-warning-50 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-tight text-warning shadow-sm">
-                                {remainderBadge}
+                {isSupplement &&
+                    supplementBounds &&
+                    (() => {
+                        const remainderBadge = formatSupplementPhotoRemainderBadge(supplementBounds, orderQtyOptions);
+                        if (!remainderBadge) return null;
+                        return (
+                            <div className="pointer-events-none absolute bottom-1.5 left-1.5 right-1.5 z-[1]">
+                                <div className="truncate rounded-md bg-warning-50 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-tight text-warning shadow-sm">
+                                    {remainderBadge}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })()}
+                        );
+                    })()}
                 {hasOrder && !isSoldOut && (
                     <>
                         <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">

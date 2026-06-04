@@ -36,10 +36,7 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
     }, []);
 
     async function refreshProductPhotos() {
-        await Promise.all([
-            utils.products.list.invalidate(),
-            utils.products.getById.invalidate({ id: productId }),
-        ]);
+        await Promise.all([utils.products.list.invalidate(), utils.products.getById.invalidate({ id: productId })]);
     }
 
     async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {

@@ -60,7 +60,13 @@ export class OrderRepository {
                 if (delta !== 0 && purchaseItem.availableQty !== null) {
                     const available = Number(purchaseItem.availableQty);
                     if (packSize && packSize > 0 && oldPacks > 0) {
-                        const stockDelta = calcSupplementStockChange(oldQuantity, quantity, oldPacks, newPacks, packSize);
+                        const stockDelta = calcSupplementStockChange(
+                            oldQuantity,
+                            quantity,
+                            oldPacks,
+                            newPacks,
+                            packSize,
+                        );
                         if (stockDelta > 0) {
                             const decrement = Math.min(stockDelta, available);
                             if (decrement < stockDelta) {
@@ -102,8 +108,20 @@ export class OrderRepository {
 
             return tx.orderLine.upsert({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
-                update: { quantity, amountDue, supplementPacksAdded: newPacks, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
-                create: { purchaseItemId, userId, quantity, amountDue, supplementPacksAdded: newPacks, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
+                update: {
+                    quantity,
+                    amountDue,
+                    supplementPacksAdded: newPacks,
+                    ...(tgChatMessageId != null ? { tgChatMessageId } : {}),
+                },
+                create: {
+                    purchaseItemId,
+                    userId,
+                    quantity,
+                    amountDue,
+                    supplementPacksAdded: newPacks,
+                    ...(tgChatMessageId != null ? { tgChatMessageId } : {}),
+                },
             });
         });
     }

@@ -1,9 +1,4 @@
-import {
-    computeDiscountedPackPrice,
-    isGramSupplierPackProduct,
-    parsePriceTiers,
-    type PriceTier,
-} from '@zakupki/types';
+import { computeDiscountedPackPrice, isGramSupplierPackProduct, parsePriceTiers, type PriceTier } from '@zakupki/types';
 
 export function getProductPriceTiers(priceTiers: unknown): PriceTier[] {
     return parsePriceTiers(priceTiers);

@@ -53,10 +53,10 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
         const chatType = ctx.chat?.type;
         if (chatType === 'group' || chatType === 'supergroup') {
             const isAutoForward = ctx.message?.is_automatic_forward;
-            const isOrderReply = ctx.message?.reply_to_message && ctx.message.text &&
-                isOrderCollectionMessage(ctx.chat.id, ctx.message);
+            const isOrderReply =
+                ctx.message?.reply_to_message && ctx.message.text && isOrderCollectionMessage(ctx.chat.id, ctx.message);
             if (!isAutoForward && !isOrderReply) {
-                return; 
+                return;
             }
         }
         await next();

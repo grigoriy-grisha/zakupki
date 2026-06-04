@@ -167,37 +167,25 @@ describe('isSupplementOnlyPacksOrder', () => {
 
     it('true when remainder is zero', () => {
         expect(
-            isSupplementOnlyPacksOrder(
-                { availableQty: 0, currentQuantity: 0, supplierPackageAmount: 45 },
-                optsGr,
-            ),
+            isSupplementOnlyPacksOrder({ availableQty: 0, currentQuantity: 0, supplierPackageAmount: 45 }, optsGr),
         ).toBe(true);
     });
 
     it('true when remainder below supplement min', () => {
         expect(
-            isSupplementOnlyPacksOrder(
-                { availableQty: 8, currentQuantity: 0, supplierPackageAmount: 45 },
-                optsGr,
-            ),
+            isSupplementOnlyPacksOrder({ availableQty: 8, currentQuantity: 0, supplierPackageAmount: 45 }, optsGr),
         ).toBe(true);
     });
 
     it('false when unlimited stock', () => {
         expect(
-            isSupplementOnlyPacksOrder(
-                { availableQty: null, currentQuantity: 0, supplierPackageAmount: 45 },
-                optsGr,
-            ),
+            isSupplementOnlyPacksOrder({ availableQty: null, currentQuantity: 0, supplierPackageAmount: 45 }, optsGr),
         ).toBe(false);
     });
 
     it('false when enough remainder for partial order', () => {
         expect(
-            isSupplementOnlyPacksOrder(
-                { availableQty: 40, currentQuantity: 0, supplierPackageAmount: 45 },
-                optsGr,
-            ),
+            isSupplementOnlyPacksOrder({ availableQty: 40, currentQuantity: 0, supplierPackageAmount: 45 }, optsGr),
         ).toBe(false);
     });
 });

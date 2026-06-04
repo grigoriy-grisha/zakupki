@@ -8,10 +8,7 @@ import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants'
 import { PurchaseItemRepository } from '../domain/repositories/purchase-item.repository';
 import type { ChannelPostPhoto } from '../domain/types';
 
-import {
-    postShopCommentInDiscussionWithRetry,
-    waitUntilShopCommentPosted,
-} from '../lib/post-shop-comment';
+import { postShopCommentInDiscussionWithRetry, waitUntilShopCommentPosted } from '../lib/post-shop-comment';
 import {
     buildProductPostText,
     getChannelIdFromEnv,
@@ -24,10 +21,7 @@ export class ChannelPostService {
     private repo = new PurchaseItemRepository();
     private channelId = getChannelIdFromEnv();
 
-    constructor(
-        private api: Api,
-    ) {
-    }
+    constructor(private api: Api) {}
 
     setupWorker(redis: RedisClient): TelegramChannelPostQueue {
         const queue = new TelegramChannelPostQueue(redis);
@@ -94,9 +88,11 @@ export class ChannelPostService {
         await this.createPost(purchaseItemId, text, photo);
     }
 
-    private async fetchPhoto(
-        photo: { id: number; objectKey: string; mimeType: string },
-    ): Promise<ChannelPostPhoto | undefined> {
+    private async fetchPhoto(photo: {
+        id: number;
+        objectKey: string;
+        mimeType: string;
+    }): Promise<ChannelPostPhoto | undefined> {
         const data = await loadProductPhoto(photo.objectKey);
         if (data?.length) {
             return productPhotoToAttachment(data, photo.mimeType);
@@ -140,12 +136,7 @@ export class ChannelPostService {
         }
     }
 
-    private async applyPostEdit(
-        chatId: string,
-        msgId: number,
-        text: string,
-        photo?: ChannelPostPhoto,
-    ) {
+    private async applyPostEdit(chatId: string, msgId: number, text: string, photo?: ChannelPostPhoto) {
         const caption = text.slice(0, TELEGRAM_CAPTION_MAX);
         const messageText = text.slice(0, TELEGRAM_MESSAGE_MAX);
 
@@ -190,11 +181,7 @@ export class ChannelPostService {
         }
     }
 
-    private async createPost(
-        purchaseItemId: number,
-        text: string,
-        photo?: ChannelPostPhoto,
-    ) {
+    private async createPost(purchaseItemId: number, text: string, photo?: ChannelPostPhoto) {
         console.log(`[TG queue] Item ${purchaseItemId}: photo=${!!photo}, text length=${text.length}`);
 
         const { messageId } = await this.publishToChannel(text, photo);

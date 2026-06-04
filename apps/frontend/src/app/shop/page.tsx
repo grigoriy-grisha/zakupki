@@ -36,9 +36,7 @@ export default function ShopPage() {
             <div className="flex flex-col items-center justify-center py-24 text-center">
                 <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
                 <h2 className="mt-4 text-lg font-medium">Нет активных закупок</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    Сейчас нет открытых закупок для участия
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Сейчас нет открытых закупок для участия</p>
             </div>
         );
     }

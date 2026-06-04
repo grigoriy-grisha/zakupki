@@ -72,11 +72,7 @@ function sortAttributeValuesByTypeTree(
     });
 }
 
-function typeHasShowInTitle(
-    typeId: number,
-    maps: TypeMaps,
-    showInTitleByTypeId?: ShowInTitleByTypeId,
-): boolean {
+function typeHasShowInTitle(typeId: number, maps: TypeMaps, showInTitleByTypeId?: ShowInTitleByTypeId): boolean {
     if (showInTitleByTypeId && typeId in showInTitleByTypeId) {
         return showInTitleByTypeId[typeId];
     }
@@ -215,10 +211,7 @@ function orderedValues(
 }
 
 /** Все значения атрибутов товара по порядку дерева типов. */
-export function getProductAttributeNames(
-    product: ProductLabelSource,
-    attributeTypes?: AttributeTypeMeta[],
-): string[] {
+export function getProductAttributeNames(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string[] {
     return orderedValues(product, attributeTypes)
         .map((v) => formatAttributeValueName(v))
         .filter((n): n is string => Boolean(n));
@@ -291,11 +284,7 @@ function shouldIncludeTypeNameInTitle(
 }
 
 /** Тип или его предок/потомок участвует в первой строке заголовка. */
-function isTypeInTitleBranch(
-    typeId: number,
-    maps: TypeMaps,
-    showInTitleByTypeId?: ShowInTitleByTypeId,
-): boolean {
+function isTypeInTitleBranch(typeId: number, maps: TypeMaps, showInTitleByTypeId?: ShowInTitleByTypeId): boolean {
     return (
         typeHasShowInTitle(typeId, maps, showInTitleByTypeId) ||
         typeOrAncestorShowsInTitle(typeId, maps, showInTitleByTypeId) ||
@@ -311,7 +300,9 @@ export function getProductTitleAttributeNames(
 ): string[] {
     if (!attributeTypes?.length) {
         return orderedValues(product, attributeTypes)
-            .filter((v) => isShowInTitle(v, showInTitleByTypeId, attributeTypes) && attributeValueShowsInTitle(v.attribute))
+            .filter(
+                (v) => isShowInTitle(v, showInTitleByTypeId, attributeTypes) && attributeValueShowsInTitle(v.attribute),
+            )
             .map((v) => v.attribute.name?.trim())
             .filter((n): n is string => Boolean(n));
     }
@@ -357,19 +348,15 @@ export function buildShowInTitleByTypeId(
 }
 
 /** Подпись: MIYUKI · Delica 11/0 · Цилиндр · 11/0 · DB-0002 */
-export function formatProductAttributesLine(
-    product: ProductLabelSource,
-    attributeTypes?: AttributeTypeMeta[],
-): string {
+export function formatProductAttributesLine(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string {
     const attrNames = getProductAttributeNames(product, attributeTypes);
     const brandName = product.brand?.name?.trim() || null;
     const parts =
-        brandName && !attrNames.some((n) => n === brandName || n.startsWith(`${brandName} `) || n.startsWith(`${brandName} /`))
+        brandName &&
+        !attrNames.some((n) => n === brandName || n.startsWith(`${brandName} `) || n.startsWith(`${brandName} /`))
             ? [brandName, ...attrNames]
             : attrNames;
-    return [...parts, product.articleNumber?.trim() || null]
-        .filter((p): p is string => Boolean(p))
-        .join(' · ');
+    return [...parts, product.articleNumber?.trim() || null].filter((p): p is string => Boolean(p)).join(' · ');
 }
 
 export type ProductCatalogCardSource = ProductLabelSource & {
@@ -437,20 +424,14 @@ function formatPurchaseProductLine1(product: ProductLabelSource): string {
 }
 
 /** Части второй строки заголовка: все атрибуты «в заголовок» по дереву типов. */
-function getPurchaseProductSubtitleParts(
-    product: ProductLabelSource,
-    attributeTypes?: AttributeTypeMeta[],
-): string[] {
+function getPurchaseProductSubtitleParts(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string[] {
     const showInTitleByTypeId = buildShowInTitleByTypeId(attributeTypes);
     return getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
         .map((part) => part.trim())
         .filter(Boolean);
 }
 
-function getPurchaseProductSubtitleLine(
-    product: ProductLabelSource,
-    attributeTypes?: AttributeTypeMeta[],
-): string {
+function getPurchaseProductSubtitleLine(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string {
     const parts = getPurchaseProductSubtitleParts(product, attributeTypes);
     if (parts.length > 0) return parts.join(' ');
 
@@ -483,10 +464,7 @@ export function buildShopItemDescriptionRows(
         const formatted = formatAttributeValueName(v);
         const combined = `${typeName} ${value}`;
 
-        if (
-            isShowInTitle(v, showInTitleByTypeId, attributeTypes) &&
-            attributeValueShowsInTitle(v.attribute)
-        ) {
+        if (isShowInTitle(v, showInTitleByTypeId, attributeTypes) && attributeValueShowsInTitle(v.attribute)) {
             continue;
         }
 

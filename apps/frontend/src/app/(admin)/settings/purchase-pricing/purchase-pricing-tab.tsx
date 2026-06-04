@@ -53,8 +53,8 @@ export function PurchasePricingTab() {
                 <div className="space-y-2">
                     <Label htmlFor="bead-pack-discount">Скидка за цену за пачку бисера, %</Label>
                     <p className="text-sm text-muted-foreground">
-                        От цены за пачку у поставщика вычитается этот процент. Колонка «Цена за пачку со
-                        скидкой» = цена за пачку − указанный %.
+                        От цены за пачку у поставщика вычитается этот процент. Колонка «Цена за пачку со скидкой» = цена
+                        за пачку − указанный %.
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                         <Input

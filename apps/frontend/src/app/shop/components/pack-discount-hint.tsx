@@ -1,11 +1,7 @@
 'use client';
 
 import { Percent } from 'lucide-react';
-import {
-    formatPackDiscountHint,
-    getPackDiscountPricingInfo,
-    type SupplierPackProductFields,
-} from '@zakupki/types';
+import { formatPackDiscountHint, getPackDiscountPricingInfo, type SupplierPackProductFields } from '@zakupki/types';
 
 type PackDiscountHintProps = {
     product: SupplierPackProductFields;

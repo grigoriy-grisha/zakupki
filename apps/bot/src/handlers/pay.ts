@@ -2,10 +2,7 @@ import { InlineKeyboard, type NextFunction } from 'grammy';
 
 import type { CustomContext } from '../domain/types';
 import { downloadTelegramFile } from '../lib/download-telegram-file';
-import {
-    isPurchasePaymentOpenById,
-    PAYMENT_NOT_OPEN_MESSAGE,
-} from '../lib/purchase-payment-guard';
+import { isPurchasePaymentOpenById, PAYMENT_NOT_OPEN_MESSAGE } from '../lib/purchase-payment-guard';
 import { PaymentService } from '../services/payment.service';
 import { OrderService } from '../services/order.service';
 import { isPurchasePaymentOpen } from '@zakupki/types';
@@ -234,8 +231,7 @@ function messageHasPaymentFile(ctx: CustomContext): boolean {
     const message = ctx.message;
     if (!message) return false;
     return (
-        ('photo' in message && Boolean(message.photo?.length)) ||
-        ('document' in message && Boolean(message.document))
+        ('photo' in message && Boolean(message.photo?.length)) || ('document' in message && Boolean(message.document))
     );
 }
 

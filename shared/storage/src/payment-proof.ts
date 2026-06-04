@@ -9,10 +9,7 @@ const EasyYandexS3 = require('easy-yandex-s3').default as new (params: {
     Bucket: string;
     debug?: boolean;
 }) => {
-    Upload(
-        payload: { buffer: Buffer; name: string },
-        route?: string,
-    ): Promise<unknown>;
+    Upload(payload: { buffer: Buffer; name: string }, route?: string): Promise<unknown>;
 };
 
 let s3Client: InstanceType<typeof EasyYandexS3> | null = null;

@@ -26,11 +26,7 @@ export default function LoginPage() {
     }, [isAuthenticated, router]);
 
     if (!isMounted) {
-        return (
-            <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-                Загрузка…
-            </div>
-        );
+        return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Загрузка…</div>;
     }
 
     if (isTelegramWebApp && (isPending || isAuthenticated)) {

@@ -13,13 +13,7 @@ export {
     type AttributesTreeForType,
     type PendingFile,
 } from './product-form-utils';
-export {
-    productCreateSchema,
-    productSchema,
-    productAttributeSchema,
-    priceTierSchema,
-    PACKAGE_UNITS,
-} from './schema';
+export { productCreateSchema, productSchema, productAttributeSchema, priceTierSchema, PACKAGE_UNITS } from './schema';
 export type { PackageUnit, PriceTierValues, ProductCreateFormValues } from './schema';
 export type { ProductFormValues, ProductAttributeFormValues } from './schema';
 export {

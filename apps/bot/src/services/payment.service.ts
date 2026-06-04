@@ -21,13 +21,7 @@ export type PayablePurchase = {
     fulfillmentStatus: PurchaseFulfillmentStatus;
 };
 
-const ALLOWED_PROOF_MIME = new Set([
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-    'application/pdf',
-]);
+const ALLOWED_PROOF_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']);
 
 export class PaymentService {
     private paymentRepo = new PaymentRepository();

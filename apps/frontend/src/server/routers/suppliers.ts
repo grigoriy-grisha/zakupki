@@ -8,15 +8,13 @@ export const suppliersRouter = router({
         return ctx.services.supplier.list();
     }),
 
-    create: adminProcedure
-        .input(z.object({ name: z.string().trim().min(1) }))
-        .mutation(async ({ ctx, input }) => {
-            try {
-                return await ctx.services.supplier.create(input);
-            } catch (err) {
-                handleDbConflict(err);
-            }
-        }),
+    create: adminProcedure.input(z.object({ name: z.string().trim().min(1) })).mutation(async ({ ctx, input }) => {
+        try {
+            return await ctx.services.supplier.create(input);
+        } catch (err) {
+            handleDbConflict(err);
+        }
+    }),
 
     update: adminProcedure
         .input(z.object({ id: z.number(), name: z.string().trim().min(1).optional() }))

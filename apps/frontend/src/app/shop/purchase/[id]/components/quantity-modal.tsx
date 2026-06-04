@@ -61,8 +61,7 @@ export function QuantityModal({
 
     const unit = item?.product?.unit;
     const multiplicity = unit ? Number(unit.multiplicity) : 1;
-    const minPackageAmount =
-        item?.product?.minPackageAmount != null ? Number(item.product.minPackageAmount) : null;
+    const minPackageAmount = item?.product?.minPackageAmount != null ? Number(item.product.minPackageAmount) : null;
     const minPackageUnit = item?.product?.minPackageUnit ?? null;
     const orderQtyOptions = {
         multiplicity,
@@ -75,16 +74,13 @@ export function QuantityModal({
     const minOrderQty = getMinOrderQuantity(orderQtyOptions);
     const isSupplementMode = isSupplementModeProp ?? purchase?.status === 'SUPPLEMENT';
     const uiStep = isSupplementMode ? getSupplementUiOrderStep(orderStep, orderQtyOptions) : orderStep;
-    const effectiveMinQty = isSupplementMode
-        ? getSupplementEffectiveMinQty(minOrderQty, orderQtyOptions)
-        : minOrderQty;
+    const effectiveMinQty = isSupplementMode ? getSupplementEffectiveMinQty(minOrderQty, orderQtyOptions) : minOrderQty;
     const rawAvailableQty =
         item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
     const currentQty = currentQuantity ?? 0;
 
     // Рассчитываем свободный остаток из пачек как fallback для availableQty
-    const packSize =
-        item?.product?.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
+    const packSize = item?.product?.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
     const freeRemainderFromPacks = calculateFreeRemainder(item?.orderLines ?? [], packSize);
 
     const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainderFromPacks;
@@ -102,9 +98,10 @@ export function QuantityModal({
 
     // Защита пачек на доборе
     const packsAdded = supplementPacksAddedProp ?? 0;
-    const packProtection = isSupplementMode && packsAdded > 0 && packSize != null && packSize > 0
-        ? { supplementPacksAdded: packsAdded, packSize }
-        : null;
+    const packProtection =
+        isSupplementMode && packsAdded > 0 && packSize != null && packSize > 0
+            ? { supplementPacksAdded: packsAdded, packSize }
+            : null;
     const protectedPackQty = packProtection ? packProtection.supplementPacksAdded * packProtection.packSize : 0;
     const freePortion = currentQty - protectedPackQty;
     const canRemoveStep = !isSupplementMode || freePortion > 0;
@@ -112,10 +109,7 @@ export function QuantityModal({
 
     const maxQty = supplementBounds ? getSupplementDisplayMax(supplementBounds) : null;
 
-    const startQty =
-        currentQuantity != null
-            ? Math.max(currentQuantity, minOrderQty)
-            : effectiveMinQty;
+    const startQty = currentQuantity != null ? Math.max(currentQuantity, minOrderQty) : effectiveMinQty;
     const effectiveStart = supplementBounds
         ? snapSupplementOrderQuantity(startQty, orderQtyOptions, supplementBounds)
         : snapOrderQuantity(startQty, orderQtyOptions);
@@ -163,8 +157,7 @@ export function QuantityModal({
     };
     const total = calculateOrderAmount(quantity, pricingOptions);
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
-    const fullPacks =
-        packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
+    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
 
     const remainingLabel = maxQty != null ? Math.max(0, maxQty - quantity) : null;
 
@@ -173,9 +166,7 @@ export function QuantityModal({
         : isValidOrderQuantity(quantity, orderQtyOptions);
 
     const supplementOnlyPacks =
-        isSupplementMode &&
-        supplementBounds != null &&
-        isSupplementOnlyPacksOrder(supplementBounds, orderQtyOptions);
+        isSupplementMode && supplementBounds != null && isSupplementOnlyPacksOrder(supplementBounds, orderQtyOptions);
 
     function handleQuantityChange(delta: number) {
         setQuantity((prev) => {
@@ -206,7 +197,10 @@ export function QuantityModal({
                                 {formatMinPackageOrderHint(orderQtyOptions) ??
                                     `${unitPrice.toLocaleString('ru-RU')} ₽/${shortName}`}
                                 {formatMinPackageOrderHint(orderQtyOptions) && (
-                                    <> · {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}</>
+                                    <>
+                                        {' '}
+                                        · {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}
+                                    </>
                                 )}
                             </>
                         )}
@@ -233,8 +227,8 @@ export function QuantityModal({
 
                     {isSupplementMode && packProtection && packProtection.supplementPacksAdded > 0 && (
                         <div className="rounded-lg bg-warning-50 p-3 text-center text-sm text-warning">
-                            Защищённые пачки: {packProtection.supplementPacksAdded} x {packProtection.packSize} {shortName}
-                            {' '}(убрать только целиком)
+                            Защищённые пачки: {packProtection.supplementPacksAdded} x {packProtection.packSize}{' '}
+                            {shortName} (убрать только целиком)
                         </div>
                     )}
 
@@ -340,9 +334,8 @@ export function QuantityModal({
                         </p>
                         {packDiscountInfo != null && fullPacks > 0 && (
                             <p className="mt-2 text-xs text-success">
-                                В сумму входит скидка за {fullPacks}{' '}
-                                {fullPacks === 1 ? 'целую пачку' : 'целые пачки'} по{' '}
-                                {packDiscountInfo.packSize} гр (
+                                В сумму входит скидка за {fullPacks} {fullPacks === 1 ? 'целую пачку' : 'целые пачки'}{' '}
+                                по {packDiscountInfo.packSize} гр (
                                 {packDiscountInfo.discountedPackPrice.toLocaleString('ru-RU')} ₽ за пачку, −
                                 {packDiscountInfo.discountPercent}%)
                             </p>

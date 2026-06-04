@@ -6,10 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import {
-    findAttributeDisplayName,
-    type AttributesTreeForType,
-} from '@/app/(admin)/products/lib/product-form-utils';
+import { findAttributeDisplayName, type AttributesTreeForType } from '@/app/(admin)/products/lib/product-form-utils';
 
 type TypeRow = { id: number; name: string; parentId: number | null; position: number };
 
@@ -60,7 +57,11 @@ export function AttributeTreePicker({
     const [expandedBrands, setExpandedBrands] = useState<Set<number>>(new Set());
 
     const allTypes: TypeRow[] = [];
-    const walk = (ts: TypeRow[]) => ts.forEach((t) => { allTypes.push(t); walk(childrenOfType(t.id)); });
+    const walk = (ts: TypeRow[]) =>
+        ts.forEach((t) => {
+            allTypes.push(t);
+            walk(childrenOfType(t.id));
+        });
     walk(rootTypes);
     const byId = new Map(allTypes.map((t) => [t.id, t]));
 
@@ -176,9 +177,7 @@ export function AttributeTreePicker({
                                 >
                                     <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                     <span className="truncate">{brand.name}</span>
-                                    {brandSelected && !childSelected && (
-                                        <Check className="ml-auto h-4 w-4 shrink-0" />
-                                    )}
+                                    {brandSelected && !childSelected && <Check className="ml-auto h-4 w-4 shrink-0" />}
                                 </button>
                             </div>
 
@@ -259,7 +258,10 @@ export function AttributeTreePicker({
                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="max-h-80 w-(--radix-popover-trigger-width) overflow-y-auto p-2">
+                <PopoverContent
+                    align="start"
+                    className="max-h-80 w-(--radix-popover-trigger-width) overflow-y-auto p-2"
+                >
                     <div className="space-y-0.5">{renderNodes(rootTypes)}</div>
                 </PopoverContent>
             </Popover>

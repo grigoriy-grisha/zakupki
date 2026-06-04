@@ -16,10 +16,7 @@ export async function findActivePurchaseTagsForProduct(db: PrismaClient, product
     return [...new Set(items.map((item) => item.purchase.tag))];
 }
 
-export async function findProductIdsInActivePurchases(
-    db: PrismaClient,
-    productIds: number[],
-): Promise<Set<number>> {
+export async function findProductIdsInActivePurchases(db: PrismaClient, productIds: number[]): Promise<Set<number>> {
     if (productIds.length === 0) return new Set();
     const rows = await db.purchaseItem.findMany({
         where: { productId: { in: productIds }, purchase: { status: ACTIVE_PURCHASE_STATUS } },
@@ -39,4 +36,3 @@ export async function assertProductNotInActivePurchase(db: PrismaClient, product
         `Товар участвует в активной закупке ${list}. Удаление из каталога недоступно.`,
     );
 }
-

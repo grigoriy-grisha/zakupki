@@ -102,7 +102,9 @@ function FilterTreeNode({
                                     )}
                                 />
                             )}
-                            <span className={cn('text-left break-words', node.isTypeFolder && 'font-medium')}>{node.label}</span>
+                            <span className={cn('text-left break-words', node.isTypeFolder && 'font-medium')}>
+                                {node.label}
+                            </span>
                             <span className="ml-auto pl-2 text-xs text-muted-foreground">{node.count}</span>
                         </button>
                         {hasChildren && isExpanded && (

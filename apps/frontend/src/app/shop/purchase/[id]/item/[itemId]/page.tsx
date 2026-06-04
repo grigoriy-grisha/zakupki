@@ -30,11 +30,7 @@ import {
     type ProductLabelSource,
 } from '@/app/(admin)/products/lib';
 
-export default function ItemDetailPage({
-    params,
-}: {
-    params: Promise<{ id: string; itemId: string }>;
-}) {
+export default function ItemDetailPage({ params }: { params: Promise<{ id: string; itemId: string }> }) {
     const { id: purchaseIdStr, itemId: itemIdStr } = use(params);
     const purchaseId = Number(purchaseIdStr);
     const purchaseItemId = Number(itemIdStr);
@@ -53,18 +49,19 @@ export default function ItemDetailPage({
     const existingPacksAdded = existingOrder?.supplementPacksAdded ?? 0;
 
     const product = item?.product as
-        (ProductLabelSource & {
-            pricePerUnit: string | number;
-            priceTiers?: unknown;
-            description?: string | null;
-            supplierPackageAmount?: string | number | null;
-            supplierPackageUnit?: string | null;
-            supplierPackagePrice?: string | number | null;
-            unit: { shortName: string; multiplicity: string | number } | null;
-            minPackageAmount: string | number | null;
-            minPackageUnit: string | null;
-            photos: { id: number }[];
-        }) | undefined;
+        | (ProductLabelSource & {
+              pricePerUnit: string | number;
+              priceTiers?: unknown;
+              description?: string | null;
+              supplierPackageAmount?: string | number | null;
+              supplierPackageUnit?: string | null;
+              supplierPackagePrice?: string | number | null;
+              unit: { shortName: string; multiplicity: string | number } | null;
+              minPackageAmount: string | number | null;
+              minPackageUnit: string | null;
+              photos: { id: number }[];
+          })
+        | undefined;
 
     const unit = product?.unit;
     const shortName = unit?.shortName ?? 'ед.';
@@ -72,8 +69,7 @@ export default function ItemDetailPage({
     const packSize = product?.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
     const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product?.minPackageUnit ?? null;
-    const isSupplement =
-        purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
+    const isSupplement = purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
 
     const orderQtyOptions = {
         multiplicity,
@@ -134,8 +130,18 @@ export default function ItemDetailPage({
         orderLines: (item as { orderLines?: { quantity: unknown }[] } | undefined)?.orderLines,
         supplementPacksAdded: existingPacksAdded,
     });
-    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed, canRemoveStep, canRemovePack, packProtection } =
-        qtyCtx;
+    const {
+        uiStep,
+        effectiveMinQty,
+        snap,
+        isValid,
+        supplementBounds,
+        supplementOnlyPacks,
+        supplementPacksAllowed,
+        canRemoveStep,
+        canRemovePack,
+        packProtection,
+    } = qtyCtx;
 
     const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
 
@@ -227,8 +233,7 @@ export default function ItemDetailPage({
                         minPackageUnit,
                         unitShort: shortName,
                     });
-                    const isItemSoldOut =
-                        item.availableQty != null && Number(item.availableQty) <= 0;
+                    const isItemSoldOut = item.availableQty != null && Number(item.availableQty) <= 0;
                     const supplementHint =
                         isSupplement && supplementBounds
                             ? formatSupplementCardPreviewHint(supplementBounds, orderQtyOptions, {
@@ -238,12 +243,8 @@ export default function ItemDetailPage({
                     if (!catalogMinHint && !supplementHint) return null;
                     return (
                         <div className="mt-1 space-y-0.5">
-                            {catalogMinHint ? (
-                                <p className="text-sm text-muted-foreground">{catalogMinHint}</p>
-                            ) : null}
-                            {supplementHint ? (
-                                <p className="text-sm text-warning">{supplementHint}</p>
-                            ) : null}
+                            {catalogMinHint ? <p className="text-sm text-muted-foreground">{catalogMinHint}</p> : null}
+                            {supplementHint ? <p className="text-sm text-warning">{supplementHint}</p> : null}
                         </div>
                     );
                 })()}
@@ -266,20 +267,22 @@ export default function ItemDetailPage({
                             <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
                         </div>
                     )}
-                    {isSupplement && supplementBounds && (() => {
-                        const remainderBadge = formatSupplementPhotoRemainderBadge(
-                            supplementBounds,
-                            orderQtyOptions,
-                        );
-                        if (!remainderBadge) return null;
-                        return (
-                            <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-[1]">
-                                <div className="rounded-md bg-warning-50 px-2 py-1 text-center text-xs font-semibold text-warning shadow-sm">
-                                    {remainderBadge}
+                    {isSupplement &&
+                        supplementBounds &&
+                        (() => {
+                            const remainderBadge = formatSupplementPhotoRemainderBadge(
+                                supplementBounds,
+                                orderQtyOptions,
+                            );
+                            if (!remainderBadge) return null;
+                            return (
+                                <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-[1]">
+                                    <div className="rounded-md bg-warning-50 px-2 py-1 text-center text-xs font-semibold text-warning shadow-sm">
+                                        {remainderBadge}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })()}
+                            );
+                        })()}
                     {isFlying && (
                         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
                             <div className="animate-bounce rounded-full bg-primary p-3 text-primary-foreground shadow-lg">
@@ -292,120 +295,123 @@ export default function ItemDetailPage({
                 <div className="flex min-w-0 flex-1 flex-col gap-6 md:flex-row md:items-start md:gap-10">
                     {/* Description */}
                     <div className="min-w-0 flex-1">
-                    {(() => {
-                        const rows = buildShopItemDescriptionRows(
-                            product as ProductCatalogCardSource,
-                            attributeTypes,
-                        );
+                        {(() => {
+                            const rows = buildShopItemDescriptionRows(
+                                product as ProductCatalogCardSource,
+                                attributeTypes,
+                            );
 
-                        if (rows.length === 0) return null;
+                            if (rows.length === 0) return null;
 
-                        return (
-                            <dl className="grid grid-cols-[minmax(0,11rem)_1fr] gap-x-4 gap-y-0 md:grid-cols-[minmax(0,12rem)_1fr] md:gap-x-6">
-                                {rows.map((row) => (
-                                    <div key={row.label} className="contents">
-                                        <dt className="border-b border-border/50 py-2.5 text-base leading-snug text-muted-foreground md:py-3">
-                                            {row.label}
-                                        </dt>
-                                        <dd className="border-b border-border/50 py-2.5 text-lg font-medium leading-snug md:py-3">
-                                            {row.value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                        );
-                    })()}
+                            return (
+                                <dl className="grid grid-cols-[minmax(0,11rem)_1fr] gap-x-4 gap-y-0 md:grid-cols-[minmax(0,12rem)_1fr] md:gap-x-6">
+                                    {rows.map((row) => (
+                                        <div key={row.label} className="contents">
+                                            <dt className="border-b border-border/50 py-2.5 text-base leading-snug text-muted-foreground md:py-3">
+                                                {row.label}
+                                            </dt>
+                                            <dd className="border-b border-border/50 py-2.5 text-lg font-medium leading-snug md:py-3">
+                                                {row.value}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            );
+                        })()}
                     </div>
 
                     {/* Price & order — справа от описания */}
                     <div className="w-full shrink-0 space-y-4 md:min-w-[22rem] md:w-96 md:pr-8 lg:min-w-[26rem] lg:w-[28rem] lg:pr-10 xl:w-[32rem] xl:pr-12">
-                    <ProductPricePanel
-                        product={product}
-                        priceOverride={item.priceOverride}
-                        unitShort={shortName}
-                        packDiscountPercent={packDiscountPercent}
-                    />
+                        <ProductPricePanel
+                            product={product}
+                            priceOverride={item.priceOverride}
+                            unitShort={shortName}
+                            packDiscountPercent={packDiscountPercent}
+                        />
 
-                    <Card>
-                        <CardContent className="p-4 space-y-3">
-                            {/* Current quantity */}
-                            <div className="text-center">
-                                <span className="text-4xl font-bold tabular-nums">
-                                    {quantity % 1 === 0 ? quantity : quantity.toFixed(3).replace(/\.?0+$/, '')}
-                                </span>
-                                <span className="ml-2 text-lg text-muted-foreground">{shortName}</span>
-                                <p
-                                    className={`mt-1 min-h-7 text-lg font-semibold tabular-nums ${
-                                        quantity > 0 ? 'text-foreground' : 'text-transparent'
-                                    }`}
-                                    aria-hidden={quantity <= 0}
-                                >
-                                    {total.toLocaleString('ru-RU')} ₽
-                                </p>
-                                {packDiscountInfo != null && (
+                        <Card>
+                            <CardContent className="p-4 space-y-3">
+                                {/* Current quantity */}
+                                <div className="text-center">
+                                    <span className="text-4xl font-bold tabular-nums">
+                                        {quantity % 1 === 0 ? quantity : quantity.toFixed(3).replace(/\.?0+$/, '')}
+                                    </span>
+                                    <span className="ml-2 text-lg text-muted-foreground">{shortName}</span>
                                     <p
-                                        className={`min-h-4 text-xs ${
-                                            fullPacks > 0 ? 'text-success' : 'text-transparent'
+                                        className={`mt-1 min-h-7 text-lg font-semibold tabular-nums ${
+                                            quantity > 0 ? 'text-foreground' : 'text-transparent'
                                         }`}
-                                        aria-hidden={fullPacks <= 0}
+                                        aria-hidden={quantity <= 0}
                                     >
-                                        {fullPacks > 0
-                                            ? `Скидка за ${fullPacks} ${fullPacks === 1 ? 'целую пачку' : 'целые пачки'}`
-                                            : '\u00a0'}
+                                        {total.toLocaleString('ru-RU')} ₽
                                     </p>
-                                )}
-                            </div>
-
-                            {isSupplement && packProtection && packProtection.supplementPacksAdded > 0 && (
-                                <div className="rounded-lg bg-warning-50 p-2.5 text-center text-sm text-warning">
-                                    Защищённые пачки: {packProtection.supplementPacksAdded} x {packProtection.packSize} {shortName} (убрать только целиком)
+                                    {packDiscountInfo != null && (
+                                        <p
+                                            className={`min-h-4 text-xs ${
+                                                fullPacks > 0 ? 'text-success' : 'text-transparent'
+                                            }`}
+                                            aria-hidden={fullPacks <= 0}
+                                        >
+                                            {fullPacks > 0
+                                                ? `Скидка за ${fullPacks} ${fullPacks === 1 ? 'целую пачку' : 'целые пачки'}`
+                                                : '\u00a0'}
+                                        </p>
+                                    )}
                                 </div>
-                            )}
 
-                            {/* Min package buttons */}
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    className="flex-1"
-                                    disabled={orderBusy || quantity <= 0 || (isSupplement && !canRemoveStep)}
-                                    onClick={() => handleRemove(uiStep)}
-                                >
-                                    <Minus className="mr-1 h-4 w-4" />
-                                    {uiStep} {shortName}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="flex-1"
-                                    disabled={orderBusy || supplementOnlyPacks}
-                                    onClick={() => handleAdd(uiStep)}
-                                >
-                                    <Plus className="mr-1 h-4 w-4" />
-                                    {uiStep} {shortName}
-                                </Button>
-                            </div>
+                                {isSupplement && packProtection && packProtection.supplementPacksAdded > 0 && (
+                                    <div className="rounded-lg bg-warning-50 p-2.5 text-center text-sm text-warning">
+                                        Защищённые пачки: {packProtection.supplementPacksAdded} x{' '}
+                                        {packProtection.packSize} {shortName} (убрать только целиком)
+                                    </div>
+                                )}
 
-                            {/* Pack buttons */}
-                            {packSize != null && supplementPacksAllowed && (
+                                {/* Min package buttons */}
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={orderBusy || (isSupplement ? !canRemovePack : quantity < packSize)}
-                                        onClick={() => handleRemove(packSize)}
+                                        disabled={orderBusy || quantity <= 0 || (isSupplement && !canRemoveStep)}
+                                        onClick={() => handleRemove(uiStep)}
                                     >
-                                        −Пачка ({packSize} {shortName})
+                                        <Minus className="mr-1 h-4 w-4" />
+                                        {uiStep} {shortName}
                                     </Button>
                                     <Button
+                                        variant="outline"
                                         className="flex-1"
-                                        disabled={orderBusy}
-                                        onClick={() => handleAdd(packSize)}
+                                        disabled={orderBusy || supplementOnlyPacks}
+                                        onClick={() => handleAdd(uiStep)}
                                     >
-                                        +Пачка ({packSize} {shortName})
+                                        <Plus className="mr-1 h-4 w-4" />
+                                        {uiStep} {shortName}
                                     </Button>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+
+                                {/* Pack buttons */}
+                                {packSize != null && supplementPacksAllowed && (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1"
+                                            disabled={
+                                                orderBusy || (isSupplement ? !canRemovePack : quantity < packSize)
+                                            }
+                                            onClick={() => handleRemove(packSize)}
+                                        >
+                                            −Пачка ({packSize} {shortName})
+                                        </Button>
+                                        <Button
+                                            className="flex-1"
+                                            disabled={orderBusy}
+                                            onClick={() => handleAdd(packSize)}
+                                        >
+                                            +Пачка ({packSize} {shortName})
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>

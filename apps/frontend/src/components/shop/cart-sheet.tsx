@@ -11,11 +11,7 @@ import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-c
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { cn } from '@/lib/utils';
-import {
-    PURCHASE_FULFILLMENT_LABELS,
-    isPurchasePaymentOpen,
-    type PurchaseFulfillmentStatus,
-} from '@zakupki/types';
+import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus } from '@zakupki/types';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { summarizePurchasePayments } from '@/components/shop/payment-proof';
@@ -33,15 +29,18 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     const deleteOrder = trpc.orders.deleteOrder.useMutation();
 
     // Group by purchase
-    const grouped = new Map<number, {
-        id: number;
-        orderNumber: number | null;
-        tag: string;
-        supplier: string;
-        orders: NonNullable<typeof myOrders>;
-        total: number;
-        fulfillmentStatus: string | null;
-    }>();
+    const grouped = new Map<
+        number,
+        {
+            id: number;
+            orderNumber: number | null;
+            tag: string;
+            supplier: string;
+            orders: NonNullable<typeof myOrders>;
+            total: number;
+            fulfillmentStatus: string | null;
+        }
+    >();
 
     if (myOrders) {
         for (const order of myOrders) {
@@ -80,7 +79,9 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         <ShoppingCart className="h-5 w-5" />
                         Корзина
                         {myOrders && myOrders.length > 0 && (
-                            <Badge variant="secondary" className="ml-1">{myOrders.length}</Badge>
+                            <Badge variant="secondary" className="ml-1">
+                                {myOrders.length}
+                            </Badge>
                         )}
                     </SheetTitle>
                 </SheetHeader>
@@ -89,7 +90,14 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
                         <ShoppingCart className="h-12 w-12 text-muted-foreground/30" />
                         <p className="text-sm text-muted-foreground">Корзина пуста</p>
-                        <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); router.push('/shop'); }}>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                onOpenChange(false);
+                                router.push('/shop');
+                            }}
+                        >
                             К закупкам
                             <ArrowRight className="ml-1 h-3 w-3" />
                         </Button>
@@ -112,26 +120,38 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                         <div className="mb-2">
                                             <div className="flex items-center justify-between">
                                                 <button
-                                                    onClick={() => { onOpenChange(false); router.push(`/shop/purchase/${group.id}`); }}
+                                                    onClick={() => {
+                                                        onOpenChange(false);
+                                                        router.push(`/shop/purchase/${group.id}`);
+                                                    }}
                                                     className="font-semibold text-sm hover:text-primary transition-colors text-left"
                                                 >
                                                     {group.supplier}
                                                 </button>
-                                                <Badge variant="outline" className="text-xs font-normal">{group.tag}</Badge>
+                                                <Badge variant="outline" className="text-xs font-normal">
+                                                    {group.tag}
+                                                </Badge>
                                             </div>
                                         </div>
 
                                         {group.orders.map((order) => {
-                                            const purchaseItem = (order as { purchaseItem?: {
-                                                id: number;
-                                                minQty: unknown;
-                                                product?: ProductLabelSource & {
-                                                    photos: { id: number }[];
-                                                    unit: { shortName: string; multiplicity: string | number } | null;
-                                                    minPackageAmount: string | number | null;
-                                                    minPackageUnit: string | null;
-                                                };
-                                            } }).purchaseItem;
+                                            const purchaseItem = (
+                                                order as {
+                                                    purchaseItem?: {
+                                                        id: number;
+                                                        minQty: unknown;
+                                                        product?: ProductLabelSource & {
+                                                            photos: { id: number }[];
+                                                            unit: {
+                                                                shortName: string;
+                                                                multiplicity: string | number;
+                                                            } | null;
+                                                            minPackageAmount: string | number | null;
+                                                            minPackageUnit: string | null;
+                                                        };
+                                                    };
+                                                }
+                                            ).purchaseItem;
                                             const product = purchaseItem?.product;
                                             const shortName = product?.unit?.shortName ?? 'ед.';
                                             const photo = product?.photos?.[0];
@@ -142,7 +162,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                 <div key={order.id} className="flex gap-2 py-2">
                                                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
                                                         {photo ? (
-                                                            <img src={absoluteProductPhotoUrl(photo.id)} alt="" className="h-full w-full object-cover" />
+                                                            <img
+                                                                src={absoluteProductPhotoUrl(photo.id)}
+                                                                alt=""
+                                                                className="h-full w-full object-cover"
+                                                            />
                                                         ) : (
                                                             <div className="flex h-full items-center justify-center">
                                                                 <ShoppingCart className="h-4 w-4 text-muted-foreground/30" />
@@ -195,7 +219,10 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                                 onClick={() => {
                                                                     deleteOrder.mutate(
                                                                         { id: order.id },
-                                                                        { onSuccess: () => utils.orders.getMyOrders.invalidate() },
+                                                                        {
+                                                                            onSuccess: () =>
+                                                                                utils.orders.getMyOrders.invalidate(),
+                                                                        },
                                                                     );
                                                                 }}
                                                             >
@@ -222,7 +249,10 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                             ) : remaining > 0 && paymentOpen ? (
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-muted-foreground">
-                                                        К оплате: <span className="font-medium text-foreground">{remaining.toLocaleString('ru-RU')} ₽</span>
+                                                        К оплате:{' '}
+                                                        <span className="font-medium text-foreground">
+                                                            {remaining.toLocaleString('ru-RU')} ₽
+                                                        </span>
                                                     </span>
                                                     <PurchasePaymentDialog
                                                         purchaseId={group.id}
@@ -234,11 +264,16 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                 </div>
                                             ) : paymentOpen ? (
                                                 <span className="text-muted-foreground">
-                                                    Итого: <span className="font-medium text-foreground">{group.total.toLocaleString('ru-RU')} ₽</span>
+                                                    Итого:{' '}
+                                                    <span className="font-medium text-foreground">
+                                                        {group.total.toLocaleString('ru-RU')} ₽
+                                                    </span>
                                                 </span>
                                             ) : (
                                                 <div>
-                                                    <span className="font-medium text-foreground">{group.total.toLocaleString('ru-RU')} ₽</span>
+                                                    <span className="font-medium text-foreground">
+                                                        {group.total.toLocaleString('ru-RU')} ₽
+                                                    </span>
                                                     <button
                                                         disabled
                                                         className="mt-1 flex w-full items-center justify-center gap-1 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground/50 cursor-not-allowed"
@@ -257,7 +292,6 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         </div>
 
                         <div className="shrink-0 p-4" />
-
                     </>
                 )}
             </SheetContent>

@@ -63,7 +63,7 @@ describe('calculateOrderAmount', () => {
 
     it('uses largest packages first, remainder at smallest tier rate', () => {
         const tiers = [
-            { amount: 10, price: 340 },  // 34 per unit
+            { amount: 10, price: 340 }, // 34 per unit
             { amount: 50, price: 1500 }, // 30 per unit
         ];
         // 55 = 1x50 (1500) + 5x remaining at 34/unit = 1500 + 170 = 1670
@@ -149,9 +149,7 @@ describe('order quantity validation', () => {
     });
 
     it('requires multiples of min package amount', () => {
-        expect(getOrderQuantityValidationError(15, minPack10)).toBe(
-            'Можно заказать только кратно 10 гр: 10, 20, 30…',
-        );
+        expect(getOrderQuantityValidationError(15, minPack10)).toBe('Можно заказать только кратно 10 гр: 10, 20, 30…');
         expect(getOrderQuantityValidationError(20, minPack10)).toBeNull();
     });
 

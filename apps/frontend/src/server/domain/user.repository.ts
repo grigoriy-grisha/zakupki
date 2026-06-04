@@ -178,7 +178,10 @@ export class UserRepository {
         });
     }
 
-    async upsertFromTelegram(telegramId: string, data: { firstName: string; lastName?: string; avatarUrl?: string | null; username?: string }) {
+    async upsertFromTelegram(
+        telegramId: string,
+        data: { firstName: string; lastName?: string; avatarUrl?: string | null; username?: string },
+    ) {
         const existingUserId = await this.findUserIdByTelegramId(telegramId);
         const credentialData = {
             username: data.username,

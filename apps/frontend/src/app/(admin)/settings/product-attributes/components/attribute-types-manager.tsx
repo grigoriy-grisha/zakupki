@@ -29,8 +29,10 @@ export function AttributeTypesManager() {
             <div className="flex items-start gap-4">
                 <p className="max-w-2xl text-sm text-muted-foreground">
                     Задайте структуру каталога одним деревом. Наведите на узел: подтип (
-                    <FolderPlus className="inline h-3.5 w-3.5" />), значение (
-                    <Plus className="inline h-3.5 w-3.5" />), бренд (<Tag className="inline h-3.5 w-3.5" />
+                    <FolderPlus className="inline h-3.5 w-3.5" />
+                    ), значение (
+                    <Plus className="inline h-3.5 w-3.5" />
+                    ), бренд (<Tag className="inline h-3.5 w-3.5" />
                     ). В меню (<MoreVertical className="inline h-3.5 w-3.5" />) — порядок и флаги отображения.
                 </p>
             </div>

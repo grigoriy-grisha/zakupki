@@ -51,9 +51,7 @@ export async function verifyTelegram(rawData: string) {
     const lastName = typeof tgUser.last_name === 'string' ? tgUser.last_name : '';
     const username = typeof parsed.username === 'string' ? parsed.username : null;
 
-    const avatar = await resolveUsableAvatarUrl(
-        typeof tgUser.photo_url === 'string' ? tgUser.photo_url : null,
-    );
+    const avatar = await resolveUsableAvatarUrl(typeof tgUser.photo_url === 'string' ? tgUser.photo_url : null);
 
     return {
         providerAccountId: String(tgUser.id),

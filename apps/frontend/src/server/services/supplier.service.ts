@@ -19,4 +19,3 @@ export class SupplierService {
         return this.repo.delete(id);
     }
 }
-

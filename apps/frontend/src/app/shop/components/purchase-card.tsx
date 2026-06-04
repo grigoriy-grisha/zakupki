@@ -6,11 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, CircleCheck, CircleX, CreditCard, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { daysLeftUntil } from '@/lib/utils/date';
-import {
-    PURCHASE_FULFILLMENT_LABELS,
-    isPurchasePaymentOpen,
-    type PurchaseFulfillmentStatus,
-} from '@zakupki/types';
+import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus } from '@zakupki/types';
 import type { ShopMyPurchaseCardProps } from '../lib/types';
 import { PaymentActionButton } from './payment-action-button';
 

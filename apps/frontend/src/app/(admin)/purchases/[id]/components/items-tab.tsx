@@ -21,10 +21,7 @@ import {
     getProductPriceTiers,
     getPurchaseItemPrice1Gr,
 } from '../lib/purchase-item-prices';
-import {
-    formatOrderStatValue,
-    getPurchaseItemOrderStats,
-} from '../lib/purchase-item-order-stats';
+import { formatOrderStatValue, getPurchaseItemOrderStats } from '../lib/purchase-item-order-stats';
 import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { ItemEditSheet } from './item-edit-sheet';
@@ -61,10 +58,7 @@ function formatSupplierPackageCell(product: {
     if (lines.length > 0) {
         return lines.join(', ');
     }
-    const fallback = formatPackAmountWithUnit(
-        product.supplierPackageAmount,
-        product.supplierPackageUnit,
-    );
+    const fallback = formatPackAmountWithUnit(product.supplierPackageAmount, product.supplierPackageUnit);
     return fallback ?? '—';
 }
 
@@ -73,7 +67,8 @@ const purchaseItemSubtitleClass = 'text-sm font-medium text-muted-foreground';
 const purchaseItemNumericClass = `${purchaseItemTextClass} tabular-nums whitespace-nowrap`;
 const purchaseItemHeadClass =
     'text-sm font-medium text-muted-foreground whitespace-normal text-center leading-snug align-middle px-2';
-const purchaseItemTgColumnClass = 'w-14 pr-5 align-middle [&:has([role=checkbox])]:pr-5 [&_[role=checkbox]]:translate-y-0';
+const purchaseItemTgColumnClass =
+    'w-14 pr-5 align-middle [&:has([role=checkbox])]:pr-5 [&_[role=checkbox]]:translate-y-0';
 const purchaseItemTgHeadClass = `${purchaseItemHeadClass} ${purchaseItemTgColumnClass}`;
 const purchaseItemStatsLeadHeadClass = `${purchaseItemHeadClass} pl-4`;
 const purchaseItemTgCellClass = `${purchaseItemTgColumnClass} text-center`;
@@ -108,7 +103,9 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const canAddItems = purchase.status !== 'DONE';
     const canRemoveItem = purchase.status !== 'DONE';
     const existingProductIds = new Set<number>(items.map((item: any) => item.productId as number));
-    const publishCount = items.filter((item: { shouldPublish: boolean; tgMessageId: string | null }) => item.shouldPublish && !item.tgMessageId).length;
+    const publishCount = items.filter(
+        (item: { shouldPublish: boolean; tgMessageId: string | null }) => item.shouldPublish && !item.tgMessageId,
+    ).length;
 
     return (
         <div className="space-y-4">
@@ -167,18 +164,15 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Цена за 1 гр/шт
-                                <br />
-                                в рублях
+                                <br />в рублях
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Цена за 5/10 гр
-                                <br />
-                                в рублях
+                                <br />в рублях
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Цена за пачку
-                                <br />
-                                в рублях
+                                <br />в рублях
                             </TableHead>
                             <TableHead className={purchaseItemHeadClass}>
                                 Цена за пачку
@@ -253,7 +247,9 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                             </div>
                                         )}
                                     </TableCell>
-                                    <TableCell className={`min-w-[18rem] max-w-xl whitespace-normal ${purchaseItemTextClass}`}>
+                                    <TableCell
+                                        className={`min-w-[18rem] max-w-xl whitespace-normal ${purchaseItemTextClass}`}
+                                    >
                                         <PurchaseProductLabel
                                             product={item.product}
                                             primaryClassName={purchaseItemTextClass}
@@ -376,17 +372,9 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 <PurchaseProductLabel product={deleteTarget.product} as="span" />
                             </strong>{' '}
                             будет удалён из закупки.
-                            {deleteTarget.published && (
-                                <>
-                                    {' '}
-                                    Пост в Telegram будет удалён.
-                                </>
-                            )}
+                            {deleteTarget.published && <> Пост в Telegram будет удалён.</>}
                             {deleteTarget.orderCount > 0 && (
-                                <>
-                                    {' '}
-                                    Заказы участников в корзине будут сняты ({deleteTarget.orderCount}).
-                                </>
+                                <> Заказы участников в корзине будут сняты ({deleteTarget.orderCount}).</>
                             )}
                         </>
                     ) : (
@@ -396,10 +384,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                 loading={removeItem.isPending}
                 onConfirm={() => {
                     if (!deleteTarget) return;
-                    removeItem.mutate(
-                        { purchaseItemId: deleteTarget.id },
-                        { onSuccess: () => setDeleteTarget(null) },
-                    );
+                    removeItem.mutate({ purchaseItemId: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
                 }}
             />
 
@@ -420,10 +405,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                         <Button
                             disabled={publishToTelegram.isPending || publishCount === 0}
                             onClick={() => {
-                                publishToTelegram.mutate(
-                                    { purchaseId },
-                                    { onSuccess: () => setPublishOpen(false) },
-                                );
+                                publishToTelegram.mutate({ purchaseId }, { onSuccess: () => setPublishOpen(false) });
                             }}
                         >
                             {publishToTelegram.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -435,4 +417,3 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
         </div>
     );
 }
-

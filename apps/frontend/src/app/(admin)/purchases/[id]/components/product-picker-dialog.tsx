@@ -106,14 +106,10 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                         </div>
 
                         <div className="max-h-[400px] space-y-2 overflow-y-auto">
-                            {isLoading && (
-                                <p className="py-4 text-center text-sm text-muted-foreground">Загрузка…</p>
-                            )}
+                            {isLoading && <p className="py-4 text-center text-sm text-muted-foreground">Загрузка…</p>}
                             {!isLoading && availableProducts.length === 0 && (
                                 <p className="py-4 text-center text-sm text-muted-foreground">
-                                    {search.trim()
-                                        ? 'Ничего не найдено'
-                                        : 'Все товары уже добавлены в закупку'}
+                                    {search.trim() ? 'Ничего не найдено' : 'Все товары уже добавлены в закупку'}
                                 </p>
                             )}
                             {availableProducts.map((product) => (
@@ -140,13 +136,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
     );
 }
 
-function ProductPickerRow({
-    product,
-    onOpenDetail,
-}: {
-    product: PickerProduct;
-    onOpenDetail: () => void;
-}) {
+function ProductPickerRow({ product, onOpenDetail }: { product: PickerProduct; onOpenDetail: () => void }) {
     const photoId = getProductPhotoId(product);
     const attributesLine = formatProductAttributesLine(product);
 
@@ -158,11 +148,7 @@ function ProductPickerRow({
         >
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
                 {photoId ? (
-                    <img
-                        src={`/api/photos/${photoId}`}
-                        alt=""
-                        className="h-full w-full object-cover"
-                    />
+                    <img src={`/api/photos/${photoId}`} alt="" className="h-full w-full object-cover" />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center">
                         <Package className="h-6 w-6 text-muted-foreground/40" />
@@ -230,9 +216,7 @@ function ProductDetail({
                             supplierPackageUnit: data.supplierPackageUnit ?? undefined,
                             supplierPackagePrice: data.supplierPackagePrice ?? undefined,
                             supplierPackageTiers:
-                                data.supplierPackageTiers.length > 0
-                                    ? data.supplierPackageTiers
-                                    : undefined,
+                                data.supplierPackageTiers.length > 0 ? data.supplierPackageTiers : undefined,
                             availableAmount: data.availableAmount ?? undefined,
                             availableUnit: data.availableUnit ?? undefined,
                         },

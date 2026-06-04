@@ -22,8 +22,7 @@ export function SuppliersTab() {
         <div className="space-y-4 pt-4">
             <div className="flex items-start justify-between gap-4">
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                    Справочник поставщиков для закупок. При создании закупки можно выбрать поставщика из
-                    списка.
+                    Справочник поставщиков для закупок. При создании закупки можно выбрать поставщика из списка.
                 </p>
                 <SupplierFormDialog mode="create" />
             </div>
@@ -81,4 +80,3 @@ export function SuppliersTab() {
         </div>
     );
 }
-

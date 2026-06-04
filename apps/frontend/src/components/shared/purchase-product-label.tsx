@@ -33,18 +33,13 @@ export function PurchaseProductLabel({
     as: Tag = 'div',
 }: PurchaseProductLabelProps) {
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
-    const showInTitleByTypeId = useMemo(
-        () => buildShowInTitleByTypeId(attributeTypes),
-        [attributeTypes],
-    );
+    const showInTitleByTypeId = useMemo(() => buildShowInTitleByTypeId(attributeTypes), [attributeTypes]);
     const label = useMemo(
         () => formatPurchaseProductLabel(product, showInTitleByTypeId, attributeTypes),
         [product, showInTitleByTypeId, attributeTypes],
     );
     const lines = useMemo(() => {
-        const title = omitArticle
-            ? (getProductDisplayName(product) || product.name?.trim() || '').trim()
-            : label.line1;
+        const title = omitArticle ? (getProductDisplayName(product) || product.name?.trim() || '').trim() : label.line1;
         if (!showSubtitle) return title ? [title] : [];
         const attrs = label.line2?.trim();
         return [title, attrs].filter((line): line is string => Boolean(line));
@@ -63,7 +58,7 @@ export function PurchaseProductLabel({
                     key={`${index}-${line}`}
                     className={cn(
                         lineClass,
-                        index === 0 ? primaryClassName : secondaryClassName ?? 'text-muted-foreground',
+                        index === 0 ? primaryClassName : (secondaryClassName ?? 'text-muted-foreground'),
                     )}
                 >
                     {line}
@@ -75,10 +70,7 @@ export function PurchaseProductLabel({
 
 export function usePurchaseProductLabelText(product: ProductLabelSource) {
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
-    const showInTitleByTypeId = useMemo(
-        () => buildShowInTitleByTypeId(attributeTypes),
-        [attributeTypes],
-    );
+    const showInTitleByTypeId = useMemo(() => buildShowInTitleByTypeId(attributeTypes), [attributeTypes]);
 
     return formatPurchaseProductLabel(product, showInTitleByTypeId, attributeTypes).text || product.name;
 }

@@ -1,8 +1,4 @@
-import {
-    APP_SETTING_KEYS,
-    DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
-    ValidationError,
-} from '@zakupki/types';
+import { APP_SETTING_KEYS, DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT, ValidationError } from '@zakupki/types';
 
 import { AppSettingRepository } from '../domain/app-setting.repository';
 

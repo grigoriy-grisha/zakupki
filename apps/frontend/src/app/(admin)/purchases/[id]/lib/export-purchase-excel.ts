@@ -1,11 +1,7 @@
 import ExcelJS from 'exceljs';
 import { parsePriceTiers, type PriceTier } from '@zakupki/types';
 
-import {
-    formatPurchaseProductLabel,
-    type AttributeTypeMeta,
-    type ProductLabelSource,
-} from '../../../products/lib';
+import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
 import { formatOrderStatValue, getPurchaseItemOrderStats, unitsInPack } from './purchase-item-order-stats';
 
@@ -226,13 +222,7 @@ function applyCellBorder(cell: ExcelJS.Cell) {
     cell.border = excelCellBorders;
 }
 
-function applySheetBorders(
-    sheet: ExcelJS.Worksheet,
-    fromRow: number,
-    toRow: number,
-    fromCol: number,
-    toCol: number,
-) {
+function applySheetBorders(sheet: ExcelJS.Worksheet, fromRow: number, toRow: number, fromCol: number, toCol: number) {
     for (let rowNumber = fromRow; rowNumber <= toRow; rowNumber++) {
         const row = sheet.getRow(rowNumber);
         for (let col = fromCol; col <= toCol; col++) {
@@ -402,15 +392,7 @@ function addGeneralFooterRow(
 ) {
     const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
     const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
-    const row = sheet.addRow([
-        '',
-        '',
-        label,
-        '',
-        '',
-        ...participantValues,
-        ...Array(summaryColumns).fill(''),
-    ]);
+    const row = sheet.addRow(['', '', label, '', '', ...participantValues, ...Array(summaryColumns).fill('')]);
 
     sheet.mergeCells(row.number, GENERAL_EXPORT_LABEL_START, row.number, GENERAL_EXPORT_LABEL_END);
 
@@ -503,12 +485,7 @@ function buildParticipantSummary(orders: ExportOrder[], payments: ExportPayment[
     });
 }
 
-export async function exportGeneralPurchaseData({
-    purchase,
-    orders,
-    payments,
-    attributeTypes,
-}: PurchaseExportData) {
+export async function exportGeneralPurchaseData({ purchase, orders, payments, attributeTypes }: PurchaseExportData) {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Zakupki';
     workbook.created = new Date();
@@ -642,7 +619,12 @@ export async function exportGeneralPurchaseData({
     const gramTotals = participantGramTotals(orders, participants, productByItemId);
     const paymentTotals = participantPaymentTotals(orders, payments, participants);
 
-    addGeneralFooterRow(sheet, 'грамм всего', gramTotals.map((value) => value || ''), participantCount);
+    addGeneralFooterRow(
+        sheet,
+        'грамм всего',
+        gramTotals.map((value) => value || ''),
+        participantCount,
+    );
     addGeneralFooterRow(
         sheet,
         'Сумма за бисер, руб',
@@ -806,10 +788,7 @@ function groupOrdersByUser(orders: ExportOrder[]) {
     return map;
 }
 
-function addParticipantGramTotalRow(
-    sheet: ExcelJS.Worksheet,
-    totals: { partialGr: number; fullPackGr: number },
-) {
+function addParticipantGramTotalRow(sheet: ExcelJS.Worksheet, totals: { partialGr: number; fullPackGr: number }) {
     if (totals.partialGr + totals.fullPackGr <= 0) return;
 
     const row = sheet.addRow(['', '', '', '', 'грамм всего', totals.partialGr || '', totals.fullPackGr || '']);
@@ -859,7 +838,12 @@ function addParticipantOrdersTable(
 ) {
     const metaRow = sheet.addRow(['', '', purchaseTag, 'НОМЕР УЧАСТНИКА', '', participantNumber, '']);
     sheet.mergeCells(metaRow.number, ORDERS_EXPORT_COL_PRICE_510, metaRow.number, ORDERS_EXPORT_COL_PRICE_1GR);
-    sheet.mergeCells(metaRow.number, ORDERS_EXPORT_COL_ORDER_PARTIAL, metaRow.number, ORDERS_EXPORT_COL_ORDER_FULL_PACK);
+    sheet.mergeCells(
+        metaRow.number,
+        ORDERS_EXPORT_COL_ORDER_PARTIAL,
+        metaRow.number,
+        ORDERS_EXPORT_COL_ORDER_FULL_PACK,
+    );
 
     applyOrdersCellFill(metaRow.getCell(ORDERS_EXPORT_COL_PRICE_PACK), ORDERS_EXPORT_FILL.purchaseTag);
     metaRow.getCell(ORDERS_EXPORT_COL_PRICE_PACK).font = { bold: true };
@@ -875,14 +859,13 @@ function addParticipantOrdersTable(
     applyOrdersCellFill(participantNumberCell, ORDERS_EXPORT_FILL.participantNumber);
     styleNumericCell(participantNumberCell);
 
-    const headerRow = sheet.addRow([
-        '',
-        'Фасовка поставщика, гр',
-        ...ORDERS_EXPORT_PRICE_HEADERS,
-        '',
-        '',
-    ]);
-    sheet.mergeCells(headerRow.number, ORDERS_EXPORT_COL_ORDER_PARTIAL, headerRow.number, ORDERS_EXPORT_COL_ORDER_FULL_PACK);
+    const headerRow = sheet.addRow(['', 'Фасовка поставщика, гр', ...ORDERS_EXPORT_PRICE_HEADERS, '', '']);
+    sheet.mergeCells(
+        headerRow.number,
+        ORDERS_EXPORT_COL_ORDER_PARTIAL,
+        headerRow.number,
+        ORDERS_EXPORT_COL_ORDER_FULL_PACK,
+    );
     const participantTitleCell = headerRow.getCell(ORDERS_EXPORT_COL_ORDER_PARTIAL);
     participantTitleCell.value = participantBlockTitle(participant);
     participantTitleCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -961,24 +944,13 @@ function addParticipantOrdersTable(
         ORDERS_EXPORT_FILL.balance,
         true,
     );
-    addParticipantFooterRow(
-        sheet,
-        'ОПЛАЧЕНО',
-        { left: payment.paid || '', right: '' },
-        ORDERS_EXPORT_FILL.paid,
-        true,
-    );
+    addParticipantFooterRow(sheet, 'ОПЛАЧЕНО', { left: payment.paid || '', right: '' }, ORDERS_EXPORT_FILL.paid, true);
 
     const blockEndRow = sheet.rowCount;
     applySheetBorders(sheet, blockStartRow, blockEndRow, 1, ORDERS_EXPORT_COLUMN_COUNT);
 }
 
-export async function exportOrdersPurchaseData({
-    purchase,
-    orders,
-    payments,
-    attributeTypes,
-}: PurchaseExportData) {
+export async function exportOrdersPurchaseData({ purchase, orders, payments, attributeTypes }: PurchaseExportData) {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Zakupki';
     workbook.created = new Date();

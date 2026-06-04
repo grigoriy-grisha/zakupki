@@ -13,14 +13,7 @@ export interface AttributeTreeProps {
     depth?: number;
 }
 
-export function AttributeTree({
-    nodes,
-    selectedId,
-    onSelect,
-    expandedIds,
-    onToggle,
-    depth = 0,
-}: AttributeTreeProps) {
+export function AttributeTree({ nodes, selectedId, onSelect, expandedIds, onToggle, depth = 0 }: AttributeTreeProps) {
     return (
         <div className="space-y-0.5">
             {nodes.map((node) => {

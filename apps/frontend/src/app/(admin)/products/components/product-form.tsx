@@ -33,10 +33,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
     const errors = state.form.formState.errors;
 
     return (
-        <form
-            onSubmit={state.form.handleSubmit(submit.submitForm)}
-            className="space-y-4 px-4"
-        >
+        <form onSubmit={state.form.handleSubmit(submit.submitForm)} className="space-y-4 px-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="articleNumber">Номер</Label>

@@ -171,7 +171,10 @@ const productInclude = {
             },
         },
     },
-    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }] },
+    characteristicValues: {
+        include: { characteristic: true },
+        orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }],
+    },
 };
 
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
@@ -240,11 +243,13 @@ function characteristicValuesCreate(
     characteristics: ProductCharacteristicInput[] | undefined,
 ): Pick<Prisma.ProductCreateInput, 'characteristicValues'> {
     if (!characteristics?.length) return { characteristicValues: undefined };
-    const rows = characteristics.filter((c) => c.value.trim()).map((c, index) => ({
-        characteristicId: c.characteristicId,
-        value: c.value.trim(),
-        sortOrder: c.sortOrder ?? index,
-    }));
+    const rows = characteristics
+        .filter((c) => c.value.trim())
+        .map((c, index) => ({
+            characteristicId: c.characteristicId,
+            value: c.value.trim(),
+            sortOrder: c.sortOrder ?? index,
+        }));
     if (!rows.length) return { characteristicValues: undefined };
     return { characteristicValues: { create: rows } };
 }

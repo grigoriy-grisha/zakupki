@@ -10,10 +10,7 @@ declare global {
                 openLink?: (url: string) => void;
             };
             Login?: {
-                auth: (
-                    options: { bot_id: number; request_access: boolean },
-                    callback: (user: unknown) => void,
-                ) => void;
+                auth: (options: { bot_id: number; request_access: boolean }, callback: (user: unknown) => void) => void;
             };
         };
     }

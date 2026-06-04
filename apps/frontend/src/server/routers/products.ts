@@ -60,9 +60,7 @@ const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     attributeIds: z.array(z.number()).optional(),
-    characteristics: z
-        .array(z.object({ characteristicId: z.number(), value: z.string() }))
-        .optional(),
+    characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
     priceTiers: z.array(priceTierSchema).optional(),
@@ -83,9 +81,7 @@ const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     attributeIds: z.array(z.number()).optional(),
-    characteristics: z
-        .array(z.object({ characteristicId: z.number(), value: z.string() }))
-        .optional(),
+    characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
     minPackageAmount: z.number().optional(),
     minPackageUnit: z.string().optional(),
     priceTiers: z.array(priceTierSchema).optional(),

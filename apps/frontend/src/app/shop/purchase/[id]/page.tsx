@@ -44,9 +44,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         totalCount,
     } = usePurchaseFilterTree(items);
 
-    const orderQtyMap = new Map(
-        paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]),
-    );
+    const orderQtyMap = new Map(paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]));
     const orderPacksMap = new Map(
         paymentDetail.myOrdersInPurchase.map((o: any) => [o.purchaseItemId, o.supplementPacksAdded ?? 0]),
     );
@@ -88,11 +86,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     <h1 className="text-3xl font-bold tracking-tight">{purchase.tag}</h1>
                     <Badge
                         className={
-                            'text-sm px-2.5 py-0.5 ' + (
-                                purchase.status === 'SUPPLEMENT'
-                                    ? 'bg-warning-50 text-warning'
-                                    : 'bg-success-50 text-success'
-                            )
+                            'text-sm px-2.5 py-0.5 ' +
+                            (purchase.status === 'SUPPLEMENT'
+                                ? 'bg-warning-50 text-warning'
+                                : 'bg-success-50 text-success')
                         }
                     >
                         {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
@@ -105,7 +102,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-muted-foreground">
                     <span>{purchase.supplier}</span>
                     <span>·</span>
-                    <span>До {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span>
+                    <span>
+                        До {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                    </span>
                 </div>
             </div>
 
@@ -138,7 +137,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         {selectedId != null && (
                             <div className="flex flex-wrap items-center gap-1.5 text-sm">
                                 {ancestorPath.map((segment, i) => (
-                                    <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
+                                    <span
+                                        key={`${segment.typeId}:${segment.name}`}
+                                        className="flex items-center gap-1.5"
+                                    >
                                         {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
                                         <span>
                                             <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
@@ -155,7 +157,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                                     </span>
                                 )}
                                 {selectedPath.map((segment, i) => (
-                                    <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
+                                    <span
+                                        key={`${segment.typeId}:${segment.name}`}
+                                        className="flex items-center gap-1.5"
+                                    >
                                         {(ancestorPath.length > 0 || i > 0) && (
                                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                                         )}
@@ -178,9 +183,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             </div>
                         )}
 
-                        <p className="text-sm text-muted-foreground">
-                            Товаров: {filteredItems.length}
-                        </p>
+                        <p className="text-sm text-muted-foreground">Товаров: {filteredItems.length}</p>
 
                         <div className="grid grid-cols-2 items-stretch gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredItems.map((item) => (

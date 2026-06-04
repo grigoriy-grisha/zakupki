@@ -140,9 +140,7 @@ export function PurchaseProductEditForm({
         loadSavedDescription && !!normalizeNovelHtml(initial.description) ? initial.description : null,
     );
     /** При редактировании: не затирать уже сохранённое описание при автовыборе шаблона. */
-    const preserveSavedDescriptionRef = useRef(
-        loadSavedDescription && !!normalizeNovelHtml(initial.description),
-    );
+    const preserveSavedDescriptionRef = useRef(loadSavedDescription && !!normalizeNovelHtml(initial.description));
 
     useEffect(() => {
         const next = buildPurchaseFormState(product, initialTiers, loadSavedDescription);
@@ -159,14 +157,12 @@ export function PurchaseProductEditForm({
             next,
         );
         userPickedTemplateRef.current = false;
-        preserveSavedDescriptionRef.current =
-            loadSavedDescription && !!normalizeNovelHtml(next.description);
-        lastAutoDescriptionRef.current =
-            preserveSavedDescriptionRef.current ? next.description : null;
+        preserveSavedDescriptionRef.current = loadSavedDescription && !!normalizeNovelHtml(next.description);
+        lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current ? next.description : null;
         setTemplateId('none');
         setDescriptionRevision(0);
         lastAppliedSignatureRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps — сброс только при смене товара
+        // eslint-disable-next-line react-hooks/exhaustive-deps — сброс только при смене товара
     }, [product.id]);
 
     useEffect(() => {
@@ -182,29 +178,18 @@ export function PurchaseProductEditForm({
     const { data: attributeTypes, isSuccess: attributeTypesReady } = trpc.attributeTypes.list.useQuery();
     const { data: allAttributes } = trpc.productAttributes.list.useQuery();
     const { data: allCharacteristics } = trpc.characteristics.list.useQuery();
-    const showInTitleByTypeId = useMemo(
-        () => buildShowInTitleByTypeId(attributeTypes),
-        [attributeTypes],
-    );
+    const showInTitleByTypeId = useMemo(() => buildShowInTitleByTypeId(attributeTypes), [attributeTypes]);
 
     const characteristicsCatalog = useMemo(() => {
         if (!allAttributes?.length || !allCharacteristics?.length) return undefined;
         return { attributes: allAttributes, characteristics: allCharacteristics };
     }, [allAttributes, allCharacteristics]);
 
-    const primarySupplierPack = useMemo(
-        () => primarySupplierPackageFromTiers(supPkgTiers),
-        [supPkgTiers],
-    );
+    const primarySupplierPack = useMemo(() => primarySupplierPackageFromTiers(supPkgTiers), [supPkgTiers]);
 
     const descriptionFields = useMemo(
         () => ({
-            ...productToDescriptionFields(
-                product,
-                showInTitleByTypeId,
-                attributeTypes,
-                characteristicsCatalog,
-            ),
+            ...productToDescriptionFields(product, showInTitleByTypeId, attributeTypes, characteristicsCatalog),
             name: product.name,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
@@ -246,8 +231,7 @@ export function PurchaseProductEditForm({
         [postTemplates],
     );
 
-    const selectedTemplateBody =
-        templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
+    const selectedTemplateBody = templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
 
     const catalogReady = characteristicsCatalog != null;
 

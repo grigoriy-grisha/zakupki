@@ -15,7 +15,10 @@ export const productWithAttributes = {
             },
         },
     },
-    characteristicValues: { include: { characteristic: true }, orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }] },
+    characteristicValues: {
+        include: { characteristic: true },
+        orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }],
+    },
 };
 
 export class PurchaseRepository {
@@ -28,7 +31,9 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: { select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true } },
+                        orderLines: {
+                            select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
+                        },
                     },
                 },
             },
@@ -43,7 +48,9 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: { select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true } },
+                        orderLines: {
+                            select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
+                        },
                     },
                 },
             },
@@ -61,7 +68,9 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productWithAttributes },
-                        orderLines: { select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true } },
+                        orderLines: {
+                            select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
+                        },
                     },
                 },
             },

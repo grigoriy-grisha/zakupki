@@ -85,7 +85,13 @@ export class OrderRepository {
                     const available = Number(purchaseItem.availableQty);
                     // Используем точный расчёт по свободной части
                     if (packSize && packSize > 0 && oldPacks > 0) {
-                        const stockDelta = calcSupplementStockChange(oldQuantity, quantity, oldPacks, newPacks, packSize);
+                        const stockDelta = calcSupplementStockChange(
+                            oldQuantity,
+                            quantity,
+                            oldPacks,
+                            newPacks,
+                            packSize,
+                        );
                         if (stockDelta > 0) {
                             // Списываем из остатка
                             const decrement = Math.min(stockDelta, available);
@@ -220,7 +226,9 @@ export class OrderRepository {
                 purchaseItem: {
                     include: {
                         product: { include: productWithAttributes },
-                        purchase: { select: { id: true, tag: true, supplier: true, fulfillmentStatus: true, status: true } },
+                        purchase: {
+                            select: { id: true, tag: true, supplier: true, fulfillmentStatus: true, status: true },
+                        },
                     },
                 },
             },

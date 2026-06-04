@@ -47,9 +47,7 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
     return [...map.values()].sort((a, b) => a.tag.localeCompare(b.tag, 'ru'));
 }
 
-export function countUniquePurchases(
-    orderLines: { purchaseItem?: { purchaseId: number } | null }[],
-): number {
+export function countUniquePurchases(orderLines: { purchaseItem?: { purchaseId: number } | null }[]): number {
     const ids = new Set<number>();
     for (const line of orderLines) {
         const pid = line.purchaseItem?.purchaseId;

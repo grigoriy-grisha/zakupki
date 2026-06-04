@@ -37,4 +37,3 @@ export function useDeleteSupplier() {
         onError: (err) => toast.error(err.message),
     });
 }
-

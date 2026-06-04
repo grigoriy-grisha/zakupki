@@ -64,10 +64,7 @@ export function OrdersSummaryCard({
                             product != null
                                 ? getProductPhotoId(product)
                                 : (order.purchaseItem?.product?.photos?.[0]?.id ?? null);
-                        const label =
-                            product != null
-                                ? undefined
-                                : (order.purchaseItem?.product?.name ?? 'Товар');
+                        const label = product != null ? undefined : (order.purchaseItem?.product?.name ?? 'Товар');
 
                         return (
                             <div

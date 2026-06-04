@@ -11,10 +11,7 @@ export type ShopPaymentView = {
     children?: { amount: unknown; promoCode: { code: string } | null }[];
 };
 
-export function paymentHasProof(payment: {
-    proofObjectKey?: string | null;
-    proofData?: unknown;
-}): boolean {
+export function paymentHasProof(payment: { proofObjectKey?: string | null; proofData?: unknown }): boolean {
     return Boolean(payment.proofObjectKey || payment.proofData);
 }
 
@@ -24,10 +21,7 @@ export function paymentTotalAmount(payment: ShopPaymentView): number {
     return Number(payment.amount) + childAmount;
 }
 
-export const SHOP_PAYMENT_STATUS: Record<
-    string,
-    { label: string; className: string }
-> = {
+export const SHOP_PAYMENT_STATUS: Record<string, { label: string; className: string }> = {
     PENDING: { label: 'Ожидает подтверждения', className: 'text-warning' },
     CONFIRMED: { label: 'Подтверждено', className: 'text-success' },
     REJECTED: { label: 'Отклонено', className: 'text-error' },

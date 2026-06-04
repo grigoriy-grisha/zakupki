@@ -56,9 +56,7 @@ export function buildShopOrderQuantityContext(input: {
 }): ShopOrderQuantityContext {
     const orderStep = getOrderQuantityStep(input.orderQtyOptions);
     const minOrderQty = getMinOrderQuantity(input.orderQtyOptions);
-    const uiStep = input.isSupplement
-        ? getSupplementUiOrderStep(orderStep, input.orderQtyOptions)
-        : orderStep;
+    const uiStep = input.isSupplement ? getSupplementUiOrderStep(orderStep, input.orderQtyOptions) : orderStep;
     const effectiveMinQty = input.isSupplement
         ? getSupplementEffectiveMinQty(minOrderQty, input.orderQtyOptions)
         : minOrderQty;
@@ -66,14 +64,11 @@ export function buildShopOrderQuantityContext(input: {
     let supplementBounds: SupplementOrderBounds | null = null;
     if (input.isSupplement) {
         const rawAvailableQty =
-            input.availableQty !== null && input.availableQty !== undefined
-                ? Number(input.availableQty)
-                : null;
+            input.availableQty !== null && input.availableQty !== undefined ? Number(input.availableQty) : null;
         const freeRemainder = calculateFreeRemainder(input.orderLines ?? [], input.packSize);
         const effectiveAvailableQty =
             rawAvailableQty != null ? rawAvailableQty : freeRemainder > 0 ? freeRemainder : null;
-        const remainderOnly =
-            isSupplementRemainderOnlyPhase(input.fulfillmentStatus);
+        const remainderOnly = isSupplementRemainderOnlyPhase(input.fulfillmentStatus);
         supplementBounds = {
             availableQty: effectiveAvailableQty,
             currentQuantity: input.currentQuantity,
@@ -97,11 +92,9 @@ export function buildShopOrderQuantityContext(input: {
     }
 
     const supplementOnlyPacks =
-        supplementBounds != null &&
-        isSupplementOnlyPacksOrder(supplementBounds, input.orderQtyOptions);
+        supplementBounds != null && isSupplementOnlyPacksOrder(supplementBounds, input.orderQtyOptions);
 
-    const supplementPacksAllowed =
-        supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
+    const supplementPacksAllowed = supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
 
     // Защита пачек на доборе
     const rawPacksAdded = input.supplementPacksAdded ?? 0;

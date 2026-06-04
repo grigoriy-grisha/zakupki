@@ -146,10 +146,7 @@ export function getOrderQuantityStep(options: OrderQuantityOptions): number {
 /** Минимальное количество заказа: мин. фасовка товара, иначе minQty позиции, иначе шаг. */
 export function getMinOrderQuantity(options: OrderQuantityOptions): number {
     const step = getOrderQuantityStep(options);
-    const base =
-        positiveOrNull(options.minPackageAmount) ??
-        positiveOrNull(options.purchaseItemMinQty) ??
-        step;
+    const base = positiveOrNull(options.minPackageAmount) ?? positiveOrNull(options.purchaseItemMinQty) ?? step;
     return roundUpToStep(base, step);
 }
 

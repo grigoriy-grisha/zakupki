@@ -48,10 +48,7 @@ function normalizePackageUnit(raw?: string | null): PackageUnit | null {
     return null;
 }
 
-function withCatalogPackageUnits(
-    state: PurchaseProductFormState,
-    catalogUnit: PackageUnit,
-): PurchaseProductFormState {
+function withCatalogPackageUnits(state: PurchaseProductFormState, catalogUnit: PackageUnit): PurchaseProductFormState {
     return {
         ...state,
         tiers: state.tiers.map((t) => ({
@@ -131,8 +128,7 @@ export function primarySupplierPackageFromTiers(tiers: PurchasePriceTier[]): {
     unit: string | null;
     price: number | null;
 } {
-    const { supplierPackageAmount, supplierPackageUnit, supplierPackagePrice } =
-        normalizeSupplierTiersForSave(tiers);
+    const { supplierPackageAmount, supplierPackageUnit, supplierPackagePrice } = normalizeSupplierTiersForSave(tiers);
     return {
         amount: supplierPackageAmount,
         unit: supplierPackageUnit,
@@ -157,10 +153,7 @@ export function templateStorageKey(productId: number) {
 }
 
 /** Шаблон при редактировании в закупке: для товара → последний общий → первый в списке. */
-export function resolveDefaultTemplateId(
-    productId: number,
-    postTemplates: { id: number }[] | undefined,
-): string {
+export function resolveDefaultTemplateId(productId: number, postTemplates: { id: number }[] | undefined): string {
     if (!postTemplates?.length) return 'none';
     if (typeof window === 'undefined') return String(postTemplates[0].id);
 

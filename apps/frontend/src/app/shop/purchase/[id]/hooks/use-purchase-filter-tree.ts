@@ -30,12 +30,7 @@ export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
     const products = useMemo(() => items?.map((i) => i.product) ?? [], [items]);
 
     const tree = useMemo(
-        () =>
-            buildAttributeTree(
-                (attributeTypes ?? []) as AttributeTypeRow[],
-                products,
-                catalogByType,
-            ),
+        () => buildAttributeTree((attributeTypes ?? []) as AttributeTypeRow[], products, catalogByType),
         [attributeTypes, products, catalogByType],
     );
 

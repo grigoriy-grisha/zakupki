@@ -113,9 +113,7 @@ export function AttributeFormDialog({
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>
-                            {isEdit
-                                ? `Редактировать ${isBrand ? 'бренд' : 'значение'}: ${typeName}`
-                                : createTitle}
+                            {isEdit ? `Редактировать ${isBrand ? 'бренд' : 'значение'}: ${typeName}` : createTitle}
                         </DialogTitle>
                     </DialogHeader>
                     <form

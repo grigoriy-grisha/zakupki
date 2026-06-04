@@ -15,10 +15,7 @@ const nextConfig: NextConfig = {
         '@zakupki/database',
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
-    allowedDevOrigins: [
-        'fabulously-profuse-dobsonfly.cloudpub.ru',
-        'prudishly-jocular-dachshund.cloudpub.ru',
-    ],
+    allowedDevOrigins: ['fabulously-profuse-dobsonfly.cloudpub.ru', 'prudishly-jocular-dachshund.cloudpub.ru'],
 };
 
 export default nextConfig;

@@ -143,8 +143,4 @@ export {
     ForbiddenError,
 } from './errors';
 
-export {
-    APP_SETTING_KEYS,
-    DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
-    computeDiscountedPackPrice,
-} from './app-settings';
+export { APP_SETTING_KEYS, DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT, computeDiscountedPackPrice } from './app-settings';

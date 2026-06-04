@@ -143,9 +143,7 @@ function PurchaseOrderCard({
                             </p>
                         )}
                         <AppLink href={`/shop/purchase/${group.id}`}>
-                            <CardTitle className="text-lg hover:text-primary transition-colors">
-                                {group.tag}
-                            </CardTitle>
+                            <CardTitle className="text-lg hover:text-primary transition-colors">{group.tag}</CardTitle>
                         </AppLink>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -240,9 +238,7 @@ function PurchaseOrderCard({
                         <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">
                                 Итого:{' '}
-                                <span className="font-medium text-foreground">
-                                    {total.toLocaleString('ru-RU')} ₽
-                                </span>
+                                <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
                             </span>
                             {remaining > 0 && (
                                 <span className="text-xs text-muted-foreground">
@@ -272,20 +268,15 @@ function PurchaseOrderCard({
                         <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">
                                 Итого:{' '}
-                                <span className="font-medium text-foreground">
-                                    {total.toLocaleString('ru-RU')} ₽
-                                </span>
+                                <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
                             </span>
                             <span className="text-xs text-muted-foreground">
-                                {group.orders.length}{' '}
-                                {group.orders.length === 1 ? 'позиция' : 'позиции'}
+                                {group.orders.length} {group.orders.length === 1 ? 'позиция' : 'позиции'}
                             </span>
                         </div>
                     ) : (
                         <div>
-                            <span className="font-medium text-foreground">
-                                {total.toLocaleString('ru-RU')} ₽
-                            </span>
+                            <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
                             <button
                                 disabled
                                 className="mt-1.5 flex w-full cursor-not-allowed items-center justify-center gap-1 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground/50"
@@ -340,9 +331,7 @@ export default function OrdersPage() {
             <div className="flex flex-col items-center justify-center py-24 text-center">
                 <ClipboardList className="h-16 w-16 text-muted-foreground/30" />
                 <h2 className="mt-4 text-lg font-medium">Пока нет заказов</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    Перейдите в закупку, чтобы заказать товары
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Перейдите в закупку, чтобы заказать товары</p>
                 <Button className="mt-4" onClick={() => router.push('/shop')}>
                     К закупкам
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -384,12 +373,7 @@ export default function OrdersPage() {
                         />
                     ) : (
                         activeGroups.map((group) => (
-                            <PurchaseOrderCard
-                                key={group.id}
-                                group={group}
-                                myPayments={myPayments}
-                                isPast={false}
-                            />
+                            <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast={false} />
                         ))
                     )}
                 </TabsContent>
@@ -402,12 +386,7 @@ export default function OrdersPage() {
                         />
                     ) : (
                         pastGroups.map((group) => (
-                            <PurchaseOrderCard
-                                key={group.id}
-                                group={group}
-                                myPayments={myPayments}
-                                isPast
-                            />
+                            <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast />
                         ))
                     )}
                 </TabsContent>

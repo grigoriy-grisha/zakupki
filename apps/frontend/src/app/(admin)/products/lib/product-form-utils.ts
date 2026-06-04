@@ -9,10 +9,7 @@ export type AttributeListItem = {
 
 export type PendingFile = { id: string; file: File; preview: string };
 
-export function resolveProductUnitId(product: {
-    unitId?: number | null;
-    unit?: { id: number } | null;
-}): number {
+export function resolveProductUnitId(product: { unitId?: number | null; unit?: { id: number } | null }): number {
     const fromScalar = Number(product.unitId);
     if (Number.isFinite(fromScalar) && fromScalar > 0) return fromScalar;
     const fromRelation = Number(product.unit?.id);
@@ -151,12 +148,7 @@ export function resolveProductCharacteristics(
         savedById.set(id, cv.value?.trim() ?? '');
     }
 
-    const auto = buildAutoCharacteristicValues(
-        selectedAttrs,
-        allAttributes,
-        attributeTypes,
-        allCharacteristics,
-    );
+    const auto = buildAutoCharacteristicValues(selectedAttrs, allAttributes, attributeTypes, allCharacteristics);
 
     return linkedIds
         .map((id) => {
@@ -184,11 +176,7 @@ export function syncCharacteristicOrder(prev: number[], activeIds: number[]): nu
     return [...kept, ...missing];
 }
 
-export function moveCharacteristicOrder(
-    order: number[],
-    characteristicId: number,
-    direction: 'up' | 'down',
-): number[] {
+export function moveCharacteristicOrder(order: number[], characteristicId: number, direction: 'up' | 'down'): number[] {
     const index = order.indexOf(characteristicId);
     if (index < 0) return order;
     const target = direction === 'up' ? index - 1 : index + 1;

@@ -1,10 +1,5 @@
 import { dbClient, RoleKind } from '@zakupki/database';
-import {
-    AppError,
-    ForbiddenError,
-    NotFoundError,
-    ValidationError,
-} from '@zakupki/types';
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from '@zakupki/types';
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { TRPC_ERROR_CODE_KEY } from '@trpc/server/rpc';
 import type { Session } from 'next-auth';
@@ -74,7 +69,6 @@ export const createTRPCContext = async (opts?: { req?: Request }): Promise<TrpcC
     };
 };
 
-/** Convert AppError to the appropriate TRPCError code */
 function appErrorToTrpc(err: AppError): TRPCError {
     if (err instanceof NotFoundError) {
         return new TRPCError({ code: 'NOT_FOUND', message: err.message });
@@ -85,7 +79,6 @@ function appErrorToTrpc(err: AppError): TRPCError {
     if (err instanceof ForbiddenError) {
         return new TRPCError({ code: 'FORBIDDEN', message: err.message });
     }
-    // BusinessRuleError and other AppError subclasses
     return new TRPCError({ code: 'BAD_REQUEST', message: err.message });
 }
 

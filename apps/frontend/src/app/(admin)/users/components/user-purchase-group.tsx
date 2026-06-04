@@ -33,9 +33,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                         </p>
                     )}
                     <p className="font-medium leading-tight">{group.tag}</p>
-                    {group.supplier && (
-                        <p className="truncate text-xs text-muted-foreground">{group.supplier}</p>
-                    )}
+                    {group.supplier && <p className="truncate text-xs text-muted-foreground">{group.supplier}</p>}
                 </div>
                 <Badge variant="outline" className="shrink-0 font-normal">
                     {group.orders.length} поз.
@@ -60,8 +58,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                                 <TableRow key={order.id}>
                                     <TableCell>
                                         <p className="font-medium leading-tight">
-                                            {order.purchaseItem?.product?.name ??
-                                                `Товар #${order.purchaseItemId}`}
+                                            {order.purchaseItem?.product?.name ?? `Товар #${order.purchaseItemId}`}
                                         </p>
                                     </TableCell>
                                     <TableCell className="text-right">

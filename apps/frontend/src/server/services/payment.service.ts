@@ -25,14 +25,9 @@ export class PaymentService {
             throw new ValidationError('Прикрепите подтверждение оплаты (чек)');
         }
 
-        const existingPending = await this.repo.findPendingByUserAndPurchase(
-            data.userId,
-            data.purchaseId,
-        );
+        const existingPending = await this.repo.findPendingByUserAndPurchase(data.userId, data.purchaseId);
         if (existingPending) {
-            throw new ValidationError(
-                'Оплата уже отправлена и ожидает подтверждения администратором',
-            );
+            throw new ValidationError('Оплата уже отправлена и ожидает подтверждения администратором');
         }
 
         // Upload proof to storage before creating the payment record

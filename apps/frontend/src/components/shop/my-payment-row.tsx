@@ -23,8 +23,7 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
         label: status,
         className: 'text-muted-foreground',
     };
-    const StatusIcon =
-        status === 'CONFIRMED' ? CircleCheck : status === 'REJECTED' ? CircleX : Clock;
+    const StatusIcon = status === 'CONFIRMED' ? CircleCheck : status === 'REJECTED' ? CircleX : Clock;
     const iconCls = statusCfg.className;
 
     const children = payment.children ?? [];
@@ -56,9 +55,7 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                     <StatusIcon className={cn('h-4 w-4 shrink-0', iconCls)} />
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium">
-                                {total.toLocaleString('ru-RU')} ₽
-                            </span>
+                            <span className="text-sm font-medium">{total.toLocaleString('ru-RU')} ₽</span>
                             <span className={cn('text-xs font-medium', iconCls)}>{statusCfg.label}</span>
                             {hasProof ? (
                                 <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
@@ -72,8 +69,7 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                                 Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽
                                 <span className="text-success">
                                     {' '}
-                                    + промокод {promoCode?.code ?? ''}{' '}
-                                    {childAmount.toLocaleString('ru-RU')} ₽
+                                    + промокод {promoCode?.code ?? ''} {childAmount.toLocaleString('ru-RU')} ₽
                                 </span>
                             </p>
                         )}

@@ -137,11 +137,7 @@ function valueNode(
     };
 }
 
-type BuildFn = (
-    siblingTypes: AttributeTypeRow[],
-    subset: AttrProduct[],
-    ancestors: PathSegment[],
-) => TreeNode[];
+type BuildFn = (siblingTypes: AttributeTypeRow[], subset: AttrProduct[], ancestors: PathSegment[]) => TreeNode[];
 
 function buildTypeValueNodes(
     type: AttributeTypeRow,
@@ -300,9 +296,7 @@ export function buildAttributeTree(
 ): TreeNode[] {
     const brandNames = buildBrandNameIndex(catalogByType);
     const childrenOf = (parentId: number | null) =>
-        types
-            .filter((t) => (t.parentId ?? null) === parentId)
-            .sort((a, b) => a.position - b.position || a.id - b.id);
+        types.filter((t) => (t.parentId ?? null) === parentId).sort((a, b) => a.position - b.position || a.id - b.id);
 
     const build: BuildFn = (siblingTypes, subset, ancestors) => {
         const nodes: TreeNode[] = [];
@@ -356,10 +350,7 @@ export function buildAttributeTree(
 }
 
 export function collectExpandableIds(nodes: TreeNode[]): string[] {
-    return nodes.flatMap((n) => [
-        ...(n.children.length > 0 ? [n.id] : []),
-        ...collectExpandableIds(n.children),
-    ]);
+    return nodes.flatMap((n) => [...(n.children.length > 0 ? [n.id] : []), ...collectExpandableIds(n.children)]);
 }
 
 function matchesSegment(product: AttrProduct, segment: PathSegment): boolean {
@@ -376,7 +367,7 @@ function matchesSegment(product: AttrProduct, segment: PathSegment): boolean {
         return Boolean(attr.isBrand);
     }
 
-    return !attr.isBrand && (attr.parentId == null && attr.parent?.id == null);
+    return !attr.isBrand && attr.parentId == null && attr.parent?.id == null;
 }
 
 export function matchesPath(product: AttrProduct, path: PathSegment[]): boolean {

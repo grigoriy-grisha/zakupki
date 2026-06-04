@@ -86,9 +86,7 @@ export function CharacteristicMultiPicker({
                                         onCheckedChange={(v) => toggle(opt.id, v === true)}
                                     />
                                     <span className="flex-1 text-sm">{opt.name}</span>
-                                    {isLocked && isChecked && (
-                                        <Check className="h-3.5 w-3.5 text-muted-foreground" />
-                                    )}
+                                    {isLocked && isChecked && <Check className="h-3.5 w-3.5 text-muted-foreground" />}
                                 </label>
                             );
                         })}

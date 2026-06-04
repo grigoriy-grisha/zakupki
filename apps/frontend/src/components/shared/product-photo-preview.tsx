@@ -126,12 +126,7 @@ export function ProductPhotoPreview({
     if (fill) {
         return (
             <>
-                <div
-                    className={cn(
-                        'relative block size-full overflow-hidden bg-muted',
-                        thumbClassName,
-                    )}
-                >
+                <div className={cn('relative block size-full overflow-hidden bg-muted', thumbClassName)}>
                     <img
                         src={src}
                         alt={alt}
@@ -142,9 +137,7 @@ export function ProductPhotoPreview({
                         type="button"
                         className={cn(
                             'absolute z-[2] flex items-center justify-center rounded-full bg-black/50 text-white shadow-sm transition-opacity hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-manipulation',
-                            zoomSize === 'lg'
-                                ? 'bottom-4 right-4 h-11 w-11'
-                                : 'bottom-2 right-2 h-8 w-8',
+                            zoomSize === 'lg' ? 'bottom-4 right-4 h-11 w-11' : 'bottom-2 right-2 h-8 w-8',
                         )}
                         onClick={openPhoto}
                         onPointerDown={(e) => e.stopPropagation()}

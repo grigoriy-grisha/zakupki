@@ -14,10 +14,7 @@ export function PackageUnitSelect({
 }) {
     return (
         <select
-            className={cn(
-                'h-9 rounded-md border border-input bg-background px-2 text-sm',
-                className,
-            )}
+            className={cn('h-9 rounded-md border border-input bg-background px-2 text-sm', className)}
             value={value}
             onChange={(e) => onChange(e.target.value)}
         >

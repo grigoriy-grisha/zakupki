@@ -39,9 +39,8 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
         setLoading(type);
         try {
             const data = await fetchExportData();
-            const { exportGeneralPurchaseData, exportOrdersPurchaseData } = await import(
-                '../lib/export-purchase-excel'
-            );
+            const { exportGeneralPurchaseData, exportOrdersPurchaseData } =
+                await import('../lib/export-purchase-excel');
 
             if (type === 'general') {
                 await exportGeneralPurchaseData(data);
@@ -70,12 +69,7 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
                 )}
                 Выгрузить общие данные
             </Button>
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={loading !== null}
-                onClick={() => void handleExport('orders')}
-            >
+            <Button variant="outline" size="sm" disabled={loading !== null} onClick={() => void handleExport('orders')}>
                 {loading === 'orders' ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (

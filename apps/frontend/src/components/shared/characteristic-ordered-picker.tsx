@@ -2,10 +2,7 @@
 
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    CharacteristicMultiPicker,
-    type CharacteristicOption,
-} from '@/components/shared/characteristic-multi-picker';
+import { CharacteristicMultiPicker, type CharacteristicOption } from '@/components/shared/characteristic-multi-picker';
 import { moveCharacteristicOrder, syncCharacteristicOrder } from '@/app/(admin)/products/lib/product-form-utils';
 
 interface CharacteristicOrderedPickerProps {

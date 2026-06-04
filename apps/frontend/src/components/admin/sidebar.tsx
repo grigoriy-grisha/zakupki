@@ -1,13 +1,6 @@
 'use client';
 
-import {
-    LayoutDashboard,
-    Menu,
-    Package,
-    Settings,
-    ShoppingCart,
-    Users,
-} from 'lucide-react';
+import { LayoutDashboard, Menu, Package, Settings, ShoppingCart, Users } from 'lucide-react';
 
 import { useUserRole } from '@/lib/hooks/use-user-role';
 
@@ -79,7 +72,14 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
 
 export function MobileNavTrigger({ onClick, className }: { onClick: () => void; className?: string }) {
     return (
-        <Button type="button" variant="ghost" size="icon" className={cn('shrink-0', className)} onClick={onClick} aria-label="Меню">
+        <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn('shrink-0', className)}
+            onClick={onClick}
+            aria-label="Меню"
+        >
             <Menu className="h-5 w-5" />
         </Button>
     );

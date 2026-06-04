@@ -5,12 +5,7 @@ import { dbClient } from '@zakupki/database';
 // @ts-ignore
 import EasyYandexS3 from 'easy-yandex-s3';
 
-import {
-    getLocalUploadDir,
-    getPublicUrlPrefix,
-    isS3Configured,
-    resolveLocalFilePath,
-} from './storage-config';
+import { getLocalUploadDir, getPublicUrlPrefix, isS3Configured, resolveLocalFilePath } from './storage-config';
 
 export interface IStorage {
     upload(productId: number, data: Uint8Array, mimeType: string, sortOrder: number): Promise<number>;
@@ -42,12 +37,7 @@ export class LocalFileStorage implements IStorage {
         return photo.id;
     }
 
-    async uploadPaymentProof(
-        userId: number,
-        purchaseId: number,
-        data: Uint8Array,
-        mimeType: string,
-    ): Promise<string> {
+    async uploadPaymentProof(userId: number, purchaseId: number, data: Uint8Array, mimeType: string): Promise<string> {
         const ext = mimeType.split('/')[1] || 'jpeg';
         const objectKey = buildObjectKey(`proofs/${userId}/${purchaseId}`, ext);
 
@@ -105,12 +95,7 @@ export class YandexS3Storage implements IStorage {
         return photo.id;
     }
 
-    async uploadPaymentProof(
-        userId: number,
-        purchaseId: number,
-        data: Uint8Array,
-        mimeType: string,
-    ): Promise<string> {
+    async uploadPaymentProof(userId: number, purchaseId: number, data: Uint8Array, mimeType: string): Promise<string> {
         const ext = mimeType.split('/')[1] || 'jpeg';
         const objectKey = buildObjectKey(`proofs/${userId}/${purchaseId}`, ext);
 

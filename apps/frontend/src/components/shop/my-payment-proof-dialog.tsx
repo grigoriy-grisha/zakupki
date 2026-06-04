@@ -43,8 +43,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                             <p className="text-lg font-bold">{total.toLocaleString('ru-RU')} ₽</p>
                             {childAmount > 0 && (
                                 <p className="text-xs text-success">
-                                    {Number(payment.amount).toLocaleString('ru-RU')} ₽ + промокод{' '}
-                                    {promoCode?.code}
+                                    {Number(payment.amount).toLocaleString('ru-RU')} ₽ + промокод {promoCode?.code}
                                 </p>
                             )}
                         </div>

@@ -8,15 +8,13 @@ export const characteristicsRouter = router({
         return ctx.services.characteristic.list();
     }),
 
-    create: adminProcedure
-        .input(z.object({ name: z.string().trim().min(1) }))
-        .mutation(async ({ ctx, input }) => {
-            try {
-                return await ctx.services.characteristic.create(input);
-            } catch (err) {
-                handleDbConflict(err);
-            }
-        }),
+    create: adminProcedure.input(z.object({ name: z.string().trim().min(1) })).mutation(async ({ ctx, input }) => {
+        try {
+            return await ctx.services.characteristic.create(input);
+        } catch (err) {
+            handleDbConflict(err);
+        }
+    }),
 
     update: adminProcedure
         .input(z.object({ id: z.number(), name: z.string().trim().min(1).optional() }))
