@@ -7,12 +7,11 @@ import { trpc } from '@/lib/client/trpc';
 import { productCreateSchema, type ProductCreateFormValues } from '../lib';
 import { useUnits } from './use-products';
 import {
-    getAttributeCharacteristicIds,
     buildAttributesTreeByType,
+    buildAutoCharacteristicValues,
+    collectLinkedCharacteristicIds,
     revokePendingFiles,
     resolveProductUnitId,
-    syncCharacteristicOrder,
-    moveCharacteristicOrder,
     type AttributeListItem,
     type PendingFile,
 } from '../lib/product-form-utils';
@@ -59,8 +58,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
 
     const [selectedAttrs, setSelectedAttrs] = useState<Record<number, number | null>>({});
     const [charValues, setCharValues] = useState<Record<number, string>>({});
-    const [manualCharIds, setManualCharIds] = useState<number[]>([]);
-    const [charOrder, setCharOrder] = useState<number[]>([]);
 
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
     const { data: allAttributes } = trpc.productAttributes.list.useQuery();
@@ -116,58 +113,25 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         });
     }
 
-    const linkedCharIds = useMemo(() => {
-        const ids = new Set<number>();
-        for (const attrId of Object.values(selectedAttrs)) {
-            if (attrId == null) continue;
-            const attr = (allAttributes as AttributeListItem[] | undefined)?.find((a) => a.id === attrId);
-            for (const cid of getAttributeCharacteristicIds(attr)) ids.add(cid);
-        }
-        return ids;
-    }, [selectedAttrs, allAttributes]);
+    const attributesList = allAttributes as AttributeListItem[] | undefined;
 
-    const linkedCharIdsKey = useMemo(
-        () => [...linkedCharIds].sort((a, b) => a - b).join(','),
-        [linkedCharIds],
+    const linkedCharIdsOrdered = useMemo(
+        () => collectLinkedCharacteristicIds(selectedAttrs, attributesList ?? []),
+        [selectedAttrs, attributesList],
     );
 
-    const activeCharIds = useMemo(() => {
-        const activeSet = new Set([...linkedCharIds, ...manualCharIds]);
-        const ordered = charOrder.filter((id) => activeSet.has(id));
-        for (const id of activeSet) {
-            if (!ordered.includes(id)) ordered.push(id);
-        }
-        return ordered;
-    }, [linkedCharIds, manualCharIds, charOrder]);
+    const linkedCharIdsKey = useMemo(() => linkedCharIdsOrdered.join(','), [linkedCharIdsOrdered]);
 
     const activeCharFields = useMemo(() => {
         const names = new Map((allCharacteristics ?? []).map((c) => [c.id, c.name]));
-        return activeCharIds.map((id) => ({
+        return linkedCharIdsOrdered.map((id) => ({
             id,
             name: names.get(id) ?? `#${id}`,
         }));
-    }, [activeCharIds, allCharacteristics]);
-
-    function handleActiveCharIdsChange(ids: number[]) {
-        const manual = ids.filter((id) => !linkedCharIds.has(id));
-        setManualCharIds(manual);
-        setCharOrder((prev) => syncCharacteristicOrder(prev, ids));
-        setCharValues((prev) => {
-            const next = { ...prev };
-            const keep = new Set(ids);
-            for (const key of Object.keys(next)) {
-                if (!keep.has(Number(key))) delete next[Number(key)];
-            }
-            return next;
-        });
-    }
-
-    function handleMoveCharacteristic(characteristicId: number, direction: 'up' | 'down') {
-        setCharOrder((prev) => moveCharacteristicOrder(prev, characteristicId, direction));
-    }
+    }, [linkedCharIdsOrdered, allCharacteristics]);
 
     function characteristicsPayload() {
-        return activeCharIds
+        return linkedCharIdsOrdered
             .map((id, index) => ({
                 characteristicId: id,
                 value: (charValues[id] ?? '').trim(),
@@ -176,10 +140,34 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             .filter((c) => c.value);
     }
 
+    const selectedAttrsKey = useMemo(() => JSON.stringify(selectedAttrs), [selectedAttrs]);
+
     useEffect(() => {
-        const activeIds = [...new Set([...linkedCharIds, ...manualCharIds])];
-        setCharOrder((prev) => syncCharacteristicOrder(prev, activeIds));
-    }, [linkedCharIdsKey, manualCharIds, linkedCharIds]);
+        if (!attributesList?.length || !attributeTypes?.length || !allCharacteristics?.length) return;
+
+        const suggested = buildAutoCharacteristicValues(
+            selectedAttrs,
+            attributesList,
+            attributeTypes,
+            allCharacteristics,
+        );
+
+        setCharValues((prev) => {
+            const next: Record<number, string> = {};
+            for (const cid of linkedCharIdsOrdered) {
+                const suggestedVal = suggested[cid]?.trim();
+                const prevVal = prev[cid]?.trim();
+                if (prevVal) {
+                    next[cid] = prev[cid];
+                } else if (suggestedVal) {
+                    next[cid] = suggestedVal;
+                } else {
+                    next[cid] = '';
+                }
+            }
+            return next;
+        });
+    }, [selectedAttrsKey, linkedCharIdsKey, attributeTypes, allCharacteristics, attributesList, linkedCharIdsOrdered]);
 
     useEffect(() => {
         return () => revokePendingFiles(pendingFilesRef.current);
@@ -210,34 +198,21 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         }
         const existingBrandId = existing.brand?.id ?? existing.brandId ?? null;
         if (existingBrandId != null) {
-            const brandAttr = (allAttributes as AttributeListItem[] | undefined)?.find(
-                (a) => a.id === existingBrandId,
-            );
+            const brandAttr = attributesList?.find((a) => a.id === existingBrandId);
             if (brandAttr?.typeId != null && map[brandAttr.typeId] == null) {
                 map[brandAttr.typeId] = existingBrandId;
             }
         }
         if (shouldReset) {
             setSelectedAttrs(map);
+            const linked = new Set(collectLinkedCharacteristicIds(map, attributesList ?? []));
             const chars: Record<number, string> = {};
-            const manual: number[] = [];
-            const linked = new Set<number>();
-            for (const attrId of Object.values(map)) {
-                if (attrId == null) continue;
-                const attr = (allAttributes as AttributeListItem[] | undefined)?.find((a) => a.id === attrId);
-                for (const cid of getAttributeCharacteristicIds(attr)) linked.add(cid);
-            }
             for (const cv of existing.characteristicValues ?? []) {
-                chars[cv.characteristicId] = cv.value;
-                if (!linked.has(cv.characteristicId)) manual.push(cv.characteristicId);
+                if (linked.has(cv.characteristicId)) {
+                    chars[cv.characteristicId] = cv.value;
+                }
             }
-            const serverOrder = [...(existing.characteristicValues ?? [])]
-                .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-                .map((cv) => cv.characteristicId);
-            const allActive = [...new Set([...linked, ...manual])];
             setCharValues(chars);
-            setManualCharIds(manual);
-            setCharOrder(syncCharacteristicOrder(serverOrder, allActive));
         } else if (existingBrandId != null && allAttributes?.length) {
             setSelectedAttrs((prev) => {
                 const brandAttr = (allAttributes as AttributeListItem[]).find((a) => a.id === existingBrandId);
@@ -255,7 +230,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             if (prev.join(',') === serverPhotoIds.join(',')) return prev;
             return serverPhotoIds;
         });
-    }, [editId, existing, form, allAttributes]);
+    }, [editId, existing, form, allAttributes, attributesList]);
 
     useEffect(() => {
         const prev = prevEditIdRef.current;
@@ -271,8 +246,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         });
         setSelectedAttrs({});
         setCharValues({});
-        setManualCharIds([]);
-        setCharOrder([]);
         setPhotoIds([]);
         setPendingFiles((prev) => {
             revokePendingFiles(prev);
@@ -299,18 +272,13 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         unitId,
         units,
         attributeTypes,
-        allCharacteristics,
         attrsTreeByType,
         childrenOfType,
         selectedAttrs,
         charValues,
         setCharValues,
-        linkedCharIds,
-        activeCharIds,
         activeCharFields,
         handleSelectType,
-        handleActiveCharIdsChange,
-        handleMoveCharacteristic,
         photoIds,
         setPhotoIds,
         pendingFiles,

@@ -49,16 +49,14 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
 
     bot.use(initMiddleware());
 
-    // Игнорируем команды и текстовые сообщения в группах/супергруппах — бот работает только в личке
     bot.on('message', async (ctx, next) => {
         const chatType = ctx.chat?.type;
         if (chatType === 'group' || chatType === 'supergroup') {
-            // Пропускаем только системные обработчики (форварды постов, ответы на заказы)
             const isAutoForward = ctx.message?.is_automatic_forward;
             const isOrderReply = ctx.message?.reply_to_message && ctx.message.text &&
                 isOrderCollectionMessage(ctx.chat.id, ctx.message);
             if (!isAutoForward && !isOrderReply) {
-                return; // silently drop
+                return; 
             }
         }
         await next();

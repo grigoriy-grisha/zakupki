@@ -15,6 +15,8 @@ interface PurchaseProductLabelProps {
     className?: string;
     primaryClassName?: string;
     secondaryClassName?: string;
+    /** Вторая строка (тип + бренд, напр. «Бисер японский Delica 11/0»). */
+    showSubtitle?: boolean;
     as?: 'div' | 'span';
 }
 
@@ -23,6 +25,7 @@ export function PurchaseProductLabel({
     className,
     primaryClassName,
     secondaryClassName,
+    showSubtitle = true,
     as: Tag = 'div',
 }: PurchaseProductLabelProps) {
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
@@ -31,16 +34,17 @@ export function PurchaseProductLabel({
         [attributeTypes],
     );
     const label = formatPurchaseProductLabel(product, showInTitleByTypeId, attributeTypes);
+    const lines = showSubtitle ? label.lines : label.lines.slice(0, 1);
     const LineTag = Tag === 'span' ? 'span' : 'div';
     const lineClass = Tag === 'span' ? 'block leading-snug' : 'leading-snug';
 
-    if (label.lines.length === 0) {
+    if (lines.length === 0) {
         return <Tag className={className}>{product.name}</Tag>;
     }
 
     return (
         <Tag className={className}>
-            {label.lines.map((line, index) => (
+            {lines.map((line, index) => (
                 <LineTag
                     key={`${index}-${line}`}
                     className={cn(

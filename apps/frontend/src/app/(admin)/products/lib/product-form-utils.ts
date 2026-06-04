@@ -4,7 +4,7 @@ export type AttributeListItem = {
     name: string;
     isBrand?: boolean;
     parentId?: number | null;
-    characteristics?: { characteristic: { id: number } }[];
+    characteristics?: { position?: number; characteristic: { id: number } }[];
 };
 
 export type PendingFile = { id: string; file: File; preview: string };
@@ -21,7 +21,93 @@ export function resolveProductUnitId(product: {
 }
 
 export function getAttributeCharacteristicIds(attr: AttributeListItem | undefined): number[] {
-    return attr?.characteristics?.map((l) => l.characteristic.id) ?? [];
+    const links = attr?.characteristics ?? [];
+    return [...links]
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.characteristic.id - b.characteristic.id)
+        .map((l) => l.characteristic.id);
+}
+
+function normalizeCharacteristicKey(name: string): string {
+    return name.trim().toLowerCase();
+}
+
+/** Все характеристики, привязанные к выбранным значениям справочника (включая бренд-родителя). */
+export function collectLinkedCharacteristicIds(
+    selectedAttrs: Record<number, number | null>,
+    allAttributes: AttributeListItem[],
+): number[] {
+    const ordered: number[] = [];
+    const seen = new Set<number>();
+
+    const addFromAttribute = (attr: AttributeListItem | undefined) => {
+        if (!attr) return;
+        for (const cid of getAttributeCharacteristicIds(attr)) {
+            if (!seen.has(cid)) {
+                seen.add(cid);
+                ordered.push(cid);
+            }
+        }
+    };
+
+    for (const attrId of Object.values(selectedAttrs)) {
+        if (attrId == null) continue;
+        let current: AttributeListItem | undefined = allAttributes.find((a) => a.id === attrId);
+        while (current) {
+            addFromAttribute(current);
+            const parentId = current.parentId;
+            if (parentId == null) break;
+            current = allAttributes.find((a) => a.id === parentId);
+        }
+    }
+
+    return ordered;
+}
+
+/**
+ * Значения характеристик по выбранным атрибутам: если имя характеристики совпадает с типом
+ * справочника (Цвет, Размер, …), подставляется название выбранного значения.
+ */
+export function buildAutoCharacteristicValues(
+    selectedAttrs: Record<number, number | null>,
+    allAttributes: AttributeListItem[],
+    attributeTypes: { id: number; name: string }[],
+    allCharacteristics: { id: number; name: string }[],
+): Record<number, string> {
+    const typeNameById = new Map(attributeTypes.map((t) => [t.id, t.name.trim()]));
+    const charNameById = new Map(allCharacteristics.map((c) => [c.id, c.name.trim()]));
+    const values: Record<number, string> = {};
+
+    for (const [typeIdStr, attrId] of Object.entries(selectedAttrs)) {
+        if (attrId == null) continue;
+        const typeId = Number(typeIdStr);
+        const typeName = typeNameById.get(typeId);
+        if (!typeName) continue;
+        const attr = allAttributes.find((a) => a.id === attrId);
+        const attrName = attr?.name?.trim();
+        if (!attrName) continue;
+
+        const typeKey = normalizeCharacteristicKey(typeName);
+        for (const char of allCharacteristics) {
+            if (normalizeCharacteristicKey(char.name) === typeKey) {
+                values[char.id] = attrName;
+            }
+        }
+    }
+
+    for (const attrId of Object.values(selectedAttrs)) {
+        if (attrId == null) continue;
+        const attr = allAttributes.find((a) => a.id === attrId);
+        if (!attr?.name?.trim()) continue;
+        for (const cid of getAttributeCharacteristicIds(attr)) {
+            const charName = charNameById.get(cid);
+            const typeName = typeNameById.get(attr.typeId);
+            if (charName && typeName && normalizeCharacteristicKey(charName) === normalizeCharacteristicKey(typeName)) {
+                values[cid] = attr.name.trim();
+            }
+        }
+    }
+
+    return values;
 }
 
 export function revokePendingFiles(files: PendingFile[]) {

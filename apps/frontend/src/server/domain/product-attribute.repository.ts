@@ -8,7 +8,10 @@ export class ProductAttributeRepository {
             where: typeId ? { typeId } : undefined,
             orderBy: [{ typeId: 'asc' }, { name: 'asc' }],
             include: {
-                characteristics: { include: { characteristic: true }, orderBy: { characteristic: { position: 'asc' } } },
+                characteristics: {
+                    include: { characteristic: true },
+                    orderBy: [{ position: 'asc' }, { characteristicId: 'asc' }],
+                },
             },
         });
     }
@@ -51,13 +54,19 @@ export class ProductAttributeRepository {
                 ...(characteristicIds?.length
                     ? {
                           characteristics: {
-                              create: characteristicIds.map((characteristicId) => ({ characteristicId })),
+                              create: characteristicIds.map((characteristicId, position) => ({
+                                  characteristicId,
+                                  position,
+                              })),
                           },
                       }
                     : {}),
             },
             include: {
-                characteristics: { include: { characteristic: true }, orderBy: { characteristic: { position: 'asc' } } },
+                characteristics: {
+                    include: { characteristic: true },
+                    orderBy: [{ position: 'asc' }, { characteristicId: 'asc' }],
+                },
             },
         });
     }
@@ -73,7 +82,7 @@ export class ProductAttributeRepository {
                 include: {
                     characteristics: {
                         include: { characteristic: true },
-                        orderBy: { characteristic: { position: 'asc' } },
+                        orderBy: [{ position: 'asc' }, { characteristicId: 'asc' }],
                     },
                 },
             });
@@ -82,7 +91,10 @@ export class ProductAttributeRepository {
             where: { id },
             data: rest,
             include: {
-                characteristics: { include: { characteristic: true }, orderBy: { characteristic: { position: 'asc' } } },
+                characteristics: {
+                    include: { characteristic: true },
+                    orderBy: [{ position: 'asc' }, { characteristicId: 'asc' }],
+                },
             },
         });
     }
@@ -93,7 +105,11 @@ export class ProductAttributeRepository {
             ...(characteristicIds.length > 0
                 ? [
                       dbClient.productAttributeCharacteristic.createMany({
-                          data: characteristicIds.map((characteristicId) => ({ attributeId, characteristicId })),
+                          data: characteristicIds.map((characteristicId, position) => ({
+                              attributeId,
+                              characteristicId,
+                              position,
+                          })),
                       }),
                   ]
                 : []),

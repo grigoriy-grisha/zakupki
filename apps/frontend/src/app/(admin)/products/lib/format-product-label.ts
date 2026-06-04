@@ -429,87 +429,89 @@ function formatPurchaseProductLine1(product: ProductLabelSource): string {
     return article || displayName;
 }
 
-function typeDepth(typeId: number, maps: ReturnType<typeof buildTypeMaps>): number {
-    let depth = 0;
-    let current: number | null = typeId;
-    while (current != null) {
-        depth++;
-        current = maps.byId.get(current)?.parentId ?? null;
-    }
-    return depth;
-}
-
-function findNearestSubtypeNameForBrand(
+/** Части второй строки заголовка: все атрибуты «в заголовок» по дереву типов. */
+function getPurchaseProductSubtitleParts(
     product: ProductLabelSource,
-    brandName: string,
-    attributeTypes: AttributeTypeMeta[],
-): string | null {
-    const maps = buildTypeMaps(attributeTypes);
-    let best: { typeName: string; depth: number } | null = null;
-
-    for (const label of getProductCatalogAttributeLabels(product, attributeTypes)) {
-        const colonIdx = label.indexOf(':');
-        if (colonIdx === -1) continue;
-        const typeName = label.slice(0, colonIdx).trim();
-        const value = label.slice(colonIdx + 1).trim();
-        if (!value || (value !== brandName && !value.startsWith(`${brandName} `))) continue;
-
-        const typeId = [...maps.byId.values()].find((t) => t.name === typeName)?.id;
-        const depth = typeId != null ? typeDepth(typeId, maps) : 0;
-        if (!best || depth > best.depth) {
-            best = { typeName, depth };
-        }
-    }
-
-    return best?.typeName ?? null;
+    attributeTypes?: AttributeTypeMeta[],
+): string[] {
+    const showInTitleByTypeId = buildShowInTitleByTypeId(attributeTypes);
+    return getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
+        .map((part) => part.trim())
+        .filter(Boolean);
 }
 
 function getPurchaseProductSubtitleLine(
     product: ProductLabelSource,
     attributeTypes?: AttributeTypeMeta[],
 ): string {
-    for (const v of orderedValues(product, attributeTypes)) {
-        if (v.attribute.parent?.isBrand) {
-            const line = formatAttributeValueName(v);
-            if (line) return line;
-        }
-    }
+    const parts = getPurchaseProductSubtitleParts(product, attributeTypes);
+    if (parts.length > 0) return parts.join(' ');
 
     const brandName = product.brand?.name?.trim() ?? '';
-    if (brandName && attributeTypes?.length) {
-        const nearestSubtype = findNearestSubtypeNameForBrand(product, brandName, attributeTypes);
-        if (nearestSubtype) {
-            return `${nearestSubtype} ${brandName}`;
-        }
-
-        const brandTypeId = product.brand?.typeId;
-        if (brandTypeId != null) {
-            const maps = buildTypeMaps(attributeTypes);
-            const brandType = maps.byId.get(brandTypeId);
-            // Тип, к которому привязан бренд — ближайший подтип (напр. «Нитки для бисера»).
-            if (brandType?.name && brandType.name !== brandName) {
-                return `${brandType.name} ${brandName}`;
-            }
-            const parentType = brandType?.parentId != null ? maps.byId.get(brandType.parentId) : null;
-            if (parentType?.name) {
-                return `${parentType.name} ${brandName}`;
-            }
-        }
-    }
-
     if (brandName) return brandName;
 
-    for (const label of getProductCatalogAttributeLabels(product, attributeTypes)) {
-        const colonIdx = label.indexOf(':');
-        if (colonIdx === -1) continue;
-        const typeName = label.slice(0, colonIdx).trim();
-        const value = label.slice(colonIdx + 1).trim();
-        if (!value) continue;
-        if (value.includes(' ') || value.includes('/')) return value;
-        if (typeName) return `${typeName} ${value}`;
-    }
+    const attrLine = formatProductAttributesLine(product, attributeTypes);
+    if (attrLine) return attrLine.replace(/\s*·\s*/g, ' ');
 
     return '';
+}
+
+export type ShopItemDescriptionRow = { label: string; value: string };
+
+/** Строки характеристик на странице товара в магазине (без дубля подзаголовка). */
+export function buildShopItemDescriptionRows(
+    product: ProductCatalogCardSource,
+    attributeTypes?: AttributeTypeMeta[],
+): ShopItemDescriptionRow[] {
+    const rows: ShopItemDescriptionRow[] = [];
+    const subtitle = getPurchaseProductSubtitleLine(product, attributeTypes);
+    const showInTitleByTypeId = buildShowInTitleByTypeId(attributeTypes);
+
+    for (const v of orderedValues(product, attributeTypes)) {
+        if (v.attribute.isBrand) continue;
+        const typeName = v.attribute.type?.name?.trim();
+        const value = v.attribute.name?.trim() ?? '';
+        if (!typeName || !value || typeName === 'Производитель') continue;
+
+        const formatted = formatAttributeValueName(v);
+        const combined = `${typeName} ${value}`;
+
+        if (
+            isShowInTitle(v, showInTitleByTypeId, attributeTypes) &&
+            attributeValueShowsInTitle(v.attribute)
+        ) {
+            continue;
+        }
+
+        if (subtitle) {
+            if (formatted === subtitle || combined === subtitle || value === subtitle) continue;
+            if (v.attribute.parent?.isBrand && formatted && subtitle.includes(formatted)) continue;
+        }
+
+        rows.push({ label: typeName, value });
+    }
+
+    for (const cv of product.characteristicValues ?? []) {
+        const name = cv.characteristic.name?.trim();
+        const value = cv.value?.trim();
+        if (name && value) rows.push({ label: name, value });
+    }
+
+    if (product.unit?.name) {
+        const unitLabel = product.unit.shortName
+            ? `${product.unit.name} (${product.unit.shortName})`
+            : product.unit.name;
+        rows.push({ label: 'Единица', value: unitLabel });
+    }
+
+    if (product.minPackageAmount != null && product.minPackageUnit) {
+        rows.push({
+            label: 'Мин. фасовка',
+            value: `${Number(product.minPackageAmount)} ${product.minPackageUnit}`,
+        });
+    }
+
+    return rows;
 }
 
 /** Две строки для таблицы «Товары в закупке»: «номер название» и бренд/тип. */

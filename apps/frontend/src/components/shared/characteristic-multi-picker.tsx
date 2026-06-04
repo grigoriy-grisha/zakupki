@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { syncCharacteristicOrder } from '@/app/(admin)/products/lib/product-form-utils';
 
 export type CharacteristicOption = { id: number; name: string };
 
@@ -35,9 +36,9 @@ export function CharacteristicMultiPicker({
     const label =
         selectedIds.length === 0
             ? placeholder
-            : options
-                  .filter((o) => selected.has(o.id))
-                  .map((o) => o.name)
+            : selectedIds
+                  .map((id) => options.find((o) => o.id === id)?.name)
+                  .filter((name): name is string => Boolean(name))
                   .join(', ');
 
     function toggle(id: number, checked: boolean) {
@@ -45,7 +46,7 @@ export function CharacteristicMultiPicker({
         const next = new Set(selectedIds);
         if (checked) next.add(id);
         else next.delete(id);
-        onChange([...next]);
+        onChange(syncCharacteristicOrder(selectedIds, [...next]));
     }
 
     return (

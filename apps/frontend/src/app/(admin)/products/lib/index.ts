@@ -25,6 +25,8 @@ export {
     getProductCatalogAttributeLabels,
     formatProductCatalogCardLines,
     formatPurchaseProductLabel,
+    buildShopItemDescriptionRows,
+    type ShopItemDescriptionRow,
     getProductDisplayName,
     getProductAttributeNames,
     getProductTitleAttributeNames,

@@ -94,20 +94,11 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 />
             )}
 
-            {(state.allCharacteristics?.length ?? 0) > 0 && (
-                <ProductCharacteristicsFields
-                    fields={state.activeCharFields}
-                    values={state.charValues}
-                    onChange={(id, value) => state.setCharValues((prev) => ({ ...prev, [id]: value }))}
-                    onRemove={(id) => state.handleActiveCharIdsChange(state.activeCharIds.filter((x) => x !== id))}
-                    canRemove={(id) => !state.linkedCharIds.has(id)}
-                    onMove={state.handleMoveCharacteristic}
-                    allCharacteristics={(state.allCharacteristics ?? []).map((c) => ({ id: c.id, name: c.name }))}
-                    activeIds={state.activeCharIds}
-                    lockedIds={state.linkedCharIds}
-                    onActiveIdsChange={state.handleActiveCharIdsChange}
-                />
-            )}
+            <ProductCharacteristicsFields
+                fields={state.activeCharFields}
+                values={state.charValues}
+                onChange={(id, value) => state.setCharValues((prev) => ({ ...prev, [id]: value }))}
+            />
 
             <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">Фото</label>

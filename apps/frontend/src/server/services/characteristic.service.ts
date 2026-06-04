@@ -18,4 +18,13 @@ export class CharacteristicService {
     delete(id: number) {
         return this.repo.delete(id);
     }
+
+    async move(id: number, direction: 'up' | 'down') {
+        const all = await this.repo.list();
+        const index = all.findIndex((c) => c.id === id);
+        if (index < 0) return;
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= all.length) return;
+        await this.repo.swapPositions(id, all[targetIndex].id);
+    }
 }

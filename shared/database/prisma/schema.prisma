@@ -106,11 +106,13 @@ model ProductAttribute {
 model ProductAttributeCharacteristic {
   attributeId      Int
   characteristicId Int
+  position         Int              @default(0)
   attribute        ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
   characteristic   Characteristic   @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
 
   @@id([attributeId, characteristicId])
   @@index([characteristicId])
+  @@index([attributeId, position])
 }
 
 // Связь товар ↔ значение атрибута (many-to-many).

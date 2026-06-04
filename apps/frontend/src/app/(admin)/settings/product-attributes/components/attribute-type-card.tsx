@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CharacteristicMultiPicker } from '@/components/shared/characteristic-multi-picker';
+import { CharacteristicOrderedPicker } from '@/components/shared/characteristic-ordered-picker';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import {
     DropdownMenu,
@@ -39,8 +39,19 @@ type AttributeValueRowData = {
     isBrand?: boolean;
     showInTitle?: boolean;
     parentId?: number | null;
-    characteristics?: { characteristic: { id: number; name: string } }[];
+    characteristics?: { position?: number; characteristic: { id: number; name: string } }[];
 };
+
+function getOrderedCharacteristicIds(
+    links: AttributeValueRowData['characteristics'],
+): number[] {
+    return [...(links ?? [])]
+        .sort(
+            (a, b) =>
+                (a.position ?? 0) - (b.position ?? 0) || a.characteristic.id - b.characteristic.id,
+        )
+        .map((l) => l.characteristic.id);
+}
 
 export type TypeTreeNode = { type: AttributeType; children: TypeTreeNode[] };
 
@@ -65,9 +76,9 @@ function ValueRow({
         >
             <span className="flex w-6 shrink-0 justify-center text-muted-foreground">•</span>
             <span className="min-w-[4rem] shrink-0 px-1 text-sm font-medium">{item.name}</span>
-            <CharacteristicMultiPicker
+            <CharacteristicOrderedPicker
                 options={characteristics}
-                selectedIds={item.characteristics?.map((l) => l.characteristic.id) ?? []}
+                selectedIds={getOrderedCharacteristicIds(item.characteristics)}
                 onChange={(ids) => updateValue.mutate({ id: item.id, characteristicIds: ids })}
                 placeholder="Характеристики"
                 triggerClassName="h-8 min-h-8 flex-1 text-xs"
