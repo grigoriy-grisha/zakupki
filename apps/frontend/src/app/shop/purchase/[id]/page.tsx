@@ -7,14 +7,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Package } from 'lucide-react';
+import { Package, ChevronRight, X } from 'lucide-react';
 import {
     DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
+import { cn } from '@/lib/utils';
 import { usePurchasePaymentDetail } from './hooks';
+import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 import { ProductCard } from './components';
+import { FilterTree } from './components/filter-tree';
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
@@ -25,6 +28,19 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const paymentDetail = usePurchasePaymentDetail(id);
     const packDiscountPercent =
         pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+
+    const items = purchase?.items ?? [];
+    const {
+        tree,
+        selectedPath,
+        selectedId,
+        expandedIds,
+        filteredItems,
+        handleToggle,
+        handleSelectNode,
+        clearSelection,
+        totalCount,
+    } = usePurchaseFilterTree(items);
 
     const orderQtyMap = new Map(
         paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]),
@@ -64,44 +80,31 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         <div className="space-y-6">
             <div>
                 <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-semibold tracking-tight">{purchase.supplier}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{purchase.tag}</h1>
                     <Badge
                         className={
-                            purchase.status === 'SUPPLEMENT'
-                                ? 'bg-warning-50 text-warning'
-                                : 'bg-success-50 text-success'
+                            'text-sm px-2.5 py-0.5 ' + (
+                                purchase.status === 'SUPPLEMENT'
+                                    ? 'bg-warning-50 text-warning'
+                                    : 'bg-success-50 text-success'
+                            )
                         }
                     >
                         {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
                     </Badge>
-                    <Badge variant="outline">
-                        <Package className="mr-1 h-3 w-3" />
+                    <Badge variant="outline" className="text-sm px-2.5 py-0.5">
+                        <Package className="mr-1 h-3.5 w-3.5" />
                         {fulfillmentLabel}
                     </Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    {purchase.tag} · До{' '}
-                    {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-muted-foreground">
+                    <span>{purchase.supplier}</span>
+                    <span>·</span>
+                    <span>До {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span>
+                </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">Товаров: {purchase.items.length}</p>
-
-            {/* Product grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {purchase.items.map((item) => (
-                    <ProductCard
-                        key={item.id}
-                        item={item}
-                        purchaseId={id}
-                        packDiscountPercent={packDiscountPercent}
-                        currentQuantity={orderQtyMap.get(item.id)}
-                        isSupplement={isSupplement}
-                    />
-                ))}
-            </div>
-
-            {purchase.items.length === 0 && (
+            {items.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center py-16">
                         <h2 className="text-lg font-medium">Пока нет товаров</h2>
@@ -110,6 +113,68 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         </p>
                     </CardContent>
                 </Card>
+            ) : (
+                <div className="flex gap-6">
+                    {tree.length > 0 && (
+                        <div className="hidden w-62 shrink-0 lg:block">
+                            <FilterTree
+                                nodes={tree}
+                                selectedId={selectedId}
+                                onSelect={handleSelectNode}
+                                expandedIds={expandedIds}
+                                onToggle={handleToggle}
+                                totalCount={totalCount}
+                                onClear={clearSelection}
+                            />
+                        </div>
+                    )}
+
+                    {/* Product grid */}
+                    <div className="min-w-0 flex-1 space-y-4">
+                        {selectedPath.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                                {selectedPath.map((segment, i) => (
+                                    <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5">
+                                        {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                        <span className={cn(i === selectedPath.length - 1 && 'font-medium')}>
+                                            <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
+                                            {segment.name}
+                                        </span>
+                                    </span>
+                                ))}
+                                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={clearSelection}>
+                                    <X className="mr-1 h-3.5 w-3.5" />
+                                    Сбросить
+                                </Button>
+                            </div>
+                        )}
+
+                        <p className="text-sm text-muted-foreground">
+                            Товаров: {filteredItems.length}
+                        </p>
+
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {filteredItems.map((item) => (
+                                <ProductCard
+                                    key={item.id}
+                                    item={item}
+                                    purchaseId={id}
+                                    packDiscountPercent={packDiscountPercent}
+                                    currentQuantity={orderQtyMap.get(item.id)}
+                                    isSupplement={isSupplement}
+                                />
+                            ))}
+                        </div>
+
+                        {filteredItems.length === 0 && (
+                            <Card>
+                                <CardContent className="flex flex-col items-center py-12">
+                                    <h2 className="text-lg font-medium">Нет товаров в этой категории</h2>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     );

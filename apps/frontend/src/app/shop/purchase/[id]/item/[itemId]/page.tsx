@@ -202,13 +202,28 @@ export default function ItemDetailPage({
             <Button variant="ghost" size="sm" asChild className="-ml-2">
                 <AppLink href={`/shop/purchase/${purchaseId}`}>
                     <ArrowLeft className="mr-1 h-4 w-4" />
-                    {purchase.supplier}
+                    {purchase.tag}
                 </AppLink>
             </Button>
 
+            {/* Title */}
+            <div>
+                <PurchaseProductLabel product={product} primaryClassName="text-2xl font-semibold" />
+                {(() => {
+                    const hint = formatMinPackageOrderHint({
+                        minPackageAmount,
+                        minPackageUnit,
+                        unitShort: shortName,
+                    });
+                    return hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null;
+                })()}
+                <PackDiscountHint product={product} discountPercent={packDiscountPercent} className="mt-2" />
+            </div>
+
+            {/* Photo + Info */}
             <div className="flex flex-col gap-6 md:flex-row">
                 {/* Photo */}
-                <div className="relative h-64 w-full shrink-0 overflow-hidden rounded-xl bg-muted md:h-80 md:w-80">
+                <div className="relative h-72 w-full shrink-0 overflow-hidden rounded-xl bg-muted md:h-96 md:w-96">
                     {product.photos?.[0] ? (
                         <img
                             src={absoluteProductPhotoUrl(product.photos[0].id)}
@@ -231,22 +246,64 @@ export default function ItemDetailPage({
 
                 {/* Info */}
                 <div className="flex-1 space-y-4">
-                    <div>
-                        <PurchaseProductLabel product={product} primaryClassName="text-2xl font-semibold" />
-                        {(() => {
-                            const hint = formatMinPackageOrderHint({
-                                minPackageAmount,
-                                minPackageUnit,
-                                unitShort: shortName,
-                            });
-                            return hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null;
-                        })()}
-                        <PackDiscountHint product={product} discountPercent={packDiscountPercent} className="mt-2" />
-                    </div>
+                    {/* Characteristics table */}
+                    {(() => {
+                        const rows: { label: string; value: string }[] = [];
 
-                    {product.description && (
-                        <p className="text-sm text-muted-foreground">{product.description}</p>
-                    )}
+                        // Brand
+                        if ((product as any).brand?.name) {
+                            rows.push({ label: 'Производитель', value: (product as any).brand.name });
+                        }
+
+                        // Attribute values
+                        const attrValues = (product as any).attributeValues as
+                            { attribute: { name: string; type: { name: string }; isBrand?: boolean } }[] | undefined;
+                        if (attrValues) {
+                            for (const av of attrValues) {
+                                if (av.attribute.isBrand) continue;
+                                const typeName = av.attribute.type?.name;
+                                if (typeName && typeName !== 'Производитель') {
+                                    rows.push({ label: typeName, value: av.attribute.name });
+                                }
+                            }
+                        }
+
+                        // Characteristic values
+                        const charValues = (product as any).characteristicValues as
+                            { value: string; characteristic: { name: string } }[] | undefined;
+                        if (charValues) {
+                            for (const cv of charValues) {
+                                if (cv.characteristic?.name && cv.value) {
+                                    rows.push({ label: cv.characteristic.name, value: cv.value });
+                                }
+                            }
+                        }
+
+                        // Unit / pricing info
+                        if (product.unit?.name) {
+                            const unitLabel = product.unit.shortName
+                                ? `${product.unit.name} (${product.unit.shortName})`
+                                : product.unit.name;
+                            rows.push({ label: 'Единица', value: unitLabel });
+                        }
+
+                        if (product.minPackageAmount != null && product.minPackageUnit) {
+                            rows.push({ label: 'Мин. фасовка', value: `${Number(product.minPackageAmount)} ${product.minPackageUnit}` });
+                        }
+
+                        if (rows.length === 0) return null;
+
+                        return (
+                            <div className="text-sm">
+                                {rows.map((row) => (
+                                    <div key={row.label} className="flex border-b border-border/50 py-1.5 last:border-0">
+                                        <span className="w-36 shrink-0 text-muted-foreground">{row.label}</span>
+                                        <span className="font-medium">{row.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
 
                     <div>
                         <span className="text-3xl font-bold text-primary">{price.toLocaleString('ru-RU')} ₽</span>

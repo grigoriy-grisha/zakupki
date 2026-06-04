@@ -6,6 +6,8 @@ import { useAppPathname } from '@/lib/hooks/use-app-pathname';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import { AppLink } from '@/components/app-link';
+import { User } from 'lucide-react';
 
 interface ShopSidebarProps {
     className?: string;
@@ -23,7 +25,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
     const activePurchaseId = match ? Number(match[1]) : null;
 
     return (
-        <aside className={cn('flex w-56 shrink-0 flex-col border-r bg-card overflow-y-auto', className)}>
+        <aside className={cn('flex w-72 shrink-0 flex-col bg-card overflow-y-auto', className)}>
             <div className="p-3">
                 <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Закупки
@@ -50,7 +52,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                                     key={purchase.id}
                                     onClick={() => router.push(`/shop/purchase/${purchase.id}`)}
                                     className={cn(
-                                        'flex w-full flex-col gap-0.5 rounded-lg px-3 py-2 text-sm font-medium transition-all text-left',
+                                        'flex w-full flex-col gap-0.5 rounded-lg px-3 py-2.5 text-base font-medium transition-all text-left',
                                         isActive
                                             ? 'bg-primary/10 text-primary'
                                             : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -59,13 +61,13 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                                     <div className="flex items-center gap-1.5">
                                         <span className="min-w-0 truncate">{purchase.tag || purchase.supplier}</span>
                                         {isSupplement && (
-                                            <span className="shrink-0 rounded bg-warning/10 px-1 py-0.5 text-[10px] font-medium text-warning">
+                                            <span className="shrink-0 rounded bg-warning/10 px-1 py-0.5 text-xs font-medium text-warning">
                                                 добор
                                             </span>
                                         )}
                                     </div>
                                     <span className={cn(
-                                        'text-[11px] leading-tight',
+                                        'text-xs leading-tight',
                                         isActive ? 'text-primary/70' : 'text-muted-foreground/70',
                                     )}>
                                         {fulfillmentLabel}

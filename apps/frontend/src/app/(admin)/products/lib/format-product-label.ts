@@ -418,10 +418,6 @@ export function formatProductCatalogCardLines(
         lines.push(`Ед. учёта: ${unitLabel}`);
     }
 
-    if (product.minPackageAmount != null && product.minPackageUnit) {
-        lines.push(`Мин. фасовка: ${Number(product.minPackageAmount)} ${product.minPackageUnit}`);
-    }
-
     return lines.map((l) => l.trim()).filter(Boolean);
 }
 

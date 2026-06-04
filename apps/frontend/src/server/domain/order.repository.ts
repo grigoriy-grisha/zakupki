@@ -123,7 +123,7 @@ export class OrderRepository {
                 purchaseItem: {
                     include: {
                         product: { include: { unit: true } },
-                        purchase: { select: { id: true, tag: true, supplier: true } },
+                        purchase: { select: { id: true, tag: true, supplier: true, fulfillmentStatus: true, status: true } },
                     },
                 },
             },

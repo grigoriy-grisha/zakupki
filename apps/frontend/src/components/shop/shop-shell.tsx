@@ -24,7 +24,7 @@ export function ShopShell({ children }: { children: React.ReactNode }) {
                 <ShopSidebar className="hidden md:flex" />
 
                 <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-                    <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
+                    <div className="p-4 md:p-6">{children}</div>
                 </main>
             </div>
 
