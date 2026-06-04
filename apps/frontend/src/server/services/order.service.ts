@@ -8,6 +8,7 @@ import {
     NotFoundError,
     PurchaseNotActiveError,
     ValidationError,
+    type SupplementPackProtection,
 } from '@zakupki/types';
 
 import { getTelegramChannelPostQueue } from '../lib/telegram-channel-post-queue';
@@ -76,6 +77,15 @@ export class OrderService {
         );
         const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainder;
 
+        // Защита пачек на доборе
+        let packProtection: SupplementPackProtection | undefined;
+        if (isSupplement && existingLine && packAmount != null && packAmount > 0) {
+            packProtection = {
+                supplementPacksAdded: existingLine.supplementPacksAdded,
+                packSize: packAmount,
+            };
+        }
+
         const validationError =
             isSupplement
                 ? getSupplementOrderQuantityValidationError(quantity, orderQtyOptions, {
@@ -83,7 +93,7 @@ export class OrderService {
                       currentQuantity: currentQty,
                       supplierPackageAmount: packAmount,
                       remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
-                  })
+                  }, packProtection)
                 : getOrderQuantityValidationError(quantity, orderQtyOptions);
         if (validationError) {
             throw new ValidationError(validationError);

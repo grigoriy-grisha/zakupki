@@ -54,8 +54,9 @@ export function ProductCard({
     currentQuantity = 0,
     isSupplement,
     fulfillmentStatus,
+    supplementPacksAdded: supplementPacksAddedProp,
     onOrderChange,
-}: ShopPurchaseItemProductCardProps) {
+}: ShopPurchaseItemProductCardProps & { supplementPacksAdded?: number }) {
     const utils = trpc.useUtils();
     const purchaseItemId = item.purchaseItemId ?? item.id;
     const product = item.product;
@@ -83,8 +84,9 @@ export function ProductCard({
         availableQty: item.availableQty,
         packSize,
         orderLines: item.orderLines,
+        supplementPacksAdded: supplementPacksAddedProp,
     });
-    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed } =
+    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed, canRemoveStep, canRemovePack } =
         qtyCtx;
 
     const [quantity, setQuantity] = useState(currentQuantity);
@@ -304,7 +306,7 @@ export function ProductCard({
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={orderBusy || !hasOrder}
+                                disabled={orderBusy || !hasOrder || (isSupplement && !canRemoveStep)}
                                 onClick={() => handleRemove(uiStep)}
                             >
                                 <Minus className="mr-1 h-3 w-3" />
@@ -332,7 +334,7 @@ export function ProductCard({
                                     variant="outline"
                                     size="sm"
                                     className="h-9 flex-1 text-[11px]"
-                                    disabled={orderBusy || quantity < packSize}
+                                    disabled={orderBusy || (isSupplement ? !canRemovePack : quantity < packSize)}
                                     onClick={() => handleRemove(packSize)}
                                 >
                                     −Пачка ({packSize} {shortName})

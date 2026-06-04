@@ -14,6 +14,7 @@ import {
     type OrderQuantityOptions,
     type PurchaseFulfillmentStatus,
     type SupplementOrderBounds,
+    type SupplementPackProtection,
 } from '@zakupki/types';
 
 export type ShopOrderQuantityContext = {
@@ -27,6 +28,18 @@ export type ShopOrderQuantityContext = {
     supplementOnlyPacks: boolean;
     /** На доборе: кнопки ±пачка (этап «Доборы»). */
     supplementPacksAllowed: boolean;
+    /** Защищённые пачки на доборе (нельзя удалить частично). */
+    packProtection: SupplementPackProtection | null;
+    /** Сколько защищённых пачек добавлено. */
+    supplementPacksAdded: number;
+    /** Суммарный объём защищённых пачек. */
+    protectedPackQty: number;
+    /** Свободная часть заказа (оригинал + россыпь). */
+    freePortion: number;
+    /** Можно ли уменьшить по шагу (есть свободная часть). */
+    canRemoveStep: boolean;
+    /** Можно ли убрать целую пачку. */
+    canRemovePack: boolean;
     snap: (qty: number) => number;
     isValid: (qty: number) => boolean;
 };
@@ -39,6 +52,7 @@ export function buildShopOrderQuantityContext(input: {
     availableQty: number | null | undefined;
     packSize: number | null;
     orderLines?: { quantity: unknown }[];
+    supplementPacksAdded?: number;
 }): ShopOrderQuantityContext {
     const orderStep = getOrderQuantityStep(input.orderQtyOptions);
     const minOrderQty = getMinOrderQuantity(input.orderQtyOptions);
@@ -89,6 +103,19 @@ export function buildShopOrderQuantityContext(input: {
     const supplementPacksAllowed =
         supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
 
+    // Защита пачек на доборе
+    const rawPacksAdded = input.supplementPacksAdded ?? 0;
+    const packSizeNum = input.packSize ?? 0;
+    const packProtection: SupplementPackProtection | null =
+        input.isSupplement && rawPacksAdded > 0 && packSizeNum > 0
+            ? { supplementPacksAdded: rawPacksAdded, packSize: packSizeNum }
+            : null;
+    const supplementPacksAdded = packProtection?.supplementPacksAdded ?? 0;
+    const protectedPackQty = supplementPacksAdded * packSizeNum;
+    const freePortion = input.currentQuantity - protectedPackQty;
+    const canRemoveStep = freePortion > 0;
+    const canRemovePack = supplementPacksAdded > 0;
+
     return {
         orderQtyOptions: input.orderQtyOptions,
         orderStep,
@@ -98,6 +125,12 @@ export function buildShopOrderQuantityContext(input: {
         supplementBounds,
         supplementOnlyPacks,
         supplementPacksAllowed,
+        packProtection,
+        supplementPacksAdded,
+        protectedPackQty,
+        freePortion,
+        canRemoveStep,
+        canRemovePack,
         snap,
         isValid,
     };

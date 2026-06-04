@@ -93,6 +93,23 @@ export type SupplementOrderBounds = {
     remainderOnly?: boolean;
 };
 
+/** Информация о защищённых пачках, добавленных на доборе. */
+export type SupplementPackProtection = {
+    /** Сколько целых пачек было добавлено на этапе добора. */
+    supplementPacksAdded: number;
+    /** Размер пачки поставщика. */
+    packSize: number;
+};
+
+/** Результат валидации уменьшения заказа с учётом защиты пачек. */
+export type PackReductionResult = {
+    valid: boolean;
+    /** Новое количество защищённых пачек (−1 если невалидно). */
+    newPacks: number;
+    /** Сообщение об ошибке или null. */
+    error: string | null;
+};
+
 export function getSupplementMaxQuantity(bounds: SupplementOrderBounds): number | null {
     if (bounds.availableQty == null) return null;
     return bounds.currentQuantity + Math.max(0, bounds.availableQty);
@@ -169,8 +186,15 @@ export function getSupplementOrderQuantityValidationError(
     quantity: number,
     options: OrderQuantityOptions,
     bounds: SupplementOrderBounds,
+    packProtection?: SupplementPackProtection | null,
 ): string | null {
     if (!isPositive(quantity)) return 'Укажите положительное количество';
+
+    // Проверяем защиту пачек ДО остальных проверок
+    if (packProtection && bounds.currentQuantity > 0) {
+        const packResult = validateSupplementPackReduction(quantity, bounds.currentQuantity, packProtection);
+        if (!packResult.valid) return packResult.error;
+    }
 
     const unit =
         positiveOrNull(options.minPackageAmount) != null && options.minPackageUnit
@@ -271,6 +295,75 @@ export function isValidSupplementOrderQuantity(
     bounds: SupplementOrderBounds,
 ): boolean {
     return getSupplementOrderQuantityValidationError(quantity, options, bounds) === null;
+}
+
+/**
+ * Валидация уменьшения заказа на доборе с учётом защищённых пачек.
+ *
+ * Пачки, добавленные на доборе (supplementPacksAdded), можно удалить только целиком.
+ * Свободную часть заказа (оригинал + россыпь) можно уменьшать как угодно.
+ *
+ * Пример: qty=280, packs=1, packSize=200, free=80
+ *   280→200 (−80 free)  ✓
+ *   280→80  (−1 pack)   ✓
+ *   280→180 (−100 pack) ✗ — частичное удаление пачки
+ */
+export function validateSupplementPackReduction(
+    newQuantity: number,
+    oldQuantity: number,
+    protection: SupplementPackProtection,
+): PackReductionResult {
+    const { supplementPacksAdded, packSize } = protection;
+
+    // Нет защищённых пачек — любая сумма OK
+    if (supplementPacksAdded <= 0 || packSize <= 0) {
+        return { valid: true, newPacks: 0, error: null };
+    }
+
+    // Увеличение или без изменений — не влияет на защиту
+    if (newQuantity >= oldQuantity) {
+        return { valid: true, newPacks: supplementPacksAdded, error: null };
+    }
+
+    const freePortion = oldQuantity - supplementPacksAdded * packSize;
+
+    // Проверяем, попадает ли newQuantity в допустимую зону:
+    // Для k от supplementPacksAdded до 0: [k*packSize, k*packSize + freePortion]
+    for (let k = supplementPacksAdded; k >= 0; k--) {
+        const lower = k * packSize;
+        const upper = k * packSize + freePortion;
+        if (newQuantity >= lower - 1e-9 && newQuantity <= upper + 1e-9) {
+            return { valid: true, newPacks: k, error: null };
+        }
+    }
+
+    const packLabel = `${formatQtyLabel(packSize)}`;
+    return {
+        valid: false,
+        newPacks: -1,
+        error: `Нельзя убрать часть пачки — можно удалить только целиком (${packLabel}) или оставить`,
+    };
+}
+
+/**
+ * Рассчитать изменение остатка при изменении заказа на доборе.
+ * Остаток (availableQty) списывается/восстанавливается только для свободной части,
+ * не для целых пачек (пачки не списываются из остатка).
+ */
+export function calcSupplementStockChange(
+    oldQuantity: number,
+    newQuantity: number,
+    oldPacks: number,
+    newPacks: number,
+    packSize: number,
+): number {
+    const oldFree = oldQuantity - oldPacks * packSize;
+    const newFree = newQuantity - newPacks * packSize;
+    const freeDelta = newFree - oldFree;
+
+    // positive = нужно списать из остатка, negative = вернуть в остаток
+    if (Math.abs(freeDelta) < 1e-9) return 0;
+    return freeDelta;
 }
 
 /** Списывать остаток только при заказе «с россыпи», не при ровно одной пачке. */

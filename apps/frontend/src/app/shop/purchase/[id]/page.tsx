@@ -47,6 +47,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const orderQtyMap = new Map(
         paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]),
     );
+    const orderPacksMap = new Map(
+        paymentDetail.myOrdersInPurchase.map((o: any) => [o.purchaseItemId, o.supplementPacksAdded ?? 0]),
+    );
 
     if (isLoading) {
         return (
@@ -189,6 +192,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                                     currentQuantity={orderQtyMap.get(item.id)}
                                     isSupplement={isSupplement}
                                     fulfillmentStatus={purchase.fulfillmentStatus}
+                                    supplementPacksAdded={orderPacksMap.get(item.id) as number | undefined}
                                 />
                             ))}
                         </div>

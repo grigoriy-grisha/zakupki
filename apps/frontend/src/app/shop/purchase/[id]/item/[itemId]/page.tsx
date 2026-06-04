@@ -50,6 +50,7 @@ export default function ItemDetailPage({
     const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
     const existingOrder = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
     const currentQty = existingOrder ? Number(existingOrder.quantity) : 0;
+    const existingPacksAdded = existingOrder?.supplementPacksAdded ?? 0;
 
     const product = item?.product as
         (ProductLabelSource & {
@@ -131,8 +132,9 @@ export default function ItemDetailPage({
         availableQty: item?.availableQty,
         packSize,
         orderLines: (item as { orderLines?: { quantity: unknown }[] } | undefined)?.orderLines,
+        supplementPacksAdded: existingPacksAdded,
     });
-    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed } =
+    const { uiStep, effectiveMinQty, snap, isValid, supplementBounds, supplementOnlyPacks, supplementPacksAllowed, canRemoveStep, canRemovePack, packProtection } =
         qtyCtx;
 
     const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
@@ -354,12 +356,18 @@ export default function ItemDetailPage({
                                 )}
                             </div>
 
+                            {isSupplement && packProtection && packProtection.supplementPacksAdded > 0 && (
+                                <div className="rounded-lg bg-warning-50 p-2.5 text-center text-sm text-warning">
+                                    Защищённые пачки: {packProtection.supplementPacksAdded} x {packProtection.packSize} {shortName} (убрать только целиком)
+                                </div>
+                            )}
+
                             {/* Min package buttons */}
                             <div className="flex gap-2">
                                 <Button
                                     variant="outline"
                                     className="flex-1"
-                                    disabled={orderBusy || quantity <= 0}
+                                    disabled={orderBusy || quantity <= 0 || (isSupplement && !canRemoveStep)}
                                     onClick={() => handleRemove(uiStep)}
                                 >
                                     <Minus className="mr-1 h-4 w-4" />
@@ -382,7 +390,7 @@ export default function ItemDetailPage({
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={orderBusy || quantity < packSize}
+                                        disabled={orderBusy || (isSupplement ? !canRemovePack : quantity < packSize)}
                                         onClick={() => handleRemove(packSize)}
                                     >
                                         −Пачка ({packSize} {shortName})

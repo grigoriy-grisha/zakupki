@@ -13,6 +13,8 @@ import {
     getSupplementUiOrderStep,
     shouldDecrementSupplementStock,
     snapSupplementOrderQuantity,
+    validateSupplementPackReduction,
+    calcSupplementStockChange,
 } from '../src/supplement-order';
 import { isSupplementRemainderOnlyPhase } from '../src/index';
 
@@ -382,5 +384,166 @@ describe('supplement order quantity', () => {
         expect(getSupplementOrderQuantityValidationError(8, minPack1, bounds)).toMatch(/целыми пачками/);
         // 24 = 2 пачки — кратно, разрешено
         expect(getSupplementOrderQuantityValidationError(24, minPack1, bounds)).toBeNull();
+    });
+});
+
+describe('validateSupplementPackReduction', () => {
+    const prot1pack200 = { supplementPacksAdded: 1, packSize: 200 };
+    const prot2pack200 = { supplementPacksAdded: 2, packSize: 200 };
+
+    it('no protected packs — any reduction allowed', () => {
+        const result = validateSupplementPackReduction(50, 280, { supplementPacksAdded: 0, packSize: 200 });
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(0);
+    });
+
+    it('increase or no change — always valid', () => {
+        const result = validateSupplementPackReduction(300, 280, prot1pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(1);
+    });
+
+    it('qty=280, packs=1: reduce free only (280→200)', () => {
+        const result = validateSupplementPackReduction(200, 280, prot1pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(1);
+    });
+
+    it('qty=280, packs=1: remove whole pack (280→80)', () => {
+        const result = validateSupplementPackReduction(80, 280, prot1pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(0);
+    });
+
+    it('qty=280, packs=1: remove pack + some free (280→30)', () => {
+        const result = validateSupplementPackReduction(30, 280, prot1pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(0);
+    });
+
+    it('qty=280, packs=1: partial pack removal (280→180) — BLOCKED', () => {
+        const result = validateSupplementPackReduction(180, 280, prot1pack200);
+        expect(result.valid).toBe(false);
+        expect(result.newPacks).toBe(-1);
+        expect(result.error).toMatch(/пачки/);
+    });
+
+    it('qty=280, packs=1: partial pack removal (280→100) — BLOCKED', () => {
+        const result = validateSupplementPackReduction(100, 280, prot1pack200);
+        expect(result.valid).toBe(false);
+    });
+
+    it('qty=280, packs=1: partial pack removal (280→150) — BLOCKED', () => {
+        const result = validateSupplementPackReduction(150, 280, prot1pack200);
+        expect(result.valid).toBe(false);
+    });
+
+    it('qty=280, packs=1: partial pack removal (280→81) — BLOCKED', () => {
+        const result = validateSupplementPackReduction(81, 280, prot1pack200);
+        expect(result.valid).toBe(false);
+    });
+
+    it('qty=450, packs=2, pack=200: keep both packs, reduce free (450→400)', () => {
+        const result = validateSupplementPackReduction(400, 450, prot2pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(2);
+    });
+
+    it('qty=450, packs=2, pack=200: remove 1 pack (450→250)', () => {
+        const result = validateSupplementPackReduction(250, 450, prot2pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(1);
+    });
+
+    it('qty=450, packs=2, pack=200: remove both packs (450→50)', () => {
+        const result = validateSupplementPackReduction(50, 450, prot2pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(0);
+    });
+
+    it('qty=450, packs=2, pack=200: forbidden zone 300 — BLOCKED', () => {
+        const result = validateSupplementPackReduction(300, 450, prot2pack200);
+        expect(result.valid).toBe(false);
+    });
+
+    it('qty=450, packs=2, pack=200: forbidden zone 350 — BLOCKED', () => {
+        const result = validateSupplementPackReduction(350, 450, prot2pack200);
+        expect(result.valid).toBe(false);
+    });
+
+    it('qty=450, packs=2, pack=200: forbidden zone 150 — BLOCKED', () => {
+        const result = validateSupplementPackReduction(150, 450, prot2pack200);
+        expect(result.valid).toBe(false);
+    });
+
+    it('qty=450, packs=2, pack=200: remove 1 pack + reduce free (450→200)', () => {
+        const result = validateSupplementPackReduction(200, 450, prot2pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(1);
+    });
+
+    it('qty=200, packs=1, pack=200, free=0: reduce to 0 — remove pack', () => {
+        const result = validateSupplementPackReduction(0, 200, prot1pack200);
+        expect(result.valid).toBe(true);
+        expect(result.newPacks).toBe(0);
+    });
+
+    it('qty=200, packs=1, pack=200, free=0: reduce to 100 — BLOCKED', () => {
+        const result = validateSupplementPackReduction(100, 200, prot1pack200);
+        expect(result.valid).toBe(false);
+    });
+});
+
+describe('calcSupplementStockChange', () => {
+    it('increase free portion — positive delta', () => {
+        const delta = calcSupplementStockChange(50, 80, 1, 1, 200);
+        expect(delta).toBeCloseTo(30, 5);
+    });
+
+    it('decrease free portion — negative delta', () => {
+        const delta = calcSupplementStockChange(280, 200, 1, 1, 200);
+        expect(delta).toBeCloseTo(-80, 5);
+    });
+
+    it('remove pack, keep free — zero delta', () => {
+        const delta = calcSupplementStockChange(280, 80, 1, 0, 200);
+        expect(delta).toBeCloseTo(0, 5);
+    });
+
+    it('remove pack + reduce free — negative delta', () => {
+        const delta = calcSupplementStockChange(280, 30, 1, 0, 200);
+        expect(delta).toBeCloseTo(-50, 5);
+    });
+
+    it('add pack + add free — positive delta for free only', () => {
+        const delta = calcSupplementStockChange(50, 280, 0, 1, 200);
+        expect(delta).toBeCloseTo(30, 5);
+    });
+
+    it('no change', () => {
+        const delta = calcSupplementStockChange(280, 280, 1, 1, 200);
+        expect(delta).toBeCloseTo(0, 5);
+    });
+});
+
+describe('getSupplementOrderQuantityValidationError with packProtection', () => {
+    const minPack10g = { minPackageAmount: 10, minPackageUnit: 'гр', unitShort: 'гр' };
+    const bounds280 = { availableQty: 40, currentQuantity: 280, supplierPackageAmount: 200 };
+    const prot1pack200 = { supplementPacksAdded: 1, packSize: 200 };
+
+    it('allows reducing free portion only', () => {
+        expect(getSupplementOrderQuantityValidationError(200, minPack10g, bounds280, prot1pack200)).toBeNull();
+    });
+
+    it('allows removing whole pack', () => {
+        expect(getSupplementOrderQuantityValidationError(80, minPack10g, bounds280, prot1pack200)).toBeNull();
+    });
+
+    it('blocks partial pack removal', () => {
+        expect(getSupplementOrderQuantityValidationError(180, minPack10g, bounds280, prot1pack200)).toMatch(/пачки/);
+    });
+
+    it('without protection — no extra validation', () => {
+        expect(getSupplementOrderQuantityValidationError(180, minPack10g, bounds280, null)).toBeNull();
     });
 });

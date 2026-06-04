@@ -41,6 +41,7 @@ interface QuantityModalProps {
     packDiscountPercent: number;
     currentQuantity?: number;
     isSupplementMode?: boolean;
+    supplementPacksAdded?: number;
     onClose: () => void;
 }
 
@@ -50,6 +51,7 @@ export function QuantityModal({
     packDiscountPercent,
     currentQuantity,
     isSupplementMode: isSupplementModeProp,
+    supplementPacksAdded: supplementPacksAddedProp,
     onClose,
 }: QuantityModalProps) {
     const utils = trpc.useUtils();
@@ -97,6 +99,16 @@ export function QuantityModal({
         : null;
 
     const supplementPacksAllowed = supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
+
+    // Защита пачек на доборе
+    const packsAdded = supplementPacksAddedProp ?? 0;
+    const packProtection = isSupplementMode && packsAdded > 0 && packSize != null && packSize > 0
+        ? { supplementPacksAdded: packsAdded, packSize }
+        : null;
+    const protectedPackQty = packProtection ? packProtection.supplementPacksAdded * packProtection.packSize : 0;
+    const freePortion = currentQty - protectedPackQty;
+    const canRemoveStep = !isSupplementMode || freePortion > 0;
+    const canRemovePack = !isSupplementMode || packsAdded > 0;
 
     const maxQty = supplementBounds ? getSupplementDisplayMax(supplementBounds) : null;
 
@@ -219,6 +231,13 @@ export function QuantityModal({
                         </div>
                     )}
 
+                    {isSupplementMode && packProtection && packProtection.supplementPacksAdded > 0 && (
+                        <div className="rounded-lg bg-warning-50 p-3 text-center text-sm text-warning">
+                            Защищённые пачки: {packProtection.supplementPacksAdded} x {packProtection.packSize} {shortName}
+                            {' '}(убрать только целиком)
+                        </div>
+                    )}
+
                     <div className="space-y-4">
                         <div className="text-center">
                             <span className="text-3xl font-bold tabular-nums sm:text-4xl">
@@ -240,7 +259,7 @@ export function QuantityModal({
                                         variant="outline"
                                         className="h-11 rounded-xl px-1 text-xs"
                                         onClick={() => setQuantity((prev) => Math.max(0, prev - packSize))}
-                                        disabled={quantity <= packSize}
+                                        disabled={!canRemovePack}
                                     >
                                         −пачка({packSize})
                                     </Button>
@@ -249,7 +268,7 @@ export function QuantityModal({
                                         size="icon"
                                         className="h-11 w-full rounded-xl"
                                         onClick={() => handleQuantityChange(-uiStep)}
-                                        disabled={supplementOnlyPacks || quantity <= effectiveMinQty}
+                                        disabled={!canRemoveStep || supplementOnlyPacks || quantity <= effectiveMinQty}
                                     >
                                         <Minus className="h-4 w-4" />
                                     </Button>

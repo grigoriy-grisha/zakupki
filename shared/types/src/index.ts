@@ -114,7 +114,11 @@ export {
     formatSupplementCardPreviewHint,
     formatSupplementMinOrderPreviewHint,
     formatSupplementOrderHint,
+    validateSupplementPackReduction,
+    calcSupplementStockChange,
     type SupplementOrderBounds,
+    type SupplementPackProtection,
+    type PackReductionResult,
 } from './supplement-order';
 
 export {

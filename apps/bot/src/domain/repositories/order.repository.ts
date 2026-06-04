@@ -1,9 +1,11 @@
 import { dbClient, deletePurchaseOrderIfNoLines, ensurePurchaseOrder } from '@zakupki/database';
 import {
+    calcSupplementStockChange,
     getSupplementStockDecrement,
     InsufficientStockError,
     NotFoundError,
     shouldDecrementSupplementStock,
+    validateSupplementPackReduction,
 } from '@zakupki/types';
 
 export class OrderRepository {
@@ -27,33 +29,70 @@ export class OrderRepository {
             if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
 
             const oldQuantity = existingLine ? Number(existingLine.quantity) : 0;
+            const oldPacks = existingLine?.supplementPacksAdded ?? 0;
             const delta = quantity - oldQuantity;
+
+            const packSize =
+                purchaseItem.product.supplierPackageAmount != null
+                    ? Number(purchaseItem.product.supplierPackageAmount)
+                    : null;
+
+            // Рассчитываем новое количество защищённых пачек
+            let newPacks = oldPacks;
+            if (options?.isSupplement && packSize && packSize > 0) {
+                if (delta > 0) {
+                    const packsInDelta = Math.floor((delta + 1e-9) / packSize);
+                    newPacks = oldPacks + packsInDelta;
+                } else if (delta < 0) {
+                    const packResult = validateSupplementPackReduction(quantity, oldQuantity, {
+                        supplementPacksAdded: oldPacks,
+                        packSize,
+                    });
+                    if (!packResult.valid) {
+                        throw new NotFoundError(packResult.error ?? 'Нельзя частично удалить пачку', 0);
+                    }
+                    newPacks = packResult.newPacks;
+                }
+            }
 
             // Списываем/восстанавливаем остаток только при доборе
             if (options?.isSupplement) {
-                const packSize =
-                    purchaseItem.product.supplierPackageAmount != null
-                        ? Number(purchaseItem.product.supplierPackageAmount)
-                        : null;
-
-                if (delta > 0 && purchaseItem.availableQty !== null) {
+                if (delta !== 0 && purchaseItem.availableQty !== null) {
                     const available = Number(purchaseItem.availableQty);
-                    if (shouldDecrementSupplementStock(quantity, delta, available, packSize)) {
-                        const decrement = getSupplementStockDecrement(delta, available);
-                        if (decrement < delta) {
-                            throw new InsufficientStockError(available, quantity);
+                    if (packSize && packSize > 0 && oldPacks > 0) {
+                        const stockDelta = calcSupplementStockChange(oldQuantity, quantity, oldPacks, newPacks, packSize);
+                        if (stockDelta > 0) {
+                            const decrement = Math.min(stockDelta, available);
+                            if (decrement < stockDelta) {
+                                throw new InsufficientStockError(available, quantity);
+                            }
+                            await tx.purchaseItem.update({
+                                where: { id: purchaseItemId },
+                                data: { availableQty: available - decrement },
+                            });
+                        } else if (stockDelta < 0) {
+                            await tx.purchaseItem.update({
+                                where: { id: purchaseItemId },
+                                data: { availableQty: available + Math.abs(stockDelta) },
+                            });
                         }
+                    } else if (delta > 0) {
+                        if (shouldDecrementSupplementStock(quantity, delta, available, packSize)) {
+                            const decrement = getSupplementStockDecrement(delta, available);
+                            if (decrement < delta) {
+                                throw new InsufficientStockError(available, quantity);
+                            }
+                            await tx.purchaseItem.update({
+                                where: { id: purchaseItemId },
+                                data: { availableQty: available - decrement },
+                            });
+                        }
+                    } else if (delta < 0) {
                         await tx.purchaseItem.update({
                             where: { id: purchaseItemId },
-                            data: { availableQty: available - decrement },
+                            data: { availableQty: available + Math.abs(delta) },
                         });
                     }
-                } else if (delta < 0 && purchaseItem.availableQty !== null) {
-                    const available = Number(purchaseItem.availableQty);
-                    await tx.purchaseItem.update({
-                        where: { id: purchaseItemId },
-                        data: { availableQty: available + Math.abs(delta) },
-                    });
                 }
             }
 
@@ -63,8 +102,8 @@ export class OrderRepository {
 
             return tx.orderLine.upsert({
                 where: { purchaseItemId_userId: { purchaseItemId, userId } },
-                update: { quantity, amountDue, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
-                create: { purchaseItemId, userId, quantity, amountDue, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
+                update: { quantity, amountDue, supplementPacksAdded: newPacks, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
+                create: { purchaseItemId, userId, quantity, amountDue, supplementPacksAdded: newPacks, ...(tgChatMessageId != null ? { tgChatMessageId } : {}) },
             });
         });
     }
@@ -156,15 +195,25 @@ export class OrderRepository {
             if (options?.isSupplement) {
                 const purchaseItem = await tx.purchaseItem.findUnique({
                     where: { id: line.purchaseItemId },
+                    include: { product: { select: { supplierPackageAmount: true } } },
                 });
 
                 if (purchaseItem?.availableQty !== null && purchaseItem) {
                     const available = Number(purchaseItem.availableQty);
                     const qty = Number(line.quantity);
-                    await tx.purchaseItem.update({
-                        where: { id: line.purchaseItemId },
-                        data: { availableQty: available + qty },
-                    });
+                    const packs = line.supplementPacksAdded;
+                    const packSize =
+                        purchaseItem.product.supplierPackageAmount != null
+                            ? Number(purchaseItem.product.supplierPackageAmount)
+                            : 0;
+                    const freePortion = packSize > 0 ? qty - packs * packSize : qty;
+                    const restoreAmount = Math.max(0, freePortion);
+                    if (restoreAmount > 0) {
+                        await tx.purchaseItem.update({
+                            where: { id: line.purchaseItemId },
+                            data: { availableQty: available + restoreAmount },
+                        });
+                    }
                 }
             }
 
