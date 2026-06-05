@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, LayoutDashboard, Package, Plus, ShoppingCart } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
+import { PageHeader } from './lib/page-header';
 
 export default function DashboardPage() {
     const { data: purchases } = trpc.purchases.list.useQuery({ status: 'ACTIVE' });
@@ -15,15 +16,11 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                    <LayoutDashboard className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-                    <p className="text-sm text-muted-foreground">Обзор ваших закупок</p>
-                </div>
-            </div>
+            <PageHeader
+                icon={LayoutDashboard}
+                title="Dashboard"
+                description="Обзор ваших закупок"
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="p-4 shadow-sm">

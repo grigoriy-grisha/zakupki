@@ -10,20 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { useConfirmPayment, useRejectPayment } from '../hooks';
+import type { PaymentRef } from '../lib/types';
+
 interface PaymentDetailDialogProps {
-    payment: {
-        id: number;
-        userId: number;
-        amount: unknown;
-        status: string;
-        paidAt: string;
-        userComment?: string;
-        adminNote?: string;
-        proofData?: unknown;
-        proofMimeType?: string;
-        user?: { firstName: string; lastName?: string | null };
-        children?: { amount: unknown; promoCode: { code: string } | null }[];
-    };
+    payment: PaymentRef;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     purchaseId: number;
@@ -32,7 +22,7 @@ interface PaymentDetailDialogProps {
 export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }: PaymentDetailDialogProps) {
     const status = payment.status;
     const cfg = PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING;
-    const hasProof = Boolean((payment as { proofObjectKey?: string | null }).proofObjectKey || payment.proofData);
+    const hasProof = Boolean(payment.proofObjectKey || payment.proofData);
     const userName = payment.user
         ? [payment.user.firstName, payment.user.lastName].filter(Boolean).join(' ')
         : `User #${payment.userId}`;

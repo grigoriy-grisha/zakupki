@@ -125,7 +125,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         fulfillmentStatus: purchase?.fulfillmentStatus,
         orderQtyOptions,
         currentQuantity: currentQty,
-        availableQty: item?.availableQty,
+        availableQty: item?.availableQty != null ? Number(item.availableQty) : null,
         packSize,
         orderLines: (item as { orderLines?: { quantity: unknown }[] } | undefined)?.orderLines,
         supplementPacksAdded: existingPacksAdded,
@@ -260,7 +260,6 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                             alt={product.name}
                             fill
                             zoomSize="lg"
-                            className="size-full"
                         />
                     ) : (
                         <div className="flex h-full items-center justify-center">

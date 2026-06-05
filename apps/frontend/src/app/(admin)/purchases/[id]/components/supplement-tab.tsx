@@ -10,6 +10,7 @@ import { PurchaseProductLabel } from '@/components/shared/purchase-product-label
 import { productPhotoUrl } from '@/lib/product-photo-url';
 import { formatOrderStatValue, getPurchaseItemOrderStats } from '../lib/purchase-item-order-stats';
 import { ItemEditSheet } from './item-edit-sheet';
+import type { PurchaseDetail, PurchaseItem } from '../lib/types';
 
 interface SupplementTabProps {
     purchaseId: number;
@@ -19,11 +20,7 @@ function hasSupplementStock(availableQty: string | number | null | undefined): b
     return availableQty !== null && availableQty !== undefined && Number(availableQty) > 0;
 }
 
-function isOnRemainder(item: {
-    availableQty: string | number | null | undefined;
-    orderLines: { quantity: unknown }[];
-    product: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null };
-}): boolean {
+function isOnRemainder(item: PurchaseItem): boolean {
     if (hasSupplementStock(item.availableQty)) return true;
     const stats = getPurchaseItemOrderStats(item);
     return stats.freeRemainder != null && stats.freeRemainder > 0;
@@ -33,9 +30,8 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const [editItem, setEditItem] = useState<number | null>(null);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allItems = (purchase as any)?.items ?? [];
-    const remainderItems = useMemo(() => allItems.filter((item: any) => isOnRemainder(item)), [allItems]);
+    const allItems = ((purchase as unknown as PurchaseDetail | null)?.items) ?? [];
+    const remainderItems = useMemo(() => allItems.filter(isOnRemainder), [allItems]);
 
     if (isLoading || !purchase) {
         return <Skeleton className="h-64" />;
@@ -71,7 +67,7 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {remainderItems.map((item: any) => {
+                        {remainderItems.map((item) => {
                             const shortName = item.product.unit?.shortName ?? '';
                             const stats = getPurchaseItemOrderStats(item);
                             const packUnit = stats.packUnit ?? shortName;

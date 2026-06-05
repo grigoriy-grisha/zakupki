@@ -8,6 +8,7 @@ import { UserProfileSheet } from '@/app/(admin)/users/components';
 import { useParticipantsData } from '../hooks';
 import { ParticipantRow } from './participant-row';
 import { PaymentDetailDialog } from './payment-detail-dialog';
+import type { PaymentRef } from '../lib/types';
 
 interface ParticipantsTabProps {
     purchaseId: number;
@@ -28,19 +29,7 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
         return <p className="py-8 text-center text-muted-foreground">Заказов пока нет</p>;
     }
 
-    const selectedPayment = data.payments?.find((p) => p.id === selectedPaymentId) as {
-        id: number;
-        userId: number;
-        amount: unknown;
-        status: string;
-        paidAt: string;
-        userComment?: string;
-        adminNote?: string;
-        proofData?: unknown;
-        proofMimeType?: string;
-        user?: { firstName: string; lastName?: string | null };
-        children?: { amount: unknown; promoCode: { code: string } | null }[];
-    } | null;
+    const selectedPayment = data.payments.find((p) => p.id === selectedPaymentId) ?? null;
 
     return (
         <div className="space-y-4">
@@ -86,13 +75,15 @@ export function ParticipantsTab({ purchaseId }: ParticipantsTabProps) {
                     </TableHeader>
                     <TableBody>
                         {data.userIds.map((userId) => {
-                            const userOrdersList = data.userOrders.get(userId) ?? [];
-                            const due = userOrdersList.reduce((sum, o) => sum + Number(o.amountDue), 0);
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const userOrdersList: any[] = data.userOrders.get(userId) ?? [];
+                            const due = userOrdersList.reduce((sum: number, o: any) => sum + Number(o.amountDue), 0);
                             const paid = data.paidByUser.get(userId) ?? 0;
                             const pending = data.pendingByUser.get(userId) ?? 0;
                             const info = data.userMap.get(userId);
                             const name = info?.name ?? `Участник #${userId}`;
-                            const userPaymentsList = data.userPayments.get(userId) ?? [];
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const userPaymentsList: any[] = data.userPayments.get(userId) ?? [];
                             const purchaseOrderId =
                                 (userOrdersList[0] as { purchaseOrderId?: number | null } | undefined)
                                     ?.purchaseOrderId ?? null;

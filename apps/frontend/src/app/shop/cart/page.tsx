@@ -33,7 +33,8 @@ export default function CartPage() {
             id: number;
             tag: string;
             supplier: string;
-            orders: typeof myOrders extends (infer T)[] ? T[] : never;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            orders: any[];
             total: number;
             fulfillmentStatus: string | null;
         }

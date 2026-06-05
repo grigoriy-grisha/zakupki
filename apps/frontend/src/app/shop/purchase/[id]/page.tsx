@@ -186,7 +186,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         <p className="text-sm text-muted-foreground">Товаров: {filteredItems.length}</p>
 
                         <div className="grid grid-cols-2 items-stretch gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredItems.map((item) => (
+                            {filteredItems.map((item: any) => (
                                 <ProductCard
                                     key={item.id}
                                     item={item}

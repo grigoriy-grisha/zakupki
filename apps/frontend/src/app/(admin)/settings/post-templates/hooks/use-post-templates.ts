@@ -1,5 +1,6 @@
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
+import { invalidateAndToast } from '../../../lib/use-crud-mutation';
 
 export function usePostTemplateList() {
     return trpc.postTemplates.list.useQuery();
@@ -8,32 +9,23 @@ export function usePostTemplateList() {
 export function useCreatePostTemplate() {
     const utils = trpc.useUtils();
     return trpc.postTemplates.create.useMutation({
-        onSuccess: async () => {
-            await utils.postTemplates.list.invalidate();
-            toast.success('Шаблон создан');
-        },
-        onError: (err) => toast.error(err.message),
+        onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], 'Шаблон создан'),
+        onError: (err) => { toast.error(err.message); },
     });
 }
 
 export function useUpdatePostTemplate() {
     const utils = trpc.useUtils();
     return trpc.postTemplates.update.useMutation({
-        onSuccess: async () => {
-            await utils.postTemplates.list.invalidate();
-            toast.success('Шаблон сохранён');
-        },
-        onError: (err) => toast.error(err.message),
+        onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], 'Шаблон сохранён'),
+        onError: (err) => { toast.error(err.message); },
     });
 }
 
 export function useDeletePostTemplate() {
     const utils = trpc.useUtils();
     return trpc.postTemplates.delete.useMutation({
-        onSuccess: async () => {
-            await utils.postTemplates.list.invalidate();
-            toast.success('Шаблон удалён');
-        },
-        onError: (err) => toast.error(err.message),
+        onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], 'Шаблон удалён'),
+        onError: (err) => { toast.error(err.message); },
     });
 }

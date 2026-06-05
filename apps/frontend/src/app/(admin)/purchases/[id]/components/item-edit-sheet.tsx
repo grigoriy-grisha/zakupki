@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
 import { PurchaseProductEditForm } from './purchase-product-edit-form';
+import type { PurchaseDetail } from '../lib/types';
 
 export interface ItemEditSheetProps {
     purchaseItemId: number | null;
@@ -16,8 +17,8 @@ export interface ItemEditSheetProps {
 export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: ItemEditSheetProps) {
     const utils = trpc.useUtils();
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId }, { enabled: open });
-    const items = (purchase as { items?: any[] })?.items ?? [];
-    const item = items.find((i: any) => i.id === purchaseItemId);
+    const items = ((purchase as unknown as PurchaseDetail | null)?.items) ?? [];
+    const item = items.find((i) => i.id === purchaseItemId);
 
     const updateMutation = trpc.purchases.updateItemProduct.useMutation({
         onSuccess: () => {
@@ -31,8 +32,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
 
     if (!open) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const product = item?.product as any;
+    const product = item?.product;
     const tiers: { amount: number; unit: string; price: number }[] =
         product && Array.isArray(product.priceTiers) ? product.priceTiers : [];
     const published = !!item?.tgMessageId;
@@ -59,7 +59,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                         key={product.id}
                         product={product}
                         loadSavedDescription
-                        purchaseTag={purchase?.tag}
+                        purchaseTag={(purchase as unknown as PurchaseDetail)?.tag}
                         initialTiers={tiers}
                         onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
                         isSaving={updateMutation.isPending}

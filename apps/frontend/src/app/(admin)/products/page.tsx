@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useProductList, useProductTree } from './hooks';
 import { AttributeTree, ProductCard, ProductSheet } from './components';
+import { PageHeader } from '../lib/page-header';
 
 export default function ProductsPage() {
     const [search, setSearch] = useState('');
@@ -33,15 +34,12 @@ export default function ProductsPage() {
     return (
         <div className="space-y-4 sm:space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success-50">
-                        <Package className="h-5 w-5 text-success" />
-                    </div>
-                    <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Каталог товаров</h1>
-                        <p className="text-sm text-muted-foreground">{filteredProducts.length} товаров</p>
-                    </div>
-                </div>
+                <PageHeader
+                    icon={Package}
+                    title="Каталог товаров"
+                    description={`${filteredProducts.length} товаров`}
+                    iconClassName="bg-success-50"
+                />
                 <Button
                     className="w-full sm:w-auto"
                     onClick={() => {

@@ -47,14 +47,16 @@ function groupProductsForType(
         if (!attr?.name?.trim()) continue;
 
         if (attr.isBrand) {
-            const brand =
-                groups.brands.get(attr.id) ??
-                ({
+            let brand = groups.brands.get(attr.id);
+            if (!brand) {
+                brand = {
                     attributeId: attr.id,
                     name: attr.name.trim(),
                     brandProducts: [],
                     childValues: new Map(),
-                } satisfies BrandGroup);
+                };
+                groups.brands.set(attr.id, brand);
+            }
             brand.brandProducts.push(product);
             groups.brands.set(attr.id, brand);
             continue;

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbClient } from '@zakupki/database';
 
 function photoResponse(data: ArrayBuffer | Buffer, mimeType: string, objectKey: string) {
-    return new Response(data, {
+    return new Response(data as BodyInit, {
         headers: {
             'Content-Type': mimeType,
             'Cache-Control': 'public, max-age=86400',

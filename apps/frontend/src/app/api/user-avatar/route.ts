@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
         return new NextResponse(null, { status: 404 });
     }
 
-    return new NextResponse(fetched.data, {
+    return new NextResponse(fetched.data as BodyInit, {
         headers: {
             'Content-Type': fetched.contentType,
             'Cache-Control': 'private, max-age=3600',

@@ -4,12 +4,20 @@ import { useMemo } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { displayName } from '@/lib/utils/user';
 import { paymentTotal } from '../../lib/utils';
+import type { PaymentRef, UserBrief, PurchaseItem, OrderLineRef } from '../lib/types';
+
+type OrderRow = {
+    userId: number;
+    amountDue: unknown;
+    purchaseOrderId?: number | null;
+    user?: UserBrief;
+};
 
 const emptyMaps = () => ({
     userIds: [] as number[],
     userMap: new Map<number, { name: string; username?: string }>(),
-    userOrders: new Map<number, never[]>(),
-    userPayments: new Map<number, never[]>(),
+    userOrders: new Map<number, unknown[]>(),
+    userPayments: new Map<number, unknown[]>(),
     paidByUser: new Map<number, number>(),
     pendingByUser: new Map<number, number>(),
     totalDue: 0,
@@ -29,57 +37,45 @@ export function useParticipantsData(purchaseId: number) {
         }
 
         const userMap = new Map<number, { name: string; username?: string }>();
-        orders.forEach((o) => {
-            if (
-                !userMap.has(o.userId) &&
-                (o as { user?: { firstName: string; lastName?: string | null; username?: string } }).user
-            ) {
-                const u = (o as { user: { firstName: string; lastName?: string | null; username?: string } }).user;
+        (orders as OrderRow[]).forEach((o) => {
+            if (!userMap.has(o.userId) && o.user) {
                 userMap.set(o.userId, {
-                    name: displayName({ firstName: u.firstName, lastName: u.lastName ?? null }),
-                    username: u.username,
+                    name: displayName({ firstName: o.user.firstName, lastName: o.user.lastName ?? null }),
+                    username: o.user.username,
                 });
             }
         });
 
-        const userOrders = new Map<number, (typeof orders)[number][]>();
-        orders.forEach((o) => {
+        const userOrders = new Map<number, OrderRow[]>();
+        (orders as OrderRow[]).forEach((o) => {
             if (!userOrders.has(o.userId)) userOrders.set(o.userId, []);
             userOrders.get(o.userId)!.push(o);
         });
 
-        const userPayments = new Map<number, NonNullable<typeof payments>>();
-        payments?.forEach((p) => {
+        const typedPayments = (payments ?? []) as unknown as PaymentRef[];
+        const userPayments = new Map<number, PaymentRef[]>();
+        typedPayments.forEach((p) => {
             if (!userPayments.has(p.userId)) userPayments.set(p.userId, []);
             userPayments.get(p.userId)!.push(p);
         });
 
         const paidByUser = new Map<number, number>();
         const pendingByUser = new Map<number, number>();
-        payments?.forEach((p) => {
-            const status = (p as { status: string }).status;
-            const total = paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] });
-            if (status === 'CONFIRMED') {
+        typedPayments.forEach((p) => {
+            const total = paymentTotal(p);
+            if (p.status === 'CONFIRMED') {
                 paidByUser.set(p.userId, (paidByUser.get(p.userId) ?? 0) + total);
             }
-            if (status === 'PENDING') {
+            if (p.status === 'PENDING') {
                 pendingByUser.set(p.userId, (pendingByUser.get(p.userId) ?? 0) + total);
             }
         });
 
-        const totalDue = orders.reduce((sum, o) => sum + Number(o.amountDue), 0);
-        const totalPaid =
-            payments?.reduce(
-                (sum, p) => sum + paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] }),
-                0,
-            ) ?? 0;
-        const totalPending =
-            payments
-                ?.filter((p) => (p as { status: string }).status === 'PENDING')
-                .reduce(
-                    (sum, p) => sum + paymentTotal(p as { amount: unknown; children?: { amount: unknown }[] }),
-                    0,
-                ) ?? 0;
+        const totalDue = (orders as OrderRow[]).reduce((sum, o) => sum + Number(o.amountDue), 0);
+        const totalPaid = typedPayments.reduce((sum, p) => sum + paymentTotal(p), 0);
+        const totalPending = typedPayments
+            .filter((p) => p.status === 'PENDING')
+            .reduce((sum, p) => sum + paymentTotal(p), 0);
 
         const userIds = Array.from(userOrders.keys());
 
@@ -102,7 +98,7 @@ export function useParticipantsData(purchaseId: number) {
     return {
         isLoading,
         isEmpty: !isLoading && aggregatedEmpty,
-        payments,
+        payments: (payments ?? []) as unknown as PaymentRef[],
         ...participantData,
     };
 }

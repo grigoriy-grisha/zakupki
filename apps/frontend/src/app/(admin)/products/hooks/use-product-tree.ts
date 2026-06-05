@@ -1,22 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { trpc } from '@/lib/client/trpc';
 import { buildAttributeTree, collectExpandableIds, productMatchesTreeNode } from '../lib/attribute-tree';
-import { buildAttributesTreeByType, type AttributeListItem } from '../lib/product-form-utils';
+import { useAttributeCatalog } from './use-attribute-catalog';
 import type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from '../lib/types';
 
 export function useProductTree<T extends AttrProduct>(products: T[] | undefined) {
     const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-    const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
-    const { data: allAttributes } = trpc.productAttributes.list.useQuery();
-
-    const catalogByType = useMemo(
-        () => buildAttributesTreeByType(allAttributes as AttributeListItem[] | undefined),
-        [allAttributes],
-    );
+    const { attributeTypes, attrsTreeByType: catalogByType } = useAttributeCatalog();
 
     const tree = useMemo(
         () => buildAttributeTree((attributeTypes ?? []) as AttributeTypeRow[], products ?? [], catalogByType),

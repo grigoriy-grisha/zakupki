@@ -8,3 +8,4 @@ export { ProductPickerDialog } from './product-picker-dialog';
 export { ParticipantRow } from './participant-row';
 export { PaymentDetailDialog } from './payment-detail-dialog';
 export { AddPaymentDialog } from './add-payment-dialog';
+export { PublishToTgDialog } from './publish-to-tg-dialog';

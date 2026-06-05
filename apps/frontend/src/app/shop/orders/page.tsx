@@ -211,8 +211,8 @@ function PurchaseOrderCard({
                 {purchasePayments.length > 0 && (
                     <div className="space-y-2 py-3">
                         <p className="text-xs font-medium text-muted-foreground">Ваши оплаты</p>
-                        {purchasePayments.map((p) => (
-                            <MyPaymentRow key={p.id} payment={p as ShopPaymentView} />
+                        {purchasePayments.map((p, idx) => (
+                            <MyPaymentRow key={(p as { id?: number }).id ?? idx} payment={p as unknown as ShopPaymentView} />
                         ))}
                     </div>
                 )}

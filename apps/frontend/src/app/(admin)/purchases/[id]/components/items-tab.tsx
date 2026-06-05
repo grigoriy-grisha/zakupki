@@ -6,9 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Send, Trash2 } from 'lucide-react';
+import { Send, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
-import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '../../../products/lib';
@@ -22,17 +21,22 @@ import {
     getPurchaseItemPrice1Gr,
 } from '../lib/purchase-item-prices';
 import { formatOrderStatValue, getPurchaseItemOrderStats } from '../lib/purchase-item-order-stats';
+import {
+    purchaseItemTextClass,
+    purchaseItemSubtitleClass,
+    purchaseItemNumericClass,
+    purchaseItemHeadClass,
+    purchaseItemTgHeadClass,
+    purchaseItemStatsLeadHeadClass,
+    purchaseItemTgCellClass,
+    purchaseItemStatsLeadCellClass,
+} from '../lib/table-styles';
 import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { ItemEditSheet } from './item-edit-sheet';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { PublishToTgDialog } from './publish-to-tg-dialog';
+import type { PurchaseDetail } from '../lib/types';
+
 interface ItemsTabProps {
     purchaseId: number;
 }
@@ -62,17 +66,6 @@ function formatSupplierPackageCell(product: {
     return fallback ?? '—';
 }
 
-const purchaseItemTextClass = 'text-sm font-semibold text-foreground';
-const purchaseItemSubtitleClass = 'text-sm font-medium text-muted-foreground';
-const purchaseItemNumericClass = `${purchaseItemTextClass} tabular-nums whitespace-nowrap`;
-const purchaseItemHeadClass =
-    'text-sm font-medium text-muted-foreground whitespace-normal text-center leading-snug align-middle px-2';
-const purchaseItemTgColumnClass =
-    'w-14 pr-5 align-middle [&:has([role=checkbox])]:pr-5 [&_[role=checkbox]]:translate-y-0';
-const purchaseItemTgHeadClass = `${purchaseItemHeadClass} ${purchaseItemTgColumnClass}`;
-const purchaseItemStatsLeadHeadClass = `${purchaseItemHeadClass} pl-4`;
-const purchaseItemTgCellClass = `${purchaseItemTgColumnClass} text-center`;
-const purchaseItemStatsLeadCellClass = `${purchaseItemNumericClass} pl-4`;
 export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
@@ -95,17 +88,15 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
         return <Skeleton className="h-64" />;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const items = (purchase as any).items ?? [];
-    const isActive = purchase.status === 'ACTIVE';
-    const isSupplement = purchase.status === 'SUPPLEMENT';
+    const typedPurchase = purchase as unknown as PurchaseDetail;
+    const items = typedPurchase.items;
+    const isActive = typedPurchase.status === 'ACTIVE';
+    const isSupplement = typedPurchase.status === 'SUPPLEMENT';
     const canTogglePublish = (status: string) => status !== 'DONE';
-    const canAddItems = purchase.status !== 'DONE';
-    const canRemoveItem = purchase.status !== 'DONE';
-    const existingProductIds = new Set<number>(items.map((item: any) => item.productId as number));
-    const publishCount = items.filter(
-        (item: { shouldPublish: boolean; tgMessageId: string | null }) => item.shouldPublish && !item.tgMessageId,
-    ).length;
+    const canAddItems = typedPurchase.status !== 'DONE';
+    const canRemoveItem = typedPurchase.status !== 'DONE';
+    const existingProductIds = new Set<number>(items.map((item) => item.productId));
+    const publishCount = items.filter((item) => item.shouldPublish && !item.tgMessageId).length;
 
     return (
         <div className="space-y-4">
@@ -137,7 +128,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                             <div className="w-full sm:w-auto [&_button]:w-full sm:[&_button]:w-auto">
                                 <ProductPickerDialog
                                     purchaseId={purchaseId}
-                                    purchaseTag={purchase.tag}
+                                    purchaseTag={typedPurchase.tag}
                                     existingProductIds={existingProductIds}
                                 />
                             </div>
@@ -223,7 +214,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {items.map((item: any) => {
+                        {items.map((item) => {
                             const shortName = item.product.unit?.shortName ?? '';
                             const published = !!item.tgMessageId;
                             const tiers = getProductPriceTiers(item.product.priceTiers);
@@ -284,7 +275,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                                 <Checkbox
                                                     checked={item.shouldPublish}
                                                     disabled={
-                                                        !canTogglePublish(purchase.status) || togglePublish.isPending
+                                                        !canTogglePublish(typedPurchase.status) || togglePublish.isPending
                                                     }
                                                     aria-label="Опубликовать в Telegram"
                                                     onCheckedChange={(v) => {
@@ -388,32 +379,15 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                 }}
             />
 
-            <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Опубликовать в Telegram?</DialogTitle>
-                        <DialogDescription>
-                            {publishCount > 0
-                                ? `${publishCount} товаров будет опубликовано в канал Telegram.`
-                                : 'Отметьте галочкой товары в таблице, которые нужно опубликовать.'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setPublishOpen(false)}>
-                            Отмена
-                        </Button>
-                        <Button
-                            disabled={publishToTelegram.isPending || publishCount === 0}
-                            onClick={() => {
-                                publishToTelegram.mutate({ purchaseId }, { onSuccess: () => setPublishOpen(false) });
-                            }}
-                        >
-                            {publishToTelegram.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Опубликовать
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <PublishToTgDialog
+                open={publishOpen}
+                onOpenChange={setPublishOpen}
+                publishCount={publishCount}
+                isPending={publishToTelegram.isPending}
+                onPublish={() => {
+                    publishToTelegram.mutate({ purchaseId }, { onSuccess: () => setPublishOpen(false) });
+                }}
+            />
         </div>
     );
 }

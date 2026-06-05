@@ -9,24 +9,17 @@ import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
 import { SuppliersTab } from './suppliers/suppliers-tab';
 import { UnitsTab } from './units/units-tab';
+import { PageHeader } from '../lib/page-header';
 
 export default function SettingsPage() {
     return (
         <div className="space-y-6">
-            <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                    <Settings className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                    <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Настройки</h1>
-                    <p className="text-sm text-muted-foreground">
-                        <span className="hidden sm:inline">
-                            Управление характеристиками, поставщиками, промокодами и другими параметрами
-                        </span>
-                        <span className="sm:hidden">Справочники и параметры системы</span>
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                icon={Settings}
+                title="Настройки"
+                description="Управление характеристиками, поставщиками, промокодами и другими параметрами"
+                descriptionMobile="Справочники и параметры системы"
+            />
 
             <Tabs defaultValue="attributes" className="gap-4">
                 <TabsList className="h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto p-1 sm:w-fit">

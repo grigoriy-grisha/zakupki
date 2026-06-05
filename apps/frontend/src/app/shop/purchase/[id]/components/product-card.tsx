@@ -81,7 +81,7 @@ export function ProductCard({
         fulfillmentStatus,
         orderQtyOptions,
         currentQuantity,
-        availableQty: item.availableQty,
+        availableQty: item.availableQty != null ? Number(item.availableQty) : null,
         packSize,
         orderLines: item.orderLines,
         supplementPacksAdded: supplementPacksAddedProp,
@@ -132,7 +132,7 @@ export function ProductCard({
     const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
 
     const pricingOptions = {
-        priceTiers: product.priceTiers,
+        priceTiers: (product as { priceTiers?: unknown }).priceTiers,
         pricePerUnit: Number(product.pricePerUnit),
         priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
         supplierPackageAmount: product.supplierPackageAmount,
