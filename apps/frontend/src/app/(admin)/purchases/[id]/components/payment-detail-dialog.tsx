@@ -22,7 +22,7 @@ interface PaymentDetailDialogProps {
 export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }: PaymentDetailDialogProps) {
     const status = payment.status;
     const cfg = PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING;
-    const hasProof = Boolean(payment.proofObjectKey || payment.proofData);
+    const hasProof = Boolean(payment.proofObjectKey);
     const userName = payment.user
         ? [payment.user.firstName, payment.user.lastName].filter(Boolean).join(' ')
         : `User #${payment.userId}`;
@@ -94,7 +94,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                         <div>
                             <p className="text-sm text-muted-foreground">Дата</p>
                             <p>
-                                {new Date(payment.paidAt).toLocaleDateString('ru-RU', {
+                                {new Date(payment.submittedAt).toLocaleDateString('ru-RU', {
                                     day: 'numeric',
                                     month: 'long',
                                     year: 'numeric',
@@ -121,7 +121,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                     {hasProof && (
                         <div>
                             <p className="text-sm text-muted-foreground mb-2">Подтверждение оплаты</p>
-                            {payment.proofMimeType?.startsWith('image/') ? (
+                            {!payment.proofObjectKey?.endsWith('.pdf') ? (
                                 <a href={`/api/payment-proof/${payment.id}`} target="_blank">
                                     <img
                                         src={`/api/payment-proof/${payment.id}`}

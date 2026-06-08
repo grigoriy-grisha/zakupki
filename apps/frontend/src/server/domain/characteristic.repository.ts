@@ -1,8 +1,7 @@
 import { dbClient } from '@zakupki/database';
+import { getNextPosition } from '../lib/get-next-position';
 
 export class CharacteristicRepository {
-    constructor() {}
-
     async list() {
         return dbClient.characteristic.findMany({
             orderBy: [{ position: 'asc' }, { id: 'asc' }],
@@ -10,8 +9,7 @@ export class CharacteristicRepository {
     }
 
     async create(data: { name: string }) {
-        const last = await dbClient.characteristic.findFirst({ orderBy: { position: 'desc' } });
-        const position = (last?.position ?? -1) + 1;
+        const position = await getNextPosition((args) => dbClient.characteristic.findFirst(args));
         return dbClient.characteristic.create({ data: { name: data.name, position } });
     }
 

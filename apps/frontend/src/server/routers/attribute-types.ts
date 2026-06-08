@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { withDbConflict } from '../lib/error-utils';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
@@ -16,7 +17,7 @@ export const attributeTypesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            return ctx.services.attributeType.create(input);
+            return withDbConflict(() => ctx.services.attributeType.create(input));
         }),
 
     update: adminProcedure
@@ -29,7 +30,7 @@ export const attributeTypesRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             const { id, ...data } = input;
-            return ctx.services.attributeType.update(id, data);
+            return withDbConflict(() => ctx.services.attributeType.update(id, data));
         }),
 
     move: adminProcedure

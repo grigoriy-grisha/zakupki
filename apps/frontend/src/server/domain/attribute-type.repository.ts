@@ -1,4 +1,5 @@
 import { dbClient } from '@zakupki/database';
+import { getNextPosition } from '../lib/get-next-position';
 
 export interface AttributeTypeWriteData {
     name?: string;
@@ -13,8 +14,7 @@ export class AttributeTypeRepository {
     }
 
     async create(data: { name: string; parentId?: number | null; showInTitle?: boolean }) {
-        const last = await dbClient.attributeType.findFirst({ orderBy: { position: 'desc' } });
-        const position = (last?.position ?? -1) + 1;
+        const position = await getNextPosition((args) => dbClient.attributeType.findFirst(args));
         return dbClient.attributeType.create({
             data: {
                 name: data.name,

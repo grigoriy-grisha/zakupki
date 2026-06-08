@@ -1,14 +1,12 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, ListChecks, Tag, Layers, FileText, Truck, Scale, Percent } from 'lucide-react';
+import { Settings, ListChecks, Tag, Layers, FileText, Percent } from 'lucide-react';
 import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
 import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
-import { SuppliersTab } from './suppliers/suppliers-tab';
-import { UnitsTab } from './units/units-tab';
 import { PageHeader } from '../lib/page-header';
 
 export default function SettingsPage() {
@@ -17,7 +15,7 @@ export default function SettingsPage() {
             <PageHeader
                 icon={Settings}
                 title="Настройки"
-                description="Управление характеристиками, поставщиками, промокодами и другими параметрами"
+                description="Управление характеристиками, промокодами и другими параметрами"
                 descriptionMobile="Справочники и параметры системы"
             />
 
@@ -33,15 +31,6 @@ export default function SettingsPage() {
                         <ListChecks className="h-4 w-4 shrink-0" />
                         <span className="hidden sm:inline">Характеристики</span>
                         <span className="sm:hidden">Хар-ки</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="units" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Scale className="h-4 w-4 shrink-0" />
-                        <span className="hidden sm:inline">Единицы учёта</span>
-                        <span className="sm:hidden">Единицы</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="suppliers" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Truck className="h-4 w-4 shrink-0" />
-                        Поставщики
                     </TabsTrigger>
                     <TabsTrigger value="templates" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
                         <FileText className="h-4 w-4 shrink-0" />
@@ -64,12 +53,6 @@ export default function SettingsPage() {
                 </TabsContent>
                 <TabsContent value="characteristics" className="mt-0">
                     <CharacteristicsTab />
-                </TabsContent>
-                <TabsContent value="units" className="mt-0">
-                    <UnitsTab />
-                </TabsContent>
-                <TabsContent value="suppliers" className="mt-0">
-                    <SuppliersTab />
                 </TabsContent>
                 <TabsContent value="templates" className="mt-0">
                     <PostTemplatesTab />

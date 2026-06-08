@@ -24,8 +24,8 @@ export interface PurchaseItemProduct extends ProductLabelSource {
     supplierPackageTiers?: unknown;
     priceTiers?: unknown;
     pricePerUnit?: number | null;
-    availableAmount?: string | number | null;
-    availableUnit?: string | null;
+    referenceStock?: string | number | null;
+    referenceStockUnit?: string | null;
     description?: string | null;
     unit?: UnitRef | null;
     photos?: PhotoRef[];
@@ -38,6 +38,12 @@ export interface OrderLineRef {
     quantity: number;
     amountDue: number;
     createdAt: string;
+    /** Заказ из фазы COLLECTION, зафиксирован при входе в SUPPLEMENT/REORDER. */
+    baseQuantity?: number | string | null;
+    /** Целые пачки, добавленные в доборе. */
+    supplementPacksAdded?: number;
+    /** Свободная добавка (россыпью) на доборе. */
+    supplementRemainder?: number | string | null;
 }
 
 /** PurchaseItem (позиция товара в закупке) */
@@ -45,10 +51,10 @@ export interface PurchaseItem {
     id: number;
     productId: number;
     purchaseId: number;
-    shouldPublish: boolean;
+    publicationState: 'DRAFT' | 'PUBLISHED';
     tgMessageId: string | null;
     tgChannelId: string | null;
-    availableQty: string | number | null;
+    targetRemainder: string | number | null;
     product: PurchaseItemProduct;
     orderLines: OrderLineRef[];
 }
@@ -65,12 +71,10 @@ export interface PaymentRef {
     id: number;
     userId: number;
     amount: unknown;
-    paidAt: string;
+    submittedAt: string;
     status: string;
     userComment?: string | null;
     adminNote?: string | null;
-    proofData?: unknown;
-    proofMimeType?: string | null;
     proofObjectKey?: string | null;
     user?: UserBrief;
     children?: { amount: unknown; promoCode: { code: string } | null }[];

@@ -11,7 +11,8 @@ import { trpc } from '@/lib/client/trpc';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '../../../products/lib';
-import { DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT, parsePriceTiers } from '@zakupki/types';
+import { getSupplementPool, parsePriceTiers } from '@zakupki/types';
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import {
     formatPrice510Cell,
     formatRubPrice,
@@ -68,9 +69,7 @@ function formatSupplierPackageCell(product: {
 
 export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
-    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
-    const packDiscountPercent =
-        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
     const removeItem = useRemovePurchaseItem(purchaseId);
     const togglePublish = useToggleShouldPublish(purchaseId);
     const publishToTelegram = usePublishToTelegram(purchaseId);
@@ -92,11 +91,14 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const items = typedPurchase.items;
     const isActive = typedPurchase.status === 'ACTIVE';
     const isSupplement = typedPurchase.status === 'SUPPLEMENT';
+    // ФИКС #11: колонка «Доступно» показывается и в REORDER, не только в SUPPLEMENT.
+    const isInSupplementPhase =
+        isSupplement || typedPurchase.fulfillmentStatus === 'REORDER';
     const canTogglePublish = (status: string) => status !== 'DONE';
     const canAddItems = typedPurchase.status !== 'DONE';
     const canRemoveItem = typedPurchase.status !== 'DONE';
     const existingProductIds = new Set<number>(items.map((item) => item.productId));
-    const publishCount = items.filter((item) => item.shouldPublish && !item.tgMessageId).length;
+    const publishCount = items.filter((item) => item.publicationState === 'DRAFT' && !item.tgMessageId).length;
 
     return (
         <div className="space-y-4">
@@ -197,7 +199,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 <br />
                                 остаток
                             </TableHead>
-                            {isSupplement && (
+                            {isInSupplementPhase && (
                                 <TableHead className={`${purchaseItemHeadClass} text-center`}>Доступно</TableHead>
                             )}
                             <TableHead className="w-16" />
@@ -219,6 +221,27 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                             const published = !!item.tgMessageId;
                             const tiers = getProductPriceTiers(item.product.priceTiers);
                             const stats = getPurchaseItemOrderStats(item);
+                            // Свободный остаток = либо ручной target pool минус зарезервированное,
+                            // либо авто-расчёт по «остатку последней пачки».
+                            const totalOrderedQuantity = (item.orderLines ?? []).reduce(
+                                (acc: number, line: { quantity?: unknown }) =>
+                                    acc + Number(line.quantity ?? 0),
+                                0,
+                            );
+                            const sumOtherBaseQuantities = (item.orderLines ?? []).reduce(
+                                (acc: number, line: { baseQuantity?: unknown }) =>
+                                    acc + Number(line.baseQuantity ?? 0),
+                                0,
+                            );
+                            const freeRemainder = getSupplementPool({
+                                targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
+                                totalOrderedQuantity,
+                                totalReservedRemainder: sumOtherBaseQuantities,
+                                packSize:
+                                    item.product.supplierPackageAmount != null
+                                        ? Number(item.product.supplierPackageAmount)
+                                        : null,
+                            });
                             return (
                                 <TableRow
                                     key={item.id}
@@ -273,7 +296,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                                 <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
                                             ) : (
                                                 <Checkbox
-                                                    checked={item.shouldPublish}
+                                                    checked={item.publicationState === 'PUBLISHED'}
                                                     disabled={
                                                         !canTogglePublish(typedPurchase.status) || togglePublish.isPending
                                                     }
@@ -300,16 +323,16 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                         {formatOrderStatValue(stats.packsToOrder)}
                                     </TableCell>
                                     <TableCell className={purchaseItemNumericClass}>
-                                        {formatOrderStatValue(stats.freeRemainder)}
+                                        {formatOrderStatValue(freeRemainder)}
                                     </TableCell>
-                                    {isSupplement && (
+                                    {isInSupplementPhase && (
                                         <TableCell className="text-center">
-                                            {item.availableQty !== null && item.availableQty !== undefined ? (
+                                            {item.targetRemainder !== null && item.targetRemainder !== undefined ? (
                                                 <Badge
-                                                    variant={Number(item.availableQty) > 0 ? 'outline' : 'destructive'}
+                                                    variant={Number(item.targetRemainder) > 0 ? 'outline' : 'destructive'}
                                                     className="font-mono"
                                                 >
-                                                    {Number(item.availableQty)} {shortName}
+                                                    {Number(item.targetRemainder)} {shortName}
                                                 </Badge>
                                             ) : (
                                                 <span className="text-muted-foreground">∞</span>

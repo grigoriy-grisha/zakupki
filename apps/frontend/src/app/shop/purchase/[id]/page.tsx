@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, ChevronRight, X } from 'lucide-react';
 import {
-    DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
 import { cn } from '@/lib/utils';
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 import { ProductCard } from './components';
@@ -24,10 +24,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const id = Number(idStr);
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
-    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
     const paymentDetail = usePurchasePaymentDetail(id);
-    const packDiscountPercent =
-        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
 
     const items = purchase?.items ?? [];
     const {
@@ -45,8 +43,12 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     } = usePurchaseFilterTree(items);
 
     const orderQtyMap = new Map(paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]));
-    const orderPacksMap = new Map(
-        paymentDetail.myOrdersInPurchase.map((o: any) => [o.purchaseItemId, o.supplementPacksAdded ?? 0]),
+    // baseQuantity — замороженное количество при входе в SUPPLEMENT
+    const orderBaseQuantityMap = new Map(
+        paymentDetail.myOrdersInPurchase.map((o: any) => [
+            o.purchaseItemId,
+            o.baseQuantity != null ? Number(o.baseQuantity) : 0,
+        ]),
     );
 
     if (isLoading) {
@@ -189,13 +191,11 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             {filteredItems.map((item: any) => (
                                 <ProductCard
                                     key={item.id}
-                                    item={item}
+                                    item={{ ...item, quantity: orderQtyMap.get(item.id) ?? 0 }}
                                     purchaseId={id}
                                     packDiscountPercent={packDiscountPercent}
-                                    currentQuantity={orderQtyMap.get(item.id)}
+                                    baseQuantity={orderBaseQuantityMap.get(item.id) ?? undefined}
                                     isSupplement={isSupplement}
-                                    fulfillmentStatus={purchase.fulfillmentStatus}
-                                    supplementPacksAdded={orderPacksMap.get(item.id) as number | undefined}
                                 />
                             ))}
                         </div>

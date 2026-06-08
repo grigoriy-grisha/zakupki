@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { FileText } from 'lucide-react';
 import {
     paymentHasProof,
+    paymentProofIsImage,
     paymentTotalAmount,
     SHOP_PAYMENT_STATUS,
     type ShopPaymentView,
@@ -28,7 +29,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
     const child = children[0];
     const childAmount = child ? Number(child.amount) : 0;
     const promoCode = child?.promoCode;
-    const isImage = payment.proofMimeType?.startsWith('image/');
+    const isImage = paymentProofIsImage(payment);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,7 +55,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                         <div className="col-span-2">
                             <p className="text-muted-foreground">Дата отправки</p>
                             <p>
-                                {new Date(payment.paidAt).toLocaleString('ru-RU', {
+                                {new Date(payment.submittedAt).toLocaleString('ru-RU', {
                                     day: 'numeric',
                                     month: 'long',
                                     year: 'numeric',

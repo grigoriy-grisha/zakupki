@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { handleDbConflict } from '../lib/error-utils';
+import { withDbConflict } from '../lib/error-utils';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
@@ -9,22 +9,14 @@ export const characteristicsRouter = router({
     }),
 
     create: adminProcedure.input(z.object({ name: z.string().trim().min(1) })).mutation(async ({ ctx, input }) => {
-        try {
-            return await ctx.services.characteristic.create(input);
-        } catch (err) {
-            handleDbConflict(err);
-        }
+        return withDbConflict(() => ctx.services.characteristic.create(input));
     }),
 
     update: adminProcedure
         .input(z.object({ id: z.number(), name: z.string().trim().min(1).optional() }))
         .mutation(async ({ ctx, input }) => {
             const { id, ...data } = input;
-            try {
-                return await ctx.services.characteristic.update(id, data);
-            } catch (err) {
-                handleDbConflict(err);
-            }
+            return withDbConflict(() => ctx.services.characteristic.update(id, data));
         }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {

@@ -9,7 +9,7 @@ import type { PendingFile } from '../lib/product-form-utils';
 export type ProductFormPayload = {
     name: string;
     articleNumber: string | null;
-    unitId: number;
+    unitCode: string;
     attributeIds: number[];
     characteristics: { characteristicId: number; value: string }[];
 };

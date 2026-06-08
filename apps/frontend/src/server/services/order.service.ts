@@ -1,196 +1,211 @@
-import {
-    calculateFreeRemainder,
-    calculateOrderAmount,
-    ForbiddenError,
-    getOrderQuantityValidationError,
-    getSupplementOrderQuantityValidationError,
-    isSupplementRemainderOnlyPhase,
-    NotFoundError,
-    PurchaseNotActiveError,
-    ValidationError,
-    type SupplementPackProtection,
-} from '@zakupki/types';
+import { NotFoundError, ValidationError, canAdjustOrder } from '@zakupki/types';
 
-import { getTelegramChannelPostQueue } from '../lib/telegram-channel-post-queue';
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
 
+/**
+ * Простой сервис заказов — только +мин.фасовка / −мин.фасовка.
+ */
 export class OrderService {
     constructor(
         private repo: OrderRepository,
         private purchaseRepo: PurchaseRepository,
-        private getPackDiscountPercent: () => Promise<number>,
     ) {}
 
-    async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return this.repo.upsert(purchaseItemId, userId, quantity, amountDue);
-    }
+    /**
+     * Изменить количество на delta (может быть положительным или отрицательным).
+     * delta = +minPackaging или -minPackaging.
+     */
+    async adjustQuantity(purchaseItemId: number, userId: number, delta: number) {
+        if (delta === 0) return;
 
-    async upsertOrder(purchaseItemId: number, userId: number, quantity: number) {
-        const purchaseItem = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
-
-        const status = purchaseItem.purchase.status as string;
-        const fulfillmentStatus = (purchaseItem.purchase as { fulfillmentStatus?: string }).fulfillmentStatus;
-        if (status !== 'ACTIVE' && status !== 'SUPPLEMENT') {
-            throw new PurchaseNotActiveError(status);
+        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
+        if (!item) {
+            throw new NotFoundError('Товар закупки', purchaseItemId);
         }
 
-        const packDiscountPercent = await this.getPackDiscountPercent();
-
-        const amountDue = calculateOrderAmount(quantity, {
-            priceTiers: purchaseItem.product.priceTiers,
-            pricePerUnit: Number(purchaseItem.product.pricePerUnit),
-            priceOverride: purchaseItem.priceOverride != null ? Number(purchaseItem.priceOverride) : null,
-            supplierPackageAmount: purchaseItem.product.supplierPackageAmount,
-            supplierPackageUnit: purchaseItem.product.supplierPackageUnit,
-            supplierPackagePrice: purchaseItem.product.supplierPackagePrice,
-            packDiscountPercent,
-        });
-
-        const unit = purchaseItem.product.unit;
-        const orderQtyOptions = {
-            multiplicity: unit ? Number(unit.multiplicity) : 1,
-            minPackageAmount:
-                purchaseItem.product.minPackageAmount != null ? Number(purchaseItem.product.minPackageAmount) : null,
-            minPackageUnit: purchaseItem.product.minPackageUnit,
-            purchaseItemMinQty: purchaseItem.minQty != null ? Number(purchaseItem.minQty) : null,
-            unitShort: unit?.shortName ?? 'ед.',
-        };
-
-        const existingLine = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
-        const currentQty = existingLine ? Number(existingLine.quantity) : 0;
-
-        const isSupplement = status === 'SUPPLEMENT' || fulfillmentStatus === 'REORDER';
-        const rawAvailableQty =
-            purchaseItem.availableQty !== null && purchaseItem.availableQty !== undefined
-                ? Number(purchaseItem.availableQty)
-                : null;
-        const packAmount =
-            purchaseItem.product.supplierPackageAmount != null
-                ? Number(purchaseItem.product.supplierPackageAmount)
-                : null;
-        const freeRemainder = calculateFreeRemainder((purchaseItem as any).orderLines ?? [], packAmount);
-        const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainder;
-
-        // Защита пачек на доборе
-        let packProtection: SupplementPackProtection | undefined;
-        if (isSupplement && existingLine && packAmount != null && packAmount > 0) {
-            packProtection = {
-                supplementPacksAdded: existingLine.supplementPacksAdded,
-                packSize: packAmount,
-            };
+        // Проверяем фазу — можно ли вообще менять заказ
+        const status = item.purchase.fulfillmentStatus ?? item.purchase.status;
+        if (!canAdjustOrder(status)) {
+            throw new ValidationError('На этом этапе заказ изменять нельзя');
         }
 
-        const validationError = isSupplement
-            ? getSupplementOrderQuantityValidationError(
-                  quantity,
-                  orderQtyOptions,
-                  {
-                      availableQty: effectiveAvailableQty,
-                      currentQuantity: currentQty,
-                      supplierPackageAmount: packAmount,
-                      remainderOnly: isSupplementRemainderOnlyPhase(fulfillmentStatus),
-                  },
-                  packProtection,
-              )
-            : getOrderQuantityValidationError(quantity, orderQtyOptions);
-        if (validationError) {
-            throw new ValidationError(validationError);
+        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
+        const currentQty = existing ? Number(existing.quantity) : 0;
+        const newQty = currentQty + delta;
+
+        if (newQty <= 0) {
+            // Удаляем строку заказа
+            return this.repo.deleteOrderLine(purchaseItemId, userId);
         }
 
-        return this.upsertWithStock(purchaseItemId, userId, quantity, amountDue, { isSupplement });
+        // Проверяем остаток
+        const available = Number(item.product.referenceStock) || 0;
+        if (available > 0 && newQty > available) {
+            throw new ValidationError(`Превышен остаток. Доступно: ${available}`);
+        }
+
+        // Вычисляем сумму
+        const pricePerUnit = Number(item.product.pricePerUnit);
+        const amountDue = newQty * pricePerUnit;
+
+        return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
     }
 
-    async upsertWithStock(
-        purchaseItemId: number,
-        userId: number,
-        quantity: number,
-        amountDue: number,
-        options?: { isSupplement?: boolean },
-    ) {
-        return this.repo.upsertWithStock(purchaseItemId, userId, quantity, amountDue, options);
+    /**
+     * Добавить товар в заказ (absolute quantity).
+     * @deprecated Use adjustQuantity instead
+     */
+    async addItem(purchaseItemId: number, userId: number, quantity: number) {
+        if (quantity <= 0) {
+            throw new ValidationError('Количество должно быть больше 0');
+        }
+
+        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
+        if (!item) {
+            throw new NotFoundError('Товар закупки', purchaseItemId);
+        }
+
+        if (item.purchase.status !== 'ACTIVE') {
+            throw new ValidationError('Закупка неактивна');
+        }
+
+        // Проверяем остаток
+        const available = Number(item.product.referenceStock) || 0;
+        if (available > 0 && quantity > available) {
+            throw new ValidationError(`Доступно только ${available} ${item.product.unitCode}`);
+        }
+
+        // Находим существующую строку заказа или создаём новую
+        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
+        const currentQty = existing ? Number(existing.quantity) : 0;
+        const newQty = currentQty + quantity;
+
+        // Проверяем что не превышаем остаток
+        if (available > 0 && newQty > available) {
+            throw new ValidationError(`Превышен остаток. Доступно: ${available}`);
+        }
+
+        // Вычисляем сумму
+        const pricePerUnit = Number(item.product.pricePerUnit);
+        const amountDue = newQty * pricePerUnit;
+
+        return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
     }
 
-    async getByUser(userId: number) {
-        const [lines, purchaseOrders] = await Promise.all([
-            this.repo.getByUser(userId),
-            this.repo.findPurchaseOrdersByUser(userId),
-        ]);
-        const orderIdByPurchase = new Map(purchaseOrders.map((o) => [o.purchaseId, o.id]));
-        return lines.map((line) => ({
-            ...line,
-            purchaseOrderId: orderIdByPurchase.get(line.purchaseItem.purchase.id) ?? null,
-        }));
+    /**
+     * Убрать товар из заказа.
+     * @deprecated Use adjustQuantity instead
+     */
+    async removeItem(purchaseItemId: number, userId: number, quantity: number) {
+        if (quantity <= 0) {
+            throw new ValidationError('Количество должно быть больше 0');
+        }
+
+        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
+        if (!existing) {
+            throw new ValidationError('Товар не найден в заказе');
+        }
+
+        const currentQty = Number(existing.quantity);
+        const newQty = currentQty - quantity;
+
+        if (newQty <= 0) {
+            // Удаляем строку заказа
+            return this.repo.deleteOrderLine(purchaseItemId, userId);
+        }
+
+        // Пересчитываем сумму
+        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
+        const pricePerUnit = item ? Number(item.product.pricePerUnit) : 0;
+        const amountDue = newQty * pricePerUnit;
+
+        return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
+    }
+
+    async getUserOrders(userId: number) {
+        return this.repo.getByUser(userId);
     }
 
     async getByPurchase(purchaseId: number) {
-        const [lines, purchaseOrders] = await Promise.all([
-            this.repo.getByPurchase(purchaseId),
-            this.repo.findPurchaseOrdersByPurchase(purchaseId),
-        ]);
-        const orderIdByUser = new Map(purchaseOrders.map((o) => [o.userId, o.id]));
-        return lines.map((line) => ({
-            ...line,
-            purchaseOrderId: orderIdByUser.get(line.userId) ?? null,
-        }));
+        return this.repo.getByPurchase(purchaseId);
     }
 
-    /** Admin-only: delete without ownership check */
+    async cancelOrder(id: number, userId: number) {
+        const line = await this.repo.findById(id);
+        if (!line) {
+            return null;
+        }
+        if (line.userId !== userId) {
+            throw new ValidationError('Нельзя отменить чужой заказ');
+        }
+        return this.repo.cancelOrder(id);
+    }
+
     async delete(id: number) {
         return this.repo.delete(id);
     }
 
-    /** Delete with ownership verification — only the order's owner can cancel */
-    async deleteAndRestoreStock(id: number, userId: number, options?: { throwIfNotFound?: boolean }) {
-        const line = await this.repo.findById(id);
-        if (!line) {
-            if (options?.throwIfNotFound) throw new NotFoundError('Строка заказа', id);
-            return null;
-        }
-        if (line.userId !== userId) {
-            throw new ForbiddenError('Нельзя удалить чужой заказ');
-        }
-        const purchaseStatus = (line as any)?.purchaseItem?.purchase?.status;
-        const purchaseFulfillmentStatus = (line as any)?.purchaseItem?.purchase?.fulfillmentStatus;
-        const isSupplement = purchaseStatus === 'SUPPLEMENT' || purchaseFulfillmentStatus === 'REORDER';
-        return this.repo.deleteAndRestoreStock(id, { ...options, isSupplement });
-    }
-
-    async getByPurchaseItem(purchaseItemId: number) {
-        return this.repo.getByPurchaseItem(purchaseItemId);
-    }
-
+    /**
+     * Удалить все заказы пользователя в закупке.
+     */
     async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
-        const lines = await this.repo.findByUserAndPurchase(userId, purchaseId);
-        if (lines.length === 0) return 0;
+        return this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
+    }
 
-        const purchase = (lines[0] as any)?.purchaseItem?.purchase;
-        const purchaseStatus = purchase?.status as string | undefined;
-        const fulfillmentStatus = purchase?.fulfillmentStatus as string | undefined;
-        const isSupplement = purchaseStatus === 'SUPPLEMENT' || fulfillmentStatus === 'REORDER';
+    /**
+     * Получить активные закупки пользователя (у которых есть неотменённые заказы).
+     */
+    async getActivePurchases(userId: number) {
+        const orders = await this.repo.findActiveOrdersByUserId(userId);
+        if (orders.length === 0) return [];
 
-        // Read message IDs before deleting lines
-        const messageIds = await this.repo.findMessageIdsByUserAndPurchase(userId, purchaseId);
-
-        for (const line of lines) {
-            await this.repo.deleteAndRestoreStock(line.id, { isSupplement });
-        }
-
-        await this.repo.deletePurchaseOrder(userId, purchaseId);
-
-        if (messageIds.length > 0) {
-            try {
-                const queue = getTelegramChannelPostQueue();
-                await queue.addPurchaseItemPost({
-                    type: 'USER_ORDERS_REJECT',
-                    messageIds: messageIds.map(String),
+        // Группируем по purchaseId
+        const byPurchase = new Map<number, { purchaseId: number; tag: string; fulfillmentStatus: string; totalDue: number }>();
+        for (const line of orders) {
+            const p = line.purchaseItem.purchase;
+            const existing = byPurchase.get(p.id);
+            if (existing) {
+                existing.totalDue += Number(line.amountDue);
+            } else {
+                byPurchase.set(p.id, {
+                    purchaseId: p.id,
+                    tag: p.tag,
+                    fulfillmentStatus: (p as any).fulfillmentStatus ?? 'COLLECTION',
+                    totalDue: Number(line.amountDue),
                 });
-            } catch (err) {
-                console.warn('[order] Failed to enqueue USER_ORDERS_REJECT:', err);
             }
         }
+        return Array.from(byPurchase.values());
+    }
 
-        return lines.length;
+    /**
+     * Получить детали заказа пользователя по закупке.
+     */
+    async getPurchaseOrderDetail(userId: number, purchaseId: number) {
+        const lines = await this.repo.findByUserAndPurchase(userId, purchaseId);
+        if (lines.length === 0) return null;
+
+        const tag = lines[0]!.purchaseItem.purchase.tag;
+        const totalDue = lines.reduce((sum, l) => sum + Number(l.amountDue), 0);
+
+        return {
+            purchaseOrderId: null as any,
+            tag,
+            totalDue,
+            supplier: (lines[0]!.purchaseItem.purchase as any).supplier ?? null,
+            lines: lines.map((l) => ({
+                id: l.id,
+                quantity: Number(l.quantity),
+                amountDue: Number(l.amountDue),
+                status: l.status,
+                purchaseItem: l.purchaseItem,
+                userId: l.userId,
+                baseQuantity: l.baseQuantity,
+                tgChatMessageId: l.tgChatMessageId,
+                createdAt: l.createdAt,
+                updatedAt: l.updatedAt,
+            })),
+        };
     }
 }

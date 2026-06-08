@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,36 +11,28 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import {
-    calculateFreeRemainder,
     calculateOrderAmount,
     countFullSupplierPacks,
     formatMinPackageOrderHint,
-    formatSupplementOrderHint,
-    getMinOrderQuantity,
-    getOrderQuantityStep,
-    getSupplementEffectiveMinQty,
-    getSupplementUiOrderStep,
-    isSupplementOnlyPacksOrder,
-    isSupplementPacksAllowed,
-    isSupplementRemainderOnlyPhase,
+    getUnitByCode,
     getPackDiscountPricingInfo,
-    getSupplementDisplayMax,
-    isValidOrderQuantity,
-    isValidSupplementOrderQuantity,
-    snapOrderQuantity,
-    snapSupplementOrderQuantity,
+    getSupplementPool,
+    buildOrderQtyOptions,
+    getOrderQuantityStep,
+    getMinOrderQuantity,
 } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { Loader2, Minus, Plus } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface QuantityModalProps {
     purchaseItemId: number;
     purchaseId: number;
     packDiscountPercent: number;
-    currentQuantity?: number;
-    isSupplementMode?: boolean;
-    supplementPacksAdded?: number;
+    /** Текущее количество этого пользователя (0 если заказа не было). */
+    currentQuantity: number;
+    /** baseQuantity — зафиксированное количество при входе в SUPPLEMENT/REORDER (для расчёта пула). */
+    baseQuantity?: number;
     onClose: () => void;
 }
 
@@ -50,8 +41,7 @@ export function QuantityModal({
     purchaseId,
     packDiscountPercent,
     currentQuantity,
-    isSupplementMode: isSupplementModeProp,
-    supplementPacksAdded: supplementPacksAddedProp,
+    baseQuantity = 0,
     onClose,
 }: QuantityModalProps) {
     const utils = trpc.useUtils();
@@ -59,74 +49,59 @@ export function QuantityModal({
     const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
 
-    const unit = item?.product?.unit;
-    const multiplicity = unit ? Number(unit.multiplicity) : 1;
-    const minPackageAmount = item?.product?.minPackageAmount != null ? Number(item.product.minPackageAmount) : null;
+    const unitCode = item?.product?.unitCode;
+    const unit = unitCode ? getUnitByCode(unitCode) : undefined;
+    const multiplicity = item?.product?.multiplicity ? Number(item?.product?.multiplicity) : 1;
+    const minPackageAmount = item?.product?.minPackageAmount != null ? Number(item?.product?.minPackageAmount) : null;
     const minPackageUnit = item?.product?.minPackageUnit ?? null;
-    const orderQtyOptions = {
+
+    const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
         minPackageAmount,
         minPackageUnit,
-        purchaseItemMinQty: item?.minQty != null ? Number(item.minQty) : null,
+        purchaseItemMinQty: null,
         unitShort: unit?.shortName ?? 'ед.',
-    };
-    const orderStep = getOrderQuantityStep(orderQtyOptions);
-    const minOrderQty = getMinOrderQuantity(orderQtyOptions);
-    const isSupplementMode = isSupplementModeProp ?? purchase?.status === 'SUPPLEMENT';
-    const uiStep = isSupplementMode ? getSupplementUiOrderStep(orderStep, orderQtyOptions) : orderStep;
-    const effectiveMinQty = isSupplementMode ? getSupplementEffectiveMinQty(minOrderQty, orderQtyOptions) : minOrderQty;
+    });
+
+    const minPackaging = getOrderQuantityStep(orderQtyOptions);
+    const minOrder = getMinOrderQuantity(orderQtyOptions);
+
+    const isSupplement = purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
+    const packSize = item?.product?.supplierPackageAmount != null ? Number(item?.product?.supplierPackageAmount) : null;
+
+    // Сумма quantity всех пользователей (для расчёта пула добора)
+    const activeLines = (item?.orderLines ?? []).filter(
+        (line: { status?: string | null }) => (line as any).status !== 'CANCELLED',
+    );
+    const totalOrderedQuantity = activeLines.reduce(
+        (acc: number, line: { quantity?: unknown }) => acc + Number(line.quantity ?? 0),
+        0,
+    );
+    // Сумма baseQuantity других пользователей
+    const sumOtherBaseQuantities = activeLines.reduce(
+        (acc: number, line: { baseQuantity?: unknown; userId?: unknown }) => {
+            // Исключаем текущего пользователя (у него baseQuantity в currentQuantity/baseQuantity)
+            return acc + Number(line.baseQuantity ?? 0);
+        },
+        0,
+    );
+
+    // Пул добора
     const rawAvailableQty =
-        item?.availableQty !== null && item?.availableQty !== undefined ? Number(item.availableQty) : null;
-    const currentQty = currentQuantity ?? 0;
+        item?.targetRemainder !== null && item?.targetRemainder !== undefined ? Number(item.targetRemainder) : null;
+    const poolRemainder = getSupplementPool({
+        targetRemainder: rawAvailableQty,
+        totalOrderedQuantity,
+        totalReservedRemainder: sumOtherBaseQuantities,
+        packSize,
+    });
+    const maxPool = poolRemainder == null ? Number.POSITIVE_INFINITY : poolRemainder;
 
-    // Рассчитываем свободный остаток из пачек как fallback для availableQty
-    const packSize = item?.product?.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
-    const freeRemainderFromPacks = calculateFreeRemainder(item?.orderLines ?? [], packSize);
-
-    const effectiveAvailableQty = rawAvailableQty != null ? rawAvailableQty : freeRemainderFromPacks;
-
-    const supplementBounds = isSupplementMode
-        ? {
-              availableQty: effectiveAvailableQty,
-              currentQuantity: currentQty,
-              supplierPackageAmount: packSize,
-              remainderOnly: isSupplementRemainderOnlyPhase(purchase?.fulfillmentStatus),
-          }
-        : null;
-
-    const supplementPacksAllowed = supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
-
-    // Защита пачек на доборе
-    const packsAdded = supplementPacksAddedProp ?? 0;
-    const packProtection =
-        isSupplementMode && packsAdded > 0 && packSize != null && packSize > 0
-            ? { supplementPacksAdded: packsAdded, packSize }
-            : null;
-    const protectedPackQty = packProtection ? packProtection.supplementPacksAdded * packProtection.packSize : 0;
-    const freePortion = currentQty - protectedPackQty;
-    const canRemoveStep = !isSupplementMode || freePortion > 0;
-    const canRemovePack = !isSupplementMode || packsAdded > 0;
-
-    const maxQty = supplementBounds ? getSupplementDisplayMax(supplementBounds) : null;
-
-    const startQty = currentQuantity != null ? Math.max(currentQuantity, minOrderQty) : effectiveMinQty;
-    const effectiveStart = supplementBounds
-        ? snapSupplementOrderQuantity(startQty, orderQtyOptions, supplementBounds)
-        : snapOrderQuantity(startQty, orderQtyOptions);
-
-    const [quantity, setQuantity] = useState(currentQuantity ?? effectiveStart);
-
-    useEffect(() => {
-        if (currentQuantity != null || !item || !unit) return;
-        setQuantity(effectiveStart);
-    }, [currentQuantity, effectiveStart, item, unit]);
-
-    const upsertMutation = trpc.orders.upsertOrder.useMutation({
+    // Mutations: одна мутация adjustQuantity с delta = +/- minPackaging
+    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
         onSuccess: () => {
             utils.orders.getMyOrders.invalidate();
             utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('Заказ добавлен');
-            onClose();
         },
         onError: (err) => toast.error(err.message),
     });
@@ -155,32 +130,27 @@ export function QuantityModal({
         supplierPackagePrice: product.supplierPackagePrice,
         packDiscountPercent,
     };
-    const total = calculateOrderAmount(quantity, pricingOptions);
+    const total = calculateOrderAmount(currentQuantity, pricingOptions);
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
-    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
+    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
-    const remainingLabel = maxQty != null ? Math.max(0, maxQty - quantity) : null;
+    const remainingPool = maxPool !== Number.POSITIVE_INFINITY ? Math.max(0, maxPool - (currentQuantity - baseQuantity)) : null;
 
-    const quantityValid = supplementBounds
-        ? isValidSupplementOrderQuantity(quantity, orderQtyOptions, supplementBounds)
-        : isValidOrderQuantity(quantity, orderQtyOptions);
-
-    const supplementOnlyPacks =
-        isSupplementMode && supplementBounds != null && isSupplementOnlyPacksOrder(supplementBounds, orderQtyOptions);
-
-    function handleQuantityChange(delta: number) {
-        setQuantity((prev) => {
-            const next = Number((prev + delta).toFixed(3));
-            if (supplementBounds) {
-                return snapSupplementOrderQuantity(next, orderQtyOptions, supplementBounds);
-            }
-            return snapOrderQuantity(next, orderQtyOptions);
-        });
+    function handleAdd() {
+        adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
     }
 
-    function handleSubmit() {
-        upsertMutation.mutate({ purchaseItemId, quantity });
+    function handleRemove() {
+        if (currentQuantity <= minPackaging) {
+            // Уменьшаем до 0
+            adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
+        } else {
+            adjustMutation.mutate({ purchaseItemId, delta: -minPackaging });
+        }
     }
+
+    const canAdd = currentQuantity + minPackaging <= maxPool || maxPool === Number.POSITIVE_INFINITY;
+    const canRemove = currentQuantity > 0;
 
     return (
         <Dialog open onOpenChange={onClose}>
@@ -190,33 +160,26 @@ export function QuantityModal({
                         <PurchaseProductLabel product={item.product} primaryClassName="text-lg font-semibold" />
                     </DialogTitle>
                     <DialogDescription className="text-left">
-                        {isSupplementMode && supplementBounds ? (
-                            formatSupplementOrderHint(supplementBounds, orderQtyOptions)
-                        ) : (
-                            <>
-                                {formatMinPackageOrderHint(orderQtyOptions) ??
-                                    `${unitPrice.toLocaleString('ru-RU')} ₽/${shortName}`}
-                                {formatMinPackageOrderHint(orderQtyOptions) && (
-                                    <>
-                                        {' '}
-                                        · {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}
-                                    </>
-                                )}
-                            </>
-                        )}
+                        {formatMinPackageOrderHint(orderQtyOptions) ??
+                            `${unitPrice.toLocaleString('ru-RU')} ₽/${shortName}`}
+                        {' · '}
+                        {unitPrice.toLocaleString('ru-RU')} ₽/{shortName}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-5 py-2">
-                    {maxQty != null && (
+                    {/* Пул добора */}
+                    {isSupplement && remainingPool != null && (
                         <div
-                            className={`rounded-lg p-3 text-center text-sm ${remainingLabel !== null && remainingLabel <= 0 ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'}`}
+                            className={`rounded-lg p-3 text-center text-sm ${
+                                remainingPool <= 0 ? 'bg-error-50 text-error' : 'bg-warning-50 text-warning'
+                            }`}
                         >
-                            {remainingLabel != null && remainingLabel > 0 ? (
+                            {remainingPool > 0 ? (
                                 <>
                                     Доступно ещё:{' '}
                                     <strong>
-                                        {remainingLabel} {shortName}
+                                        {remainingPool} {shortName}
                                     </strong>
                                 </>
                             ) : (
@@ -225,125 +188,60 @@ export function QuantityModal({
                         </div>
                     )}
 
-                    {isSupplementMode && packProtection && packProtection.supplementPacksAdded > 0 && (
-                        <div className="rounded-lg bg-warning-50 p-3 text-center text-sm text-warning">
-                            Защищённые пачки: {packProtection.supplementPacksAdded} x {packProtection.packSize}{' '}
-                            {shortName} (убрать только целиком)
-                        </div>
-                    )}
-
+                    {/* Количество */}
                     <div className="space-y-4">
                         <div className="text-center">
                             <span className="text-3xl font-bold tabular-nums sm:text-4xl">
-                                {quantity % 1 === 0 ? quantity : quantity.toFixed(3).replace(/\.?0+$/, '')}
+                                {currentQuantity % 1 === 0
+                                    ? currentQuantity
+                                    : currentQuantity.toFixed(3).replace(/\.?0+$/, '')}
                             </span>
                             <span className="ml-2 text-lg font-medium text-muted-foreground">{shortName}</span>
                         </div>
-                        {minPackageAmount != null && minPackageUnit && !isSupplementMode && (
+                        {minPackageAmount != null && minPackageUnit && (
                             <p className="text-center text-xs text-muted-foreground">
-                                Можно заказать: {minOrderQty}, {minOrderQty + orderStep}, {minOrderQty + orderStep * 2}{' '}
-                                {minPackageUnit}…
+                                Мин. фасовка: {minOrder} {minPackageUnit}
                             </p>
                         )}
 
-                        <div className="mx-auto grid max-w-xs grid-cols-4 gap-2">
-                            {isSupplementMode && packSize != null && supplementPacksAllowed ? (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 rounded-xl px-1 text-xs"
-                                        onClick={() => setQuantity((prev) => Math.max(0, prev - packSize))}
-                                        disabled={!canRemovePack}
-                                    >
-                                        −пачка({packSize})
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(-uiStep)}
-                                        disabled={!canRemoveStep || supplementOnlyPacks || quantity <= effectiveMinQty}
-                                    >
-                                        <Minus className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(uiStep)}
-                                        disabled={supplementOnlyPacks || (maxQty !== null && quantity >= maxQty)}
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 rounded-xl px-1 text-xs"
-                                        onClick={() => setQuantity((prev) => prev + packSize)}
-                                    >
-                                        +пачка({packSize})
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 rounded-xl px-1 text-xs sm:text-sm"
-                                        onClick={() => handleQuantityChange(-(orderStep * 10))}
-                                        disabled={quantity <= effectiveMinQty}
-                                    >
-                                        −{orderStep * 10}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(-uiStep)}
-                                        disabled={quantity <= effectiveMinQty}
-                                    >
-                                        <Minus className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-11 w-full rounded-xl"
-                                        onClick={() => handleQuantityChange(uiStep)}
-                                        disabled={maxQty !== null && quantity >= maxQty}
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 rounded-xl px-1 text-xs sm:text-sm"
-                                        onClick={() => handleQuantityChange(orderStep * 10)}
-                                        disabled={maxQty !== null && quantity >= maxQty}
-                                    >
-                                        +{orderStep * 10}
-                                    </Button>
-                                </>
-                            )}
+                        {/* Две кнопки: −мин.фасовка и +мин.фасовка */}
+                        <div className="mx-auto grid max-w-xs grid-cols-2 gap-3">
+                            <Button
+                                variant="outline"
+                                className="h-12 rounded-xl text-sm font-medium"
+                                onClick={handleRemove}
+                                disabled={!canRemove || adjustMutation.isPending}
+                            >
+                                <Minus className="mr-1 h-4 w-4" />
+                                −{minPackaging} {shortName}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="h-12 rounded-xl text-sm font-medium"
+                                onClick={handleAdd}
+                                disabled={!canAdd || adjustMutation.isPending}
+                            >
+                                <Plus className="mr-1 h-4 w-4" />
+                                +{minPackaging} {shortName}
+                            </Button>
                         </div>
                     </div>
 
+                    {/* Итого */}
                     <div className="rounded-xl bg-primary/5 p-4 text-center">
                         <p className="text-sm text-muted-foreground">Итого</p>
                         <p className="mt-1 text-2xl font-bold text-primary sm:text-3xl">
                             {total.toLocaleString('ru-RU')} ₽
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                            {quantity} {shortName} · {total.toLocaleString('ru-RU')} ₽
+                            {currentQuantity} {shortName} · {total.toLocaleString('ru-RU')} ₽
                         </p>
                         {packDiscountInfo != null && fullPacks > 0 && (
                             <p className="mt-2 text-xs text-success">
-                                В сумму входит скидка за {fullPacks} {fullPacks === 1 ? 'целую пачку' : 'целые пачки'}{' '}
-                                по {packDiscountInfo.packSize} гр (
+                                Скидка за {fullPacks} {fullPacks === 1 ? 'целую пачку' : 'целые пачки'} по{' '}
+                                {packDiscountInfo.packSize} гр (
                                 {packDiscountInfo.discountedPackPrice.toLocaleString('ru-RU')} ₽ за пачку, −
                                 {packDiscountInfo.discountPercent}%)
-                            </p>
-                        )}
-                        {packDiscountInfo != null && fullPacks === 0 && quantity > 0 && (
-                            <p className="mt-2 text-xs text-success">
-                                Скидка за целую пачку {packDiscountInfo.packSize} гр — при заказе ровно{' '}
-                                {packDiscountInfo.packSize} гр или кратно этому количеству
                             </p>
                         )}
                     </div>
@@ -351,15 +249,7 @@ export function QuantityModal({
 
                 <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
                     <Button variant="outline" className="w-full sm:w-auto" onClick={onClose}>
-                        Отмена
-                    </Button>
-                    <Button
-                        className="w-full sm:w-auto"
-                        onClick={handleSubmit}
-                        disabled={upsertMutation.isPending || !quantityValid}
-                    >
-                        {upsertMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Добавить в заказ
+                        Закрыть
                     </Button>
                 </DialogFooter>
             </DialogContent>

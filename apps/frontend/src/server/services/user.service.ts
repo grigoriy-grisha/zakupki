@@ -126,6 +126,18 @@ export class UserService {
         await this.repo.unlinkTelegram(userId);
     }
 
+    /** Bot: create or get user by Telegram ID (delegates to repository) */
+    async createOrGetUser(telegramId: string, info: { firstName: string; lastName?: string; username?: string }) {
+        return this.repo.upsertFromTelegramBot(telegramId, info);
+    }
+
+    /** Bot: refresh user profile from Telegram */
+    async refreshProfile(userId: number, data: { firstName: string; lastName?: string; username?: string }) {
+        return this.repo.upsertFromTelegramBot(String(userId), data).catch(() => {
+            /* ignore if user deleted */
+        });
+    }
+
     async updateRole(userId: number, role: 'ADMIN' | 'CLIENT') {
         const user = await this.repo.getRoleById(userId);
         if (!user) throw new NotFoundError('Пользователь', userId);

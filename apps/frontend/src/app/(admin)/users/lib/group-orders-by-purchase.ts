@@ -23,7 +23,7 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
         const purchaseId = purchase?.id ?? order.purchaseItem?.purchaseId;
         if (!purchaseId) continue;
 
-        const purchaseOrderId = order.purchaseOrderId ?? null;
+        const purchaseOrderId = null;
         const existing = map.get(purchaseId) ?? {
             purchaseId,
             orderNumber: purchaseOrderId,

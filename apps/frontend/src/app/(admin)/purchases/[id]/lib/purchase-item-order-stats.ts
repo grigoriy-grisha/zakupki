@@ -11,7 +11,7 @@ export type PackOrderUnit = 'гр' | 'шт';
 function normalizePackUnit(unit: string | null | undefined): PackOrderUnit | null {
     if (!unit) return null;
     const normalized = unit.trim().toLowerCase().replace(/\./g, '');
-    if (normalized === 'гр' || normalized === 'г') return 'гр';
+    if (normalized === 'гр' || normalized === 'g') return 'гр';
     if (normalized === 'шт') return 'шт';
     return null;
 }
@@ -38,13 +38,11 @@ export function getPurchaseItemOrderStats(item: PurchaseItemOrderStatsSource) {
     let packsToOrder: number | null = null;
     let orderedPacks: number | null = null;
     let orderedQuantity: number | null = null;
-    let freeRemainder: number | null = null;
 
     if (pack != null) {
         packsToOrder = totalQuantity > 0 ? totalQuantity / pack.size : 0;
         orderedPacks = totalQuantity > 0 ? Math.ceil(totalQuantity / pack.size) : 0;
         orderedQuantity = orderedPacks * pack.size;
-        freeRemainder = orderedQuantity - totalQuantity;
     }
 
     return {
@@ -54,7 +52,6 @@ export function getPurchaseItemOrderStats(item: PurchaseItemOrderStatsSource) {
         packsToOrder,
         orderedPacks,
         orderedQuantity,
-        freeRemainder,
     };
 }
 

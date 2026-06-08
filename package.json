@@ -4,8 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev:web": "pnpm --filter @zakupki/frontend dev",
-        "dev:bot": "pnpm --filter @zakupki/bot dev",
+        "dev": "pnpm --filter @zakupki/frontend dev",
         "build": "pnpm run -r build",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",

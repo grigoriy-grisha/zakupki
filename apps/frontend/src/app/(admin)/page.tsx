@@ -50,7 +50,7 @@ export default function DashboardPage() {
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Активные закупки</CardTitle>
                         <Button variant="outline" size="sm" asChild>
-                            <AppLink href="/purchases/new">
+                            <AppLink href="/purchases">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Новая
                             </AppLink>

@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { trpc } from '@/lib/client/trpc';
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 export function PurchasePricingTab() {
-    const { data, isLoading } = trpc.appSettings.getPricing.useQuery();
+    const { isLoading, serverValue } = usePricingSettings();
     const utils = trpc.useUtils();
-    const updateDiscount = trpc.appSettings.updateBeadPackDiscount.useMutation({
+    const updateDiscount = trpc.settings.updateBeadPackDiscount.useMutation({
         onSuccess: async () => {
-            await utils.appSettings.getPricing.invalidate();
+            await utils.settings.getPricing.invalidate();
             toast.success('Настройки сохранены');
         },
         onError: (error) => toast.error(error.message),
@@ -22,10 +23,10 @@ export function PurchasePricingTab() {
     const [percent, setPercent] = useState('3');
 
     useEffect(() => {
-        if (data?.beadPackPriceDiscountPercent != null) {
-            setPercent(String(data.beadPackPriceDiscountPercent));
+        if (serverValue?.beadPackPriceDiscountPercent != null) {
+            setPercent(String(serverValue.beadPackPriceDiscountPercent));
         }
-    }, [data?.beadPackPriceDiscountPercent]);
+    }, [serverValue?.beadPackPriceDiscountPercent]);
 
     const handleSave = () => {
         const value = Number(percent.replace(',', '.'));

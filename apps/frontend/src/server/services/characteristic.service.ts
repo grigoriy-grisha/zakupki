@@ -3,19 +3,19 @@ import { CharacteristicRepository } from '../domain/characteristic.repository';
 export class CharacteristicService {
     constructor(private repo: CharacteristicRepository) {}
 
-    list() {
+    async list() {
         return this.repo.list();
     }
 
-    create(data: { name: string }) {
+    async create(data: { name: string }) {
         return this.repo.create(data);
     }
 
-    update(id: number, data: { name?: string }) {
+    async update(id: number, data: { name?: string }) {
         return this.repo.update(id, data);
     }
 
-    delete(id: number) {
+    async delete(id: number) {
         return this.repo.delete(id);
     }
 }

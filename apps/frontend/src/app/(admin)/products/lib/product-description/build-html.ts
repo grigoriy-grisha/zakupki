@@ -1,0 +1,78 @@
+import { stripAttributesFromName } from '../product-label';
+import { isPositive, formatNumber } from '@/lib/utils/format';
+
+import type { DescriptionFields } from './types';
+import { normalizeNovelHtml } from './normalize-html';
+import {
+    blankParagraph,
+    paragraph,
+    boldParagraph,
+    boldLinesParagraph,
+    linesParagraph,
+    mixedParagraph,
+    formatSupplierPackageLines,
+} from './template-engine';
+
+/** HTML для NovelEditor (смежные строки — через <br>, без лишних <p>) */
+export function buildDescriptionHtml(input: DescriptionFields): string {
+    const blocks: string[] = [];
+    const article = (input.articleNumber ?? '').trim();
+    const displayName = stripAttributesFromName(input.name ?? '', input.articleNumber, input.attributeNames ?? []);
+
+    const line1 = (input.titleAttributes ?? [])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(' ');
+    const line2Parts: string[] = [];
+    if (article) line2Parts.push(article);
+    if (displayName) line2Parts.push(displayName);
+    const line2 = line2Parts.length ? line2Parts.join('  ') : '';
+
+    const headerLines = [line1, line2].filter(Boolean);
+    if (headerLines.length) blocks.push(boldLinesParagraph(headerLines));
+
+    const chars = input.productCharacteristics?.filter((c) => c.name && c.value) ?? [];
+    if (chars.length > 0) {
+        blocks.push(blankParagraph());
+        blocks.push(linesParagraph(chars.map((c) => `${c.name}: ${c.value}`)));
+    }
+
+    if (isPositive(input.minPackageAmount) && input.minPackageUnit) {
+        blocks.push(blankParagraph());
+        blocks.push(
+            boldParagraph(`Минимальная фасовка  - ${formatNumber(input.minPackageAmount)} ${input.minPackageUnit}`),
+        );
+    }
+
+    const validTiers =
+        input.priceTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
+
+    if (validTiers.length > 0) {
+        blocks.push(blankParagraph());
+        blocks.push(
+            linesParagraph(
+                validTiers.map(
+                    (tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб`,
+                ),
+            ),
+        );
+    }
+
+    const supplierLines = formatSupplierPackageLines(input);
+    if (supplierLines.length > 0) {
+        blocks.push(blankParagraph());
+        if (supplierLines.length === 1) {
+            blocks.push(mixedParagraph('Фасовка поставщика:', supplierLines[0]!));
+        } else {
+            blocks.push(boldParagraph('Фасовка поставщика:'));
+            blocks.push(linesParagraph(supplierLines));
+        }
+    }
+
+    if (input.referenceStock != null && Number(input.referenceStock) >= 0 && input.referenceStockUnit) {
+        blocks.push(blankParagraph());
+        blocks.push(paragraph(`СВОБОДНО: ${formatNumber(input.referenceStock)} ${input.referenceStockUnit}`));
+    }
+
+    return normalizeNovelHtml(blocks.join(''));
+}

@@ -11,7 +11,6 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import { PackageUnitSelect } from '../../../products/components/package-unit-select';
-import { DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT } from '@zakupki/types';
 import {
     PACKAGE_UNITS,
     applyPostTemplate,
@@ -20,6 +19,7 @@ import {
     productToDescriptionFields,
     type ProductLabelSource,
 } from '../../../products/lib';
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import {
     buildPurchaseFormState,
     normalizeSupplierTiersForSave,
@@ -32,7 +32,7 @@ import {
 
 export type PurchaseProductSaveData = {
     description?: string;
-    pricePerUnit?: number;
+    priceOverride?: number | null;
     priceTiers: { amount: number; unit: string; price: number }[];
     minPackageAmount: number | null;
     minPackageUnit: string | null;
@@ -40,8 +40,8 @@ export type PurchaseProductSaveData = {
     supplierPackageUnit: string | null;
     supplierPackagePrice: number | null;
     supplierPackageTiers: { amount: number; unit: string; price: number }[];
-    availableAmount: number | null;
-    availableUnit: string | null;
+    referenceStock: number | null;
+    referenceStockUnit: string | null;
 };
 
 interface PurchaseProductEditFormProps {
@@ -53,8 +53,8 @@ interface PurchaseProductEditFormProps {
         supplierPackageUnit?: string | null;
         supplierPackagePrice?: string | number | null;
         supplierPackageTiers?: unknown;
-        availableAmount?: string | number | null;
-        availableUnit?: string | null;
+        referenceStock?: string | number | null;
+        referenceStockUnit?: string | null;
         description?: string | null;
         priceTiers?: unknown;
         unit?: { shortName?: string | null; name?: string | null } | null;
@@ -75,8 +75,8 @@ function applyPurchaseFields(
         setMinPkgAmount: (v: number | null) => void;
         setMinPkgUnit: (v: string | null) => void;
         setSupPkgTiers: (v: PurchaseProductFormState['supPkgTiers']) => void;
-        setAvailAmount: (v: number | null) => void;
-        setAvailUnit: (v: string | null) => void;
+        setReferenceStock: (v: number | null) => void;
+        setReferenceStockUnit: (v: string | null) => void;
     },
     next: PurchaseProductFormState,
 ) {
@@ -85,8 +85,8 @@ function applyPurchaseFields(
     setters.setMinPkgAmount(next.minPkgAmount);
     setters.setMinPkgUnit(next.minPkgUnit);
     setters.setSupPkgTiers(next.supPkgTiers);
-    setters.setAvailAmount(next.availAmount);
-    setters.setAvailUnit(next.availUnit);
+    setters.setReferenceStock(next.referenceStock);
+    setters.setReferenceStockUnit(next.referenceStockUnit);
 }
 
 function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
@@ -121,16 +121,14 @@ export function PurchaseProductEditForm({
     const [minPkgAmount, setMinPkgAmount] = useState<number | null>(initial.minPkgAmount);
     const [minPkgUnit, setMinPkgUnit] = useState<string | null>(initial.minPkgUnit);
     const [supPkgTiers, setSupPkgTiers] = useState(initial.supPkgTiers);
-    const [availAmount, setAvailAmount] = useState<number | null>(initial.availAmount);
-    const [availUnit, setAvailUnit] = useState<string | null>(initial.availUnit);
+    const [referenceStock, setReferenceStock] = useState<number | null>(initial.referenceStock);
+    const [referenceStockUnit, setReferenceStockUnit] = useState<string | null>(initial.referenceStockUnit);
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
     const [priceError, setPriceError] = useState<string | null>(null);
 
     const { data: postTemplates } = trpc.postTemplates.list.useQuery();
-    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
-    const packDiscountPercent =
-        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
 
     const userPickedTemplateRef = useRef(false);
     const lastAppliedSignatureRef = useRef<string | null>(null);
@@ -151,8 +149,8 @@ export function PurchaseProductEditForm({
                 setMinPkgAmount,
                 setMinPkgUnit,
                 setSupPkgTiers,
-                setAvailAmount,
-                setAvailUnit,
+                setReferenceStock,
+                setReferenceStockUnit,
             },
             next,
         );
@@ -198,8 +196,8 @@ export function PurchaseProductEditForm({
             supplierPackageAmount: primarySupplierPack.amount,
             supplierPackageUnit: primarySupplierPack.unit,
             supplierPackagePrice: primarySupplierPack.price,
-            availableAmount: availAmount,
-            availableUnit: availUnit,
+            referenceStock: referenceStock,
+            referenceStockUnit: referenceStockUnit,
             purchaseTag,
             packDiscountPercent,
         }),
@@ -213,8 +211,8 @@ export function PurchaseProductEditForm({
             tiers,
             supPkgTiers,
             primarySupplierPack,
-            availAmount,
-            availUnit,
+            referenceStock,
+            referenceStockUnit,
             purchaseTag,
             packDiscountPercent,
         ],
@@ -317,18 +315,18 @@ export function PurchaseProductEditForm({
 
         const validTiers = tiers.filter((t) => t.amount > 0 && t.price > 0 && t.unit.trim());
         const firstTier = validTiers[0]!;
-        const pricePerUnit = firstTier.price / firstTier.amount;
+        const priceOverride = firstTier.price / firstTier.amount;
         const supplierPack = normalizeSupplierTiersForSave(supPkgTiers);
 
         onSave({
             description: description || undefined,
-            pricePerUnit,
+            priceOverride,
             priceTiers: validTiers,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
             ...supplierPack,
-            availableAmount: availAmount,
-            availableUnit: availUnit,
+            referenceStock: referenceStock,
+            referenceStockUnit: referenceStockUnit,
         });
     }
 
@@ -390,13 +388,22 @@ export function PurchaseProductEditForm({
                 onChange={setSupPkgTiers}
             />
 
-            <PackageEditor
-                label="Свободно"
-                amount={availAmount}
-                unit={availUnit ?? PACKAGE_UNITS[0]}
-                onAmountChange={setAvailAmount}
-                onUnitChange={setAvailUnit}
-            />
+            <div className="space-y-1">
+                <PackageEditor
+                    label="У поставщика (для поста)"
+                    amount={referenceStock}
+                    unit={referenceStockUnit ?? PACKAGE_UNITS[0]}
+                    onAmountChange={setReferenceStock}
+                    onUnitChange={setReferenceStockUnit}
+                />
+                <p className="text-xs text-muted-foreground">
+                    Справочное поле для поста в Telegram («СВОБОДНО: 45 гр»).{' '}
+                    <span className="font-medium text-foreground">
+                        Это не лимит дозаказа
+                    </span>{' '}
+                    — лимит задаётся отдельно кнопкой «Остатки для добора» на странице закупки.
+                </p>
+            </div>
 
             <div className="space-y-1">
                 <Label>Описание</Label>

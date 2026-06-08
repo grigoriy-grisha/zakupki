@@ -1,4 +1,5 @@
 import { PACKAGE_UNITS, type PackageUnit } from '../../../products/lib';
+import { getUnitByCode, resolveUnit } from '@zakupki/types';
 
 export function isPackageUnit(value: string): value is PackageUnit {
     return (PACKAGE_UNITS as readonly string[]).includes(value);
@@ -12,21 +13,17 @@ export type PurchaseProductFieldSource = {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: string | number | null;
     supplierPackageTiers?: unknown;
-    availableAmount?: string | number | null;
-    availableUnit?: string | null;
-    unit?: { shortName?: string | null; name?: string | null } | null;
+    referenceStock?: string | number | null;
+    referenceStockUnit?: string | null;
+    unitCode?: string;
 };
 
 export function normalizePackageUnit(raw?: string | null): PackageUnit | null {
     const s = raw?.trim();
     if (!s) return null;
     if (isPackageUnit(s)) return s;
-    const lower = s.toLowerCase();
-    const exact = PACKAGE_UNITS.find((u) => u.toLowerCase() === lower);
-    if (exact) return exact;
-    if (lower === 'г' || lower.startsWith('гр')) return 'гр';
-    if (lower.startsWith('шт')) return 'шт';
-    if (lower.includes('туб')) return 'туба';
+    const unit = resolveUnit(s);
+    if (unit) return unit.shortName as PackageUnit;
     return null;
 }
 
@@ -35,9 +32,8 @@ export function resolveProductPackageUnit(product: PurchaseProductFieldSource): 
     for (const candidate of [
         product.minPackageUnit,
         product.supplierPackageUnit,
-        product.availableUnit,
-        product.unit?.shortName,
-        product.unit?.name,
+        product.referenceStockUnit,
+        product.unitCode ? getUnitByCode(product.unitCode)?.shortName : null,
     ]) {
         const normalized = normalizePackageUnit(candidate);
         if (normalized) return normalized;
@@ -49,13 +45,13 @@ export function withCatalogPackageUnits<T extends {
     tiers: { unit: string }[];
     supPkgTiers: { unit: string }[];
     minPkgUnit: string;
-    availUnit: string;
+    referenceStockUnit: string;
 }>(state: T, catalogUnit: PackageUnit): T {
     return {
         ...state,
         tiers: state.tiers.map((t) => ({ ...t, unit: normalizePackageUnit(t.unit) ?? catalogUnit })),
         supPkgTiers: state.supPkgTiers.map((t) => ({ ...t, unit: normalizePackageUnit(t.unit) ?? catalogUnit })),
         minPkgUnit: normalizePackageUnit(state.minPkgUnit) ?? catalogUnit,
-        availUnit: normalizePackageUnit(state.availUnit) ?? catalogUnit,
+        referenceStockUnit: normalizePackageUnit(state.referenceStockUnit) ?? catalogUnit,
     };
 }

@@ -11,7 +11,7 @@ import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-c
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { cn } from '@/lib/utils';
-import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus, getUnitByCode } from '@zakupki/types';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { summarizePurchasePayments } from '@/components/shop/payment-proof';
@@ -139,13 +139,10 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                 order as {
                                                     purchaseItem?: {
                                                         id: number;
-                                                        minQty: unknown;
                                                         product?: ProductLabelSource & {
                                                             photos: { id: number }[];
-                                                            unit: {
-                                                                shortName: string;
-                                                                multiplicity: string | number;
-                                                            } | null;
+                                                            unitCode: string;
+                                                            multiplicity: string | number;
                                                             minPackageAmount: string | number | null;
                                                             minPackageUnit: string | null;
                                                         };
@@ -153,7 +150,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                 }
                                             ).purchaseItem;
                                             const product = purchaseItem?.product;
-                                            const shortName = product?.unit?.shortName ?? 'ед.';
+                                            const shortName = product?.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? 'ед.' : 'ед.';
                                             const photo = product?.photos?.[0];
                                             const qty = Number(order.quantity);
                                             const amount = Number(order.amountDue);
@@ -188,25 +185,21 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                             </p>
                                                         </div>
                                                         <div className="flex items-center justify-between gap-2">
-                                                            {purchaseItem && product?.unit ? (
+                                                            {purchaseItem && product?.unitCode ? (
                                                                 <CartLineQuantityControls
                                                                     orderId={order.id}
                                                                     purchaseItemId={purchaseItem.id}
                                                                     purchaseId={group.id}
                                                                     quantity={qty}
                                                                     unitShort={shortName}
-                                                                    multiplicity={Number(product.unit.multiplicity)}
+                                                                    multiplicity={Number(product.multiplicity)}
                                                                     minPackageAmount={
                                                                         product.minPackageAmount != null
                                                                             ? Number(product.minPackageAmount)
                                                                             : null
                                                                     }
                                                                     minPackageUnit={product.minPackageUnit}
-                                                                    purchaseItemMinQty={
-                                                                        purchaseItem.minQty != null
-                                                                            ? Number(purchaseItem.minQty)
-                                                                            : null
-                                                                    }
+                                                                    purchaseItemMinQty={null}
                                                                 />
                                                             ) : (
                                                                 <span />

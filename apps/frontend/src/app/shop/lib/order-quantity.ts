@@ -1,130 +1,69 @@
 import {
-    calculateFreeRemainder,
-    getMinOrderQuantity,
+    getSupplementPool,
     getOrderQuantityStep,
-    getSupplementEffectiveMinQty,
-    getSupplementUiOrderStep,
-    isSupplementOnlyPacksOrder,
-    isSupplementPacksAllowed,
-    isSupplementRemainderOnlyPhase,
+    getMinOrderQuantity,
     isValidOrderQuantity,
-    isValidSupplementOrderQuantity,
-    snapOrderQuantity,
-    snapSupplementOrderQuantity,
     type OrderQuantityOptions,
-    type PurchaseFulfillmentStatus,
-    type SupplementOrderBounds,
-    type SupplementPackProtection,
 } from '@zakupki/types';
 
 export type ShopOrderQuantityContext = {
-    orderQtyOptions: OrderQuantityOptions;
-    orderStep: number;
-    minOrderQty: number;
-    uiStep: number;
-    effectiveMinQty: number;
-    supplementBounds: SupplementOrderBounds | null;
-    /** На доборе: остаток 0 или < мин. — «+» по шагу выключен; на REORDER ещё +пачка. */
-    supplementOnlyPacks: boolean;
-    /** На доборе: кнопки ±пачка (этап «Доборы»). */
-    supplementPacksAllowed: boolean;
-    /** Защищённые пачки на доборе (нельзя удалить частично). */
-    packProtection: SupplementPackProtection | null;
-    /** Сколько защищённых пачек добавлено. */
-    supplementPacksAdded: number;
-    /** Суммарный объём защищённых пачек. */
-    protectedPackQty: number;
-    /** Свободная часть заказа (оригинал + россыпь). */
-    freePortion: number;
-    /** Можно ли уменьшить по шагу (есть свободная часть). */
-    canRemoveStep: boolean;
-    /** Можно ли убрать целую пачку. */
-    canRemovePack: boolean;
-    snap: (qty: number) => number;
-    isValid: (qty: number) => boolean;
+    /** Минимальная фасовка — шаг кнопок +/− */
+    minPackaging: number;
+    /** Пул добора: сколько осталось доступно для добора */
+    availablePool: number | null;
+    /** Привести quantity к допустимому диапазону */
+    snap: (quantity: number) => number;
+    /** Проверить, валидно ли quantity */
+    isValid: (quantity: number) => boolean;
 };
 
+/**
+ * Строит контекст для UI заказа.
+ *
+ * @param input.isSupplement — закупка в фазе SUPPLEMENT/REORDER
+ * @param input.baseQuantity — quantity, зафиксированный при входе в SUPPLEMENT (для расчёта пула)
+ * @param input.currentQuantity — текущее quantity этого пользователя
+ * @param input.availableRemainder — явно заданный админом пул добора (targetRemainder)
+ * @param input.packSize — размер пачки поставщика (для авторасчёта пула)
+ * @param input.sumOtherRemainders — сумма baseQuantity других пользователей (для пула)
+ * @param input.totalOrderedQuantity — сумма quantity ВСЕХ пользователей
+ * @param input.orderQtyOptions — параметры валидации количества
+ */
 export function buildShopOrderQuantityContext(input: {
     isSupplement: boolean;
-    fulfillmentStatus?: PurchaseFulfillmentStatus | string | null;
-    orderQtyOptions: OrderQuantityOptions;
+    baseQuantity: number;
     currentQuantity: number;
-    availableQty: number | null | undefined;
+    availableRemainder: number | null;
     packSize: number | null;
-    orderLines?: { quantity: unknown }[];
-    supplementPacksAdded?: number;
+    sumOtherRemainders: number;
+    totalOrderedQuantity: number;
+    orderQtyOptions: OrderQuantityOptions;
 }): ShopOrderQuantityContext {
-    const orderStep = getOrderQuantityStep(input.orderQtyOptions);
-    const minOrderQty = getMinOrderQuantity(input.orderQtyOptions);
-    const uiStep = input.isSupplement ? getSupplementUiOrderStep(orderStep, input.orderQtyOptions) : orderStep;
-    const effectiveMinQty = input.isSupplement
-        ? getSupplementEffectiveMinQty(minOrderQty, input.orderQtyOptions)
-        : minOrderQty;
+    const minPackaging = getOrderQuantityStep(input.orderQtyOptions);
 
-    let supplementBounds: SupplementOrderBounds | null = null;
-    if (input.isSupplement) {
-        const rawAvailableQty =
-            input.availableQty !== null && input.availableQty !== undefined ? Number(input.availableQty) : null;
-        const freeRemainder = calculateFreeRemainder(input.orderLines ?? [], input.packSize);
-        const effectiveAvailableQty =
-            rawAvailableQty != null ? rawAvailableQty : freeRemainder > 0 ? freeRemainder : null;
-        const remainderOnly = isSupplementRemainderOnlyPhase(input.fulfillmentStatus);
-        supplementBounds = {
-            availableQty: effectiveAvailableQty,
-            currentQuantity: input.currentQuantity,
-            supplierPackageAmount: input.packSize,
-            remainderOnly,
-        };
+    // Пул добора: сколько остатка доступно для добора
+    const availablePool = input.isSupplement
+        ? getSupplementPool({
+              targetRemainder: input.availableRemainder,
+              totalOrderedQuantity: input.totalOrderedQuantity,
+              totalReservedRemainder: input.sumOtherRemainders,
+              packSize: input.packSize,
+          })
+        : null;
+
+    function snap(quantity: number): number {
+        if (quantity <= 0) return 0;
+        const min = getMinOrderQuantity(input.orderQtyOptions);
+        const step = minPackaging;
+        // Округляем вверх до шага
+        const snapped = Math.ceil((quantity - 1e-9) / step) * step;
+        return Math.max(min, snapped);
     }
 
-    function snap(qty: number): number {
-        if (supplementBounds) {
-            return snapSupplementOrderQuantity(qty, input.orderQtyOptions, supplementBounds);
-        }
-        return snapOrderQuantity(qty, input.orderQtyOptions);
+    function isValid(quantity: number): boolean {
+        if (quantity === 0) return true;
+        return isValidOrderQuantity(quantity, input.orderQtyOptions);
     }
 
-    function isValid(qty: number): boolean {
-        if (supplementBounds) {
-            return isValidSupplementOrderQuantity(qty, input.orderQtyOptions, supplementBounds);
-        }
-        return isValidOrderQuantity(qty, input.orderQtyOptions);
-    }
-
-    const supplementOnlyPacks =
-        supplementBounds != null && isSupplementOnlyPacksOrder(supplementBounds, input.orderQtyOptions);
-
-    const supplementPacksAllowed = supplementBounds != null && isSupplementPacksAllowed(supplementBounds);
-
-    // Защита пачек на доборе
-    const rawPacksAdded = input.supplementPacksAdded ?? 0;
-    const packSizeNum = input.packSize ?? 0;
-    const packProtection: SupplementPackProtection | null =
-        input.isSupplement && rawPacksAdded > 0 && packSizeNum > 0
-            ? { supplementPacksAdded: rawPacksAdded, packSize: packSizeNum }
-            : null;
-    const supplementPacksAdded = packProtection?.supplementPacksAdded ?? 0;
-    const protectedPackQty = supplementPacksAdded * packSizeNum;
-    const freePortion = input.currentQuantity - protectedPackQty;
-    const canRemoveStep = freePortion > 0;
-    const canRemovePack = supplementPacksAdded > 0;
-
-    return {
-        orderQtyOptions: input.orderQtyOptions,
-        orderStep,
-        minOrderQty,
-        uiStep,
-        effectiveMinQty,
-        supplementBounds,
-        supplementOnlyPacks,
-        supplementPacksAllowed,
-        packProtection,
-        supplementPacksAdded,
-        protectedPackQty,
-        freePortion,
-        canRemoveStep,
-        canRemovePack,
-        snap,
-        isValid,
-    };
+    return { minPackaging, availablePool, snap, isValid };
 }

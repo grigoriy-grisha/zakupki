@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { parsePriceTiers, type PriceTier } from '@zakupki/types';
+import { getSupplementPool, parsePriceTiers, type PriceTier } from '@zakupki/types';
 
 import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
@@ -27,8 +27,8 @@ type ExportProduct = ProductLabelSource & {
     supplierPackageAmount?: unknown;
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: unknown;
-    availableAmount?: unknown;
-    availableUnit?: string | null;
+    referenceStock?: unknown;
+    referenceStockUnit?: string | null;
     unit?: { shortName: string } | null;
 };
 
@@ -41,11 +41,18 @@ type ExportPurchase = {
     items: {
         id: number;
         priceOverride?: unknown;
-        shouldPublish: boolean;
+        publicationState: 'DRAFT' | 'PUBLISHED';
         tgMessageId?: string | null;
-        availableQty?: unknown;
+        targetRemainder?: unknown;
         product: ExportProduct;
-        orderLines: { userId: number; quantity: unknown; amountDue: unknown; user?: ExportUser }[];
+        orderLines: {
+            userId: number;
+            quantity: unknown;
+            amountDue: unknown;
+            supplementRemainder?: unknown;
+            supplementPacksAdded?: unknown;
+            user?: ExportUser;
+        }[];
     }[];
 };
 
@@ -68,7 +75,7 @@ type ExportPayment = {
     userId: number;
     amount: unknown;
     status: string;
-    paidAt: string | Date;
+    submittedAt: string | Date;
     userComment?: string | null;
     adminNote?: string | null;
     user?: ExportUser;
@@ -571,6 +578,24 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
             quantitiesByUser.set(line.userId, formatMoney(line.quantity));
         });
 
+        // Реальный свободный остаток для добора = target pool минус зарезервированное,
+        // либо авто-расчёт по «остатку последней пачки» (если админ targetRemainder не задал).
+        const totalOrderedQuantity = item.orderLines.reduce(
+            (sum, line) => sum + Number(line.quantity ?? 0),
+            0,
+        );
+        const sumOtherBaseQuantities = item.orderLines.reduce(
+            (sum, line) => sum + Number((line as any).baseQuantity ?? 0),
+            0,
+        );
+        const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
+        const displayedRemainder = getSupplementPool({
+            targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
+            totalOrderedQuantity,
+            totalReservedRemainder: sumOtherBaseQuantities,
+            packSize,
+        });
+
         const row = sheet.addRow([
             '',
             formatSupplierPackage(product),
@@ -583,7 +608,9 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
             stats.packsToOrder ?? '',
             stats.orderedPacks ?? '',
             stats.orderedQuantity ?? '',
-            stats.freeRemainder ?? '',
+            // «Свободный остаток» — 6-я колонка summary:
+            // null = без лимита (нет ни targetRemainder, ни packSize), выводим пусто.
+            displayedRemainder != null ? formatOrderStatValue(displayedRemainder) : '',
         ]);
         for (let col = 1; col <= totalColumns; col++) {
             applyOrdersCellFill(row.getCell(col), GENERAL_EXPORT_FILL.productRow);

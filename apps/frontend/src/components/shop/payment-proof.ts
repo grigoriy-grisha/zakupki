@@ -2,17 +2,21 @@ export type ShopPaymentView = {
     id: number;
     amount: unknown;
     status: string;
-    paidAt: string | Date;
+    submittedAt: string | Date;
     userComment?: string | null;
     adminNote?: string | null;
-    proofMimeType?: string | null;
     proofObjectKey?: string | null;
-    proofData?: unknown;
     children?: { amount: unknown; promoCode: { code: string } | null }[];
 };
 
-export function paymentHasProof(payment: { proofObjectKey?: string | null; proofData?: unknown }): boolean {
-    return Boolean(payment.proofObjectKey || payment.proofData);
+export function paymentHasProof(payment: { proofObjectKey?: string | null }): boolean {
+    return Boolean(payment.proofObjectKey);
+}
+
+export function paymentProofIsImage(payment: { proofObjectKey?: string | null }): boolean {
+    if (!payment.proofObjectKey) return false;
+    const ext = payment.proofObjectKey.split('.').pop()?.toLowerCase();
+    return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp' || ext === 'gif';
 }
 
 export function paymentTotalAmount(payment: ShopPaymentView): number {

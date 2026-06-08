@@ -96,7 +96,7 @@ export const purchasesRouter = router({
     toggleShouldPublish: adminProcedure
         .input(z.object({ purchaseItemId: z.number(), value: z.boolean() }))
         .mutation(async ({ ctx, input }) => {
-            return ctx.services.purchase.toggleShouldPublish(input.purchaseItemId, input.value);
+            return ctx.services.purchase.setPublicationState(input.purchaseItemId, input.value ? 'PUBLISHED' : 'DRAFT');
         }),
 
     setAvailableQuantities: adminProcedure
@@ -106,7 +106,7 @@ export const purchasesRouter = router({
                 items: z.array(
                     z.object({
                         purchaseItemId: z.number(),
-                        availableQty: z.number().nullable(),
+                        targetRemainder: z.number().nullable(),
                     }),
                 ),
             }),
@@ -120,14 +120,12 @@ export const purchasesRouter = router({
             z.object({
                 purchaseId: z.number(),
                 productIds: z.array(z.number()).min(1, 'Выберите хотя бы один товар'),
-                shouldPublish: z.boolean().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
             const { items, skippedCount } = await ctx.services.purchase.addItems(
                 input.purchaseId,
                 input.productIds,
-                input.shouldPublish ?? false,
             );
 
             if (items.length === 0) {
@@ -186,13 +184,14 @@ export const purchasesRouter = router({
                             }),
                         )
                         .optional(),
-                    availableAmount: z.number().nullable().optional(),
-                    availableUnit: z.string().nullable().optional(),
+                    referenceStock: z.number().nullable().optional(),
+                    referenceStockUnit: z.string().nullable().optional(),
                 }),
+                priceOverride: z.number().nullable().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const item = await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product);
+            const item = await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product, input.priceOverride ?? null);
 
             if (item.tgMessageId) {
                 await ctx.services.telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);

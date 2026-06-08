@@ -1,36 +1,17 @@
-import { dbClient } from '@zakupki/database';
+import { dbClient, type PurchaseStatus, type PurchaseFulfillmentStatus } from '@zakupki/database';
 
-export const productWithAttributes = {
-    photos: { select: { id: true, sortOrder: true } },
-    unit: true,
-    brand: { select: { id: true, name: true, typeId: true, showInTitle: true, isBrand: true } },
-    attributeValues: {
-        include: {
-            attribute: {
-                include: {
-                    type: true,
-                    parent: { select: { id: true, name: true, isBrand: true } },
-                    characteristics: { include: { characteristic: true } },
-                },
-            },
-        },
-    },
-    characteristicValues: {
-        include: { characteristic: true },
-        orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }],
-    },
-};
+import { productInclude } from './product-include';
 
 export class PurchaseRepository {
     constructor() {}
 
     async list(status?: string) {
         return dbClient.purchase.findMany({
-            where: status ? { status: status as any } : undefined,
+            where: status ? { status: status as PurchaseStatus } : undefined,
             include: {
                 items: {
                     include: {
-                        product: { include: productWithAttributes },
+                        product: { include: productInclude },
                         orderLines: {
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
@@ -43,11 +24,11 @@ export class PurchaseRepository {
 
     async listByStatuses(statuses: string[]) {
         return dbClient.purchase.findMany({
-            where: { status: { in: statuses as any } },
+            where: { status: { in: statuses as PurchaseStatus[] } },
             include: {
                 items: {
                     include: {
-                        product: { include: productWithAttributes },
+                        product: { include: productInclude },
                         orderLines: {
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
@@ -61,13 +42,13 @@ export class PurchaseRepository {
     async listByStatusesForUser(userId: number, statuses: string[]) {
         return dbClient.purchase.findMany({
             where: {
-                status: { in: statuses as any },
+                status: { in: statuses as PurchaseStatus[] },
                 items: { some: { orderLines: { some: { userId } } } },
             },
             include: {
                 items: {
                     include: {
-                        product: { include: productWithAttributes },
+                        product: { include: productInclude },
                         orderLines: {
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
@@ -84,7 +65,7 @@ export class PurchaseRepository {
             include: {
                 items: {
                     include: {
-                        product: { include: productWithAttributes },
+                        product: { include: productInclude },
                         orderLines: { include: { user: true }, omit: { tgChatMessageId: true } },
                     },
                 },
@@ -102,13 +83,13 @@ export class PurchaseRepository {
     }
 
     async updateStatus(id: number, status: string) {
-        return dbClient.purchase.update({ where: { id }, data: { status: status as any } });
+        return dbClient.purchase.update({ where: { id }, data: { status: status as PurchaseStatus } });
     }
 
     async updateFulfillmentStatus(id: number, fulfillmentStatus: string) {
         return dbClient.purchase.update({
             where: { id },
-            data: { fulfillmentStatus: fulfillmentStatus as any },
+            data: { fulfillmentStatus: fulfillmentStatus as PurchaseFulfillmentStatus },
         });
     }
 
@@ -138,6 +119,7 @@ export class PurchaseRepository {
             }
 
             await tx.promoCode.updateMany({ where: { purchaseId: id }, data: { purchaseId: null } });
+            await tx.purchaseOrder.deleteMany({ where: { purchaseId: id } });
             return tx.purchase.delete({ where: { id } });
         });
     }
@@ -151,9 +133,9 @@ export class PurchaseRepository {
         return rows.map((row) => row.productId);
     }
 
-    async addItem(purchaseId: number, productId: number, shouldPublish = false) {
+    async addItem(purchaseId: number, productId: number) {
         return dbClient.purchaseItem.create({
-            data: { purchaseId, productId, shouldPublish },
+            data: { purchaseId, productId },
         });
     }
 
@@ -183,27 +165,67 @@ export class PurchaseRepository {
         });
     }
 
-    async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; availableQty: number | null }[]) {
-        const updates = items.map((item) =>
-            dbClient.purchaseItem.update({
-                where: { id: item.purchaseItemId },
-                data: { availableQty: item.availableQty },
-            }),
-        );
-        return Promise.all(updates);
+    async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; targetRemainder: number | null }[]) {
+        return dbClient.$transaction(async (tx) => {
+            const results = [];
+            for (const item of items) {
+                const result = await tx.purchaseItem.update({
+                    where: { id: item.purchaseItemId },
+                    data: { targetRemainder: item.targetRemainder },
+                });
+                results.push(result);
+            }
+            return results;
+        });
     }
 
     async findUnpublishedItems(purchaseId: number) {
         return dbClient.purchaseItem.findMany({
-            where: { purchaseId, shouldPublish: true, tgMessageId: null },
+            where: { purchaseId, publicationState: 'DRAFT' },
             select: { id: true },
         });
     }
 
-    async toggleShouldPublish(purchaseItemId: number, value: boolean) {
+    findItemByTelegramPost(channelId: string, messageId: string) {
+        return dbClient.purchaseItem.findFirst({
+            where: {
+                tgMessageId: messageId,
+                tgChannelId: channelId,
+                publicationState: 'PUBLISHED',
+            },
+            include: {
+                product: true,
+                orderLines: { select: { quantity: true } },
+                purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
+            },
+        });
+    }
+
+    findItemByTgMessageId(messageId: string) {
+        return dbClient.purchaseItem.findFirst({
+            where: {
+                tgMessageId: messageId,
+                publicationState: 'PUBLISHED',
+            },
+            include: {
+                product: true,
+                orderLines: { select: { quantity: true } },
+                purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
+            },
+        });
+    }
+
+    updateItemTelegramMessage(id: number, messageId: string, channelId: string) {
+        return dbClient.purchaseItem.update({
+            where: { id },
+            data: { tgMessageId: messageId, tgChannelId: channelId },
+        });
+    }
+
+    async setPublicationState(purchaseItemId: number, state: 'DRAFT' | 'PUBLISHED') {
         return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
-            data: { shouldPublish: value },
+            data: { publicationState: state },
         });
     }
 
@@ -225,10 +247,32 @@ export class PurchaseRepository {
         return dbClient.purchaseItem.findUnique({
             where: { id },
             include: {
-                product: { include: { unit: true } },
-                orderLines: { select: { quantity: true } },
+                product: true,
+                orderLines: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        quantity: true,
+                        baseQuantity: true,
+                        status: true,
+                    },
+                },
                 purchase: true,
             },
+        });
+    }
+
+    async updatePurchaseItemPriceOverride(purchaseItemId: number, priceOverride: number | null) {
+        return dbClient.purchaseItem.update({
+            where: { id: purchaseItemId },
+            data: { priceOverride },
+        });
+    }
+
+    async updatePurchaseItemProduct(purchaseItemId: number, productData: Record<string, unknown>) {
+        return dbClient.purchaseItem.update({
+            where: { id: purchaseItemId },
+            data: productData,
         });
     }
 }

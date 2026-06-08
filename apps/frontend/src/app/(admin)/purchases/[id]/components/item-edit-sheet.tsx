@@ -61,7 +61,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                         loadSavedDescription
                         purchaseTag={(purchase as unknown as PurchaseDetail)?.tag}
                         initialTiers={tiers}
-                        onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data })}
+                        onSave={(data) => updateMutation.mutate({ purchaseItemId: purchaseItemId!, product: data, priceOverride: data.priceOverride ?? null })}
                         isSaving={updateMutation.isPending}
                         submitLabel={published ? 'Сохранить и обновить пост в TG' : 'Сохранить'}
                     />

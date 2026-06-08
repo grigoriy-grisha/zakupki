@@ -5,13 +5,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { trpc } from '@/lib/client/trpc';
 import { productCreateSchema, type ProductCreateFormValues } from '../lib';
-import { useUnits } from './use-products';
 import { useAttributeCatalog } from './use-attribute-catalog';
 import { usePhotoState } from './use-photo-state';
 import { useCharacteristicValues } from './use-characteristic-values';
 import {
     revokePendingFiles,
-    resolveProductUnitId,
     type AttributeListItem,
     type PendingFile,
 } from '../lib/product-form-utils';
@@ -32,11 +30,20 @@ export type ProductFormExisting = {
     articleNumber: string | null;
     brandId?: number | null;
     brand?: { id: number; name: string } | null;
-    unitId?: number;
-    unit?: { id: number; name: string; shortName: string } | null;
+    unitCode?: string;
     attributeValues?: ProductAttributeValueShape[];
     characteristicValues?: ProductCharacteristicValueShape[];
     photos: { id: number }[];
+    pricePerUnit?: number;
+    priceTiers?: { amount: number; unit: string; price: number }[];
+    minPackageAmount?: number | null;
+    minPackageUnit?: string | null;
+    supplierPackageAmount?: number | null;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: number | null;
+    supplierPackageTiers?: { amount: number; unit: string; price: number }[];
+    referenceStock?: number | null;
+    referenceStockUnit?: string | null;
 };
 
 export function useProductFormState(editId: number | null, existing: ProductFormExisting | null | undefined) {
@@ -46,7 +53,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
 
     const [selectedAttrs, setSelectedAttrs] = useState<Record<number, number | null>>({});
 
-    const { data: units } = useUnits(true);
     const { attributeTypes, allAttributes, attrsTreeByType } = useAttributeCatalog();
     const { data: allCharacteristics } = trpc.characteristics.list.useQuery();
 
@@ -55,19 +61,11 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         defaultValues: {
             name: '',
             articleNumber: '',
-            unitId: 0,
+            unitCode: '',
         },
     });
 
-    const unitId = form.watch('unitId');
-
-    // Auto-select first unit for new products
-    useEffect(() => {
-        if (editId || !units?.length) return;
-        if (!unitId || unitId <= 0) {
-            form.setValue('unitId', units[0].id, { shouldValidate: true });
-        }
-    }, [editId, units, unitId, form]);
+    const unitCode = form.watch('unitCode');
 
     // Attribute tree + children
     const typesByParent = useMemo(() => {
@@ -117,7 +115,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         const attrIds = (product.attributeValues ?? []).map((v) => v.attribute.id).join(',');
         const charIds = (product.characteristicValues ?? []).map((v) => `${v.characteristicId}:${v.value}`).join(',');
         const photoIdsStr = product.photos.map((p) => p.id).join(',');
-        return `${product.name}|${resolveProductUnitId(product)}|${product.articleNumber ?? ''}|${attrIds}|${charIds}|${photoIdsStr}`;
+        return `${product.name}|${product.unitCode ?? ''}|${product.articleNumber ?? ''}|${attrIds}|${charIds}|${photoIdsStr}`;
     }
 
     // Load existing product data
@@ -132,7 +130,17 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             form.reset({
                 name: existing.name,
                 articleNumber: existing.articleNumber ?? '',
-                unitId: resolveProductUnitId(existing),
+                unitCode: existing.unitCode ?? '',
+                pricePerUnit: existing.pricePerUnit,
+                priceTiers: existing.priceTiers ?? [],
+                minPackageAmount: existing.minPackageAmount ?? null,
+                minPackageUnit: existing.minPackageUnit ?? null,
+                supplierPackageAmount: existing.supplierPackageAmount ?? null,
+                supplierPackageUnit: existing.supplierPackageUnit ?? null,
+                supplierPackagePrice: existing.supplierPackagePrice ?? null,
+                supplierPackageTiers: existing.supplierPackageTiers ?? [],
+                referenceStock: existing.referenceStock ?? null,
+                referenceStockUnit: existing.referenceStockUnit ?? null,
             });
             setPendingFiles((prev) => {
                 revokePendingFiles(prev);
@@ -181,11 +189,21 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         form.reset({
             name: '',
             articleNumber: '',
-            unitId: units?.[0]?.id ?? 0,
+            unitCode: 'piece',
+            pricePerUnit: undefined,
+            priceTiers: [],
+            minPackageAmount: undefined,
+            minPackageUnit: undefined,
+            supplierPackageAmount: undefined,
+            supplierPackageUnit: undefined,
+            supplierPackagePrice: undefined,
+            supplierPackageTiers: [],
+            referenceStock: undefined,
+            referenceStockUnit: undefined,
         });
         setSelectedAttrs({});
         setCharValues({});
-    }, [editId, form, units]);
+    }, [editId, form]);
 
     function selectedAttributeIds(): number[] {
         return Object.values(selectedAttrs).filter((id): id is number => typeof id === 'number');
@@ -195,16 +213,25 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         return {
             name: data.name,
             articleNumber: data.articleNumber?.trim() || null,
-            unitId: data.unitId,
+            unitCode: data.unitCode,
             attributeIds: selectedAttributeIds(),
             characteristics: characteristicsPayload(),
+            pricePerUnit: data.pricePerUnit,
+            priceTiers: data.priceTiers ?? null,
+            minPackageAmount: data.minPackageAmount ?? null,
+            minPackageUnit: data.minPackageUnit ?? null,
+            supplierPackageAmount: data.supplierPackageAmount ?? null,
+            supplierPackageUnit: data.supplierPackageUnit ?? null,
+            supplierPackagePrice: data.supplierPackagePrice ?? null,
+            supplierPackageTiers: data.supplierPackageTiers ?? null,
+            referenceStock: data.referenceStock ?? null,
+            referenceStockUnit: data.referenceStockUnit ?? null,
         };
     }
 
     return {
         form,
-        unitId,
-        units,
+        unitCode,
         attributeTypes,
         attrsTreeByType,
         childrenOfType,

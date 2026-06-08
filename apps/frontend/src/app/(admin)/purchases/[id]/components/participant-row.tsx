@@ -34,10 +34,9 @@ interface ParticipantRowProps {
     payments: {
         id: number;
         amount: unknown;
-        paidAt: string;
+        submittedAt: string;
         status: string;
         userComment?: string | null;
-        proofData?: unknown;
         children?: { amount: unknown; promoCode: { code: string } | null }[];
     }[];
     due: number;
@@ -65,10 +64,10 @@ export function ParticipantRow({
     const utils = trpc.useUtils();
 
     const removeMutation = trpc.orders.removeAllByUserFromPurchase.useMutation({
-        onSuccess: (count) => {
+        onSuccess: (result) => {
             utils.orders.getAllByPurchase.invalidate({ purchaseId });
             utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success(`Удалено заказов: ${count}`);
+            toast.success(`Удалено заказов: ${result.count}`);
             setDeleteOpen(false);
         },
         onError: (err) => toast.error(err.message),
@@ -228,8 +227,7 @@ export function ParticipantRow({
                                                 const childAmount = child ? Number(child.amount) : 0;
                                                 const promoCode = child?.promoCode;
                                                 const hasProof = Boolean(
-                                                    (p as { proofObjectKey?: string | null }).proofObjectKey ||
-                                                    p.proofData,
+                                                    (p as { proofObjectKey?: string | null }).proofObjectKey,
                                                 );
 
                                                 return (

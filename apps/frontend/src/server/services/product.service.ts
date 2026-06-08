@@ -6,16 +6,13 @@ export class ProductService {
     constructor(private repo: ProductRepository) {}
 
     async list(search?: string) {
-        const products = await this.repo.list(search);
-        const lockedIds = await this.repo.findProductIdsInActivePurchases(products.map((p) => p.id));
-        return products.map((p) => ({ ...p, inActivePurchase: lockedIds.has(p.id) }));
+        return this.repo.listWithPurchaseFlag(search);
     }
 
     async getById(id: number) {
-        const product = await this.repo.getById(id);
+        const product = await this.repo.getByIdOrThrow(id);
         if (!product) throw new NotFoundError('Товар', id);
-        const lockedIds = await this.repo.findProductIdsInActivePurchases([id]);
-        return { ...product, inActivePurchase: lockedIds.has(id) };
+        return product;
     }
 
     async create(data: ProductCreateData) {
@@ -24,6 +21,10 @@ export class ProductService {
 
     async update(id: number, data: ProductWriteData) {
         return this.repo.update(id, data);
+    }
+
+    async updateWithVersionCheck(id: number, data: ProductWriteData, expectedVersion: number) {
+        return this.repo.updateWithVersionCheck(id, data, expectedVersion);
     }
 
     async delete(id: number) {

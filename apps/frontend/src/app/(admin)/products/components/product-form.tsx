@@ -1,16 +1,19 @@
 'use client';
 
 import { Loader2, Plus, X } from 'lucide-react';
+import { UNITS } from '@zakupki/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Controller } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 import { useProductFormState, useProductFormSubmit, type ProductFormExisting } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
 import { AttributeTreePicker } from './attribute-tree-picker';
 import { ProductCharacteristicsFields } from './product-characteristics-fields';
+import { PriceTierEditor, PackageEditor } from './package-fields';
+import { PACKAGE_UNITS } from '../lib';
 
 interface ProductFormProps {
     editId: number | null;
@@ -49,27 +52,25 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
             <div className="space-y-2">
                 <Label>Единица учёта</Label>
                 <Controller
-                    name="unitId"
+                    name="unitCode"
                     control={state.form.control}
                     render={({ field }) => {
-                        const unitId = Number(field.value) || 0;
-                        const units = state.units ?? [];
-                        const valueInList = units.some((u) => u.id === unitId);
-                        const selectValue = unitId > 0 && valueInList ? String(unitId) : undefined;
+                        const unitCode = field.value || '';
+                        const valueInList = UNITS.some((u) => u.code === unitCode);
+                        const selectValue = unitCode && valueInList ? unitCode : undefined;
 
                         return (
                             <Select
-                                key={`unit-${editId ?? 'new'}-${unitId}-${units.length}`}
+                                key={`unit-${editId ?? 'new'}-${unitCode}`}
                                 value={selectValue}
-                                onValueChange={(v) => field.onChange(Number(v))}
-                                disabled={!units.length}
+                                onValueChange={field.onChange}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Выберите единицу" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {units.map((u) => (
-                                        <SelectItem key={u.id} value={String(u.id)}>
+                                    {UNITS.map((u) => (
+                                        <SelectItem key={u.code} value={u.code}>
                                             {u.name} ({u.shortName})
                                         </SelectItem>
                                     ))}
@@ -78,7 +79,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                         );
                     }}
                 />
-                {errors.unitId && <p className="text-xs text-destructive">{errors.unitId.message}</p>}
+                {errors.unitCode && <p className="text-xs text-destructive">{errors.unitCode.message}</p>}
             </div>
 
             {(state.attributeTypes?.length ?? 0) > 0 && (
@@ -96,6 +97,107 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 values={state.charValues}
                 onChange={(id, value) => state.setCharValues((prev) => ({ ...prev, [id]: value }))}
             />
+
+            {/* Pricing section */}
+            <div className="space-y-3 rounded-md border p-4">
+                <h3 className="text-sm font-medium">Цены</h3>
+
+                <div className="space-y-2">
+                    <Label htmlFor="pricePerUnit">Цена за единицу (₽)</Label>
+                    <Input
+                        id="pricePerUnit"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        placeholder="0.00"
+                        {...state.form.register('pricePerUnit', { valueAsNumber: true })}
+                    />
+                </div>
+
+                <Controller
+                    name="priceTiers"
+                    control={state.form.control}
+                    render={({ field }) => (
+                        <PriceTierEditor
+                            tiers={field.value ?? []}
+                            onChange={field.onChange}
+                            label="Ценовые тиры"
+                            required={false}
+                            addTierLabel="Добавить тир"
+                        />
+                    )}
+                />
+            </div>
+
+            {/* Packaging section */}
+            <div className="space-y-3 rounded-md border p-4">
+                <h3 className="text-sm font-medium">Фасовка</h3>
+
+                <Controller
+                    name="minPackageAmount"
+                    control={state.form.control}
+                    render={({ field }) => (
+                        <PackageEditor
+                            label="Мин. фасовка"
+                            amount={field.value ?? null}
+                            unit={state.form.watch('minPackageUnit') ?? PACKAGE_UNITS[0]}
+                            onAmountChange={(v) => field.onChange(v)}
+                            onUnitChange={(v) => state.form.setValue('minPackageUnit', v)}
+                        />
+                    )}
+                />
+
+                <Controller
+                    name="supplierPackageAmount"
+                    control={state.form.control}
+                    render={({ field }) => (
+                        <PackageEditor
+                            label="Поставка (упаковка)"
+                            amount={field.value ?? null}
+                            unit={state.form.watch('supplierPackageUnit') ?? PACKAGE_UNITS[0]}
+                            onAmountChange={(v) => field.onChange(v)}
+                            onUnitChange={(v) => state.form.setValue('supplierPackageUnit', v)}
+                        />
+                    )}
+                />
+
+                <Controller
+                    name="supplierPackagePrice"
+                    control={state.form.control}
+                    render={({ field }) => (
+                        <div className="space-y-1">
+                            <Label htmlFor="supplierPackagePrice">Цена поставки (₽)</Label>
+                            <Input
+                                id="supplierPackagePrice"
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                placeholder="0.00"
+                                value={field.value ?? ''}
+                                onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                            />
+                        </div>
+                    )}
+                />
+            </div>
+
+            {/* Reference stock */}
+            <div className="space-y-3 rounded-md border p-4">
+                <h3 className="text-sm font-medium">Остаток</h3>
+
+                <div className="space-y-2">
+                    <Label htmlFor="referenceStock">Доступно (шт.)</Label>
+                    <Input
+                        id="referenceStock"
+                        type="number"
+                        step="1"
+                        min={0}
+                        placeholder="0"
+                        {...state.form.register('referenceStock', { valueAsNumber: true })}
+                    />
+                    <p className="text-xs text-muted-foreground">Справочная информация — не лимит</p>
+                </div>
+            </div>
 
             <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">Фото</label>

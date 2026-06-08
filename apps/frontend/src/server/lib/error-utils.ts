@@ -17,3 +17,22 @@ export function handleDbConflict(err: unknown, message = 'Такая запис�
     }
     throw err;
 }
+
+/**
+ * Оборачивает вызов в try/catch для обработки ошибок уникальности БД.
+ * Убирает дублирование try/catch + handleDbConflict в роутерах.
+ *
+ * @example
+ * ```ts
+ * create: adminProcedure.input(schema).mutation(async ({ ctx, input }) => {
+ *     return withDbConflict(() => ctx.services.xxx.create(input));
+ * }),
+ * ```
+ */
+export async function withDbConflict<T>(fn: () => Promise<T>, message?: string): Promise<T> {
+    try {
+        return await fn();
+    } catch (err) {
+        handleDbConflict(err, message);
+    }
+}

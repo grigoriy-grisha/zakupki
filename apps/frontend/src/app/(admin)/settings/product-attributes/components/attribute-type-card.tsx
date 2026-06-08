@@ -34,7 +34,7 @@ import {
 } from '../hooks';
 import { AttributeFormDialog } from './attribute-form-dialog';
 import { CreateTypeDialog } from './create-type-dialog';
-import { useCharacteristicList } from '../../characteristics/hooks';
+import { useCharacteristicList } from '../../characteristics/hooks/use-characteristics';
 
 export type AttributeType = {
     id: number;
@@ -266,7 +266,7 @@ export function AttributeTypeCard({
         };
     }, [values]);
 
-    const charOptions = (characteristics ?? []).map((c) => ({ id: c.id, name: c.name }));
+    const charOptions = (characteristics ?? []).map((c: { id: number; name: string }) => ({ id: c.id, name: c.name }));
 
     return (
         <div>

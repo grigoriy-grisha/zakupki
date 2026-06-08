@@ -1,150 +1,78 @@
-import { dbClient, deletePurchaseOrderIfNoLines, ensurePurchaseOrder } from '@zakupki/database';
-import {
-    calcSupplementStockChange,
-    getSupplementStockDecrement,
-    InsufficientStockError,
-    NotFoundError,
-    shouldDecrementSupplementStock,
-    validateSupplementPackReduction,
-} from '@zakupki/types';
+import { dbClient, Prisma } from '@zakupki/database';
+import { NotFoundError } from '@zakupki/types';
 
-import { productWithAttributes } from './purchase.repository';
+import { productInclude } from './product-include';
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
 
 export class OrderRepository {
-    async upsert(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
-        return dbClient.$transaction(async (tx) => {
-            const purchaseItem = await tx.purchaseItem.findUnique({
-                where: { id: purchaseItemId },
-                select: { purchaseId: true },
-            });
-            if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
+    /**
+     * Создать или обновить строку заказа.
+     */
+    async upsertOrderLine(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
+        const purchaseItem = await dbClient.purchaseItem.findUnique({
+            where: { id: purchaseItemId },
+            select: { purchaseId: true },
+        });
+        if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
 
-            await ensurePurchaseOrder(tx, userId, purchaseItem.purchaseId);
+        // Создаём или обновляем PurchaseOrder
+        await dbClient.purchaseOrder.upsert({
+            where: { userId_purchaseId: { userId, purchaseId: purchaseItem.purchaseId } },
+            create: { userId, purchaseId: purchaseItem.purchaseId },
+            update: {},
+        });
 
-            return tx.orderLine.upsert({
-                where: { purchaseItemId_userId: { purchaseItemId, userId } },
-                update: { quantity, amountDue },
-                create: { purchaseItemId, userId, quantity, amountDue },
-                omit: { tgChatMessageId: true },
-            });
+        return dbClient.orderLine.upsert({
+            where: { purchaseItemId_userId: { purchaseItemId, userId } },
+            create: {
+                purchaseItemId,
+                userId,
+                quantity,
+                amountDue,
+                status: 'ACTIVE',
+            },
+            update: {
+                quantity,
+                amountDue,
+                status: 'ACTIVE',
+            },
         });
     }
 
-    async upsertWithStock(
-        purchaseItemId: number,
-        userId: number,
-        quantity: number,
-        amountDue: number,
-        options?: { isSupplement?: boolean },
-    ) {
-        return dbClient.$transaction(async (tx) => {
-            const existingLine = await tx.orderLine.findUnique({
-                where: { purchaseItemId_userId: { purchaseItemId, userId } },
-            });
-
-            const purchaseItem = await tx.purchaseItem.findUnique({
-                where: { id: purchaseItemId },
-                include: { product: { select: { supplierPackageAmount: true } } },
-            });
-
-            if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
-
-            const oldQuantity = existingLine ? Number(existingLine.quantity) : 0;
-            const oldPacks = existingLine?.supplementPacksAdded ?? 0;
-            const delta = quantity - oldQuantity;
-
-            const packSize =
-                purchaseItem.product.supplierPackageAmount != null
-                    ? Number(purchaseItem.product.supplierPackageAmount)
-                    : null;
-
-            // Рассчитываем новое количество защищённых пачек
-            let newPacks = oldPacks;
-            if (options?.isSupplement && packSize && packSize > 0) {
-                if (delta > 0) {
-                    // При увеличении: добавляем целые пачки из дельты
-                    const packsInDelta = Math.floor((delta + 1e-9) / packSize);
-                    newPacks = oldPacks + packsInDelta;
-                } else if (delta < 0) {
-                    // При уменьшении: валидируем и определяем новое количество пачек
-                    const packResult = validateSupplementPackReduction(quantity, oldQuantity, {
-                        supplementPacksAdded: oldPacks,
-                        packSize,
-                    });
-                    if (!packResult.valid) {
-                        throw new NotFoundError(packResult.error ?? 'Нельзя частично удалить пачку', 0);
-                    }
-                    newPacks = packResult.newPacks;
-                }
-            }
-
-            // Списываем/восстанавливаем остаток только при доборе
-            if (options?.isSupplement) {
-                if (delta !== 0 && purchaseItem.availableQty !== null) {
-                    const available = Number(purchaseItem.availableQty);
-                    // Используем точный расчёт по свободной части
-                    if (packSize && packSize > 0 && oldPacks > 0) {
-                        const stockDelta = calcSupplementStockChange(
-                            oldQuantity,
-                            quantity,
-                            oldPacks,
-                            newPacks,
-                            packSize,
-                        );
-                        if (stockDelta > 0) {
-                            // Списываем из остатка
-                            const decrement = Math.min(stockDelta, available);
-                            if (decrement < stockDelta) {
-                                throw new InsufficientStockError(available, quantity);
-                            }
-                            await tx.purchaseItem.update({
-                                where: { id: purchaseItemId },
-                                data: { availableQty: available - decrement },
-                            });
-                        } else if (stockDelta < 0) {
-                            // Восстанавливаем в остаток
-                            await tx.purchaseItem.update({
-                                where: { id: purchaseItemId },
-                                data: { availableQty: available + Math.abs(stockDelta) },
-                            });
-                        }
-                    } else if (delta > 0) {
-                        // Старая логика для случаев без защищённых пачек
-                        if (shouldDecrementSupplementStock(quantity, delta, available, packSize)) {
-                            const decrement = getSupplementStockDecrement(delta, available);
-                            if (decrement < delta) {
-                                throw new InsufficientStockError(available, quantity);
-                            }
-                            await tx.purchaseItem.update({
-                                where: { id: purchaseItemId },
-                                data: { availableQty: available - decrement },
-                            });
-                        }
-                    } else if (delta < 0) {
-                        await tx.purchaseItem.update({
-                            where: { id: purchaseItemId },
-                            data: { availableQty: available + Math.abs(delta) },
-                        });
-                    }
-                }
-            }
-
-            await ensurePurchaseOrder(tx, userId, purchaseItem.purchaseId);
-
-            return tx.orderLine.upsert({
-                where: { purchaseItemId_userId: { purchaseItemId, userId } },
-                update: { quantity, amountDue, supplementPacksAdded: newPacks },
-                create: { purchaseItemId, userId, quantity, amountDue, supplementPacksAdded: newPacks },
-                omit: { tgChatMessageId: true },
-            });
+    /**
+     * Удалить строку заказа.
+     */
+    async deleteOrderLine(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.deleteMany({
+            where: { purchaseItemId, userId },
         });
     }
 
-    async findById(id: number) {
+    /**
+     * Отменить заказ (soft delete).
+     */
+    async cancelOrder(id: number) {
+        return dbClient.orderLine.update({
+            where: { id },
+            data: { status: 'CANCELLED', quantity: 0, amountDue: 0 },
+        });
+    }
+
+    /**
+     * Hard delete для админа.
+     */
+    async delete(id: number) {
+        return dbClient.orderLine.delete({
+            where: { id },
+        });
+    }
+
+    // ── Queries ──────────────────────────────────────────────────────
+
+    findById(id: number) {
         return dbClient.orderLine.findUnique({
             where: { id },
-            include: { purchaseItem: { include: { purchase: { select: { status: true, fulfillmentStatus: true } } } } },
+            include: { purchaseItem: { include: { purchase: { select: { status: true } } } } },
         });
     }
 
@@ -154,60 +82,10 @@ export class OrderRepository {
         });
     }
 
-    async deleteAndRestoreStock(id: number, options?: { throwIfNotFound?: boolean; isSupplement?: boolean }) {
-        return dbClient.$transaction(async (tx) => {
-            const line = await tx.orderLine.findUnique({ where: { id } });
-            if (!line) {
-                if (options?.throwIfNotFound === false) return null;
-                throw new NotFoundError('Строка заказа', id);
-            }
-
-            if (options?.isSupplement) {
-                const purchaseItem = await tx.purchaseItem.findUnique({
-                    where: { id: line.purchaseItemId },
-                    include: { product: { select: { supplierPackageAmount: true } } },
-                });
-
-                if (purchaseItem?.availableQty !== null && purchaseItem) {
-                    const available = Number(purchaseItem.availableQty);
-                    const qty = Number(line.quantity);
-                    const packs = line.supplementPacksAdded;
-                    const packSize =
-                        purchaseItem.product.supplierPackageAmount != null
-                            ? Number(purchaseItem.product.supplierPackageAmount)
-                            : 0;
-                    // Восстанавливаем только свободную часть (без пачек)
-                    const freePortion = packSize > 0 ? qty - packs * packSize : qty;
-                    const restoreAmount = Math.max(0, freePortion);
-                    if (restoreAmount > 0) {
-                        await tx.purchaseItem.update({
-                            where: { id: line.purchaseItemId },
-                            data: { availableQty: available + restoreAmount },
-                        });
-                    }
-                }
-            }
-
-            const purchaseItem = await tx.purchaseItem.findUnique({
-                where: { id: line.purchaseItemId },
-                select: { purchaseId: true },
-            });
-
-            const deleted = await tx.orderLine.delete({
-                where: { id },
-                omit: { tgChatMessageId: true },
-            });
-
-            if (purchaseItem) {
-                await deletePurchaseOrderIfNoLines(tx, line.userId, purchaseItem.purchaseId);
-            }
-
-            return deleted;
+    findPurchaseOrder(userId: number, purchaseId: number) {
+        return dbClient.purchaseOrder.findUnique({
+            where: { userId_purchaseId: { userId, purchaseId } },
         });
-    }
-
-    async deletePurchaseOrder(userId: number, purchaseId: number) {
-        return dbClient.purchaseOrder.deleteMany({ where: { userId, purchaseId } });
     }
 
     findPurchaseOrdersByUser(userId: number) {
@@ -218,16 +96,53 @@ export class OrderRepository {
         return dbClient.purchaseOrder.findMany({ where: { purchaseId } });
     }
 
-    async getByUser(userId: number) {
+    findActiveOrdersByUserId(userId: number) {
         return dbClient.orderLine.findMany({
-            where: { userId },
-            omit: { tgChatMessageId: true },
+            where: {
+                userId,
+                status: 'ACTIVE',
+                purchaseItem: {
+                    purchase: { status: { in: ['ACTIVE'] } },
+                },
+            },
             include: {
                 purchaseItem: {
                     include: {
-                        product: { include: productWithAttributes },
+                        product: true,
                         purchase: {
-                            select: { id: true, tag: true, supplier: true, fulfillmentStatus: true, status: true },
+                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async findAllByUserId(userId: number) {
+        return dbClient.orderLine.findMany({
+            where: { userId },
+            include: {
+                purchaseItem: {
+                    include: {
+                        purchase: {
+                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async getByUser(userId: number) {
+        return dbClient.orderLine.findMany({
+            where: { userId, status: 'ACTIVE' },
+            include: {
+                purchaseItem: {
+                    include: {
+                        product: { include: productInclude },
+                        purchase: {
+                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
                         },
                     },
                 },
@@ -238,21 +153,13 @@ export class OrderRepository {
 
     async getByPurchase(purchaseId: number) {
         return dbClient.orderLine.findMany({
-            where: { purchaseItem: { purchaseId } },
-            omit: { tgChatMessageId: true },
+            where: { purchaseItem: { purchaseId }, status: 'ACTIVE' },
             include: {
                 user: { include: USER_CREDENTIALS_INCLUDE },
                 purchaseItem: {
-                    include: { product: { include: productWithAttributes } },
+                    include: { product: { include: productInclude } },
                 },
             },
-        });
-    }
-
-    async delete(id: number) {
-        return dbClient.orderLine.delete({
-            where: { id },
-            omit: { tgChatMessageId: true },
         });
     }
 
@@ -260,34 +167,68 @@ export class OrderRepository {
         return dbClient.orderLine.findMany({
             where: {
                 userId,
+                status: 'ACTIVE',
                 purchaseItem: { purchaseId },
             },
-            omit: { tgChatMessageId: true },
             include: {
                 purchaseItem: {
-                    include: { purchase: { select: { status: true, fulfillmentStatus: true } } },
+                    include: {
+                        product: true,
+                        purchase: {
+                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                        },
+                    },
                 },
             },
         });
     }
 
-    async findMessageIdsByUserAndPurchase(userId: number, purchaseId: number): Promise<bigint[]> {
-        const lines = await dbClient.orderLine.findMany({
+    async getByPurchaseItem(purchaseItemId: number) {
+        return dbClient.orderLine.findMany({
+            where: { purchaseItemId, status: 'ACTIVE' },
+            include: { user: true },
+        });
+    }
+
+    /**
+     * Удалить все заказы пользователя в закупке.
+     */
+    async deleteAllByUserAndPurchase(userId: number, purchaseId: number) {
+        return dbClient.orderLine.deleteMany({
             where: {
                 userId,
                 purchaseItem: { purchaseId },
-                tgChatMessageId: { not: null },
             },
-            select: { tgChatMessageId: true },
         });
-        return lines.map((l) => l.tgChatMessageId!);
     }
 
-    async getByPurchaseItem(purchaseItemId: number) {
-        return dbClient.orderLine.findMany({
-            where: { purchaseItemId },
-            omit: { tgChatMessageId: true },
-            include: { user: true },
-        });
+    /**
+     * Заморозить baseQuantity для всех строк закупки (при переходе COLLECTION → REORDER).
+     * Устанавливает baseQuantity = current quantity для всех ACTIVE строк.
+     */
+    async freezeBaseQuantities(purchaseId: number) {
+        return dbClient.$executeRaw`
+            UPDATE order_line
+            SET base_quantity = quantity
+            FROM purchase_item
+            WHERE order_line.purchase_item_id = purchase_item.id
+              AND purchase_item.purchase_id = ${purchaseId}
+              AND order_line.status = 'ACTIVE'
+              AND order_line.base_quantity IS NULL
+        `;
+    }
+
+    /**
+     * Разморозить baseQuantity при откате REORDER → COLLECTION.
+     */
+    async unfreezeBaseQuantities(purchaseId: number) {
+        return dbClient.$executeRaw`
+            UPDATE order_line
+            SET base_quantity = NULL
+            FROM purchase_item
+            WHERE order_line.purchase_item_id = purchase_item.id
+              AND purchase_item.purchase_id = ${purchaseId}
+              AND order_line.status = 'ACTIVE'
+        `;
     }
 }

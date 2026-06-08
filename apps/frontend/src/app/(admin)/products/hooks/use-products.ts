@@ -11,10 +11,6 @@ export function useProduct(id: number | null, enabled: boolean) {
     return trpc.products.getById.useQuery({ id: id! }, { enabled: !!id && enabled });
 }
 
-export function useUnits(enabled: boolean) {
-    return trpc.units.list.useQuery(undefined, { enabled });
-}
-
 export function useCreateProduct() {
     return trpc.products.create.useMutation();
 }

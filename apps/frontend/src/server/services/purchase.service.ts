@@ -1,16 +1,24 @@
-import { NotFoundError, ValidationError } from '@zakupki/types';
+import { NotFoundError, ValidationError, type PurchaseFulfillmentStatus } from '@zakupki/types';
 
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
+import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
 import { ProductRepository } from '../domain/product.repository';
 import { handleDbConflict } from '../lib/error-utils';
 import type { TelegramPublishService } from './telegram-publish.service';
+import {
+    canTransitionFulfillment,
+    isFreezePoint,
+    isUnfreezePoint,
+    FULFILLMENT_TRANSITIONS,
+} from '@zakupki/types';
 
 export class PurchaseService {
     constructor(
         private repo: PurchaseRepository,
         private productRepo: ProductRepository,
         private telegramPublish: TelegramPublishService,
+        private orderRepo: OrderRepository,
     ) {}
 
     async list(status?: string) {
@@ -52,7 +60,29 @@ export class PurchaseService {
     async updateFulfillmentStatus(id: number, fulfillmentStatus: string) {
         const purchase = await this.repo.getById(id);
         if (!purchase) throw new NotFoundError('Закупка', id);
-        return this.repo.updateFulfillmentStatus(id, fulfillmentStatus);
+        const current = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
+        const next = fulfillmentStatus as PurchaseFulfillmentStatus;
+
+        if (!canTransitionFulfillment(current, next)) {
+            const allowed = FULFILLMENT_TRANSITIONS[current] ?? [];
+            throw new ValidationError(
+                `Недопустимый переход: ${current} → ${next}. Разрешено: ${allowed.join(', ') || '(нет)'} `,
+            );
+        }
+
+        const result = await this.repo.updateFulfillmentStatus(id, next);
+
+        // Заморозка baseQuantity при COLLECTION → REORDER
+        if (isFreezePoint(next)) {
+            await this.orderRepo.freezeBaseQuantities(id);
+        }
+
+        // Разморозка при откате REORDER → COLLECTION
+        if (isUnfreezePoint(next)) {
+            await this.orderRepo.unfreezeBaseQuantities(id);
+        }
+
+        return result;
     }
 
     async activate(purchaseId: number) {
@@ -93,16 +123,16 @@ export class PurchaseService {
         return deleted;
     }
 
-    async toggleShouldPublish(purchaseItemId: number, value: boolean) {
+    async setPublicationState(purchaseItemId: number, state: 'DRAFT' | 'PUBLISHED') {
         const item = await this.repo.findItemWithPurchase(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
         if (item.tgMessageId) {
-            throw new ValidationError('Нельзя изменить флаг публикации для уже опубликованного товара');
+            throw new ValidationError('Нельзя изменить статус публикации для уже опубликованного товара');
         }
         if (item.purchase.status === 'DONE') {
-            throw new ValidationError('Нельзя изменить флаг публикации в завершённой закупке');
+            throw new ValidationError('Нельзя изменить статус публикации в завершённой закупке');
         }
-        return this.repo.toggleShouldPublish(purchaseItemId, value);
+        return this.repo.setPublicationState(purchaseItemId, state);
     }
 
     async ensureCanPublishItem(purchaseItemId: number) {
@@ -121,15 +151,27 @@ export class PurchaseService {
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
     }
 
-    async updateItemProduct(purchaseItemId: number, productData: Record<string, unknown>) {
+    async updateItemProduct(purchaseItemId: number, productData: Record<string, unknown>, priceOverride: number | null) {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
-        await this.productRepo.update(item.productId, productData as any);
+        // Write price override to PurchaseItem (per-purchase pricing)
+        // Don't write pricePerUnit to the shared product — use priceOverride on the item
+        const { pricePerUnit, ...nonPriceFields } = productData as Record<string, unknown>;
+        void pricePerUnit; // consumed via priceOverride below
+
+        // Update product fields (description, packaging, etc.) but NOT pricePerUnit
+        if (Object.keys(nonPriceFields).length > 0) {
+            await this.productRepo.update(item.productId, nonPriceFields as any);
+        }
+
+        // Set or clear price override on the purchase item
+        await this.repo.updatePurchaseItemPriceOverride(purchaseItemId, priceOverride);
+
         return item;
     }
 
-    async addItems(purchaseId: number, productIds: number[], shouldPublish = false) {
+    async addItems(purchaseId: number, productIds: number[]) {
         const purchase = await this.repo.getById(purchaseId);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status === 'DONE') {
@@ -147,7 +189,7 @@ export class PurchaseService {
 
         const items = [];
         for (const productId of newProductIds) {
-            const item = await this.repo.addItem(purchaseId, productId, shouldPublish);
+            const item = await this.repo.addItem(purchaseId, productId);
             items.push(item);
         }
         return { items, skippedCount: uniqueIds.length - newProductIds.length };
@@ -164,7 +206,7 @@ export class PurchaseService {
         return this.repo.removeItem(id);
     }
 
-    async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; availableQty: number | null }[]) {
+    async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; targetRemainder: number | null }[]) {
         return this.repo.setAvailableQuantities(purchaseId, items);
     }
 

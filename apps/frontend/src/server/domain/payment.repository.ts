@@ -12,7 +12,6 @@ export class PaymentRepository {
         amount: number;
         userComment?: string;
         proofObjectKey?: string;
-        proofMimeType?: string;
         promoCodeId?: number;
         discountAmount?: number;
     }) {
@@ -41,7 +40,6 @@ export class PaymentRepository {
                     amount: data.amount,
                     userComment: data.userComment,
                     proofObjectKey: data.proofObjectKey,
-                    proofMimeType: data.proofMimeType,
                 },
             });
 
@@ -72,7 +70,7 @@ export class PaymentRepository {
         return dbClient.payment.findMany({
             where: { purchaseId, parentId: null },
             include: { user: true, children: { include: { promoCode: true } } },
-            orderBy: { paidAt: 'desc' },
+            orderBy: { submittedAt: 'desc' },
         });
     }
 
@@ -80,7 +78,18 @@ export class PaymentRepository {
         return dbClient.payment.findMany({
             where: { userId, parentId: null },
             include: { purchase: true, children: { include: { promoCode: true } } },
-            orderBy: { paidAt: 'desc' },
+            orderBy: { submittedAt: 'desc' },
+        });
+    }
+
+    findAllByUserId(userId: number) {
+        return dbClient.payment.findMany({
+            where: { userId, parentId: null },
+            include: {
+                purchase: { select: { id: true, tag: true } },
+                children: true,
+            },
+            orderBy: { submittedAt: 'desc' },
         });
     }
 
@@ -113,8 +122,7 @@ export class PaymentRepository {
         data: {
             amount?: number;
             userComment?: string;
-            proofData?: Buffer;
-            proofMimeType?: string;
+            proofObjectKey?: string;
             status?: string;
             adminNote?: string | null;
         },
@@ -122,8 +130,7 @@ export class PaymentRepository {
         const updateData: Record<string, unknown> = {};
         if (data.amount !== undefined) updateData.amount = data.amount;
         if (data.userComment !== undefined) updateData.userComment = data.userComment;
-        if (data.proofData !== undefined) updateData.proofData = new Uint8Array(data.proofData);
-        if (data.proofMimeType !== undefined) updateData.proofMimeType = data.proofMimeType;
+        if (data.proofObjectKey !== undefined) updateData.proofObjectKey = data.proofObjectKey;
         if (data.status !== undefined) updateData.status = data.status;
         if (data.adminNote !== undefined) updateData.adminNote = data.adminNote;
 

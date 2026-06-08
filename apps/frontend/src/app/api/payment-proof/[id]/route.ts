@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const payment = await dbClient.payment.findUnique({
         where: { id: paymentId },
-        select: { userId: true, proofData: true, proofObjectKey: true, proofMimeType: true },
+        select: { userId: true, proofObjectKey: true },
     });
 
     if (!payment) {
@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
                 const data = await fs.readFile(resolveLocalFilePath(payment.proofObjectKey));
                 return new Response(data, {
                     headers: {
-                        'Content-Type': payment.proofMimeType ?? 'image/jpeg',
+                        'Content-Type': 'image/jpeg',
                         'Cache-Control': 'public, max-age=31536000, immutable',
                     },
                 });
@@ -51,15 +51,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         }
 
         return NextResponse.redirect(`${getPublicUrlPrefix()}/${payment.proofObjectKey}`, 307);
-    }
-
-    if (payment.proofData) {
-        return new Response(new Uint8Array(payment.proofData), {
-            headers: {
-                'Content-Type': payment.proofMimeType ?? 'image/jpeg',
-                'Cache-Control': 'public, max-age=31536000, immutable',
-            },
-        });
     }
 
     return NextResponse.json({ error: 'Not found' }, { status: 404 });

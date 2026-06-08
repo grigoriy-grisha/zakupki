@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
@@ -9,12 +8,14 @@ import {
     calculateOrderAmount,
     countFullSupplierPacks,
     formatMinPackageHint,
-    formatSupplementCardPreviewHint,
-    formatSupplementPhotoRemainderBadge,
     getPackDiscountPricingInfo,
+    getUnitByCode,
+    buildOrderQtyOptions,
+    getOrderQuantityStep,
+    type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
 import { buildShopOrderQuantityContext } from '@/app/shop/lib/order-quantity';
-import { ShoppingCart, Minus, Plus, Loader2 } from 'lucide-react';
+import { ShoppingCart, Minus, Plus } from 'lucide-react';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
@@ -25,15 +26,18 @@ interface ShopPurchaseItemProductCardProps {
         id: number;
         purchaseItemId?: number;
         priceOverride: string | null;
-        availableQty: string | number | null;
+        targetRemainder: string | number | null;
         minQty: string | number | null;
-        orderLines?: { quantity: unknown }[];
+        /** Текущее количество этого пользователя */
+        quantity: number;
+        orderLines?: { quantity: unknown; userId: number; baseQuantity: unknown; status?: string | null }[];
         product: ProductLabelSource & {
             pricePerUnit: string | number;
             supplierPackageAmount?: string | number | null;
             supplierPackageUnit?: string | null;
             supplierPackagePrice?: string | number | null;
-            unit: { shortName: string; multiplicity: string | number } | null;
+            unitCode: string;
+            multiplicity: string | number;
             minPackageAmount: string | number | null;
             minPackageUnit: string | null;
             photos: { id: number }[];
@@ -41,9 +45,9 @@ interface ShopPurchaseItemProductCardProps {
     };
     purchaseId: number;
     packDiscountPercent: number;
-    currentQuantity?: number;
+    /** baseQuantity — замороженный снимок при входе в SUPPLEMENT */
+    baseQuantity?: number | null;
     isSupplement: boolean;
-    fulfillmentStatus?: string | null;
     onOrderChange?: () => void;
 }
 
@@ -51,67 +55,62 @@ export function ProductCard({
     item,
     purchaseId,
     packDiscountPercent,
-    currentQuantity = 0,
+    baseQuantity: baseQuantityProp,
     isSupplement,
-    fulfillmentStatus,
-    supplementPacksAdded: supplementPacksAddedProp,
     onOrderChange,
-}: ShopPurchaseItemProductCardProps & { supplementPacksAdded?: number }) {
+}: ShopPurchaseItemProductCardProps) {
     const utils = trpc.useUtils();
     const purchaseItemId = item.purchaseItemId ?? item.id;
     const product = item.product;
-    const unit = product.unit;
+    const unit = getUnitByCode(product.unitCode);
     const shortName = unit?.shortName ?? 'ед.';
-    const multiplicity = unit ? Number(unit.multiplicity) : 1;
+    const multiplicity = Number(product.multiplicity) || 1;
     const price = Number(item.priceOverride ?? product.pricePerUnit);
 
     const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product.minPackageUnit ?? null;
     const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
 
-    const orderQtyOptions = {
+    const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
         minPackageAmount,
         minPackageUnit,
         purchaseItemMinQty: item.minQty != null ? Number(item.minQty) : null,
         unitShort: shortName,
-    };
+    });
+
+    const baseQuantity = baseQuantityProp ?? 0;
+    const currentQuantity = item.quantity ?? 0;
+    const minPackaging = getOrderQuantityStep(orderQtyOptions);
+
+    // Только ACTIVE строки (исключаем CANCELLED)
+    const activeLines = (item.orderLines ?? []).filter((line) => line.status !== 'CANCELLED');
+    // Сумма baseQuantity ДРУГИХ пользователей (для pool расчёта)
+    const sumOtherBaseQuantities = activeLines.reduce(
+        (acc, line) => acc + Number(line.baseQuantity ?? 0),
+        0,
+    );
+    const totalOrderedQuantity = activeLines.reduce(
+        (acc, line) => acc + Number(line.quantity ?? 0),
+        0,
+    );
+
     const qtyCtx = buildShopOrderQuantityContext({
         isSupplement,
-        fulfillmentStatus,
-        orderQtyOptions,
+        baseQuantity,
         currentQuantity,
-        availableQty: item.availableQty != null ? Number(item.availableQty) : null,
+        availableRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
         packSize,
-        orderLines: item.orderLines,
-        supplementPacksAdded: supplementPacksAddedProp,
+        sumOtherRemainders: sumOtherBaseQuantities,
+        totalOrderedQuantity,
+        orderQtyOptions,
     });
-    const {
-        uiStep,
-        effectiveMinQty,
-        snap,
-        isValid,
-        supplementBounds,
-        supplementOnlyPacks,
-        supplementPacksAllowed,
-        canRemoveStep,
-        canRemovePack,
-    } = qtyCtx;
 
-    const [quantity, setQuantity] = useState(currentQuantity);
-    const [isFlying, setIsFlying] = useState(false);
-
-    useEffect(() => {
-        setQuantity(currentQuantity);
-    }, [currentQuantity]);
-
-    const isSoldOut = item.availableQty !== null && item.availableQty !== undefined && Number(item.availableQty) <= 0;
     const hasOrder = currentQuantity > 0;
     const photo = product.photos?.[0];
 
-    const deleteMutation = trpc.orders.deleteOrder.useMutation({
+    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
         onSuccess: () => {
-            setQuantity(0);
             void utils.orders.getMyOrders.invalidate();
             void utils.purchases.getById.invalidate({ id: purchaseId });
             onOrderChange?.();
@@ -119,17 +118,7 @@ export function ProductCard({
         onError: (err) => toast.error(err.message),
     });
 
-    const upsertMutation = trpc.orders.upsertOrder.useMutation({
-        onSuccess: (_data, variables) => {
-            setQuantity(variables.quantity);
-            void utils.orders.getMyOrders.invalidate();
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            onOrderChange?.();
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
-    const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
+    const orderBusy = adjustMutation.isPending;
 
     const pricingOptions = {
         priceTiers: (product as { priceTiers?: unknown }).priceTiers,
@@ -140,55 +129,36 @@ export function ProductCard({
         supplierPackagePrice: product.supplierPackagePrice,
         packDiscountPercent,
     };
-
-    const total = calculateOrderAmount(quantity, pricingOptions);
+    const total = calculateOrderAmount(currentQuantity, pricingOptions);
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
-    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
+    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
-    function submit(qty: number) {
-        if (qty < effectiveMinQty) {
-            if (hasOrder) {
-                const line = utils.orders.getMyOrders
-                    .getData()
-                    ?.find((o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId);
-                if (line) {
-                    deleteMutation.mutate({ id: line.id });
-                }
-            } else {
-                setQuantity(0);
-            }
-            return;
+    // Available pool info
+    const availablePool = qtyCtx.availablePool;
+    const poolExhausted = isSupplement && availablePool != null && availablePool <= 1e-9;
+    const isSoldOut = poolExhausted && !hasOrder;
+
+    function handleAdd() {
+        if (orderBusy || (availablePool != null && currentQuantity + minPackaging > availablePool + baseQuantity)) return;
+        adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
+    }
+
+    function handleRemove() {
+        if (orderBusy || currentQuantity <= 0) return;
+        if (currentQuantity <= minPackaging) {
+            // Remove order completely
+            adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
+        } else {
+            adjustMutation.mutate({ purchaseItemId, delta: -minPackaging });
         }
-        if (!isValid(qty)) return;
-        setQuantity(qty);
-        setIsFlying(true);
-        upsertMutation.mutate(
-            { purchaseItemId, quantity: qty },
-            { onSettled: () => setTimeout(() => setIsFlying(false), 400) },
-        );
     }
 
-    function handleAdd(step: number) {
-        if (orderBusy) return;
-        submit(snap(quantity + step));
-    }
+    const canAdd = !orderBusy && (availablePool == null || currentQuantity + minPackaging <= availablePool + baseQuantity);
 
-    function handleRemove(step: number) {
-        if (orderBusy) return;
-        const next = quantity - step;
-        if (next < effectiveMinQty) {
-            const line = utils.orders.getMyOrders
-                .getData()
-                ?.find((o: { purchaseItemId: number; id: number }) => o.purchaseItemId === purchaseItemId);
-            if (line) {
-                deleteMutation.mutate({ id: line.id });
-            } else {
-                setQuantity(0);
-            }
-            return;
-        }
-        submit(snap(next));
-    }
+    const freeRemainderLabel =
+        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
+            ? `Можно докинуть: ${availablePool} ${shortName}`
+            : null;
 
     return (
         <Card
@@ -200,43 +170,22 @@ export function ProductCard({
                 !isSoldOut && 'hover:shadow-md',
             )}
             onClick={() => {
-                // Navigate to detail page
                 window.location.href = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
             }}
             role="link"
             style={{ cursor: 'pointer' }}
         >
-            {/* Flying animation */}
-            {isFlying && (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                    <div className="animate-bounce rounded-full bg-primary p-2 text-primary-foreground shadow-lg">
-                        <ShoppingCart className="h-5 w-5" />
-                    </div>
-                </div>
-            )}
-
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                 <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
-                {isSupplement &&
-                    supplementBounds &&
-                    (() => {
-                        const remainderBadge = formatSupplementPhotoRemainderBadge(supplementBounds, orderQtyOptions);
-                        if (!remainderBadge) return null;
-                        return (
-                            <div className="pointer-events-none absolute bottom-1.5 left-1.5 right-1.5 z-[1]">
-                                <div className="truncate rounded-md bg-warning-50 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-tight text-warning shadow-sm">
-                                    {remainderBadge}
-                                </div>
-                            </div>
-                        );
-                    })()}
                 {hasOrder && !isSoldOut && (
                     <>
                         <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
                             В корзине
                         </div>
                         <div className="pointer-events-none absolute top-1.5 right-1.5 z-[1] flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 text-primary-foreground shadow-sm">
-                            <span className="text-[11px] font-bold leading-none tabular-nums">{quantity}</span>
+                            <span className="text-[11px] font-bold leading-none tabular-nums">
+                                {currentQuantity}
+                            </span>
                         </div>
                     </>
                 )}
@@ -256,20 +205,16 @@ export function ProductCard({
                             minPackageUnit,
                             unitShort: shortName,
                         });
-                        const supplementHint =
-                            isSupplement && supplementBounds
-                                ? formatSupplementCardPreviewHint(supplementBounds, orderQtyOptions, {
-                                      soldOut: isSoldOut && !hasOrder,
-                                  })
-                                : null;
-                        if (!catalogMinHint && !supplementHint) return null;
+                        if (!catalogMinHint && !freeRemainderLabel) return null;
                         return (
                             <div className="mt-0.5 space-y-0.5">
                                 {catalogMinHint ? (
                                     <p className="truncate text-xs text-muted-foreground">{catalogMinHint}</p>
                                 ) : null}
-                                {supplementHint ? (
-                                    <p className="truncate text-xs text-warning">{supplementHint}</p>
+                                {freeRemainderLabel ? (
+                                    <p className="truncate text-xs font-medium text-warning">
+                                        {freeRemainderLabel}
+                                    </p>
                                 ) : null}
                             </div>
                         );
@@ -290,7 +235,7 @@ export function ProductCard({
                             {hasOrder && (
                                 <>
                                     <span className="text-sm text-muted-foreground">
-                                        {quantity} {shortName} ·{' '}
+                                        {currentQuantity} {shortName} ·{' '}
                                         <span className="font-semibold text-foreground">
                                             {total.toLocaleString('ru-RU')} ₽
                                         </span>
@@ -308,56 +253,29 @@ export function ProductCard({
                             )}
                         </div>
 
+                        {/* ±мин.фасовка */}
                         <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            {/* - min package */}
                             <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={orderBusy || !hasOrder || (isSupplement && !canRemoveStep)}
-                                onClick={() => handleRemove(uiStep)}
+                                disabled={orderBusy || currentQuantity <= 0}
+                                onClick={handleRemove}
                             >
                                 <Minus className="mr-1 h-3 w-3" />
-                                {uiStep} {shortName}
+                                −{minPackaging} {shortName}
                             </Button>
-
-                            {/* + min package */}
                             <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={orderBusy || supplementOnlyPacks}
-                                onClick={() => handleAdd(uiStep)}
+                                disabled={!canAdd}
+                                onClick={handleAdd}
                             >
                                 <Plus className="mr-1 h-3 w-3" />
-                                {uiStep} {shortName}
+                                +{minPackaging} {shortName}
                             </Button>
                         </div>
-
-                        {/* Pack buttons */}
-                        {packSize != null && supplementPacksAllowed && (
-                            <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                {/* - pack */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-9 flex-1 text-[11px]"
-                                    disabled={orderBusy || (isSupplement ? !canRemovePack : quantity < packSize)}
-                                    onClick={() => handleRemove(packSize)}
-                                >
-                                    −Пачка ({packSize} {shortName})
-                                </Button>
-                                {/* + pack */}
-                                <Button
-                                    size="sm"
-                                    className="h-9 flex-1 text-[11px]"
-                                    disabled={orderBusy}
-                                    onClick={() => handleAdd(packSize)}
-                                >
-                                    +Пачка ({packSize} {shortName})
-                                </Button>
-                            </div>
-                        )}
                     </div>
                 )}
             </CardContent>

@@ -22,6 +22,7 @@ import {
     PURCHASE_STATUS_LABELS,
     isPurchaseCompleted,
     isPurchasePaymentOpen,
+    getUnitByCode,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
@@ -35,7 +36,7 @@ type MyOrderLine = {
     purchaseItem?: {
         product?: ProductLabelSource & {
             photos: { id: number }[];
-            unit: { shortName: string } | null;
+            unitCode: string;
         };
         purchase?: {
             id: number;
@@ -165,7 +166,7 @@ function PurchaseOrderCard({
             <CardContent className="space-y-0">
                 {group.orders.map((order, idx) => {
                     const product = order.purchaseItem?.product;
-                    const shortName = product?.unit?.shortName ?? '';
+                    const shortName = product?.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? '' : '';
                     const photo = product?.photos?.[0];
                     const qty = Number(order.quantity);
                     const amount = Number(order.amountDue);
@@ -298,7 +299,7 @@ export default function OrdersPage() {
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
 
     const { activeGroups, pastGroups } = useMemo(() => {
-        const all = groupOrdersByPurchase((myOrders ?? []) as MyOrderLine[]);
+        const all = groupOrdersByPurchase((myOrders ?? []) as unknown as MyOrderLine[]);
         return {
             activeGroups: all.filter((g) => !isPurchaseCompleted(g.status)),
             pastGroups: all.filter((g) => isPurchaseCompleted(g.status)),

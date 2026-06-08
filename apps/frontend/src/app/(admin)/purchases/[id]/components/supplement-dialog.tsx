@@ -34,8 +34,8 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
             const map: Record<number, string> = {};
             for (const item of supplementItems) {
                 map[item.id] =
-                    item.availableQty !== null && item.availableQty !== undefined
-                        ? String(Number(item.availableQty))
+                    item.targetRemainder !== null && item.targetRemainder !== undefined
+                        ? String(Number(item.targetRemainder))
                         : '';
             }
             setQuantities(map);
@@ -57,7 +57,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
             const val = quantities[item.id];
             return {
                 purchaseItemId: item.id,
-                availableQty: val === '' ? null : Number(val),
+                targetRemainder: val === '' ? null : Number(val),
             };
         });
         mutation.mutate({ purchaseId, items });
@@ -71,7 +71,9 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                 <DialogHeader>
                     <DialogTitle>Остатки для добора</DialogTitle>
                     <DialogDescription>
-                        Укажите свободный остаток по каждому товару. Оставьте пустым если без ограничения.
+                        Укажите target-остаток для добора по каждому товару — сколько грамм/штук суммарно
+                        смогут заказать участники на этом этапе. Оставьте пустым, если без ограничения.
+                        Остаток пересчитывается автоматически по мере заказов.
                     </DialogDescription>
                 </DialogHeader>
 

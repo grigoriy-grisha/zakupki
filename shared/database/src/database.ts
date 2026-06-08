@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { config } from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, PaymentStatus, PromoType, PurchaseFulfillmentStatus, PurchaseStatus, RoleKind } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,12 +12,19 @@ for (const envPath of [path.join(__dirname, '../.env'), path.join(process.cwd(),
     if (existsSync(envPath)) config({ path: envPath });
 }
 
-import { Prisma } from '@prisma/client';
-
-export * from '@prisma/client';
-export { Prisma };
+// Prisma 7: Prisma-классы (PrismaClientKnownRequestError, JsonNull, …) и TransactionClient
+// живут внутри `Prisma` namespace. Экспортируем их под теми же именами через re-export
+// из namespace, чтобы остальной код продолжал импортировать их плоско из `@zakupki/database`.
+export { Prisma, PrismaClient, PurchaseStatus, PurchaseFulfillmentStatus, PaymentStatus, PromoType, RoleKind };
+export const {
+    PrismaClientKnownRequestError,
+    PrismaClientUnknownRequestError,
+    PrismaClientValidationError,
+    JsonNull,
+    DbNull,
+    AnyNull,
+} = Prisma;
 export type TransactionClient = Prisma.TransactionClient;
-export { ensurePurchaseOrder, deletePurchaseOrderIfNoLines } from './purchase-order';
 
 const globalForPrisma = globalThis as unknown as { db?: PrismaClient };
 

@@ -1,1 +1,0 @@
-ALTER TABLE "ProductAttribute" ADD COLUMN "showInTitle" BOOLEAN NOT NULL DEFAULT true;

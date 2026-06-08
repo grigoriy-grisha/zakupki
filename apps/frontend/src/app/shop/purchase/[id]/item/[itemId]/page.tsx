@@ -1,28 +1,24 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, ShoppingCart, Minus, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Minus, Plus } from 'lucide-react';
 import {
-    DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT,
-    PURCHASE_FULFILLMENT_LABELS,
     calculateOrderAmount,
     countFullSupplierPacks,
     formatMinPackageHint,
-    formatSupplementCardPreviewHint,
-    formatSupplementPhotoRemainderBadge,
     getPackDiscountPricingInfo,
-    type PurchaseFulfillmentStatus,
+    buildOrderQtyOptions,
+    getOrderQuantityStep,
 } from '@zakupki/types';
-import { buildShopOrderQuantityContext } from '@/app/shop/lib/order-quantity';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { ProductPricePanel } from '@/app/shop/components/product-price-panel';
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { toast } from 'sonner';
 import {
     buildShopItemDescriptionRows,
@@ -38,15 +34,13 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
-    const { data: pricingSettings } = trpc.appSettings.getPricing.useQuery();
     const { data: myOrders } = trpc.orders.getMyOrders.useQuery();
-    const packDiscountPercent =
-        pricingSettings?.beadPackPriceDiscountPercent ?? DEFAULT_BEAD_PACK_PRICE_DISCOUNT_PERCENT;
+    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
 
     const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
     const existingOrder = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
-    const currentQty = existingOrder ? Number(existingOrder.quantity) : 0;
-    const existingPacksAdded = existingOrder?.supplementPacksAdded ?? 0;
+    const currentQuantity = existingOrder ? Number(existingOrder.quantity ?? 0) : 0;
+    const baseQuantity = existingOrder?.baseQuantity != null ? Number(existingOrder.baseQuantity) : 0;
 
     const product = item?.product as
         | (ProductLabelSource & {
@@ -70,17 +64,17 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product?.minPackageUnit ?? null;
     const isSupplement = purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
+    const minPackaging = getOrderQuantityStep(
+        buildOrderQtyOptions({ multiplicity, minPackageAmount, minPackageUnit }),
+    );
 
-    const orderQtyOptions = {
+    const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
         minPackageAmount,
         minPackageUnit,
-        purchaseItemMinQty: item?.minQty != null ? Number(item.minQty) : null,
+        purchaseItemMinQty: null,
         unitShort: shortName,
-    };
-
-    const [quantity, setQuantity] = useState(0);
-    const [isFlying, setIsFlying] = useState(false);
+    });
 
     const pricingOptions = product
         ? {
@@ -94,93 +88,68 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
           }
         : null;
 
-    const total = pricingOptions ? calculateOrderAmount(quantity, pricingOptions) : 0;
+    const total = pricingOptions ? calculateOrderAmount(currentQuantity, pricingOptions) : 0;
     const packDiscountInfo = product ? getPackDiscountPricingInfo(product, packDiscountPercent) : null;
-    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(quantity, packDiscountInfo.packSize) : 0;
+    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
-    const deleteMutation = trpc.orders.deleteOrder.useMutation({
+    // Pool расчёт
+    const activeLines = (item?.orderLines ?? []).filter((line: any) => line.status !== 'CANCELLED');
+    const sumOtherBaseQuantities = activeLines
+        .filter((line: any) => line.userId !== (existingOrder as any)?.userId)
+        .reduce((acc: number, line: any) => acc + Number(line.baseQuantity ?? 0), 0);
+    const totalOrderedQuantity = activeLines.reduce(
+        (acc: number, line: any) => acc + Number(line.quantity ?? 0),
+        0,
+    );
+    const rawAvailable = item?.targetRemainder == null ? null : Number(item.targetRemainder);
+    const availablePool = isSupplement
+        ? (() => {
+              const pool = (item: any) => {
+                  if (rawAvailable != null) {
+                      const claimed = Math.max(0, sumOtherBaseQuantities);
+                      return Math.max(0, rawAvailable - claimed);
+                  }
+                  if (packSize == null || packSize <= 0) return null;
+                  const packsNeeded = Math.max(1, Math.ceil(totalOrderedQuantity / packSize - 1e-9));
+                  const p = Math.max(0, packsNeeded * packSize - totalOrderedQuantity);
+                  return Math.max(0, p - Math.max(0, sumOtherBaseQuantities));
+              };
+              return pool(item);
+          })()
+        : null;
+
+    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
         onSuccess: () => {
-            setQuantity(0);
             void utils.orders.getMyOrders.invalidate();
             void utils.purchases.getById.invalidate({ id: purchaseId });
         },
         onError: (err) => toast.error(err.message),
     });
 
-    const upsertMutation = trpc.orders.upsertOrder.useMutation({
-        onSuccess: (_data, variables) => {
-            setQuantity(variables.quantity);
-            void utils.orders.getMyOrders.invalidate();
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    function handleAdd() {
+        if (adjustMutation.isPending) return;
+        const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
+        if (currentQuantity + minPackaging > maxAllowed) return;
+        adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
+    }
 
-    useEffect(() => {
-        setQuantity(currentQty);
-    }, [currentQty, purchaseItemId]);
-
-    const qtyCtx = buildShopOrderQuantityContext({
-        isSupplement: Boolean(isSupplement),
-        fulfillmentStatus: purchase?.fulfillmentStatus,
-        orderQtyOptions,
-        currentQuantity: currentQty,
-        availableQty: item?.availableQty != null ? Number(item.availableQty) : null,
-        packSize,
-        orderLines: (item as { orderLines?: { quantity: unknown }[] } | undefined)?.orderLines,
-        supplementPacksAdded: existingPacksAdded,
-    });
-    const {
-        uiStep,
-        effectiveMinQty,
-        snap,
-        isValid,
-        supplementBounds,
-        supplementOnlyPacks,
-        supplementPacksAllowed,
-        canRemoveStep,
-        canRemovePack,
-        packProtection,
-    } = qtyCtx;
-
-    const orderBusy = upsertMutation.isPending || deleteMutation.isPending;
-
-    function submit(qty: number) {
-        if (qty < effectiveMinQty) {
-            if (existingOrder) {
-                deleteMutation.mutate({ id: existingOrder.id });
-            } else {
-                setQuantity(0);
-            }
-            return;
+    function handleRemove() {
+        if (adjustMutation.isPending || currentQuantity <= 0) return;
+        if (currentQuantity <= minPackaging) {
+            adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
+        } else {
+            adjustMutation.mutate({ purchaseItemId, delta: -minPackaging });
         }
-        if (!isValid(qty)) return;
-        setQuantity(qty);
-        setIsFlying(true);
-        upsertMutation.mutate(
-            { purchaseItemId, quantity: qty },
-            { onSettled: () => setTimeout(() => setIsFlying(false), 400) },
-        );
     }
 
-    function handleAdd(step: number) {
-        if (orderBusy) return;
-        submit(snap(quantity + step));
-    }
+    const canAdd =
+        !adjustMutation.isPending &&
+        (availablePool == null || currentQuantity + minPackaging <= availablePool + baseQuantity);
 
-    function handleRemove(step: number) {
-        if (orderBusy) return;
-        const next = quantity - step;
-        if (next < effectiveMinQty) {
-            if (existingOrder) {
-                deleteMutation.mutate({ id: existingOrder.id });
-            } else {
-                setQuantity(0);
-            }
-            return;
-        }
-        submit(snap(next));
-    }
+    const freeRemainderLabel =
+        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
+            ? `Доступно ещё: ${availablePool} ${shortName}`
+            : null;
 
     if (isLoading) {
         return (
@@ -211,9 +180,6 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         );
     }
 
-    const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
-    const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
-
     return (
         <div className="space-y-6">
             {/* Back button */}
@@ -233,18 +199,11 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                         minPackageUnit,
                         unitShort: shortName,
                     });
-                    const isItemSoldOut = item.availableQty != null && Number(item.availableQty) <= 0;
-                    const supplementHint =
-                        isSupplement && supplementBounds
-                            ? formatSupplementCardPreviewHint(supplementBounds, orderQtyOptions, {
-                                  soldOut: isItemSoldOut && quantity <= 0,
-                              })
-                            : null;
-                    if (!catalogMinHint && !supplementHint) return null;
+                    if (!catalogMinHint && !freeRemainderLabel) return null;
                     return (
                         <div className="mt-1 space-y-0.5">
                             {catalogMinHint ? <p className="text-sm text-muted-foreground">{catalogMinHint}</p> : null}
-                            {supplementHint ? <p className="text-sm text-warning">{supplementHint}</p> : null}
+                            {freeRemainderLabel ? <p className="text-sm text-warning">{freeRemainderLabel}</p> : null}
                         </div>
                     );
                 })()}
@@ -264,29 +223,6 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                     ) : (
                         <div className="flex h-full items-center justify-center">
                             <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
-                        </div>
-                    )}
-                    {isSupplement &&
-                        supplementBounds &&
-                        (() => {
-                            const remainderBadge = formatSupplementPhotoRemainderBadge(
-                                supplementBounds,
-                                orderQtyOptions,
-                            );
-                            if (!remainderBadge) return null;
-                            return (
-                                <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-[1]">
-                                    <div className="rounded-md bg-warning-50 px-2 py-1 text-center text-xs font-semibold text-warning shadow-sm">
-                                        {remainderBadge}
-                                    </div>
-                                </div>
-                            );
-                        })()}
-                    {isFlying && (
-                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
-                            <div className="animate-bounce rounded-full bg-primary p-3 text-primary-foreground shadow-lg">
-                                <ShoppingCart className="h-6 w-6" />
-                            </div>
                         </div>
                     )}
                 </div>
@@ -333,14 +269,14 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                 {/* Current quantity */}
                                 <div className="text-center">
                                     <span className="text-4xl font-bold tabular-nums">
-                                        {quantity % 1 === 0 ? quantity : quantity.toFixed(3).replace(/\.?0+$/, '')}
+                                        {currentQuantity % 1 === 0 ? currentQuantity : currentQuantity.toFixed(3).replace(/\.?0+$/, '')}
                                     </span>
                                     <span className="ml-2 text-lg text-muted-foreground">{shortName}</span>
                                     <p
                                         className={`mt-1 min-h-7 text-lg font-semibold tabular-nums ${
-                                            quantity > 0 ? 'text-foreground' : 'text-transparent'
+                                            currentQuantity > 0 ? 'text-foreground' : 'text-transparent'
                                         }`}
-                                        aria-hidden={quantity <= 0}
+                                        aria-hidden={currentQuantity <= 0}
                                     >
                                         {total.toLocaleString('ru-RU')} ₽
                                     </p>
@@ -353,62 +289,32 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                         >
                                             {fullPacks > 0
                                                 ? `Скидка за ${fullPacks} ${fullPacks === 1 ? 'целую пачку' : 'целые пачки'}`
-                                                : '\u00a0'}
+                                                : ' '}
                                         </p>
                                     )}
                                 </div>
 
-                                {isSupplement && packProtection && packProtection.supplementPacksAdded > 0 && (
-                                    <div className="rounded-lg bg-warning-50 p-2.5 text-center text-sm text-warning">
-                                        Защищённые пачки: {packProtection.supplementPacksAdded} x{' '}
-                                        {packProtection.packSize} {shortName} (убрать только целиком)
-                                    </div>
-                                )}
-
-                                {/* Min package buttons */}
+                                {/* ±мин.фасовка */}
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={orderBusy || quantity <= 0 || (isSupplement && !canRemoveStep)}
-                                        onClick={() => handleRemove(uiStep)}
+                                        disabled={adjustMutation.isPending || currentQuantity <= 0}
+                                        onClick={handleRemove}
                                     >
                                         <Minus className="mr-1 h-4 w-4" />
-                                        {uiStep} {shortName}
+                                        −{minPackaging} {shortName}
                                     </Button>
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={orderBusy || supplementOnlyPacks}
-                                        onClick={() => handleAdd(uiStep)}
+                                        disabled={!canAdd}
+                                        onClick={handleAdd}
                                     >
                                         <Plus className="mr-1 h-4 w-4" />
-                                        {uiStep} {shortName}
+                                        +{minPackaging} {shortName}
                                     </Button>
                                 </div>
-
-                                {/* Pack buttons */}
-                                {packSize != null && supplementPacksAllowed && (
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            disabled={
-                                                orderBusy || (isSupplement ? !canRemovePack : quantity < packSize)
-                                            }
-                                            onClick={() => handleRemove(packSize)}
-                                        >
-                                            −Пачка ({packSize} {shortName})
-                                        </Button>
-                                        <Button
-                                            className="flex-1"
-                                            disabled={orderBusy}
-                                            onClick={() => handleAdd(packSize)}
-                                        >
-                                            +Пачка ({packSize} {shortName})
-                                        </Button>
-                                    </div>
-                                )}
                             </CardContent>
                         </Card>
                     </div>

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/client/trpc';
-import { getMinOrderQuantity, getOrderQuantityStep, snapOrderQuantity } from '@zakupki/types';
+import { getOrderQuantityStep, buildOrderQtyOptions } from '@zakupki/types';
 
 type CartLineQuantityControlsProps = {
     orderId: number;
@@ -32,15 +32,14 @@ export function CartLineQuantityControls({
 }: CartLineQuantityControlsProps) {
     const utils = trpc.useUtils();
 
-    const orderQtyOptions = {
+    const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
         minPackageAmount,
         minPackageUnit,
         purchaseItemMinQty,
         unitShort,
-    };
+    });
     const orderStep = getOrderQuantityStep(orderQtyOptions);
-    const minOrderQty = getMinOrderQuantity(orderQtyOptions);
 
     const invalidate = () => {
         void utils.orders.getMyOrders.invalidate();
@@ -49,7 +48,7 @@ export function CartLineQuantityControls({
         }
     };
 
-    const upsertMutation = trpc.orders.upsertOrder.useMutation({
+    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
         onSuccess: invalidate,
         onError: (err) => toast.error(err.message),
     });
@@ -59,21 +58,18 @@ export function CartLineQuantityControls({
         onError: (err) => toast.error(err.message),
     });
 
-    const pending = upsertMutation.isPending || deleteMutation.isPending;
+    const pending = adjustMutation.isPending || deleteMutation.isPending;
 
     function handleAdd() {
-        const next = snapOrderQuantity(quantity + orderStep, orderQtyOptions);
-        upsertMutation.mutate({ purchaseItemId, quantity: next });
+        adjustMutation.mutate({ purchaseItemId, delta: orderStep });
     }
 
     function handleRemove() {
-        const next = quantity - orderStep;
-        if (next < minOrderQty) {
+        if (quantity <= orderStep) {
             deleteMutation.mutate({ id: orderId });
             return;
         }
-        const snapped = snapOrderQuantity(next, orderQtyOptions);
-        upsertMutation.mutate({ purchaseItemId, quantity: snapped });
+        adjustMutation.mutate({ purchaseItemId, delta: -orderStep });
     }
 
     return (

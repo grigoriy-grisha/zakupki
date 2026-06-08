@@ -5,10 +5,41 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProduct } from '../hooks';
 import { ProductForm } from './product-form';
+import type { ProductFormExisting } from '../hooks';
+
 interface ProductSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editId: number | null;
+}
+
+function toNumber(v: string | number | null | undefined): number | undefined {
+    if (v == null) return undefined;
+    if (typeof v === 'number') return v;
+    return Number(v);
+}
+
+function transformProduct(raw: any): ProductFormExisting {
+    return {
+        name: raw.name,
+        articleNumber: raw.articleNumber,
+        brandId: raw.brandId,
+        brand: raw.brand,
+        unitCode: raw.unitCode,
+        attributeValues: raw.attributeValues,
+        characteristicValues: raw.characteristicValues,
+        photos: raw.photos,
+        pricePerUnit: toNumber(raw.pricePerUnit),
+        priceTiers: raw.priceTiers,
+        minPackageAmount: toNumber(raw.minPackageAmount),
+        minPackageUnit: raw.minPackageUnit,
+        supplierPackageAmount: toNumber(raw.supplierPackageAmount),
+        supplierPackageUnit: raw.supplierPackageUnit,
+        supplierPackagePrice: toNumber(raw.supplierPackagePrice),
+        supplierPackageTiers: raw.supplierPackageTiers,
+        referenceStock: toNumber(raw.referenceStock),
+        referenceStockUnit: raw.referenceStockUnit,
+    };
 }
 
 export function ProductSheet({ open, onOpenChange, editId: propEditId }: ProductSheetProps) {
@@ -18,7 +49,8 @@ export function ProductSheet({ open, onOpenChange, editId: propEditId }: Product
         setEditId(propEditId);
     }, [propEditId]);
 
-    const { data: existing, isLoading: isProductLoading } = useProduct(editId, open);
+    const { data: raw, isLoading: isProductLoading } = useProduct(editId, open);
+    const existing = raw ? transformProduct(raw) : undefined;
 
     return (
         <Sheet

@@ -6,19 +6,12 @@ datasource db {
   provider = "postgresql"
 }
 
-model Supplier {
-  id        Int        @id @default(autoincrement())
-  name      String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  purchases Purchase[]
-}
-
 model Characteristic {
   id             Int                              @id @default(autoincrement())
   name           String                           @unique
   position       Int                              @default(0)
   createdAt      DateTime                         @default(now())
+  updatedAt      DateTime                         @updatedAt
   attributeLinks ProductAttributeCharacteristic[]
   products       ProductCharacteristicValue[]
 }
@@ -94,14 +87,6 @@ model ProductCharacteristicValue {
   @@index([productId, sortOrder])
 }
 
-model Unit {
-  id           Int       @id @default(autoincrement())
-  name         String
-  shortName    String
-  multiplicity Decimal   @default(1) @db.Decimal(10, 3)
-  createdAt    DateTime  @default(now())
-  products     Product[]
-}
 
 model User {
   id                 Int                 @id @default(autoincrement())
@@ -116,7 +101,6 @@ model User {
   payments           Payment[]
   purchaseOrders     PurchaseOrder[]
   telegramCredential TelegramCredential?
-  userRole           UserRole?
   vkCredential       VkCredential?
 
   @@index([createdAt])
@@ -149,7 +133,8 @@ model Product {
   id                    Int                          @id @default(autoincrement())
   name                  String
   description           String?
-  unitId                Int
+  unitCode              String                       @default("piece")
+  multiplicity          Decimal                      @default(1) @db.Decimal(10, 3)
   pricePerUnit          Decimal                      @db.Decimal(10, 2)
   minPackageAmount      Decimal?                     @db.Decimal(10, 3)
   minPackageUnit        String?
@@ -157,31 +142,33 @@ model Product {
   supplierPackageAmount Decimal?                     @db.Decimal(10, 3)
   supplierPackageUnit   String?
   supplierPackagePrice  Decimal?                     @db.Decimal(10, 2)
-  availableAmount       Decimal?                     @db.Decimal(10, 3)
-  availableUnit         String?
+  referenceStock        Decimal?                     @db.Decimal(10, 3)
+  referenceStockUnit    String?
   createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
   articleNumber         String?
   brandId               Int?
   supplierPackageTiers  Json?
+  version               Int                          @default(0)
   brand                 ProductAttribute?            @relation("ProductBrand", fields: [brandId], references: [id])
-  unit                  Unit                         @relation(fields: [unitId], references: [id])
   attributeValues       ProductAttributeValue[]
   characteristicValues  ProductCharacteristicValue[]
   photos                ProductPhoto[]
   purchaseItems         PurchaseItem[]
 
   @@index([createdAt])
-  @@index([unitId])
   @@index([brandId])
 }
 
 model ProductPhoto {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   productId Int
-  mimeType  String  @default("image/jpeg")
-  sortOrder Int     @default(0)
+  mimeType  String   @default("image/jpeg")
+  sortOrder Int      @default(0)
   objectKey String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
 }
@@ -194,11 +181,9 @@ model Purchase {
   minAmount         Decimal                   @db.Decimal(10, 2)
   deadline          DateTime
   createdAt         DateTime                  @default(now())
-  supplierId        Int?
   fulfillmentStatus PurchaseFulfillmentStatus @default(COLLECTION)
   payments          Payment[]
   promoCodes        PromoCode[]
-  supplierRel       Supplier?                 @relation(fields: [supplierId], references: [id])
   items             PurchaseItem[]
   purchaseOrders    PurchaseOrder[]
 
@@ -213,8 +198,8 @@ model PurchaseOrder {
   purchaseId Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  purchase   Purchase @relation(fields: [purchaseId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, purchaseId])
   @@index([userId])
@@ -222,19 +207,19 @@ model PurchaseOrder {
 }
 
 model PurchaseItem {
-  id            Int         @id @default(autoincrement())
-  purchaseId    Int
-  productId     Int
-  priceOverride Decimal?    @db.Decimal(10, 2)
-  minQty        Decimal?    @db.Decimal(10, 3)
-  availableQty  Decimal?    @db.Decimal(10, 3)
-  tgMessageId   String?
-  tgChannelId   String?
-  isActive      Boolean     @default(true)
-  shouldPublish Boolean     @default(false)
-  orderLines    OrderLine[]
-  product       Product     @relation(fields: [productId], references: [id])
-  purchase      Purchase    @relation(fields: [purchaseId], references: [id])
+  id               Int               @id @default(autoincrement())
+  purchaseId       Int
+  productId        Int
+  priceOverride    Decimal?          @db.Decimal(10, 2)
+  targetRemainder  Decimal?          @db.Decimal(10, 3)
+  tgMessageId      String?
+  tgChannelId      String?
+  publicationState PublicationState  @default(DRAFT)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  orderLines       OrderLine[]
+  product          Product           @relation(fields: [productId], references: [id])
+  purchase         Purchase          @relation(fields: [purchaseId], references: [id])
 
   @@unique([purchaseId, productId])
   @@index([purchaseId])
@@ -242,21 +227,28 @@ model PurchaseItem {
 }
 
 model OrderLine {
-  id                   Int          @id @default(autoincrement())
+  id                   Int             @id @default(autoincrement())
   purchaseItemId       Int
   userId               Int
-  quantity             Decimal      @db.Decimal(10, 3)
-  amountDue            Decimal      @db.Decimal(10, 2)
-  supplementPacksAdded Int          @default(0)
+  quantity             Decimal         @db.Decimal(10, 3)
+  amountDue            Decimal         @db.Decimal(10, 2)
+  status               OrderLineStatus @default(ACTIVE)
+
+  // Замороженный снимок quantity из COLLECTION. Устанавливается при
+  // COLLECTION→SUPPLEMENT/REORDER. NULL во время COLLECTION.
+  // На REORDER пользователь может добавлять/убавлять от этого базового количества.
+  baseQuantity         Decimal?        @db.Decimal(10, 3)
+
   tgChatMessageId      BigInt?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  purchaseItem         PurchaseItem @relation(fields: [purchaseItemId], references: [id])
-  user                 User         @relation(fields: [userId], references: [id])
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  purchaseItem         PurchaseItem    @relation(fields: [purchaseItemId], references: [id])
+  user                 User            @relation(fields: [userId], references: [id])
 
   @@unique([purchaseItemId, userId])
   @@index([userId])
   @@index([purchaseItemId])
+  @@index([status])
 }
 
 model Payment {
@@ -266,18 +258,15 @@ model Payment {
   amount         Decimal       @db.Decimal(10, 2)
   status         PaymentStatus @default(PENDING)
   userComment    String?
-  proofData      Bytes?
-  proofMimeType  String?
   adminNote      String?
-  paidAt         DateTime      @default(now())
-  note           String?
+  submittedAt    DateTime      @default(now())
   promoCodeId    Int?
   parentId       Int?
   proofObjectKey String?
   parent         Payment?      @relation("PaymentChildren", fields: [parentId], references: [id])
   children       Payment[]     @relation("PaymentChildren")
   promoCode      PromoCode?    @relation(fields: [promoCodeId], references: [id])
-  purchase       Purchase      @relation(fields: [purchaseId], references: [id])
+  purchase       Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   user           User          @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -319,21 +308,6 @@ model AppSetting {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
-model Role {
-  id    Int        @id @default(autoincrement())
-  kind  RoleKind   @unique
-  users UserRole[]
-}
-
-model UserRole {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  roleId    Int
-  createdAt DateTime @default(now())
-  role      Role     @relation(fields: [roleId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-}
-
 enum PurchaseStatus {
   DRAFT
   ACTIVE
@@ -369,4 +343,14 @@ enum PromoType {
 enum RoleKind {
   ADMIN
   CLIENT
+}
+
+enum PublicationState {
+  DRAFT
+  PUBLISHED
+}
+
+enum OrderLineStatus {
+  ACTIVE
+  CANCELLED
 }

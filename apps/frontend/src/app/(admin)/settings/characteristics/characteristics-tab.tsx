@@ -1,7 +1,7 @@
 'use client';
 
-import { useCharacteristicList, useDeleteCharacteristic } from './hooks';
-import { CharacteristicFormDialog } from './components';
+import { useCharacteristicList, useDeleteCharacteristic } from './hooks/use-characteristics';
+import { CharacteristicFormDialog } from './components/characteristic-form-dialog';
 import { SimpleCrudTable } from '../shared/simple-crud-table';
 
 export function CharacteristicsTab() {

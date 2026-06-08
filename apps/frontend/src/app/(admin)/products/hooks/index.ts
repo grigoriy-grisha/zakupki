@@ -1,7 +1,6 @@
 export {
     useProductList,
     useProduct,
-    useUnits,
     useCreateProduct,
     useUpdateProduct,
     useDeleteProduct,

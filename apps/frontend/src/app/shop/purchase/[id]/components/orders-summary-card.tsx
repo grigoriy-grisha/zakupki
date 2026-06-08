@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
+import { getUnitByCode } from '@zakupki/types';
 
 import type { ReactNode } from 'react';
 import type { usePurchasePaymentDetail } from '../hooks/use-purchase-payment-detail';
@@ -81,7 +82,7 @@ export function OrdersSummaryCard({
                                 </div>
                                 <span className="shrink-0 text-right text-sm font-medium">
                                     {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                    {order.purchaseItem?.product?.unit?.shortName ?? ''}
+                                    {order.purchaseItem?.product?.unitCode ? getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '' : ''}
                                     <br />
                                     <span className="text-muted-foreground">
                                         {Number(order.amountDue).toLocaleString('ru-RU')} ₽

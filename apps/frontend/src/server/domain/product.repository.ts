@@ -1,9 +1,10 @@
 import { Prisma, dbClient } from '@zakupki/database';
+import type { PriceTier } from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
+import { productInclude } from './product-include';
 import { assertProductNotInActivePurchase, findProductIdsInActivePurchases } from './product-purchase-lock';
 
-export type PriceTier = { amount: number; unit: string; price: number };
 export type ProductCharacteristicInput = { characteristicId: number; value: string; sortOrder?: number };
 
 export interface ProductWriteData {
@@ -11,7 +12,8 @@ export interface ProductWriteData {
     articleNumber?: string | null;
     brandId?: number | null;
     description?: string;
-    unitId?: number;
+    unitCode?: string;
+    multiplicity?: number;
     pricePerUnit?: number;
     attributeIds?: number[];
     characteristics?: ProductCharacteristicInput[];
@@ -22,13 +24,13 @@ export interface ProductWriteData {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: number | null;
     supplierPackageTiers?: PriceTier[] | null;
-    availableAmount?: number | null;
-    availableUnit?: string | null;
+    referenceStock?: number | null;
+    referenceStockUnit?: string | null;
 }
 
 export interface ProductCreateData extends ProductWriteData {
     name: string;
-    unitId: number;
+    unitCode: string;
     pricePerUnit: number;
 }
 
@@ -53,11 +55,26 @@ export class ProductRepository {
         });
     }
 
+    /** Возвращает продукты с флагом inActivePurchase для UI. */
+    async listWithPurchaseFlag(search?: string) {
+        const products = await this.list(search);
+        const lockedIds = await findProductIdsInActivePurchases(dbClient, products.map((p) => p.id));
+        return products.map((p) => ({ ...p, inActivePurchase: lockedIds.has(p.id) }));
+    }
+
     async getById(id: number) {
         return dbClient.product.findUnique({
             where: { id },
             include: productInclude,
         });
+    }
+
+    /** Возвращает продукт с флагом inActivePurchase, бросает NotFoundError если не найден. */
+    async getByIdOrThrow(id: number) {
+        const product = await this.getById(id);
+        if (!product) return null;
+        const lockedIds = await findProductIdsInActivePurchases(dbClient, [id]);
+        return { ...product, inActivePurchase: lockedIds.has(id) };
     }
 
     async create(data: ProductCreateData) {
@@ -69,8 +86,11 @@ export class ProductRepository {
     }
 
     async update(id: number, data: ProductWriteData) {
-        const { attributeIds, characteristics, brandId, ...rest } = data;
-        const resolved = await resolveBrandFromAttributeIds(attributeIds, brandId);
+        const { attributeIds, characteristics, ...rest } = data;
+
+        // Определяем brandId: если переданы attributeIds — резолвим бренд из них,
+        // иначе используем явно переданный brandId из rest
+        const resolved = await resolveBrandFromAttributeIds(attributeIds, rest.brandId);
 
         return dbClient.$transaction(async (tx) => {
             if (attributeIds !== undefined) {
@@ -99,13 +119,60 @@ export class ProductRepository {
 
             const updateData = toPrismaUpdate({
                 ...rest,
-                ...(attributeIds !== undefined ? { brandId: resolved.brandId } : {}),
-                ...(attributeIds === undefined && brandId !== undefined ? { brandId } : {}),
+                brandId: resolved.brandId,
             });
 
             return tx.product.update({
                 where: { id },
-                data: updateData,
+                data: { ...updateData, version: { increment: 1 } },
+                include: productInclude,
+            });
+        });
+    }
+
+    async updateWithVersionCheck(id: number, data: ProductWriteData, expectedVersion: number) {
+        const { attributeIds, characteristics, ...rest } = data;
+        const resolved = await resolveBrandFromAttributeIds(attributeIds, rest.brandId);
+
+        return dbClient.$transaction(async (tx) => {
+            if (attributeIds !== undefined) {
+                await tx.productAttributeValue.deleteMany({ where: { productId: id } });
+                if (attributeIds.length > 0) {
+                    await tx.productAttributeValue.createMany({
+                        data: attributeIds.map((attributeId) => ({ productId: id, attributeId })),
+                    });
+                }
+            }
+
+            if (characteristics !== undefined) {
+                await tx.productCharacteristicValue.deleteMany({ where: { productId: id } });
+                const rows = characteristics
+                    .filter((c) => c.value.trim())
+                    .map((c, index) => ({
+                        productId: id,
+                        characteristicId: c.characteristicId,
+                        value: c.value.trim(),
+                        sortOrder: c.sortOrder ?? index,
+                    }));
+                if (rows.length > 0) {
+                    await tx.productCharacteristicValue.createMany({ data: rows });
+                }
+            }
+
+            const updateData = toPrismaUpdate({
+                ...rest,
+                brandId: resolved.brandId,
+            });
+
+            const updated = await tx.product.updateMany({
+                where: { id, version: expectedVersion },
+                data: { ...updateData, version: { increment: 1 } },
+            });
+
+            if (updated.count === 0) return null;
+
+            return tx.product.findUnique({
+                where: { id },
                 include: productInclude,
             });
         });
@@ -145,6 +212,9 @@ export class ProductRepository {
     }
 
     async deletePhoto(id: number) {
+        const photo = await dbClient.productPhoto.findUnique({ where: { id } });
+        if (!photo) return;
+        await dbClient.productPhoto.delete({ where: { id } });
         await storage.delete(id);
     }
 
@@ -156,34 +226,12 @@ export class ProductRepository {
     }
 }
 
-const productInclude = {
-    photos: { select: { id: true, sortOrder: true }, orderBy: { sortOrder: 'asc' as const } },
-    unit: true,
-    brand: { select: { id: true, name: true, typeId: true, showInTitle: true, isBrand: true } },
-    attributeValues: {
-        include: {
-            attribute: {
-                include: {
-                    type: true,
-                    parent: { select: { id: true, name: true, isBrand: true } },
-                    characteristics: { include: { characteristic: true } },
-                },
-            },
-        },
-    },
-    characteristicValues: {
-        include: { characteristic: true },
-        orderBy: [{ sortOrder: 'asc' as const }, { characteristicId: 'asc' as const }],
-    },
-};
-
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { unitId, priceTiers, supplierPackageTiers, attributeIds, characteristics, brandId, ...rest } = data;
+    const { priceTiers, supplierPackageTiers, attributeIds, characteristics, brandId, ...rest } = data;
     return {
         ...rest,
         priceTiers: priceTiers ?? Prisma.JsonNull,
         supplierPackageTiers: supplierPackageTiers ?? Prisma.JsonNull,
-        unit: { connect: { id: unitId } },
         ...(brandId != null ? { brand: { connect: { id: brandId } } } : {}),
         ...(attributeIds && attributeIds.length > 0
             ? { attributeValues: { create: attributeIds.map((id) => ({ attribute: { connect: { id } } })) } }
@@ -194,7 +242,6 @@ function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
 
 function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
     const {
-        unitId,
         priceTiers,
         supplierPackageTiers,
         brandId,
@@ -209,34 +256,44 @@ function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
     if (supplierPackageTiers !== undefined) {
         update.supplierPackageTiers = supplierPackageTiers ?? Prisma.JsonNull;
     }
-    if (unitId !== undefined) {
-        update.unit = { connect: { id: unitId } };
-    }
     if (brandId !== undefined) {
         update.brand = brandId == null ? { disconnect: true } : { connect: { id: brandId } };
     }
     return update;
 }
 
+/**
+ * Определяет brandId на основе attributeIds.
+ * - Если attributeIds не переданы — brandId не меняется (используется только явный brandId)
+ * - Если attributeIds переданы (даже пустые) — бренд резолвится из атрибутов
+ * - Если brandId уже задан явно — пропускает DB-запрос
+ */
 async function resolveBrandFromAttributeIds(
     attributeIds: number[] | undefined,
     brandId: number | null | undefined,
-): Promise<{ brandId?: number | null; attributeIds?: number[] }> {
+): Promise<{ brandId?: number | null }> {
+    // attributeIds не переданы — не трогаем brand
     if (attributeIds === undefined) {
         return brandId !== undefined ? { brandId } : {};
     }
-    if (attributeIds.length === 0) {
-        return { brandId: brandId ?? null, attributeIds };
+
+    // brandId задан явно — не нужен DB-запрос
+    if (brandId !== undefined) {
+        return { brandId };
     }
+
+    // Пустые attributeIds — очищаем бренд
+    if (attributeIds.length === 0) {
+        return { brandId: null };
+    }
+
+    // Ищем isBrand среди переданных attributeIds
     const attrs = await dbClient.productAttribute.findMany({
         where: { id: { in: attributeIds } },
         select: { id: true, isBrand: true },
     });
     const brand = attrs.find((a) => a.isBrand);
-    return {
-        brandId: brandId !== undefined ? brandId : (brand?.id ?? null),
-        attributeIds,
-    };
+    return { brandId: brand?.id ?? null };
 }
 
 function characteristicValuesCreate(

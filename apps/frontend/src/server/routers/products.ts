@@ -2,49 +2,8 @@ import { z } from 'zod';
 import { Prisma } from '@zakupki/database';
 import { AppError } from '@zakupki/types';
 
-import { ensureDefaultUnitId } from '../domain/default-unit';
+import { withDbConflict } from '../lib/error-utils';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
-
-export interface ProductCreateInput {
-    name: string;
-    articleNumber?: string | null;
-    brandId?: number | null;
-    unitId?: number;
-    pricePerUnit?: number;
-    description?: string;
-    attributeIds?: number[];
-    characteristics?: { characteristicId: number; value: string }[];
-    minPackageAmount?: number;
-    minPackageUnit?: string;
-    priceTiers?: { amount: number; unit: string; price: number }[];
-    supplierPackageAmount?: number;
-    supplierPackageUnit?: string;
-    supplierPackagePrice?: number;
-    supplierPackageTiers?: { amount: number; unit: string; price: number }[];
-    availableAmount?: number;
-    availableUnit?: string;
-}
-
-export interface ProductUpdateInput {
-    id: number;
-    name?: string;
-    articleNumber?: string | null;
-    brandId?: number | null;
-    unitId?: number;
-    pricePerUnit?: number;
-    description?: string;
-    attributeIds?: number[];
-    characteristics?: { characteristicId: number; value: string }[];
-    minPackageAmount?: number;
-    minPackageUnit?: string;
-    priceTiers?: { amount: number; unit: string; price: number }[];
-    supplierPackageAmount?: number;
-    supplierPackageUnit?: string;
-    supplierPackagePrice?: number;
-    supplierPackageTiers?: { amount: number; unit: string; price: number }[];
-    availableAmount?: number;
-    availableUnit?: string;
-}
 
 const priceTierSchema = z.object({
     amount: z.number(),
@@ -52,45 +11,48 @@ const priceTierSchema = z.object({
     price: z.number(),
 });
 
-const productCreateInput: z.ZodType<ProductCreateInput> = z.object({
+const productCreateInput = z.object({
     name: z.string().min(1),
-    articleNumber: z.string().optional(),
+    articleNumber: z.string().nullable().optional(),
     brandId: z.number().nullable().optional(),
-    unitId: z.number().optional(),
+    unitCode: z.string().optional(),
+    multiplicity: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
-    minPackageAmount: z.number().optional(),
-    minPackageUnit: z.string().optional(),
-    priceTiers: z.array(priceTierSchema).optional(),
-    supplierPackageAmount: z.number().optional(),
-    supplierPackageUnit: z.string().optional(),
-    supplierPackagePrice: z.number().optional(),
-    supplierPackageTiers: z.array(priceTierSchema).optional(),
-    availableAmount: z.number().optional(),
-    availableUnit: z.string().optional(),
+    minPackageAmount: z.number().nullable().optional(),
+    minPackageUnit: z.string().nullable().optional(),
+    priceTiers: z.array(priceTierSchema).nullable().optional(),
+    supplierPackageAmount: z.number().nullable().optional(),
+    supplierPackageUnit: z.string().nullable().optional(),
+    supplierPackagePrice: z.number().nullable().optional(),
+    supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
+    referenceStock: z.number().nullable().optional(),
+    referenceStockUnit: z.string().nullable().optional(),
 });
 
-const productUpdateInput: z.ZodType<ProductUpdateInput> = z.object({
+const productUpdateInput = z.object({
     id: z.number(),
+    expectedVersion: z.number().optional(),
     name: z.string().optional(),
     articleNumber: z.string().nullable().optional(),
     brandId: z.number().nullable().optional(),
-    unitId: z.number().optional(),
+    unitCode: z.string().optional(),
+    multiplicity: z.number().optional(),
     pricePerUnit: z.number().optional(),
     description: z.string().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
-    minPackageAmount: z.number().optional(),
-    minPackageUnit: z.string().optional(),
-    priceTiers: z.array(priceTierSchema).optional(),
-    supplierPackageAmount: z.number().optional(),
-    supplierPackageUnit: z.string().optional(),
-    supplierPackagePrice: z.number().optional(),
-    supplierPackageTiers: z.array(priceTierSchema).optional(),
-    availableAmount: z.number().optional(),
-    availableUnit: z.string().optional(),
+    minPackageAmount: z.number().nullable().optional(),
+    minPackageUnit: z.string().nullable().optional(),
+    priceTiers: z.array(priceTierSchema).nullable().optional(),
+    supplierPackageAmount: z.number().nullable().optional(),
+    supplierPackageUnit: z.string().nullable().optional(),
+    supplierPackagePrice: z.number().nullable().optional(),
+    supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
+    referenceStock: z.number().nullable().optional(),
+    referenceStockUnit: z.string().nullable().optional(),
 });
 
 export const productsRouter = router({
@@ -105,13 +67,26 @@ export const productsRouter = router({
     }),
 
     create: adminProcedure.input(productCreateInput).mutation(async ({ ctx, input }) => {
-        const unitId = input.unitId ?? (await ensureDefaultUnitId(ctx.db));
-        return ctx.services.product.create({ ...input, unitId, pricePerUnit: input.pricePerUnit ?? 0 });
+        return withDbConflict(() =>
+            ctx.services.product.create({
+                ...input,
+                unitCode: input.unitCode ?? 'piece',
+                multiplicity: input.multiplicity ?? 1,
+                pricePerUnit: input.pricePerUnit ?? 0,
+            }),
+        );
     }),
 
     update: adminProcedure.input(productUpdateInput).mutation(async ({ ctx, input }) => {
-        const { id, ...data } = input;
-        return ctx.services.product.update(id, data);
+        const { id, expectedVersion, ...data } = input;
+        if (expectedVersion != null) {
+            const updated = await ctx.services.product.updateWithVersionCheck(id, data, expectedVersion);
+            if (!updated) {
+                throw new AppError('CONFLICT', 'Товар был изменён другим пользователем. Обновите страницу и попробуйте снова.');
+            }
+            return updated;
+        }
+        return withDbConflict(() => ctx.services.product.update(id, data));
     }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {

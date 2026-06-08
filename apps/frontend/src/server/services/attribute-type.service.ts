@@ -3,19 +3,19 @@ import { AttributeTypeRepository, type AttributeTypeWriteData } from '../domain/
 export class AttributeTypeService {
     constructor(private repo: AttributeTypeRepository) {}
 
-    list() {
+    async list() {
         return this.repo.list();
     }
 
-    create(data: { name: string; parentId?: number | null; showInTitle?: boolean }) {
+    async create(data: { name: string; parentId?: number | null; showInTitle?: boolean }) {
         return this.repo.create(data);
     }
 
-    update(id: number, data: AttributeTypeWriteData) {
+    async update(id: number, data: AttributeTypeWriteData) {
         return this.repo.update(id, data);
     }
 
-    delete(id: number) {
+    async delete(id: number) {
         return this.repo.delete(id);
     }
 

@@ -6,6 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 
+export interface ExtraColumn<T> {
+    header: string;
+    render: (item: T) => ReactNode;
+    className?: string;
+}
+
 interface SimpleCrudTableProps<T extends { id: number; name: string }> {
     items: T[] | undefined;
     isLoading: boolean;
@@ -15,6 +21,7 @@ interface SimpleCrudTableProps<T extends { id: number; name: string }> {
     emptyText: string;
     deleteTitle?: string;
     renderDeleteDescription?: (item: T) => ReactNode;
+    extraColumns?: ExtraColumn<T>[];
     children?: ReactNode;
 }
 
@@ -27,6 +34,7 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
     emptyText,
     deleteTitle = 'Удалить',
     renderDeleteDescription,
+    extraColumns,
 }: SimpleCrudTableProps<T>) {
     const [deleteTarget, setDeleteTarget] = useState<T | null>(null);
 
@@ -46,13 +54,21 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                     <TableHeader>
                         <TableRow>
                             <TableHead>Название</TableHead>
+                            {extraColumns?.map((col) => (
+                                <TableHead key={col.header} className={col.className}>
+                                    {col.header}
+                                </TableHead>
+                            ))}
                             <TableHead className="w-24 text-center">Действия</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {items?.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
+                                <TableCell
+                                    colSpan={2 + (extraColumns?.length ?? 0)}
+                                    className="h-24 text-center text-muted-foreground"
+                                >
                                     {emptyText}
                                 </TableCell>
                             </TableRow>
@@ -60,6 +76,11 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                         {items?.map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name}</TableCell>
+                                {extraColumns?.map((col) => (
+                                    <TableCell key={col.header} className={col.className}>
+                                        {col.render(item)}
+                                    </TableCell>
+                                ))}
                                 <TableCell className="text-center">
                                     <div className="flex items-center justify-center gap-1">
                                         {renderEdit(item)}

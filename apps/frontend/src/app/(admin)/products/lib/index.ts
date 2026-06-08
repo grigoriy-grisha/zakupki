@@ -36,7 +36,7 @@ export {
     type ProductAttributeValueSource,
     type AttributeTypeMeta,
     type ShowInTitleByTypeId,
-} from './format-product-label';
+} from './product-label';
 export {
     buildDescriptionHtml,
     buildProductDescriptionText,
@@ -47,4 +47,4 @@ export {
     POST_TEMPLATE_PLACEHOLDERS,
     type DescriptionFields,
     type ProductCharacteristicsCatalog,
-} from './build-product-description';
+} from './product-description';

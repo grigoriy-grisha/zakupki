@@ -1,16 +1,23 @@
 'use client';
 
-import { AppLink } from '@/components/app-link';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PurchaseCard } from './components';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { PurchaseCard, PurchaseForm } from './components';
 
 export default function PurchasesPage() {
     const [tab, setTab] = useState('all');
+    const [newOpen, setNewOpen] = useState(false);
 
     const { data: purchases, isLoading } = trpc.purchases.list.useQuery(tab === 'all' ? undefined : { status: tab });
 
@@ -18,11 +25,9 @@ export default function PurchasesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold tracking-tight">Закупки</h1>
-                <Button asChild>
-                    <AppLink href="/purchases/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Новая закупка
-                    </AppLink>
+                <Button onClick={() => setNewOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Новая закупка
                 </Button>
             </div>
 
@@ -37,7 +42,7 @@ export default function PurchasesPage() {
                 <TabsContent value={tab} className="mt-4">
                     {isLoading ? (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {Array.from({ length: 6 }).map((_, i) => (
+                            {Array.from({length: 6}).map((_, i) => (
                                 <Skeleton key={i} className="h-40" />
                             ))}
                         </div>
@@ -53,6 +58,16 @@ export default function PurchasesPage() {
                     )}
                 </TabsContent>
             </Tabs>
+
+            <Dialog open={newOpen} onOpenChange={setNewOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Новая закупка</DialogTitle>
+                        <DialogDescription>Заполните данные для создания новой закупки</DialogDescription>
+                    </DialogHeader>
+                    <PurchaseForm />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

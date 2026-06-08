@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getUnitByCode } from '@zakupki/types';
 
 import type { UserPurchaseGroup } from '../lib/group-orders-by-purchase';
 
@@ -63,7 +64,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                        {order.purchaseItem?.product?.unit?.shortName ?? ''}
+                                        {order.purchaseItem?.product?.unitCode ? getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '' : ''}
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
                                         {Number(order.amountDue).toLocaleString('ru-RU')} ₽
