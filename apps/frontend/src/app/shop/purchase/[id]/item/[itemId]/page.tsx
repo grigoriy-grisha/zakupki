@@ -6,44 +6,35 @@ import { trpc } from '@/lib/client/trpc';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, ShoppingCart, Minus, Plus } from 'lucide-react';
-import {
-    calculateOrderAmount,
-    countFullSupplierPacks,
-    formatMinPackageHint,
-    getPackDiscountPricingInfo,
-    getSupplementPool,
-    getSupplementStep,
-    buildOrderQtyOptions,
-    getOrderQuantityStep,
-    isSupplementPhase,
-} from '@zakupki/types';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { formatMinPackageHint, isSupplementPhase } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { ProductPricePanel } from '@/app/shop/components/product-price-panel';
+import { QuantityButtons } from '@/app/shop/components/quantity-buttons';
+import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
-import { toast } from 'sonner';
 import {
     buildShopItemDescriptionRows,
     type ProductCatalogCardSource,
     type ProductLabelSource,
 } from '@/app/(admin)/products/lib';
+import type { ShopPurchaseItem } from '@/app/shop/lib/types';
 
 export default function ItemDetailPage({ params }: { params: Promise<{ id: string; itemId: string }> }) {
     const { id: purchaseIdStr, itemId: itemIdStr } = use(params);
     const purchaseId = Number(purchaseIdStr);
     const purchaseItemId = Number(itemIdStr);
-    const utils = trpc.useUtils();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
     const { data: myOrders } = trpc.orders.getMyOrders.useQuery();
     const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
 
-    const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
+    const item = purchase?.items.find((i: any) => i.id === purchaseItemId) as ShopPurchaseItem | undefined;
     const existingOrder = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
     const currentQuantity = existingOrder ? Number(existingOrder.quantity ?? 0) : 0;
-    const currentPackageCount = existingOrder?.packageCount ?? 0;
+    const currentPackageCount = (existingOrder as any)?.packageCount ?? 0;
     const baseQuantity = existingOrder?.baseQuantity != null ? Number(existingOrder.baseQuantity) : 0;
 
     const product = item?.product as
@@ -61,124 +52,21 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
           })
         | undefined;
 
-    const unit = product?.unit;
-    const shortName = unit?.shortName ?? 'ед.';
-    const multiplicity = unit ? Number(unit.multiplicity) : 1;
-    const packSize = product?.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
+    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
+
+    const ctx = useItemOrderControls({
+        purchaseId,
+        purchaseItemId,
+        item: item!,
+        currentQuantity,
+        currentPackageCount,
+        baseQuantity,
+        fulfillmentStatus,
+        packDiscountPercent,
+    });
+
     const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product?.minPackageUnit ?? null;
-    const isSupplement = isSupplementPhase(purchase?.fulfillmentStatus ?? 'COLLECTION');
-    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
-    const regularStep = getOrderQuantityStep(
-        buildOrderQtyOptions({ multiplicity, minPackageAmount, minPackageUnit }),
-    );
-    const activeStep = getSupplementStep({
-        fulfillmentStatus,
-        supplementStep: item?.supplementStep != null ? Number(item.supplementStep) : null,
-        regularStep,
-    });
-
-    const orderQtyOptions = buildOrderQtyOptions({
-        multiplicity,
-        minPackageAmount,
-        minPackageUnit,
-        purchaseItemMinQty: null,
-        unitShort: shortName,
-    });
-
-    const pricingOptions = product
-        ? {
-              priceTiers: product.priceTiers,
-              pricePerUnit: Number(product.pricePerUnit),
-              priceOverride: item?.priceOverride != null ? Number(item.priceOverride) : null,
-              supplierPackageAmount: product.supplierPackageAmount,
-              supplierPackageUnit: product.supplierPackageUnit,
-              supplierPackagePrice: product.supplierPackagePrice,
-              packDiscountPercent,
-          }
-        : null;
-
-    // Упаковка
-    const hasSupplierPackage = packSize != null && packSize > 0;
-    const packagePrice =
-        product?.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0
-            ? Number(product.supplierPackagePrice)
-            : (product ? Number(product.pricePerUnit) : 0) * (packSize ?? 0);
-    const packageTotal = currentPackageCount * packagePrice;
-    const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
-    const showPackageButtons = canAddPackage && hasSupplierPackage;
-
-    const total = (pricingOptions ? calculateOrderAmount(currentQuantity, pricingOptions) : 0) + packageTotal;
-    const packDiscountInfo = product ? getPackDiscountPricingInfo(product, packDiscountPercent) : null;
-    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
-
-    // Pool расчёт
-    const activeLines = (item?.orderLines ?? []).filter((line: any) => line.status !== 'CANCELLED');
-    const supplementClaimed = activeLines
-        .filter((line: any) => line.userId !== (existingOrder as any)?.userId)
-        .reduce((acc: number, line: any) => acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)), 0);
-    const totalOrderedQuantity = activeLines.reduce(
-        (acc: number, line: any) => acc + Number(line.quantity ?? 0),
-        0,
-    );
-    const totalBaseQuantity = activeLines.reduce(
-        (acc: number, line: any) => acc + Number(line.baseQuantity ?? 0),
-        0,
-    );
-    const availablePool = isSupplement
-        ? getSupplementPool({
-              targetRemainder: item?.targetRemainder != null ? Number(item.targetRemainder) : null,
-              totalOrderedQuantity,
-              supplementClaimed,
-              packSize,
-              totalBaseQuantity,
-          })
-        : null;
-
-    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
-        onSuccess: () => {
-            void utils.orders.getMyOrders.invalidate();
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
-    const packageMutation = trpc.orders.adjustPackageCount.useMutation({
-        onSuccess: () => {
-            void utils.orders.getMyOrders.invalidate();
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
-    const orderBusy = adjustMutation.isPending || packageMutation.isPending;
-
-    function handleAdd() {
-        if (orderBusy) return;
-        const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
-        if (currentQuantity >= maxAllowed) return;
-        const remaining = maxAllowed - currentQuantity;
-        const delta = remaining < activeStep ? remaining : activeStep;
-        adjustMutation.mutate({ purchaseItemId, delta });
-    }
-
-    function handleRemove() {
-        if (orderBusy || currentQuantity <= 0) return;
-        const minAllowed =
-            fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
-        const removableQty = currentQuantity - minAllowed;
-        if (removableQty <= 0) return;
-        const delta = removableQty < activeStep ? removableQty : activeStep;
-        adjustMutation.mutate({ purchaseItemId, delta: -delta });
-    }
-
-    const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
-    const canAdd = !orderBusy && currentQuantity < maxAllowed;
-
-    const freeRemainderLabel =
-        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
-            ? `Доступно ещё: ${availablePool} ${shortName}`
-            : null;
 
     if (isLoading) {
         return (
@@ -209,6 +97,8 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         );
     }
 
+    const isSupplement = isSupplementPhase(fulfillmentStatus);
+
     return (
         <div className="space-y-6">
             {/* Back button */}
@@ -226,8 +116,12 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                     const catalogMinHint = formatMinPackageHint({
                         minPackageAmount,
                         minPackageUnit,
-                        unitShort: shortName,
+                        unitShort: ctx.shortName,
                     });
+                    const freeRemainderLabel =
+                        isSupplement && ctx.availablePool != null && ctx.availablePool < Number.POSITIVE_INFINITY
+                            ? `Доступно ещё: ${ctx.availablePool} ${ctx.shortName}`
+                            : null;
                     if (!catalogMinHint && !freeRemainderLabel) return null;
                     return (
                         <div className="mt-1 space-y-0.5">
@@ -264,9 +158,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                 product as ProductCatalogCardSource,
                                 attributeTypes,
                             );
-
                             if (rows.length === 0) return null;
-
                             return (
                                 <dl className="grid grid-cols-[minmax(0,11rem)_1fr] gap-x-4 gap-y-0 md:grid-cols-[minmax(0,12rem)_1fr] md:gap-x-6">
                                     {rows.map((row) => (
@@ -284,12 +176,12 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                         })()}
                     </div>
 
-                    {/* Price & order — справа от описания */}
+                    {/* Price & order */}
                     <div className="w-full shrink-0 space-y-4 md:min-w-[22rem] md:w-96 md:pr-8 lg:min-w-[26rem] lg:w-[28rem] lg:pr-10 xl:w-[32rem] xl:pr-12">
                         <ProductPricePanel
                             product={product}
                             priceOverride={item.priceOverride}
-                            unitShort={shortName}
+                            unitShort={ctx.shortName}
                             packDiscountPercent={packDiscountPercent}
                         />
 
@@ -300,74 +192,37 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                     <span className="text-4xl font-bold tabular-nums">
                                         {currentQuantity % 1 === 0 ? currentQuantity : currentQuantity.toFixed(3).replace(/\.?0+$/, '')}
                                     </span>
-                                    <span className="ml-2 text-lg text-muted-foreground">{shortName}</span>
+                                    <span className="ml-2 text-lg text-muted-foreground">{ctx.shortName}</span>
                                     <p
                                         className={`mt-1 min-h-7 text-lg font-semibold tabular-nums ${
                                             currentQuantity > 0 ? 'text-foreground' : 'text-transparent'
                                         }`}
                                         aria-hidden={currentQuantity <= 0}
                                     >
-                                        {total.toLocaleString('ru-RU')} ₽
+                                        {ctx.total.toLocaleString('ru-RU')} ₽
                                     </p>
-                                    {packDiscountInfo != null && (
-                                        <p
-                                            className={`min-h-4 text-xs ${
-                                                fullPacks > 0 ? 'text-success' : 'text-transparent'
-                                            }`}
-                                            aria-hidden={fullPacks <= 0}
-                                        >
-                                            {fullPacks > 0
-                                                ? `Скидка за ${fullPacks} ${fullPacks === 1 ? 'целую пачку' : 'целые пачки'}`
-                                                : ' '}
+                                    {ctx.fullPacks > 0 && (
+                                        <p className="text-xs text-success">
+                                            Скидка за {ctx.fullPacks} {ctx.fullPacks === 1 ? 'целую пачку' : 'целые пачки'}
                                         </p>
                                     )}
                                 </div>
 
-                                {/* ±мин.фасовка */}
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        className="flex-1"
-                                        disabled={orderBusy || currentQuantity <= 0 || (fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' && currentQuantity <= baseQuantity)}
-                                        onClick={handleRemove}
-                                    >
-                                        <Minus className="mr-1 h-4 w-4" />
-                                        −{activeStep} {shortName}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="flex-1"
-                                        disabled={!canAdd}
-                                        onClick={handleAdd}
-                                    >
-                                        <Plus className="mr-1 h-4 w-4" />
-                                        +{activeStep} {shortName}
-                                    </Button>
-                                </div>
-
-                                {/* ±упаковка поставщика */}
-                                {showPackageButtons && (
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            disabled={orderBusy || currentPackageCount <= 0}
-                                            onClick={() => packageMutation.mutate({ purchaseItemId, delta: -1 })}
-                                        >
-                                            <Minus className="mr-1 h-4 w-4" />
-                                            −Упаковку
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            disabled={orderBusy}
-                                            onClick={() => packageMutation.mutate({ purchaseItemId, delta: 1 })}
-                                        >
-                                            <Plus className="mr-1 h-4 w-4" />
-                                            +Упаковку ({packSize} {shortName})
-                                        </Button>
-                                    </div>
-                                )}
+                                <QuantityButtons
+                                    activeStep={ctx.activeStep}
+                                    shortName={ctx.shortName}
+                                    canAdd={ctx.canAdd}
+                                    canDecrease={ctx.canDecrease}
+                                    onAdd={ctx.handleAdd}
+                                    onRemove={ctx.handleRemove}
+                                    isPending={ctx.isPending}
+                                    showPackage={ctx.showPackageButtons}
+                                    packSize={ctx.packSize}
+                                    packageCount={ctx.currentPackageCount}
+                                    onAddPackage={ctx.handleAddPackage}
+                                    onRemovePackage={ctx.handleRemovePackage}
+                                    size="md"
+                                />
                             </CardContent>
                         </Card>
                     </div>

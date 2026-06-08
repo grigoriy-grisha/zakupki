@@ -12,6 +12,8 @@ import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
+type StageAction = 'add_new' | 'increase' | 'decrease';
+
 /**
  * Сервис заказов — управление строками OrderLine.
  * Поддерживает этапную модель: COLLECTION / REORDER / PAYMENT / ...
@@ -23,126 +25,45 @@ export class OrderService {
         private pricingSettings: PricingSettingsService,
     ) {}
 
+    // ── Public API ────────────────────────────────────────────────
+
     /**
      * Изменить количество на delta (может быть положительным или отрицательным).
-     * delta = +minPackaging или -minPackaging.
      */
     async adjustQuantity(purchaseItemId: number, userId: number, delta: number) {
         if (delta === 0) return;
 
         const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        if (!item) {
-            throw new NotFoundError('Товар закупки', purchaseItemId);
-        }
+        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         const fulfillmentStatus = (item.purchase.fulfillmentStatus ?? 'COLLECTION') as string;
         const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
         const currentQty = existing ? Number(existing.quantity) : 0;
         const newQty = currentQty + delta;
+        const baseQty = existing?.baseQuantity != null ? Number(existing.baseQuantity) : 0;
 
-        // Проверки по этапам
-        if (!existing) {
-            // Новая строка заказа — можно только в COLLECTION
-            if (!canAddNewItem(fulfillmentStatus)) {
-                throw new ValidationError('На этом этапе нельзя добавить новый товар');
-            }
-        } else if (delta > 0) {
-            // Увеличение — добор из остатка (REORDER, PAYMENT и далее)
-            if (!canIncreaseFromRemainder(fulfillmentStatus)) {
-                throw new ValidationError('На этом этапе нельзя увеличить заказ');
-            }
-        } else {
-            // Уменьшение — COLLECTION/REORDER свободно, PAYMENT+ — не ниже baseQuantity
-            if (!canDecreaseOrder(fulfillmentStatus)) {
-                throw new ValidationError('На этом этапе нельзя уменьшить заказ');
-            }
-            // На PAYMENT и далее — нельзя убавить ниже замороженного baseQuantity
-            if (fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER') {
-                const baseQty = existing.baseQuantity != null ? Number(existing.baseQuantity) : 0;
-                if (baseQty > 0 && newQty < baseQty) {
-                    throw new ValidationError(
-                        `Нельзя убавить ниже базового заказа (${baseQty}). Можно убрать только доборную часть.`,
-                    );
-                }
-            }
-        }
+        // Определяем тип действия и валидируем
+        const action: StageAction = !existing ? 'add_new' : delta > 0 ? 'increase' : 'decrease';
+        this.validateStageAction(action, fulfillmentStatus, newQty, baseQty);
 
+        // Обнуление / удаление
         if (newQty <= 0) {
-            if (fulfillmentStatus === 'COLLECTION') {
-                // На COLLECTION — чистое удаление, baseQuantity нет
-                return this.repo.deleteOrderLine(purchaseItemId, userId);
-            }
-            // На REORDER+ — обнуляем без удаления, сохраняем baseQuantity
-            // чтобы пользователь мог снова добрать из остатка
-            if (existing) {
-                return this.repo.zeroOutOrderLine(purchaseItemId, userId);
-            }
-            return null;
+            return this.resolveZeroQuantity(fulfillmentStatus, existing, purchaseItemId, userId);
         }
 
-        // Вычисляем сумму через calculateOrderAmount (с учётом упаковок)
         const currentPkgCount = existing?.packageCount ?? 0;
         const amountDue = await this.computeAmountDueWithPackages(newQty, currentPkgCount, item);
-
         return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
     }
 
     /**
-     * Вычислить сумму заказа через calculateOrderAmount.
-     */
-    private async computeAmountDue(
-        quantity: number,
-        item: Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>,
-    ): Promise<number> {
-        if (!item) return 0;
-
-        const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
-
-        return calculateOrderAmount(quantity, {
-            priceTiers: item.product.priceTiers,
-            pricePerUnit: Number(item.product.pricePerUnit),
-            priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-            supplierPackageAmount: item.product.supplierPackageAmount,
-            supplierPackageUnit: item.product.supplierPackageUnit,
-            supplierPackagePrice: item.product.supplierPackagePrice,
-            packDiscountPercent,
-        });
-    }
-
-    /**
-     * Вычислить полную сумму с учётом quantity и packageCount.
-     */
-    private async computeAmountDueWithPackages(
-        quantity: number,
-        packageCount: number,
-        item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>,
-    ): Promise<number> {
-        const baseAmount = await this.computeAmountDue(quantity, item);
-        const pkgPrice = this.getPackagePrice(item);
-        return baseAmount + packageCount * pkgPrice;
-    }
-
-    /**
-     * Цена одной упаковки поставщика.
-     */
-    private getPackagePrice(item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>): number {
-        if (item.product.supplierPackagePrice != null && Number(item.product.supplierPackagePrice) > 0) {
-            return Number(item.product.supplierPackagePrice);
-        }
-        return Number(item.product.pricePerUnit) * Number(item.product.supplierPackageAmount ?? 0);
-    }
-
-    /**
      * Изменить количество упаковок на delta (+1 / -1).
-     * Упаковка = целая нераспечатанная пачка поставщика.
      */
     async adjustPackageCount(purchaseItemId: number, userId: number, delta: number) {
         if (delta === 0) return;
 
         const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        if (!item) {
-            throw new NotFoundError('Товар закупки', purchaseItemId);
-        }
+        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         const fulfillmentStatus = (item.purchase.fulfillmentStatus ?? 'COLLECTION') as string;
 
@@ -151,7 +72,6 @@ export class OrderService {
             throw new ValidationError('На этом этапе нельзя добавить упаковку');
         }
 
-        // Проверяем что у продукта есть размер упаковки
         const packAmount = item.product.supplierPackageAmount;
         if (!packAmount || Number(packAmount) <= 0) {
             throw new ValidationError('У товара не указан размер упаковки поставщика');
@@ -165,14 +85,13 @@ export class OrderService {
             throw new ValidationError('Количество упаковок не может быть отрицательным');
         }
 
-        // Если OrderLine не существует и delta > 0 — можно создать (COLLECTION позволяет новые)
+        // Если OrderLine не существует — можно создать только на COLLECTION
         if (!existing && !canAddNewItem(fulfillmentStatus)) {
             throw new ValidationError('На этом этапе нельзя добавить новый товар');
         }
 
         const qty = existing ? Number(existing.quantity) : 0;
         const amountDue = await this.computeAmountDueWithPackages(qty, newPkgCount, item);
-
         return this.repo.upsertOrderLine(purchaseItemId, userId, qty, amountDue, newPkgCount);
     }
 
@@ -186,19 +105,14 @@ export class OrderService {
 
     async cancelOrder(id: number, userId: number) {
         const line = await this.repo.findById(id);
-        if (!line) {
-            return null;
-        }
+        if (!line) return null;
         if (line.userId !== userId) {
             throw new ValidationError('Нельзя отменить чужой заказ');
         }
-
-        const fulfillmentStatus =
-            line.purchaseItem?.purchase?.fulfillmentStatus ?? 'COLLECTION';
+        const fulfillmentStatus = line.purchaseItem?.purchase?.fulfillmentStatus ?? 'COLLECTION';
         if (!canCancelOrder(fulfillmentStatus)) {
             throw new ValidationError('На этом этапе нельзя отменить заказ');
         }
-
         return this.repo.cancelOrder(id);
     }
 
@@ -206,21 +120,14 @@ export class OrderService {
         return this.repo.delete(id);
     }
 
-    /**
-     * Удалить все заказы пользователя в закупке.
-     */
     async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
         return this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
     }
 
-    /**
-     * Получить активные закупки пользователя (у которых есть неотменённые заказы).
-     */
     async getActivePurchases(userId: number) {
         const orders = await this.repo.findActiveOrdersByUserId(userId);
         if (orders.length === 0) return [];
 
-        // Группируем по purchaseId
         const byPurchase = new Map<number, { purchaseId: number; tag: string; fulfillmentStatus: string; totalDue: number }>();
         for (const line of orders) {
             const p = line.purchaseItem.purchase;
@@ -239,9 +146,6 @@ export class OrderService {
         return Array.from(byPurchase.values());
     }
 
-    /**
-     * Получить детали заказа пользователя по закупке.
-     */
     async getPurchaseOrderDetail(userId: number, purchaseId: number) {
         const lines = await this.repo.findByUserAndPurchase(userId, purchaseId);
         if (lines.length === 0) return null;
@@ -268,5 +172,80 @@ export class OrderService {
                 updatedAt: l.updatedAt,
             })),
         };
+    }
+
+    // ── Private helpers ───────────────────────────────────────────
+
+    private validateStageAction(action: StageAction, fulfillmentStatus: string, newQty: number, baseQty: number) {
+        switch (action) {
+            case 'add_new':
+                if (!canAddNewItem(fulfillmentStatus))
+                    throw new ValidationError('На этом этапе нельзя добавить новый товар');
+                break;
+            case 'increase':
+                if (!canIncreaseFromRemainder(fulfillmentStatus))
+                    throw new ValidationError('На этом этапе нельзя увеличить заказ');
+                break;
+            case 'decrease': {
+                if (!canDecreaseOrder(fulfillmentStatus))
+                    throw new ValidationError('На этом этапе нельзя уменьшить заказ');
+                const isFloorStage = fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER';
+                if (isFloorStage && baseQty > 0 && newQty < baseQty) {
+                    throw new ValidationError(
+                        `Нельзя убавить ниже базового заказа (${baseQty}). Можно убрать только доборную часть.`,
+                    );
+                }
+                break;
+            }
+        }
+    }
+
+    private async resolveZeroQuantity(
+        fulfillmentStatus: string,
+        existing: Awaited<ReturnType<OrderRepository['findByPurchaseItemAndUser']>>,
+        purchaseItemId: number,
+        userId: number,
+    ) {
+        if (fulfillmentStatus === 'COLLECTION') {
+            return this.repo.deleteOrderLine(purchaseItemId, userId);
+        }
+        if (existing) {
+            return this.repo.zeroOutOrderLine(purchaseItemId, userId);
+        }
+        return null;
+    }
+
+    private async computeAmountDue(
+        quantity: number,
+        item: Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>,
+    ): Promise<number> {
+        if (!item) return 0;
+        const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
+        return calculateOrderAmount(quantity, {
+            priceTiers: item.product.priceTiers,
+            pricePerUnit: Number(item.product.pricePerUnit),
+            priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
+            supplierPackageAmount: item.product.supplierPackageAmount,
+            supplierPackageUnit: item.product.supplierPackageUnit,
+            supplierPackagePrice: item.product.supplierPackagePrice,
+            packDiscountPercent,
+        });
+    }
+
+    private async computeAmountDueWithPackages(
+        quantity: number,
+        packageCount: number,
+        item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>,
+    ): Promise<number> {
+        const baseAmount = await this.computeAmountDue(quantity, item);
+        const pkgPrice = this.getPackagePrice(item);
+        return baseAmount + packageCount * pkgPrice;
+    }
+
+    private getPackagePrice(item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>): number {
+        if (item.product.supplierPackagePrice != null && Number(item.product.supplierPackagePrice) > 0) {
+            return Number(item.product.supplierPackagePrice);
+        }
+        return Number(item.product.pricePerUnit) * Number(item.product.supplierPackageAmount ?? 0);
     }
 }

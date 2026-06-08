@@ -15,10 +15,23 @@ import {
 } from '@zakupki/types';
 import { cn } from '@/lib/utils';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import type { ShopPurchaseItem, ShopOrderLine } from '@/app/shop/lib/types';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 import { ProductCard } from './components';
 import { FilterTree } from './components/filter-tree';
+
+function buildOrderMaps(myOrders: { purchaseItemId: number; quantity: unknown; packageCount?: unknown; baseQuantity?: unknown }[]) {
+    const qty = new Map<number, number>();
+    const pkg = new Map<number, number>();
+    const base = new Map<number, number>();
+    for (const o of myOrders) {
+        qty.set(o.purchaseItemId, Number(o.quantity));
+        pkg.set(o.purchaseItemId, Number(o.packageCount ?? 0));
+        base.set(o.purchaseItemId, o.baseQuantity != null ? Number(o.baseQuantity) : 0);
+    }
+    return { qty, pkg, base };
+}
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
@@ -43,16 +56,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         totalCount,
     } = usePurchaseFilterTree(items);
 
-    const orderQtyMap = new Map(paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]));
-    const orderPackageCountMap = new Map(
-        paymentDetail.myOrdersInPurchase.map((o: any) => [o.purchaseItemId, o.packageCount ?? 0]),
-    );
-    // baseQuantity — замороженное количество при входе в SUPPLEMENT
-    const orderBaseQuantityMap = new Map(
-        paymentDetail.myOrdersInPurchase.map((o: any) => [
-            o.purchaseItemId,
-            o.baseQuantity != null ? Number(o.baseQuantity) : 0,
-        ]),
+    const { qty: orderQtyMap, pkg: orderPackageCountMap, base: orderBaseQuantityMap } = buildOrderMaps(
+        paymentDetail.myOrdersInPurchase,
     );
 
     if (isLoading) {
@@ -192,7 +197,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         <p className="text-sm text-muted-foreground">Товаров: {filteredItems.length}</p>
 
                         <div className="grid grid-cols-2 items-stretch gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredItems.map((item: any) => (
+                            {filteredItems.map((item) => (
                                 <ProductCard
                                     key={item.id}
                                     item={{
