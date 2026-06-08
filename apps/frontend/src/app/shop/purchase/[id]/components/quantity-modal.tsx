@@ -32,6 +32,8 @@ interface QuantityModalProps {
     packDiscountPercent: number;
     /** Текущее количество этого пользователя (0 если заказа не было). */
     currentQuantity: number;
+    /** Количество упаковок поставщика у этого пользователя. */
+    packageCount?: number;
     /** baseQuantity — зафиксированное количество при входе в SUPPLEMENT/REORDER (для расчёта пула). */
     baseQuantity?: number;
     onClose: () => void;
@@ -42,6 +44,7 @@ export function QuantityModal({
     purchaseId,
     packDiscountPercent,
     currentQuantity,
+    packageCount = 0,
     baseQuantity = 0,
     onClose,
 }: QuantityModalProps) {
@@ -112,6 +115,16 @@ export function QuantityModal({
         onError: (err) => toast.error(err.message),
     });
 
+    const packageMutation = trpc.orders.adjustPackageCount.useMutation({
+        onSuccess: () => {
+            utils.orders.getMyOrders.invalidate();
+            utils.purchases.getById.invalidate({ id: purchaseId });
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const orderBusy = adjustMutation.isPending || packageMutation.isPending;
+
     if (!item || !unit) return null;
 
     const product = item.product as {
@@ -136,7 +149,20 @@ export function QuantityModal({
         supplierPackagePrice: product.supplierPackagePrice,
         packDiscountPercent,
     };
-    const total = calculateOrderAmount(currentQuantity, pricingOptions);
+
+    // Упаковка
+    const modalPackSize = packSize ?? 0;
+    const hasSupplierPackage = modalPackSize > 0;
+    const pkgPrice =
+        product.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0
+            ? Number(product.supplierPackagePrice)
+            : Number(product.pricePerUnit) * modalPackSize;
+    const packageTotal = packageCount * pkgPrice;
+    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
+    const showPackageButtons =
+        (fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER') && hasSupplierPackage;
+
+    const total = calculateOrderAmount(currentQuantity, pricingOptions) + packageTotal;
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
@@ -216,7 +242,7 @@ export function QuantityModal({
                                 variant="outline"
                                 className="h-12 rounded-xl text-sm font-medium"
                                 onClick={handleRemove}
-                                disabled={!canRemove || adjustMutation.isPending}
+                                disabled={!canRemove || orderBusy}
                             >
                                 <Minus className="mr-1 h-4 w-4" />
                                 −{minPackaging} {shortName}
@@ -225,12 +251,36 @@ export function QuantityModal({
                                 variant="outline"
                                 className="h-12 rounded-xl text-sm font-medium"
                                 onClick={handleAdd}
-                                disabled={!canAdd || adjustMutation.isPending}
+                                disabled={!canAdd || orderBusy}
                             >
                                 <Plus className="mr-1 h-4 w-4" />
                                 +{minPackaging} {shortName}
                             </Button>
                         </div>
+
+                        {/* ±упаковка поставщика */}
+                        {showPackageButtons && (
+                            <div className="mx-auto grid max-w-xs grid-cols-2 gap-3">
+                                <Button
+                                    variant="outline"
+                                    className="h-12 rounded-xl text-sm font-medium"
+                                    disabled={orderBusy || packageCount <= 0}
+                                    onClick={() => packageMutation.mutate({ purchaseItemId, delta: -1 })}
+                                >
+                                    <Minus className="mr-1 h-4 w-4" />
+                                    −Упак.
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="h-12 rounded-xl text-sm font-medium"
+                                    disabled={orderBusy}
+                                    onClick={() => packageMutation.mutate({ purchaseItemId, delta: 1 })}
+                                >
+                                    <Plus className="mr-1 h-4 w-4" />
+                                    +Упак. ({modalPackSize} {shortName})
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Итого */}
@@ -240,7 +290,9 @@ export function QuantityModal({
                             {total.toLocaleString('ru-RU')} ₽
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                            {currentQuantity} {shortName} · {total.toLocaleString('ru-RU')} ₽
+                            {currentQuantity > 0 && `${currentQuantity} ${shortName}`}
+                            {currentQuantity > 0 && packageCount > 0 && ' + '}
+                            {packageCount > 0 && `${packageCount} упак.`} · {total.toLocaleString('ru-RU')} ₽
                         </p>
                         {packDiscountInfo != null && fullPacks > 0 && (
                             <p className="mt-2 text-xs text-success">

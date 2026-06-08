@@ -30,6 +30,8 @@ interface ShopPurchaseItemProductCardProps {
         minQty: string | number | null;
         /** Текущее количество этого пользователя */
         quantity: number;
+        /** Количество упаковок поставщика у этого пользователя */
+        packageCount?: number;
         orderLines?: { quantity: unknown; userId: number; baseQuantity: unknown; status?: string | null }[];
         product: ProductLabelSource & {
             pricePerUnit: string | number;
@@ -48,6 +50,9 @@ interface ShopPurchaseItemProductCardProps {
     /** baseQuantity — замороженный снимок при входе в SUPPLEMENT */
     baseQuantity?: number | null;
     isSupplement: boolean;
+    /** Можно ли добавлять упаковки (COLLECTION или REORDER) */
+    canAddPackage: boolean;
+    fulfillmentStatus: string;
     onOrderChange?: () => void;
 }
 
@@ -57,6 +62,8 @@ export function ProductCard({
     packDiscountPercent,
     baseQuantity: baseQuantityProp,
     isSupplement,
+    canAddPackage,
+    fulfillmentStatus,
     onOrderChange,
 }: ShopPurchaseItemProductCardProps) {
     const utils = trpc.useUtils();
@@ -112,7 +119,6 @@ export function ProductCard({
         orderQtyOptions,
     });
 
-    const hasOrder = currentQuantity > 0;
     const photo = product.photos?.[0];
 
     const adjustMutation = trpc.orders.adjustQuantity.useMutation({
@@ -124,7 +130,28 @@ export function ProductCard({
         onError: (err) => toast.error(err.message),
     });
 
-    const orderBusy = adjustMutation.isPending;
+    const packageMutation = trpc.orders.adjustPackageCount.useMutation({
+        onSuccess: () => {
+            void utils.orders.getMyOrders.invalidate();
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            onOrderChange?.();
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const orderBusy = adjustMutation.isPending || packageMutation.isPending;
+
+    // Упаковка
+    const currentPackageCount = item.packageCount ?? 0;
+    const hasSupplierPackage = packSize != null && packSize > 0;
+    const showPackageButtons = canAddPackage && hasSupplierPackage;
+    const packagePrice =
+        product.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0
+            ? Number(product.supplierPackagePrice)
+            : Number(product.pricePerUnit) * (packSize ?? 0);
+    const packageTotal = currentPackageCount * packagePrice;
+
+    const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
 
     const pricingOptions = {
         priceTiers: (product as { priceTiers?: unknown }).priceTiers,
@@ -135,7 +162,7 @@ export function ProductCard({
         supplierPackagePrice: product.supplierPackagePrice,
         packDiscountPercent,
     };
-    const total = calculateOrderAmount(currentQuantity, pricingOptions);
+    const total = calculateOrderAmount(currentQuantity, pricingOptions) + packageTotal;
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
@@ -241,7 +268,10 @@ export function ProductCard({
                             {hasOrder && (
                                 <>
                                     <span className="text-sm text-muted-foreground">
-                                        {currentQuantity} {shortName} ·{' '}
+                                        {currentQuantity > 0 && `${currentQuantity} ${shortName}`}
+                                        {currentQuantity > 0 && currentPackageCount > 0 && ' + '}
+                                        {currentPackageCount > 0 && `${currentPackageCount} упак.`}{' '}
+                                        ·{' '}
                                         <span className="font-semibold text-foreground">
                                             {total.toLocaleString('ru-RU')} ₽
                                         </span>
@@ -282,6 +312,32 @@ export function ProductCard({
                                 +{minPackaging} {shortName}
                             </Button>
                         </div>
+
+                        {/* ±упаковка поставщика */}
+                        {showPackageButtons && (
+                            <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 flex-1 text-xs"
+                                    disabled={orderBusy || currentPackageCount <= 0}
+                                    onClick={() => packageMutation.mutate({ purchaseItemId, delta: -1 })}
+                                >
+                                    <Minus className="mr-1 h-3 w-3" />
+                                    −Упак.
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 flex-1 text-xs"
+                                    disabled={orderBusy}
+                                    onClick={() => packageMutation.mutate({ purchaseItemId, delta: 1 })}
+                                >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    +Упак. ({packSize} {shortName})
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </CardContent>

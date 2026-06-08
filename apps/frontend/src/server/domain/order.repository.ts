@@ -8,7 +8,13 @@ export class OrderRepository {
     /**
      * Создать или обновить строку заказа.
      */
-    async upsertOrderLine(purchaseItemId: number, userId: number, quantity: number, amountDue: number) {
+    async upsertOrderLine(
+        purchaseItemId: number,
+        userId: number,
+        quantity: number,
+        amountDue: number,
+        packageCount?: number,
+    ) {
         const purchaseItem = await dbClient.purchaseItem.findUnique({
             where: { id: purchaseItemId },
             select: { purchaseId: true },
@@ -22,20 +28,20 @@ export class OrderRepository {
             update: {},
         });
 
+        const data = { quantity, amountDue, status: 'ACTIVE' as const };
+        if (packageCount != null) {
+            (data as any).packageCount = packageCount;
+        }
+
         return dbClient.orderLine.upsert({
             where: { purchaseItemId_userId: { purchaseItemId, userId } },
             create: {
                 purchaseItemId,
                 userId,
-                quantity,
-                amountDue,
-                status: 'ACTIVE',
+                ...data,
+                ...(packageCount != null ? { packageCount } : {}),
             },
-            update: {
-                quantity,
-                amountDue,
-                status: 'ACTIVE',
-            },
+            update: data,
         });
     }
 
@@ -56,7 +62,7 @@ export class OrderRepository {
     async zeroOutOrderLine(purchaseItemId: number, userId: number) {
         return dbClient.orderLine.update({
             where: { purchaseItemId_userId: { purchaseItemId, userId } },
-            data: { quantity: 0, amountDue: 0 },
+            data: { quantity: 0, amountDue: 0, packageCount: 0 },
         });
     }
 

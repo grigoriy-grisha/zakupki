@@ -17,7 +17,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
     const router = useAppRouter();
     const pathname = useAppPathname();
     const { data: purchases, isLoading } = trpc.purchases.list.useQuery({
-        statuses: ['ACTIVE', 'SUPPLEMENT'],
+        statuses: ['ACTIVE'],
     });
 
     // Extract purchaseId from path like /shop/purchase/123
@@ -41,7 +41,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                     <nav className="space-y-1">
                         {purchases.map((purchase) => {
                             const isActive = activePurchaseId === purchase.id;
-                            const isSupplement = purchase.status === 'SUPPLEMENT';
+                            const isSupplement = (purchase.fulfillmentStatus ?? 'COLLECTION') === 'REORDER';
                             const fulfillmentStatus = (purchase.fulfillmentStatus ??
                                 'COLLECTION') as PurchaseFulfillmentStatus;
                             const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];

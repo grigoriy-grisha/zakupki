@@ -238,6 +238,11 @@ model OrderLine {
   // На REORDER пользователь может добавлять/убавлять от этого базового количества.
   baseQuantity Decimal? @db.Decimal(10, 3)
 
+  // Количество целых упаковок поставщика. Упаковка — нераспечатанная пачка,
+  // которую организатор отправляет как есть (без расфасовки).
+  // Не влияет на расчёт остатка/пула добора.
+  packageCount Int @default(0)
+
   tgChatMessageId BigInt?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

@@ -11,7 +11,7 @@ import { CheckCircle2, Loader2, Rocket, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS } from '../../lib/constants';
-import { useActivate, useCompletePurchase, useDeleteDraftPurchase, useUpdateFulfillmentStatus } from './hooks';
+import { usePurchaseActions } from './hooks';
 import { ExportPurchaseButtons, ItemsTab, ParticipantsTab, SupplementTab } from './components';
 import { PurchaseFulfillmentStatusSelect } from '../components/purchase-fulfillment-status-select';
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
@@ -25,10 +25,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const router = useAppRouter();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
-    const activate = useActivate(id);
-    const completePurchase = useCompletePurchase(id);
-    const deleteDraft = useDeleteDraftPurchase();
-    const updateFulfillmentStatus = useUpdateFulfillmentStatus(id);
+    const actions = usePurchaseActions(id);
 
     if (isLoading) {
         return (
@@ -45,7 +42,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
     const deadline = new Date(purchase.deadline);
     const isDraft = purchase.status === 'DRAFT';
-    const canComplete = purchase.status === 'ACTIVE' || purchase.status === 'SUPPLEMENT';
+    const canComplete = purchase.status === 'ACTIVE';
     const fulfillmentStatus = (purchase as { fulfillmentStatus?: PurchaseFulfillmentStatus }).fulfillmentStatus;
 
     return (
@@ -66,9 +63,9 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             <p className="text-sm font-medium text-muted-foreground">Этап закупки</p>
                             <PurchaseFulfillmentStatusSelect
                                 value={fulfillmentStatus}
-                                disabled={updateFulfillmentStatus.isPending}
+                                disabled={actions.updateFulfillmentStatus.isPending}
                                 onChange={(next) => {
-                                    updateFulfillmentStatus.mutate({ id, fulfillmentStatus: next });
+                                    actions.updateFulfillmentStatus.mutate({ id, fulfillmentStatus: next });
                                 }}
                             />
                         </div>
@@ -136,9 +133,9 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         возможности восстановления.
                     </>
                 }
-                loading={deleteDraft.isPending}
+                loading={actions.deleteDraft.isPending}
                 onConfirm={() => {
-                    deleteDraft.mutate(
+                    actions.deleteDraft.mutate(
                         { id },
                         {
                             onSuccess: () => {
@@ -162,9 +159,9 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 }
                 confirmLabel="Завершить закупку"
                 variant="destructive"
-                loading={completePurchase.isPending}
+                loading={actions.complete.isPending}
                 onConfirm={() => {
-                    completePurchase.mutate({ id }, { onSuccess: () => setCompleteOpen(false) });
+                    actions.complete.mutate({ id }, { onSuccess: () => setCompleteOpen(false) });
                 }}
             />
 
@@ -182,12 +179,12 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             Отмена
                         </Button>
                         <Button
-                            disabled={activate.isPending}
+                            disabled={actions.activate.isPending}
                             onClick={() => {
-                                activate.mutate({ purchaseId: id }, { onSuccess: () => setActivateOpen(false) });
+                                actions.activate.mutate({ purchaseId: id }, { onSuccess: () => setActivateOpen(false) });
                             }}
                         >
-                            {activate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {actions.activate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Активировать
                         </Button>
                     </DialogFooter>

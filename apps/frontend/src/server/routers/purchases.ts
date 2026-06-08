@@ -57,7 +57,7 @@ export const purchasesRouter = router({
         .input(
             z.object({
                 id: z.number(),
-                status: z.enum(['DRAFT', 'ACTIVE', 'SUPPLEMENT', 'CLOSED', 'ARRIVED', 'DONE']),
+                status: z.enum(['DRAFT', 'ACTIVE', 'CLOSED', 'ARRIVED', 'DONE']),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -197,6 +197,13 @@ export const purchasesRouter = router({
                 await ctx.services.telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);
             }
 
+            return { ok: true };
+        }),
+
+    recalculateAmounts: adminProcedure
+        .input(z.object({ purchaseId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            await ctx.services.purchase.recalculateAmounts(input.purchaseId);
             return { ok: true };
         }),
 });

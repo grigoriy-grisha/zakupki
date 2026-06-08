@@ -37,7 +37,7 @@ function MobilePurchaseTabs() {
     const router = useAppRouter();
     const pathname = useAppPathname();
     const { data: purchases } = trpc.purchases.list.useQuery({
-        statuses: ['ACTIVE', 'SUPPLEMENT'],
+        statuses: ['ACTIVE'],
     });
 
     const match = pathname.match(/\/shop\/purchase\/(\d+)/);

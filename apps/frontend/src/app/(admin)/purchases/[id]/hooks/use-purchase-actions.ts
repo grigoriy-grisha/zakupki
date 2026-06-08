@@ -2,7 +2,6 @@
 
 import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
-import { useCallback } from 'react';
 
 export function usePurchaseActions(purchaseId: number) {
     const utils = trpc.useUtils();
@@ -94,43 +93,14 @@ export function usePurchaseActions(purchaseId: number) {
     });
 
     return {
-        activate: {
-            mutate: (vars: { purchaseId: number }) => activate.mutate(vars),
-            isPending: activate.isPending,
-        },
-        complete: {
-            mutate: (vars: { id: number }) => complete.mutate(vars),
-            isPending: complete.isPending,
-        },
-        deleteDraft: {
-            mutate: (vars: { id: number }) => deleteDraft.mutate(vars),
-            isPending: deleteDraft.isPending,
-        },
-        publishAll: {
-            mutate: (vars: { purchaseId: number }) => publishAll.mutate(vars),
-            isPending: publishAll.isPending,
-        },
-        updateFulfillmentStatus: {
-            mutate: (vars: { id: number; fulfillmentStatus: import('@zakupki/types').PurchaseFulfillmentStatus }) =>
-                updateFulfillmentStatus.mutate(vars as any),
-            isPending: updateFulfillmentStatus.isPending,
-        },
-        publishItem: {
-            mutate: (vars: { purchaseItemId: number }) => publishItem.mutate(vars),
-            isPending: publishItem.isPending,
-        },
-        removeItem: {
-            mutate: (vars: { purchaseItemId: number }) => removeItem.mutate(vars),
-            isPending: removeItem.isPending,
-        },
-        setPublicationState: {
-            mutate: (vars: { purchaseItemId: number; value: boolean }) => setPublicationState.mutate(vars),
-            isPending: setPublicationState.isPending,
-        },
-        setTargetRemainder: {
-            mutate: (vars: { purchaseId: number; items: { purchaseItemId: number; targetRemainder: number | null }[] }) =>
-                setTargetRemainder.mutate(vars),
-            isPending: setTargetRemainder.isPending,
-        },
+        activate,
+        complete,
+        deleteDraft,
+        publishAll,
+        updateFulfillmentStatus,
+        publishItem,
+        removeItem,
+        setPublicationState,
+        setTargetRemainder,
     };
 }

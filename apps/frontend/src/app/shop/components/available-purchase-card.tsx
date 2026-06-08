@@ -27,12 +27,12 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
                         <div>
                             <Badge
                                 className={
-                                    purchase.status === 'SUPPLEMENT'
+                                    (purchase as { fulfillmentStatus?: string }).fulfillmentStatus === 'REORDER'
                                         ? 'bg-warning-50 text-warning hover:bg-warning-50'
                                         : 'bg-success-50 text-success hover:bg-success-50'
                                 }
                             >
-                                {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
+                                {(purchase as { fulfillmentStatus?: string }).fulfillmentStatus === 'REORDER' ? 'Добор' : 'Активна'}
                             </Badge>
                             <h3 className="mt-2 text-lg font-semibold group-hover:text-primary transition-colors">
                                 {purchase.supplier}

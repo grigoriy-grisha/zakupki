@@ -9,7 +9,7 @@ import { ShoppingCart } from 'lucide-react';
 export default function ShopPage() {
     const router = useAppRouter();
     const { data: purchases, isLoading } = trpc.purchases.list.useQuery({
-        statuses: ['ACTIVE', 'SUPPLEMENT'],
+        statuses: ['ACTIVE'],
     });
 
     useEffect(() => {

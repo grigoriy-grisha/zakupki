@@ -21,7 +21,7 @@ export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
     const statusBadge =
         purchase.status === 'DONE'
             ? { label: 'Завершена', className: 'bg-muted text-muted-foreground hover:bg-muted' }
-            : purchase.status === 'SUPPLEMENT'
+            : fulfillmentStatus === 'REORDER'
               ? { label: 'Добор', className: 'bg-warning-50 text-warning hover:bg-warning-50' }
               : { label: 'Активна', className: 'bg-success-50 text-success hover:bg-success-50' };
 

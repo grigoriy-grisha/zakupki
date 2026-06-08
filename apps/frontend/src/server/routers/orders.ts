@@ -14,6 +14,16 @@ export const ordersRouter = router({
             return ctx.services.order.adjustQuantity(input.purchaseItemId, ctx.userId, input.delta);
         }),
 
+    /**
+     * Добавить/убрать упаковку поставщика (delta = +1 или -1).
+     * Упаковка = целая нераспечатанная пачка.
+     */
+    adjustPackageCount: protectedProcedure
+        .input(z.object({ purchaseItemId: z.number(), delta: z.number().int().min(-1).max(1) }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.adjustPackageCount(input.purchaseItemId, ctx.userId, input.delta);
+        }),
+
     // Получить свои заказы
     getMyOrders: protectedProcedure.query(async ({ ctx }) => {
         return ctx.services.order.getUserOrders(ctx.userId);

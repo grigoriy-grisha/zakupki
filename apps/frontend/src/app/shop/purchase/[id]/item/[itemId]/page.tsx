@@ -42,6 +42,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const item = purchase?.items.find((i: any) => i.id === purchaseItemId);
     const existingOrder = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
     const currentQuantity = existingOrder ? Number(existingOrder.quantity ?? 0) : 0;
+    const currentPackageCount = existingOrder?.packageCount ?? 0;
     const baseQuantity = existingOrder?.baseQuantity != null ? Number(existingOrder.baseQuantity) : 0;
 
     const product = item?.product as
@@ -66,6 +67,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product?.minPackageUnit ?? null;
     const isSupplement = isSupplementPhase(purchase?.fulfillmentStatus ?? 'COLLECTION');
+    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
     const minPackaging = getOrderQuantityStep(
         buildOrderQtyOptions({ multiplicity, minPackageAmount, minPackageUnit }),
     );
@@ -90,7 +92,17 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
           }
         : null;
 
-    const total = pricingOptions ? calculateOrderAmount(currentQuantity, pricingOptions) : 0;
+    // Упаковка
+    const hasSupplierPackage = packSize != null && packSize > 0;
+    const packagePrice =
+        product?.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0
+            ? Number(product.supplierPackagePrice)
+            : (product ? Number(product.pricePerUnit) : 0) * (packSize ?? 0);
+    const packageTotal = currentPackageCount * packagePrice;
+    const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
+    const showPackageButtons = canAddPackage && hasSupplierPackage;
+
+    const total = (pricingOptions ? calculateOrderAmount(currentQuantity, pricingOptions) : 0) + packageTotal;
     const packDiscountInfo = product ? getPackDiscountPricingInfo(product, packDiscountPercent) : null;
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
@@ -125,15 +137,25 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         onError: (err) => toast.error(err.message),
     });
 
+    const packageMutation = trpc.orders.adjustPackageCount.useMutation({
+        onSuccess: () => {
+            void utils.orders.getMyOrders.invalidate();
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const orderBusy = adjustMutation.isPending || packageMutation.isPending;
+
     function handleAdd() {
-        if (adjustMutation.isPending) return;
+        if (orderBusy) return;
         const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
         if (currentQuantity + minPackaging > maxAllowed) return;
         adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
     }
 
     function handleRemove() {
-        if (adjustMutation.isPending || currentQuantity <= 0) return;
+        if (orderBusy || currentQuantity <= 0) return;
         if (currentQuantity <= minPackaging) {
             adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
         } else {
@@ -142,7 +164,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     const canAdd =
-        !adjustMutation.isPending &&
+        !orderBusy &&
         (availablePool == null || currentQuantity + minPackaging <= availablePool + baseQuantity);
 
     const freeRemainderLabel =
@@ -298,7 +320,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={adjustMutation.isPending || currentQuantity <= 0}
+                                        disabled={orderBusy || currentQuantity <= 0}
                                         onClick={handleRemove}
                                     >
                                         <Minus className="mr-1 h-4 w-4" />
@@ -314,6 +336,30 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                         +{minPackaging} {shortName}
                                     </Button>
                                 </div>
+
+                                {/* ±упаковка поставщика */}
+                                {showPackageButtons && (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1"
+                                            disabled={orderBusy || currentPackageCount <= 0}
+                                            onClick={() => packageMutation.mutate({ purchaseItemId, delta: -1 })}
+                                        >
+                                            <Minus className="mr-1 h-4 w-4" />
+                                            −Упаковку
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1"
+                                            disabled={orderBusy}
+                                            onClick={() => packageMutation.mutate({ purchaseItemId, delta: 1 })}
+                                        >
+                                            <Plus className="mr-1 h-4 w-4" />
+                                            +Упаковку ({packSize} {shortName})
+                                        </Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "PurchaseStatus" AS ENUM ('DRAFT', 'ACTIVE', 'SUPPLEMENT', 'CLOSED', 'ARRIVED', 'DONE');
+CREATE TYPE "PurchaseStatus" AS ENUM ('DRAFT', 'ACTIVE', 'CLOSED', 'ARRIVED', 'DONE');
 
 -- CreateEnum
 CREATE TYPE "PurchaseFulfillmentStatus" AS ENUM ('COLLECTION', 'REORDER', 'PAYMENT', 'SUPPLIER_ASSEMBLY', 'PREPARING_SHIPMENT_RF', 'IN_TRANSIT_RF', 'IN_TRANSIT_TO_ORGANIZER', 'PACKAGING', 'READY_FOR_PICKUP');
@@ -14,17 +14,10 @@ CREATE TYPE "PromoType" AS ENUM ('PERCENT', 'FIXED');
 CREATE TYPE "RoleKind" AS ENUM ('ADMIN', 'CLIENT');
 
 -- CreateEnum
+CREATE TYPE "PublicationState" AS ENUM ('DRAFT', 'PUBLISHED');
+
+-- CreateEnum
 CREATE TYPE "OrderLineStatus" AS ENUM ('ACTIVE', 'CANCELLED');
-
--- CreateTable
-CREATE TABLE "Supplier" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Supplier_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateTable
 CREATE TABLE "Characteristic" (
@@ -143,13 +136,14 @@ CREATE TABLE "Product" (
     "supplierPackageAmount" DECIMAL(10,3),
     "supplierPackageUnit" TEXT,
     "supplierPackagePrice" DECIMAL(10,2),
-    "availableAmount" DECIMAL(10,3),
-    "availableUnit" TEXT,
+    "referenceStock" DECIMAL(10,3),
+    "referenceStockUnit" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "articleNumber" TEXT,
     "brandId" INTEGER,
     "supplierPackageTiers" JSONB,
+    "version" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
 );
@@ -176,7 +170,6 @@ CREATE TABLE "Purchase" (
     "minAmount" DECIMAL(10,2) NOT NULL,
     "deadline" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "supplierId" INTEGER,
     "fulfillmentStatus" "PurchaseFulfillmentStatus" NOT NULL DEFAULT 'COLLECTION',
 
     CONSTRAINT "Purchase_pkey" PRIMARY KEY ("id")
@@ -199,12 +192,10 @@ CREATE TABLE "PurchaseItem" (
     "purchaseId" INTEGER NOT NULL,
     "productId" INTEGER NOT NULL,
     "priceOverride" DECIMAL(10,2),
-    "minQty" DECIMAL(10,3),
-    "availableQty" DECIMAL(10,3),
+    "targetRemainder" DECIMAL(10,3),
     "tgMessageId" TEXT,
     "tgChannelId" TEXT,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "shouldPublish" BOOLEAN NOT NULL DEFAULT false,
+    "publicationState" "PublicationState" NOT NULL DEFAULT 'DRAFT',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -281,9 +272,6 @@ CREATE TABLE "AppSetting" (
 
     CONSTRAINT "AppSetting_pkey" PRIMARY KEY ("key")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "Supplier_name_key" ON "Supplier"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Characteristic_name_key" ON "Characteristic"("name");
@@ -446,9 +434,6 @@ ALTER TABLE "Product" ADD CONSTRAINT "Product_brandId_fkey" FOREIGN KEY ("brandI
 
 -- AddForeignKey
 ALTER TABLE "ProductPhoto" ADD CONSTRAINT "ProductPhoto_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PurchaseOrder" ADD CONSTRAINT "PurchaseOrder_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE CASCADE ON UPDATE CASCADE;

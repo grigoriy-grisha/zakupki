@@ -112,6 +112,7 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 session.user.id = token.id as string;
                 session.user.image = token.avatar as string | null;
+                session.user.role = token.role;
             }
             return session;
         },
@@ -125,6 +126,7 @@ declare module 'next-auth' {
             name?: string | null;
             email?: string | null;
             image?: string | null;
+            role?: string;
         };
     }
 

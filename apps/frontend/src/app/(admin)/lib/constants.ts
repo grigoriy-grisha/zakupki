@@ -1,7 +1,6 @@
 export const STATUS_LABELS: Record<string, string> = {
     DRAFT: 'Черновик',
     ACTIVE: 'Активная',
-    SUPPLEMENT: 'Добор',
     CLOSED: 'Закрыта',
     ARRIVED: 'Прибыла',
     DONE: 'Завершена',

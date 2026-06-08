@@ -44,6 +44,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     } = usePurchaseFilterTree(items);
 
     const orderQtyMap = new Map(paymentDetail.myOrdersInPurchase.map((o) => [o.purchaseItemId, Number(o.quantity)]));
+    const orderPackageCountMap = new Map(
+        paymentDetail.myOrdersInPurchase.map((o: any) => [o.purchaseItemId, o.packageCount ?? 0]),
+    );
     // baseQuantity — замороженное количество при входе в SUPPLEMENT
     const orderBaseQuantityMap = new Map(
         paymentDetail.myOrdersInPurchase.map((o: any) => [
@@ -192,11 +195,17 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             {filteredItems.map((item: any) => (
                                 <ProductCard
                                     key={item.id}
-                                    item={{ ...item, quantity: orderQtyMap.get(item.id) ?? 0 }}
+                                    item={{
+                                        ...item,
+                                        quantity: orderQtyMap.get(item.id) ?? 0,
+                                        packageCount: orderPackageCountMap.get(item.id) ?? 0,
+                                    }}
                                     purchaseId={id}
                                     packDiscountPercent={packDiscountPercent}
                                     baseQuantity={orderBaseQuantityMap.get(item.id) ?? undefined}
                                     isSupplement={isSupplement}
+                                    canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
+                                    fulfillmentStatus={fulfillmentStatus}
                                 />
                             ))}
                         </div>

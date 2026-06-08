@@ -80,8 +80,9 @@ export class OrderService {
             return null;
         }
 
-        // Вычисляем сумму через calculateOrderAmount
-        const amountDue = await this.computeAmountDue(newQty, item);
+        // Вычисляем сумму через calculateOrderAmount (с учётом упаковок)
+        const currentPkgCount = existing?.packageCount ?? 0;
+        const amountDue = await this.computeAmountDueWithPackages(newQty, currentPkgCount, item);
 
         return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
     }
@@ -106,6 +107,73 @@ export class OrderService {
             supplierPackagePrice: item.product.supplierPackagePrice,
             packDiscountPercent,
         });
+    }
+
+    /**
+     * Вычислить полную сумму с учётом quantity и packageCount.
+     */
+    private async computeAmountDueWithPackages(
+        quantity: number,
+        packageCount: number,
+        item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>,
+    ): Promise<number> {
+        const baseAmount = await this.computeAmountDue(quantity, item);
+        const pkgPrice = this.getPackagePrice(item);
+        return baseAmount + packageCount * pkgPrice;
+    }
+
+    /**
+     * Цена одной упаковки поставщика.
+     */
+    private getPackagePrice(item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>): number {
+        if (item.product.supplierPackagePrice != null && Number(item.product.supplierPackagePrice) > 0) {
+            return Number(item.product.supplierPackagePrice);
+        }
+        return Number(item.product.pricePerUnit) * Number(item.product.supplierPackageAmount ?? 0);
+    }
+
+    /**
+     * Изменить количество упаковок на delta (+1 / -1).
+     * Упаковка = целая нераспечатанная пачка поставщика.
+     */
+    async adjustPackageCount(purchaseItemId: number, userId: number, delta: number) {
+        if (delta === 0) return;
+
+        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
+        if (!item) {
+            throw new NotFoundError('Товар закупки', purchaseItemId);
+        }
+
+        const fulfillmentStatus = (item.purchase.fulfillmentStatus ?? 'COLLECTION') as string;
+
+        // Упаковки доступны только на COLLECTION и REORDER
+        if (fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER') {
+            throw new ValidationError('На этом этапе нельзя добавить упаковку');
+        }
+
+        // Проверяем что у продукта есть размер упаковки
+        const packAmount = item.product.supplierPackageAmount;
+        if (!packAmount || Number(packAmount) <= 0) {
+            throw new ValidationError('У товара не указан размер упаковки поставщика');
+        }
+
+        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
+        const currentPkgCount = existing?.packageCount ?? 0;
+        const newPkgCount = currentPkgCount + delta;
+
+        if (newPkgCount < 0) {
+            throw new ValidationError('Количество упаковок не может быть отрицательным');
+        }
+
+        // Если OrderLine не существует и delta > 0 — можно создать (COLLECTION позволяет новые)
+        if (!existing && !canAddNewItem(fulfillmentStatus)) {
+            throw new ValidationError('На этом этапе нельзя добавить новый товар');
+        }
+
+        const qty = existing ? Number(existing.quantity) : 0;
+        const amountDue = await this.computeAmountDueWithPackages(qty, newPkgCount, item);
+
+        return this.repo.upsertOrderLine(purchaseItemId, userId, qty, amountDue, newPkgCount);
     }
 
     async getUserOrders(userId: number) {
@@ -189,6 +257,7 @@ export class OrderService {
             lines: lines.map((l) => ({
                 id: l.id,
                 quantity: Number(l.quantity),
+                packageCount: l.packageCount ?? 0,
                 amountDue: Number(l.amountDue),
                 status: l.status,
                 purchaseItem: l.purchaseItem,
