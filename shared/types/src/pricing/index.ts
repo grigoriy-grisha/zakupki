@@ -5,6 +5,7 @@ export { calculateOrderAmount, roundMoney } from './calculation';
 export {
     getOrderQuantityStep,
     getMinOrderQuantity,
+    getSupplementStep,
     snapOrderQuantity,
     roundUpToStep,
     isMultipleOf,

@@ -179,6 +179,28 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                         </div>
                     )}
                 />
+
+                <Controller
+                    name="supplementStep"
+                    control={state.form.control}
+                    render={({ field }) => (
+                        <div className="space-y-1">
+                            <Label htmlFor="supplementStep">Фасовка для добора</Label>
+                            <Input
+                                id="supplementStep"
+                                type="number"
+                                step="0.001"
+                                min={0}
+                                placeholder="По умолчанию (мин. фасовка)"
+                                value={field.value ?? ''}
+                                onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Шаг +/− на этапе добора. Если не задан — используется мин. фасовка.
+                            </p>
+                        </div>
+                    )}
+                />
             </div>
 
             {/* Reference stock */}

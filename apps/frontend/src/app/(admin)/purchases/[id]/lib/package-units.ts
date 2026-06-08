@@ -13,6 +13,7 @@ export type PurchaseProductFieldSource = {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: string | number | null;
     supplierPackageTiers?: unknown;
+    supplementStep?: string | number | null;
     referenceStock?: string | number | null;
     referenceStockUnit?: string | null;
     unitCode?: string;

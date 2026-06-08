@@ -81,6 +81,7 @@ export function emptyPurchaseFields(unit?: string): PurchaseProductFormState {
         minPkgAmount: null,
         minPkgUnit: u,
         supPkgTiers: [{ amount: 0, unit: u, price: 0 }],
+        supplementStep: null,
         referenceStock: null,
         referenceStockUnit: u,
     };
@@ -106,6 +107,7 @@ export function savedPurchaseFields(
             minPkgAmount: product.minPackageAmount != null ? Math.trunc(Number(product.minPackageAmount)) : null,
             minPkgUnit: product.minPackageUnit ?? catalogUnit,
             supPkgTiers: getInitialSupplierTiers(product, catalogUnit),
+            supplementStep: product.supplementStep != null ? Number(product.supplementStep) : null,
             referenceStock: product.referenceStock != null ? Math.trunc(Number(product.referenceStock)) : null,
             referenceStockUnit: product.referenceStockUnit ?? catalogUnit,
         },
@@ -129,6 +131,7 @@ export type PurchaseProductFormState = {
     minPkgAmount: number | null;
     minPkgUnit: string;
     supPkgTiers: PurchasePriceTier[];
+    supplementStep: number | null;
     referenceStock: number | null;
     referenceStockUnit: string;
 };

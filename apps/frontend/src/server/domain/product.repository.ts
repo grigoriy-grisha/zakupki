@@ -24,6 +24,7 @@ export interface ProductWriteData {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: number | null;
     supplierPackageTiers?: PriceTier[] | null;
+    supplementStep?: number | null;
     referenceStock?: number | null;
     referenceStockUnit?: string | null;
 }

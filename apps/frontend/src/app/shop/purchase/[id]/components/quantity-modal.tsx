@@ -17,6 +17,7 @@ import {
     getUnitByCode,
     getPackDiscountPricingInfo,
     getSupplementPool,
+    getSupplementStep,
     buildOrderQtyOptions,
     getOrderQuantityStep,
     getMinOrderQuantity,
@@ -67,11 +68,17 @@ export function QuantityModal({
         unitShort: unit?.shortName ?? 'ед.',
     });
 
-    const minPackaging = getOrderQuantityStep(orderQtyOptions);
+    const regularStep = getOrderQuantityStep(orderQtyOptions);
     const minOrder = getMinOrderQuantity(orderQtyOptions);
 
     const isSupplement = isSupplementPhase(purchase?.fulfillmentStatus ?? 'COLLECTION');
+    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
     const packSize = item?.product?.supplierPackageAmount != null ? Number(item?.product?.supplierPackageAmount) : null;
+    const activeStep = getSupplementStep({
+        fulfillmentStatus,
+        supplementStep: item?.supplementStep != null ? Number(item.supplementStep) : null,
+        regularStep,
+    });
 
     // Сумма quantity всех пользователей (для расчёта пула добора)
     const activeLines = (item?.orderLines ?? []).filter(
@@ -158,7 +165,6 @@ export function QuantityModal({
             ? Number(product.supplierPackagePrice)
             : Number(product.pricePerUnit) * modalPackSize;
     const packageTotal = packageCount * pkgPrice;
-    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
     const showPackageButtons =
         (fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER') && hasSupplierPackage;
 
@@ -169,20 +175,32 @@ export function QuantityModal({
     const remainingPool = maxPool !== Number.POSITIVE_INFINITY ? Math.max(0, maxPool - (currentQuantity - baseQuantity)) : null;
 
     function handleAdd() {
-        adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
+        if (orderBusy) return;
+        const maxAllowed = maxPool !== Number.POSITIVE_INFINITY ? maxPool + (baseQuantity ?? 0) : Number.POSITIVE_INFINITY;
+        if (currentQuantity >= maxAllowed) return;
+        const remaining = maxAllowed - currentQuantity;
+        const delta = remaining < activeStep ? remaining : activeStep;
+        adjustMutation.mutate({ purchaseItemId, delta });
     }
 
     function handleRemove() {
-        if (currentQuantity <= minPackaging) {
-            // Уменьшаем до 0
-            adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
-        } else {
-            adjustMutation.mutate({ purchaseItemId, delta: -minPackaging });
-        }
+        if (orderBusy || currentQuantity <= 0) return;
+        const minAllowed =
+            fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? (baseQuantity ?? 0) : 0;
+        const removableQty = currentQuantity - minAllowed;
+        if (removableQty <= 0) return;
+        const delta = removableQty < activeStep ? removableQty : activeStep;
+        adjustMutation.mutate({ purchaseItemId, delta: -delta });
     }
 
-    const canAdd = currentQuantity + minPackaging <= maxPool || maxPool === Number.POSITIVE_INFINITY;
-    const canRemove = currentQuantity > 0;
+    const maxAllowed = maxPool !== Number.POSITIVE_INFINITY ? maxPool + (baseQuantity ?? 0) : Number.POSITIVE_INFINITY;
+    const canAdd = !orderBusy && currentQuantity < maxAllowed;
+    const canRemove =
+        !orderBusy &&
+        currentQuantity > 0 &&
+        (fulfillmentStatus === 'COLLECTION' ||
+            fulfillmentStatus === 'REORDER' ||
+            currentQuantity > (baseQuantity ?? 0));
 
     return (
         <Dialog open onOpenChange={onClose}>
@@ -245,7 +263,7 @@ export function QuantityModal({
                                 disabled={!canRemove || orderBusy}
                             >
                                 <Minus className="mr-1 h-4 w-4" />
-                                −{minPackaging} {shortName}
+                                −{activeStep} {shortName}
                             </Button>
                             <Button
                                 variant="outline"
@@ -254,7 +272,7 @@ export function QuantityModal({
                                 disabled={!canAdd || orderBusy}
                             >
                                 <Plus className="mr-1 h-4 w-4" />
-                                +{minPackaging} {shortName}
+                                +{activeStep} {shortName}
                             </Button>
                         </div>
 

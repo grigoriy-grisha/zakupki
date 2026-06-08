@@ -26,19 +26,24 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
     const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId }, { enabled: open });
 
     const [quantities, setQuantities] = useState<Record<number, string>>({});
+    const [supplementSteps, setSupplementSteps] = useState<Record<number, string>>({});
 
     const supplementItems = (purchase as { items?: any[] })?.items ?? [];
 
     useEffect(() => {
         if (purchase && open) {
-            const map: Record<number, string> = {};
+            const qtyMap: Record<number, string> = {};
+            const stepMap: Record<number, string> = {};
             for (const item of supplementItems) {
-                map[item.id] =
+                qtyMap[item.id] =
                     item.targetRemainder !== null && item.targetRemainder !== undefined
                         ? String(Number(item.targetRemainder))
                         : '';
+                stepMap[item.id] =
+                    item.supplementStep != null ? String(Number(item.supplementStep)) : '';
             }
-            setQuantities(map);
+            setQuantities(qtyMap);
+            setSupplementSteps(stepMap);
         }
     }, [purchase, open]);
 
@@ -55,9 +60,11 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
         if (!purchase) return;
         const items = supplementItems.map((item: any) => {
             const val = quantities[item.id];
+            const stepVal = supplementSteps[item.id];
             return {
                 purchaseItemId: item.id,
                 targetRemainder: val === '' ? null : Number(val),
+                supplementStep: stepVal === '' ? null : Number(stepVal),
             };
         });
         mutation.mutate({ purchaseId, items });
@@ -94,23 +101,43 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                         Заказано: {orderedTotal} {shortName}
                                     </p>
                                 </div>
-                                <div className="w-32 shrink-0">
-                                    <Input
-                                        type="number"
-                                        step="0.001"
-                                        min="0"
-                                        placeholder="Без лимита"
-                                        value={val}
-                                        onChange={(e) =>
-                                            setQuantities((prev) => ({
-                                                ...prev,
-                                                [item.id]: e.target.value,
-                                            }))
-                                        }
-                                        className="h-9 text-sm"
-                                    />
+                                <div className="flex items-center gap-2">
+                                    <div className="w-28 shrink-0">
+                                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Остаток</label>
+                                        <Input
+                                            type="number"
+                                            step="0.001"
+                                            min="0"
+                                            placeholder="Без лимита"
+                                            value={val}
+                                            onChange={(e) =>
+                                                setQuantities((prev) => ({
+                                                    ...prev,
+                                                    [item.id]: e.target.value,
+                                                }))
+                                            }
+                                            className="h-8 text-sm"
+                                        />
+                                    </div>
+                                    <div className="w-28 shrink-0">
+                                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Фасовка добора</label>
+                                        <Input
+                                            type="number"
+                                            step="0.001"
+                                            min="0"
+                                            placeholder="По умолч."
+                                            value={supplementSteps[item.id] ?? ''}
+                                            onChange={(e) =>
+                                                setSupplementSteps((prev) => ({
+                                                    ...prev,
+                                                    [item.id]: e.target.value,
+                                                }))
+                                            }
+                                            className="h-8 text-sm"
+                                        />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground shrink-0 w-8">{shortName}</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground shrink-0">{shortName}</span>
                             </div>
                         );
                     })}

@@ -28,6 +28,7 @@ const productCreateInput = z.object({
     supplierPackageUnit: z.string().nullable().optional(),
     supplierPackagePrice: z.number().nullable().optional(),
     supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
+    supplementStep: z.number().nullable().optional(),
     referenceStock: z.number().nullable().optional(),
     referenceStockUnit: z.string().nullable().optional(),
 });
@@ -51,6 +52,7 @@ const productUpdateInput = z.object({
     supplierPackageUnit: z.string().nullable().optional(),
     supplierPackagePrice: z.number().nullable().optional(),
     supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
+    supplementStep: z.number().nullable().optional(),
     referenceStock: z.number().nullable().optional(),
     referenceStockUnit: z.string().nullable().optional(),
 });

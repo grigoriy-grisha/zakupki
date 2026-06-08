@@ -42,6 +42,7 @@ export type ProductFormExisting = {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: number | null;
     supplierPackageTiers?: { amount: number; unit: string; price: number }[];
+    supplementStep?: number | null;
     referenceStock?: number | null;
     referenceStockUnit?: string | null;
 };
@@ -139,6 +140,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
                 supplierPackageUnit: existing.supplierPackageUnit ?? null,
                 supplierPackagePrice: existing.supplierPackagePrice ?? null,
                 supplierPackageTiers: existing.supplierPackageTiers ?? [],
+                supplementStep: existing.supplementStep ?? null,
                 referenceStock: existing.referenceStock ?? null,
                 referenceStockUnit: existing.referenceStockUnit ?? null,
             });
@@ -198,6 +200,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             supplierPackageUnit: undefined,
             supplierPackagePrice: undefined,
             supplierPackageTiers: [],
+            supplementStep: undefined,
             referenceStock: undefined,
             referenceStockUnit: undefined,
         });
@@ -224,6 +227,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             supplierPackageUnit: data.supplierPackageUnit ?? null,
             supplierPackagePrice: data.supplierPackagePrice ?? null,
             supplierPackageTiers: data.supplierPackageTiers ?? null,
+            supplementStep: data.supplementStep ?? null,
             referenceStock: data.referenceStock ?? null,
             referenceStockUnit: data.referenceStockUnit ?? null,
         };

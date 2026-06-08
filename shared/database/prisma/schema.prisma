@@ -141,6 +141,7 @@ model Product {
   supplierPackageAmount Decimal?                     @db.Decimal(10, 3)
   supplierPackageUnit   String?
   supplierPackagePrice  Decimal?                     @db.Decimal(10, 2)
+  supplementStep        Decimal?                     @db.Decimal(10, 3)
   referenceStock        Decimal?                     @db.Decimal(10, 3)
   referenceStockUnit    String?
   createdAt             DateTime                     @default(now())
@@ -211,6 +212,8 @@ model PurchaseItem {
   productId        Int
   priceOverride    Decimal?         @db.Decimal(10, 2)
   targetRemainder  Decimal?         @db.Decimal(10, 3)
+  // Шаг +/− на этапе добора (REORDER+). Если null — используется обычная фасовка.
+  supplementStep   Decimal?         @db.Decimal(10, 3)
   tgMessageId      String?
   tgChannelId      String?
   publicationState PublicationState @default(DRAFT)

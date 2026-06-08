@@ -13,6 +13,7 @@ import {
     formatMinPackageHint,
     getPackDiscountPricingInfo,
     getSupplementPool,
+    getSupplementStep,
     buildOrderQtyOptions,
     getOrderQuantityStep,
     isSupplementPhase,
@@ -68,9 +69,14 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const minPackageUnit = product?.minPackageUnit ?? null;
     const isSupplement = isSupplementPhase(purchase?.fulfillmentStatus ?? 'COLLECTION');
     const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
-    const minPackaging = getOrderQuantityStep(
+    const regularStep = getOrderQuantityStep(
         buildOrderQtyOptions({ multiplicity, minPackageAmount, minPackageUnit }),
     );
+    const activeStep = getSupplementStep({
+        fulfillmentStatus,
+        supplementStep: item?.supplementStep != null ? Number(item.supplementStep) : null,
+        regularStep,
+    });
 
     const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
@@ -150,22 +156,24 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     function handleAdd() {
         if (orderBusy) return;
         const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
-        if (currentQuantity + minPackaging > maxAllowed) return;
-        adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
+        if (currentQuantity >= maxAllowed) return;
+        const remaining = maxAllowed - currentQuantity;
+        const delta = remaining < activeStep ? remaining : activeStep;
+        adjustMutation.mutate({ purchaseItemId, delta });
     }
 
     function handleRemove() {
         if (orderBusy || currentQuantity <= 0) return;
-        if (currentQuantity <= minPackaging) {
-            adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
-        } else {
-            adjustMutation.mutate({ purchaseItemId, delta: -minPackaging });
-        }
+        const minAllowed =
+            fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
+        const removableQty = currentQuantity - minAllowed;
+        if (removableQty <= 0) return;
+        const delta = removableQty < activeStep ? removableQty : activeStep;
+        adjustMutation.mutate({ purchaseItemId, delta: -delta });
     }
 
-    const canAdd =
-        !orderBusy &&
-        (availablePool == null || currentQuantity + minPackaging <= availablePool + baseQuantity);
+    const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
+    const canAdd = !orderBusy && currentQuantity < maxAllowed;
 
     const freeRemainderLabel =
         isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
@@ -320,11 +328,11 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        disabled={orderBusy || currentQuantity <= 0}
+                                        disabled={orderBusy || currentQuantity <= 0 || (fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' && currentQuantity <= baseQuantity)}
                                         onClick={handleRemove}
                                     >
                                         <Minus className="mr-1 h-4 w-4" />
-                                        −{minPackaging} {shortName}
+                                        −{activeStep} {shortName}
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -333,7 +341,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                                         onClick={handleAdd}
                                     >
                                         <Plus className="mr-1 h-4 w-4" />
-                                        +{minPackaging} {shortName}
+                                        +{activeStep} {shortName}
                                     </Button>
                                 </div>
 

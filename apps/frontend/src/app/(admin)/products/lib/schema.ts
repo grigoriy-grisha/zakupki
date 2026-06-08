@@ -25,6 +25,7 @@ export const productCreateSchema = z.object({
     supplierPackageUnit: z.string().nullable().optional(),
     supplierPackagePrice: z.number().nonnegative().nullable().optional(),
     supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
+    supplementStep: z.number().positive().nullable().optional(),
     referenceStock: z.number().nonnegative().nullable().optional(),
     referenceStockUnit: z.string().nullable().optional(),
 });
@@ -43,6 +44,7 @@ export const productSchema = z.object({
     supplierPackageAmount: z.number().positive().nullable(),
     supplierPackageUnit: z.string().nullable(),
     supplierPackagePrice: z.number().nonnegative().nullable(),
+    supplementStep: z.number().positive().nullable(),
     referenceStock: z.number().nonnegative().nullable(),
     referenceStockUnit: z.string().nullable(),
 });

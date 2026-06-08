@@ -37,6 +37,7 @@ function transformProduct(raw: any): ProductFormExisting {
         supplierPackageUnit: raw.supplierPackageUnit,
         supplierPackagePrice: toNumber(raw.supplierPackagePrice),
         supplierPackageTiers: raw.supplierPackageTiers,
+        supplementStep: toNumber(raw.supplementStep),
         referenceStock: toNumber(raw.referenceStock),
         referenceStockUnit: raw.referenceStockUnit,
     };

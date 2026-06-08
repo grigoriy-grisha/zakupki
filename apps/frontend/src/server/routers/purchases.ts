@@ -107,6 +107,7 @@ export const purchasesRouter = router({
                     z.object({
                         purchaseItemId: z.number(),
                         targetRemainder: z.number().nullable(),
+                        supplementStep: z.number().nullable().optional(),
                     }),
                 ),
             }),
@@ -186,6 +187,7 @@ export const purchasesRouter = router({
                         .optional(),
                     referenceStock: z.number().nullable().optional(),
                     referenceStockUnit: z.string().nullable().optional(),
+                    supplementStep: z.number().nullable().optional(),
                 }),
                 priceOverride: z.number().nullable().optional(),
             }),

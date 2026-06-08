@@ -58,3 +58,17 @@ export function snapOrderQuantity(
     }
     return qty;
 }
+
+/**
+ * Шаг для кнопок +/− на текущем этапе.
+ * - COLLECTION: обычная фасовка (minPackageAmount / multiplicity)
+ * - REORDER+: supplementStep если задан, иначе обычная фасовка
+ */
+export function getSupplementStep(input: {
+    fulfillmentStatus: string;
+    supplementStep: number | null;
+    regularStep: number;
+}): number {
+    if (input.fulfillmentStatus === 'COLLECTION') return input.regularStep;
+    return input.supplementStep ?? input.regularStep;
+}

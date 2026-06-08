@@ -157,7 +157,7 @@ export class PurchaseService {
 
         // Write price override to PurchaseItem (per-purchase pricing)
         // Don't write pricePerUnit to the shared product — use priceOverride on the item
-        const { pricePerUnit, ...nonPriceFields } = productData as Record<string, unknown>;
+        const { pricePerUnit, supplementStep, ...nonPriceFields } = productData as Record<string, unknown>;
         void pricePerUnit; // consumed via priceOverride below
 
         // Update product fields (description, packaging, etc.) but NOT pricePerUnit
@@ -167,6 +167,11 @@ export class PurchaseService {
 
         // Set or clear price override on the purchase item
         await this.repo.updatePurchaseItemPriceOverride(purchaseItemId, priceOverride);
+
+        // Update supplementStep on PurchaseItem if provided
+        if (supplementStep !== undefined) {
+            await this.repo.updatePurchaseItemSupplementStep(purchaseItemId, supplementStep as number | null);
+        }
 
         return item;
     }
@@ -206,7 +211,10 @@ export class PurchaseService {
         return this.repo.removeItem(id);
     }
 
-    async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; targetRemainder: number | null }[]) {
+    async setAvailableQuantities(
+        purchaseId: number,
+        items: { purchaseItemId: number; targetRemainder: number | null; supplementStep?: number | null }[],
+    ) {
         return this.repo.setAvailableQuantities(purchaseId, items);
     }
 

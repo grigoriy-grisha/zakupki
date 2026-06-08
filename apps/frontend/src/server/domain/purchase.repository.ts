@@ -134,8 +134,17 @@ export class PurchaseRepository {
     }
 
     async addItem(purchaseId: number, productId: number) {
+        // Копируем supplementStep из товара как дефолт
+        const product = await dbClient.product.findUnique({
+            where: { id: productId },
+            select: { supplementStep: true },
+        });
         return dbClient.purchaseItem.create({
-            data: { purchaseId, productId },
+            data: {
+                purchaseId,
+                productId,
+                supplementStep: product?.supplementStep ?? undefined,
+            },
         });
     }
 
@@ -165,13 +174,20 @@ export class PurchaseRepository {
         });
     }
 
-    async setAvailableQuantities(purchaseId: number, items: { purchaseItemId: number; targetRemainder: number | null }[]) {
+    async setAvailableQuantities(
+        purchaseId: number,
+        items: { purchaseItemId: number; targetRemainder: number | null; supplementStep?: number | null }[],
+    ) {
         return dbClient.$transaction(async (tx) => {
             const results = [];
             for (const item of items) {
+                const data: Record<string, unknown> = { targetRemainder: item.targetRemainder };
+                if (item.supplementStep !== undefined) {
+                    data.supplementStep = item.supplementStep;
+                }
                 const result = await tx.purchaseItem.update({
                     where: { id: item.purchaseItemId },
-                    data: { targetRemainder: item.targetRemainder },
+                    data,
                 });
                 results.push(result);
             }
@@ -266,6 +282,13 @@ export class PurchaseRepository {
         return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
             data: { priceOverride },
+        });
+    }
+
+    async updatePurchaseItemSupplementStep(purchaseItemId: number, supplementStep: number | null) {
+        return dbClient.purchaseItem.update({
+            where: { id: purchaseItemId },
+            data: { supplementStep },
         });
     }
 

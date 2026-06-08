@@ -40,6 +40,7 @@ export type PurchaseProductSaveData = {
     supplierPackageUnit: string | null;
     supplierPackagePrice: number | null;
     supplierPackageTiers: { amount: number; unit: string; price: number }[];
+    supplementStep: number | null;
     referenceStock: number | null;
     referenceStockUnit: string | null;
 };
@@ -53,6 +54,7 @@ interface PurchaseProductEditFormProps {
         supplierPackageUnit?: string | null;
         supplierPackagePrice?: string | number | null;
         supplierPackageTiers?: unknown;
+        supplementStep?: string | number | null;
         referenceStock?: string | number | null;
         referenceStockUnit?: string | null;
         description?: string | null;
@@ -75,6 +77,7 @@ function applyPurchaseFields(
         setMinPkgAmount: (v: number | null) => void;
         setMinPkgUnit: (v: string | null) => void;
         setSupPkgTiers: (v: PurchaseProductFormState['supPkgTiers']) => void;
+        setSupplementStep: (v: number | null) => void;
         setReferenceStock: (v: number | null) => void;
         setReferenceStockUnit: (v: string | null) => void;
     },
@@ -85,6 +88,7 @@ function applyPurchaseFields(
     setters.setMinPkgAmount(next.minPkgAmount);
     setters.setMinPkgUnit(next.minPkgUnit);
     setters.setSupPkgTiers(next.supPkgTiers);
+    setters.setSupplementStep(next.supplementStep);
     setters.setReferenceStock(next.referenceStock);
     setters.setReferenceStockUnit(next.referenceStockUnit);
 }
@@ -121,6 +125,7 @@ export function PurchaseProductEditForm({
     const [minPkgAmount, setMinPkgAmount] = useState<number | null>(initial.minPkgAmount);
     const [minPkgUnit, setMinPkgUnit] = useState<string | null>(initial.minPkgUnit);
     const [supPkgTiers, setSupPkgTiers] = useState(initial.supPkgTiers);
+    const [supplementStep, setSupplementStep] = useState<number | null>(initial.supplementStep);
     const [referenceStock, setReferenceStock] = useState<number | null>(initial.referenceStock);
     const [referenceStockUnit, setReferenceStockUnit] = useState<string | null>(initial.referenceStockUnit);
     const [templateId, setTemplateId] = useState('none');
@@ -149,6 +154,7 @@ export function PurchaseProductEditForm({
                 setMinPkgAmount,
                 setMinPkgUnit,
                 setSupPkgTiers,
+                setSupplementStep,
                 setReferenceStock,
                 setReferenceStockUnit,
             },
@@ -325,6 +331,7 @@ export function PurchaseProductEditForm({
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
             ...supplierPack,
+            supplementStep,
             referenceStock: referenceStock,
             referenceStockUnit: referenceStockUnit,
         });
@@ -387,6 +394,22 @@ export function PurchaseProductEditForm({
                 tiers={supPkgTiers}
                 onChange={setSupPkgTiers}
             />
+
+            <div className="space-y-1">
+                <Label htmlFor="supplementStep">Фасовка для добора</Label>
+                <Input
+                    id="supplementStep"
+                    type="number"
+                    step="0.001"
+                    min={0}
+                    placeholder="По умолчанию (мин. фасовка)"
+                    value={supplementStep != null ? String(supplementStep) : ''}
+                    onChange={(e) => setSupplementStep(e.target.value === '' ? null : Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                    Шаг +/− на этапе добора. Если не задан — используется мин. фасовка.
+                </p>
+            </div>
 
             <div className="space-y-1">
                 <PackageEditor

@@ -68,6 +68,7 @@ export {
     buildOrderQtyOptions,
     getOrderQuantityStep,
     getMinOrderQuantity,
+    getSupplementStep,
     snapOrderQuantity,
     getOrderQuantityValidationError,
     isValidOrderQuantity,

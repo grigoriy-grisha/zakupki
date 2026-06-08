@@ -9,6 +9,7 @@ import {
     countFullSupplierPacks,
     formatMinPackageHint,
     getPackDiscountPricingInfo,
+    getSupplementStep,
     getUnitByCode,
     buildOrderQtyOptions,
     getOrderQuantityStep,
@@ -27,6 +28,7 @@ interface ShopPurchaseItemProductCardProps {
         purchaseItemId?: number;
         priceOverride: string | null;
         targetRemainder: string | number | null;
+        supplementStep?: string | number | null;
         minQty: string | number | null;
         /** Текущее количество этого пользователя */
         quantity: number;
@@ -88,7 +90,12 @@ export function ProductCard({
 
     const baseQuantity = baseQuantityProp ?? 0;
     const currentQuantity = item.quantity ?? 0;
-    const minPackaging = getOrderQuantityStep(orderQtyOptions);
+    const regularStep = getOrderQuantityStep(orderQtyOptions);
+    const activeStep = getSupplementStep({
+        fulfillmentStatus,
+        supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
+        regularStep,
+    });
 
     // Только ACTIVE строки (исключаем CANCELLED)
     const activeLines = (item.orderLines ?? []).filter((line) => line.status !== 'CANCELLED');
@@ -172,21 +179,34 @@ export function ProductCard({
     const isSoldOut = poolExhausted && !hasOrder;
 
     function handleAdd() {
-        if (orderBusy || (availablePool != null && currentQuantity + minPackaging > availablePool + baseQuantity)) return;
-        adjustMutation.mutate({ purchaseItemId, delta: minPackaging });
+        if (orderBusy) return;
+        const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
+        if (currentQuantity >= maxAllowed) return;
+        // Умная граница: если остаток < шага — добавляем ровно остаток
+        const remaining = maxAllowed - currentQuantity;
+        const delta = remaining < activeStep ? remaining : activeStep;
+        adjustMutation.mutate({ purchaseItemId, delta });
     }
 
     function handleRemove() {
         if (orderBusy || currentQuantity <= 0) return;
-        if (currentQuantity <= minPackaging) {
-            // Remove order completely
-            adjustMutation.mutate({ purchaseItemId, delta: -currentQuantity });
-        } else {
-            adjustMutation.mutate({ purchaseItemId, delta: -minPackaging });
-        }
+        const minAllowed =
+            fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
+        const removableQty = currentQuantity - minAllowed;
+        if (removableQty <= 0) return;
+        // Умная граница: если остаток < шага — убираем весь остаток
+        const delta = removableQty < activeStep ? removableQty : activeStep;
+        adjustMutation.mutate({ purchaseItemId, delta: -delta });
     }
 
-    const canAdd = !orderBusy && (availablePool == null || currentQuantity + minPackaging <= availablePool + baseQuantity);
+    const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
+    const canAdd = !orderBusy && currentQuantity < maxAllowed;
+    const canDecrease =
+        !orderBusy &&
+        currentQuantity > 0 &&
+        (fulfillmentStatus === 'COLLECTION' ||
+            fulfillmentStatus === 'REORDER' ||
+            currentQuantity > baseQuantity);
 
     const freeRemainderLabel =
         isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
@@ -295,11 +315,11 @@ export function ProductCard({
                                 variant="outline"
                                 size="sm"
                                 className="h-9 flex-1 text-xs"
-                                disabled={orderBusy || currentQuantity <= 0}
+                                disabled={!canDecrease}
                                 onClick={handleRemove}
                             >
                                 <Minus className="mr-1 h-3 w-3" />
-                                −{minPackaging} {shortName}
+                                −{activeStep} {shortName}
                             </Button>
                             <Button
                                 variant="outline"
@@ -309,7 +329,7 @@ export function ProductCard({
                                 onClick={handleAdd}
                             >
                                 <Plus className="mr-1 h-3 w-3" />
-                                +{minPackaging} {shortName}
+                                +{activeStep} {shortName}
                             </Button>
                         </div>
 
