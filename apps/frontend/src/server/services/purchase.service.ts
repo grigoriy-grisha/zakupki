@@ -106,8 +106,8 @@ export class PurchaseService {
     async complete(id: number) {
         const purchase = await this.repo.getById(id);
         if (!purchase) throw new NotFoundError('Закупка', id);
-        if (purchase.status !== 'ACTIVE' && purchase.status !== 'SUPPLEMENT') {
-            throw new ValidationError('Завершить можно только активную закупку или добор');
+        if (purchase.status !== 'ACTIVE') {
+            throw new ValidationError('Завершить можно только активную закупку');
         }
         return this.repo.updateStatus(id, 'DONE');
     }
@@ -212,5 +212,32 @@ export class PurchaseService {
 
     async findItemWithPrice(purchaseItemId: number) {
         return this.repo.findItemWithPrice(purchaseItemId);
+    }
+
+    /**
+     * Пересчитать amountDue для всех ACTIVE заказов в закупке.
+     * Вызывается после изменения цены админом (priceOverride, priceTiers).
+     */
+    async recalculateAmounts(purchaseId: number) {
+        const { calculateOrderAmount } = await import('@zakupki/types');
+        const purchase = await this.repo.getById(purchaseId);
+        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
+
+        for (const item of purchase.items) {
+            for (const line of item.orderLines) {
+                if (line.status !== 'ACTIVE') continue;
+                const qty = Number(line.quantity);
+                const amountDue = calculateOrderAmount(qty, {
+                    priceTiers: item.product.priceTiers,
+                    pricePerUnit: Number(item.product.pricePerUnit),
+                    priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
+                    supplierPackageAmount: item.product.supplierPackageAmount,
+                    supplierPackageUnit: item.product.supplierPackageUnit,
+                    supplierPackagePrice: item.product.supplierPackagePrice,
+                    packDiscountPercent: 0, // TODO: get from PricingSettingsService when wired
+                });
+                await this.orderRepo.updateAmountDue(line.id, amountDue);
+            }
+        }
     }
 }

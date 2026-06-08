@@ -12,8 +12,10 @@ import {
     countFullSupplierPacks,
     formatMinPackageHint,
     getPackDiscountPricingInfo,
+    getSupplementPool,
     buildOrderQtyOptions,
     getOrderQuantityStep,
+    isSupplementPhase,
 } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
@@ -63,7 +65,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const packSize = product?.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
     const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product?.minPackageUnit ?? null;
-    const isSupplement = purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
+    const isSupplement = isSupplementPhase(purchase?.fulfillmentStatus ?? 'COLLECTION');
     const minPackaging = getOrderQuantityStep(
         buildOrderQtyOptions({ multiplicity, minPackageAmount, minPackageUnit }),
     );
@@ -94,28 +96,25 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
 
     // Pool расчёт
     const activeLines = (item?.orderLines ?? []).filter((line: any) => line.status !== 'CANCELLED');
-    const sumOtherBaseQuantities = activeLines
+    const supplementClaimed = activeLines
         .filter((line: any) => line.userId !== (existingOrder as any)?.userId)
-        .reduce((acc: number, line: any) => acc + Number(line.baseQuantity ?? 0), 0);
+        .reduce((acc: number, line: any) => acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)), 0);
     const totalOrderedQuantity = activeLines.reduce(
         (acc: number, line: any) => acc + Number(line.quantity ?? 0),
         0,
     );
-    const rawAvailable = item?.targetRemainder == null ? null : Number(item.targetRemainder);
+    const totalBaseQuantity = activeLines.reduce(
+        (acc: number, line: any) => acc + Number(line.baseQuantity ?? 0),
+        0,
+    );
     const availablePool = isSupplement
-        ? (() => {
-              const pool = (item: any) => {
-                  if (rawAvailable != null) {
-                      const claimed = Math.max(0, sumOtherBaseQuantities);
-                      return Math.max(0, rawAvailable - claimed);
-                  }
-                  if (packSize == null || packSize <= 0) return null;
-                  const packsNeeded = Math.max(1, Math.ceil(totalOrderedQuantity / packSize - 1e-9));
-                  const p = Math.max(0, packsNeeded * packSize - totalOrderedQuantity);
-                  return Math.max(0, p - Math.max(0, sumOtherBaseQuantities));
-              };
-              return pool(item);
-          })()
+        ? getSupplementPool({
+              targetRemainder: item?.targetRemainder != null ? Number(item.targetRemainder) : null,
+              totalOrderedQuantity,
+              supplementClaimed,
+              packSize,
+              totalBaseQuantity,
+          })
         : null;
 
     const adjustMutation = trpc.orders.adjustQuantity.useMutation({

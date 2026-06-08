@@ -39,7 +39,9 @@ export class ServiceContainer {
 
     public readonly telegramPublish = new TelegramPublishService();
     public readonly user = new UserService(this.userRepo);
-    public readonly order = new OrderService(this.orderRepo, this.purchaseRepo);
+    public readonly settings = new SettingsService();
+    public readonly pricingSettings = new PricingSettingsService(this.settings);
+    public readonly order = new OrderService(this.orderRepo, this.purchaseRepo, this.pricingSettings);
     public readonly purchase = new PurchaseService(this.purchaseRepo, this.productRepo, this.telegramPublish, this.orderRepo);
     public readonly product = new ProductService(this.productRepo);
     public readonly payment = new PaymentService(this.paymentRepo);
@@ -48,8 +50,6 @@ export class ServiceContainer {
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);
     public readonly postTemplate = new PostTemplateService(this.postTemplateRepo);
-    public readonly settings = new SettingsService();
-    public readonly pricingSettings = new PricingSettingsService(this.settings);
 }
 
 export const serviceContainer = new ServiceContainer();

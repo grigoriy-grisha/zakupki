@@ -25,7 +25,7 @@ export type ShopOrderQuantityContext = {
  * @param input.currentQuantity — текущее quantity этого пользователя
  * @param input.availableRemainder — явно заданный админом пул добора (targetRemainder)
  * @param input.packSize — размер пачки поставщика (для авторасчёта пула)
- * @param input.sumOtherRemainders — сумма baseQuantity других пользователей (для пула)
+ * @param input.sumOtherRemainders — Σ(quantity - baseQuantity) других пользователей (сколько они добрали)
  * @param input.totalOrderedQuantity — сумма quantity ВСЕХ пользователей
  * @param input.orderQtyOptions — параметры валидации количества
  */
@@ -37,6 +37,8 @@ export function buildShopOrderQuantityContext(input: {
     packSize: number | null;
     sumOtherRemainders: number;
     totalOrderedQuantity: number;
+    /** Σ(baseQuantity) по всем ACTIVE строкам — для фиксации количества пачек */
+    totalBaseQuantity: number;
     orderQtyOptions: OrderQuantityOptions;
 }): ShopOrderQuantityContext {
     const minPackaging = getOrderQuantityStep(input.orderQtyOptions);
@@ -46,8 +48,9 @@ export function buildShopOrderQuantityContext(input: {
         ? getSupplementPool({
               targetRemainder: input.availableRemainder,
               totalOrderedQuantity: input.totalOrderedQuantity,
-              totalReservedRemainder: input.sumOtherRemainders,
+              supplementClaimed: input.sumOtherRemainders,
               packSize: input.packSize,
+              totalBaseQuantity: input.totalBaseQuantity,
           })
         : null;
 

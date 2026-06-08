@@ -87,7 +87,6 @@ model ProductCharacteristicValue {
   @@index([productId, sortOrder])
 }
 
-
 model User {
   id                 Int                 @id @default(autoincrement())
   username           String?
@@ -207,19 +206,19 @@ model PurchaseOrder {
 }
 
 model PurchaseItem {
-  id               Int               @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   purchaseId       Int
   productId        Int
-  priceOverride    Decimal?          @db.Decimal(10, 2)
-  targetRemainder  Decimal?          @db.Decimal(10, 3)
+  priceOverride    Decimal?         @db.Decimal(10, 2)
+  targetRemainder  Decimal?         @db.Decimal(10, 3)
   tgMessageId      String?
   tgChannelId      String?
-  publicationState PublicationState  @default(DRAFT)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  publicationState PublicationState @default(DRAFT)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   orderLines       OrderLine[]
-  product          Product           @relation(fields: [productId], references: [id])
-  purchase         Purchase          @relation(fields: [purchaseId], references: [id])
+  product          Product          @relation(fields: [productId], references: [id])
+  purchase         Purchase         @relation(fields: [purchaseId], references: [id])
 
   @@unique([purchaseId, productId])
   @@index([purchaseId])
@@ -227,23 +226,23 @@ model PurchaseItem {
 }
 
 model OrderLine {
-  id                   Int             @id @default(autoincrement())
-  purchaseItemId       Int
-  userId               Int
-  quantity             Decimal         @db.Decimal(10, 3)
-  amountDue            Decimal         @db.Decimal(10, 2)
-  status               OrderLineStatus @default(ACTIVE)
+  id             Int             @id @default(autoincrement())
+  purchaseItemId Int
+  userId         Int
+  quantity       Decimal         @db.Decimal(10, 3)
+  amountDue      Decimal         @db.Decimal(10, 2)
+  status         OrderLineStatus @default(ACTIVE)
 
   // Замороженный снимок quantity из COLLECTION. Устанавливается при
-  // COLLECTION→SUPPLEMENT/REORDER. NULL во время COLLECTION.
+  // COLLECTION→REORDER. NULL во время COLLECTION.
   // На REORDER пользователь может добавлять/убавлять от этого базового количества.
-  baseQuantity         Decimal?        @db.Decimal(10, 3)
+  baseQuantity Decimal? @db.Decimal(10, 3)
 
-  tgChatMessageId      BigInt?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  purchaseItem         PurchaseItem    @relation(fields: [purchaseItemId], references: [id])
-  user                 User            @relation(fields: [userId], references: [id])
+  tgChatMessageId BigInt?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  purchaseItem    PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+  user            User         @relation(fields: [userId], references: [id])
 
   @@unique([purchaseItemId, userId])
   @@index([userId])
@@ -311,7 +310,6 @@ model AppSetting {
 enum PurchaseStatus {
   DRAFT
   ACTIVE
-  SUPPLEMENT
   CLOSED
   ARRIVED
   DONE

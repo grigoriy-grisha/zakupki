@@ -40,11 +40,23 @@ export class OrderRepository {
     }
 
     /**
-     * Удалить строку заказа.
+     * Удалить строку заказа (hard delete — только для COLLECTION).
      */
     async deleteOrderLine(purchaseItemId: number, userId: number) {
         return dbClient.orderLine.deleteMany({
             where: { purchaseItemId, userId },
+        });
+    }
+
+    /**
+     * Обнулить строку заказа без удаления — сохранить baseQuantity.
+     * Используется на REORDER+ вместо hard delete, чтобы не потерять
+     * информацию о базовом заказе и разрешить повторный добор.
+     */
+    async zeroOutOrderLine(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.update({
+            where: { purchaseItemId_userId: { purchaseItemId, userId } },
+            data: { quantity: 0, amountDue: 0 },
         });
     }
 
@@ -72,7 +84,7 @@ export class OrderRepository {
     findById(id: number) {
         return dbClient.orderLine.findUnique({
             where: { id },
-            include: { purchaseItem: { include: { purchase: { select: { status: true } } } } },
+            include: { purchaseItem: { include: { purchase: { select: { status: true, fulfillmentStatus: true } } } } },
         });
     }
 
@@ -207,28 +219,45 @@ export class OrderRepository {
      * Устанавливает baseQuantity = current quantity для всех ACTIVE строк.
      */
     async freezeBaseQuantities(purchaseId: number) {
-        return dbClient.$executeRaw`
-            UPDATE order_line
-            SET base_quantity = quantity
-            FROM purchase_item
-            WHERE order_line.purchase_item_id = purchase_item.id
-              AND purchase_item.purchase_id = ${purchaseId}
-              AND order_line.status = 'ACTIVE'
-              AND order_line.base_quantity IS NULL
-        `;
+        const lines = await dbClient.orderLine.findMany({
+            where: {
+                status: 'ACTIVE',
+                baseQuantity: null,
+                purchaseItem: { purchaseId },
+            },
+            select: { id: true, quantity: true },
+        });
+
+        await dbClient.$transaction(
+            lines.map((line) =>
+                dbClient.orderLine.update({
+                    where: { id: line.id },
+                    data: { baseQuantity: line.quantity },
+                }),
+            ),
+        );
     }
 
     /**
      * Разморозить baseQuantity при откате REORDER → COLLECTION.
      */
     async unfreezeBaseQuantities(purchaseId: number) {
-        return dbClient.$executeRaw`
-            UPDATE order_line
-            SET base_quantity = NULL
-            FROM purchase_item
-            WHERE order_line.purchase_item_id = purchase_item.id
-              AND purchase_item.purchase_id = ${purchaseId}
-              AND order_line.status = 'ACTIVE'
-        `;
+        await dbClient.orderLine.updateMany({
+            where: {
+                status: 'ACTIVE',
+                purchaseItem: { purchaseId },
+            },
+            data: { baseQuantity: null },
+        });
+    }
+
+    /**
+     * Обновить amountDue для конкретной строки заказа.
+     */
+    async updateAmountDue(id: number, amountDue: number) {
+        return dbClient.orderLine.update({
+            where: { id },
+            data: { amountDue },
+        });
     }
 }

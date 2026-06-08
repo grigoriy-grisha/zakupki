@@ -20,6 +20,7 @@ import {
     buildOrderQtyOptions,
     getOrderQuantityStep,
     getMinOrderQuantity,
+    isSupplementPhase,
 } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { Minus, Plus } from 'lucide-react';
@@ -66,7 +67,7 @@ export function QuantityModal({
     const minPackaging = getOrderQuantityStep(orderQtyOptions);
     const minOrder = getMinOrderQuantity(orderQtyOptions);
 
-    const isSupplement = purchase?.status === 'SUPPLEMENT' || purchase?.fulfillmentStatus === 'REORDER';
+    const isSupplement = isSupplementPhase(purchase?.fulfillmentStatus ?? 'COLLECTION');
     const packSize = item?.product?.supplierPackageAmount != null ? Number(item?.product?.supplierPackageAmount) : null;
 
     // Сумма quantity всех пользователей (для расчёта пула добора)
@@ -77,12 +78,16 @@ export function QuantityModal({
         (acc: number, line: { quantity?: unknown }) => acc + Number(line.quantity ?? 0),
         0,
     );
-    // Сумма baseQuantity других пользователей
-    const sumOtherBaseQuantities = activeLines.reduce(
-        (acc: number, line: { baseQuantity?: unknown; userId?: unknown }) => {
-            // Исключаем текущего пользователя (у него baseQuantity в currentQuantity/baseQuantity)
-            return acc + Number(line.baseQuantity ?? 0);
+    // Сколько пользователи уже добрали сверх базового заказа
+    const supplementClaimed = activeLines.reduce(
+        (acc: number, line: { quantity?: unknown; baseQuantity?: unknown }) => {
+            return acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0));
         },
+        0,
+    );
+    // Σ(baseQuantity) — замороженное количество для фиксации пачек
+    const totalBaseQuantity = activeLines.reduce(
+        (acc: number, line: { baseQuantity?: unknown }) => acc + Number(line.baseQuantity ?? 0),
         0,
     );
 
@@ -92,8 +97,9 @@ export function QuantityModal({
     const poolRemainder = getSupplementPool({
         targetRemainder: rawAvailableQty,
         totalOrderedQuantity,
-        totalReservedRemainder: sumOtherBaseQuantities,
+        supplementClaimed,
         packSize,
+        totalBaseQuantity,
     });
     const maxPool = poolRemainder == null ? Number.POSITIVE_INFINITY : poolRemainder;
 

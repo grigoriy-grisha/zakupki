@@ -1,11 +1,10 @@
 // Shared types for the zakupki project
 
-export type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'SUPPLEMENT' | 'CLOSED' | 'ARRIVED' | 'DONE';
+export type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'ARRIVED' | 'DONE';
 
 export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
     DRAFT: 'Chernovik',
     ACTIVE: 'Aktivnaya',
-    SUPPLEMENT: 'Dobor',
     CLOSED: 'Zakryta',
     ARRIVED: 'Prishla',
     DONE: 'Zavershena',
@@ -136,8 +135,15 @@ export {
     type UnitDef,
 } from './units';
 
-// Order strategies (simplified)
-export { canAdjustOrder, canCancelOrder } from './order-strategies';
+// Order strategies — checks per fulfillment stage
+export {
+    canAdjustOrder,
+    canAddNewItem,
+    canCancelOrder,
+    canDecreaseOrder,
+    canIncreaseFromRemainder,
+    isSupplementPhase,
+} from './order-strategies';
 
 // Purchase fulfillment state machine
 export {

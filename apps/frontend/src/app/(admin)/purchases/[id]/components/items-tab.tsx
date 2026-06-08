@@ -32,7 +32,7 @@ import {
     purchaseItemTgCellClass,
     purchaseItemStatsLeadCellClass,
 } from '../lib/table-styles';
-import { usePublishToTelegram, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
+import { usePurchaseActions, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { ItemEditSheet } from './item-edit-sheet';
 import { PublishToTgDialog } from './publish-to-tg-dialog';
@@ -72,7 +72,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
     const removeItem = useRemovePurchaseItem(purchaseId);
     const togglePublish = useToggleShouldPublish(purchaseId);
-    const publishToTelegram = usePublishToTelegram(purchaseId);
+    const purchaseActions = usePurchaseActions(purchaseId);
 
     const [editItem, setEditItem] = useState<number | null>(null);
     const [publishOpen, setPublishOpen] = useState(false);
@@ -90,10 +90,8 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const typedPurchase = purchase as unknown as PurchaseDetail;
     const items = typedPurchase.items;
     const isActive = typedPurchase.status === 'ACTIVE';
-    const isSupplement = typedPurchase.status === 'SUPPLEMENT';
-    // ФИКС #11: колонка «Доступно» показывается и в REORDER, не только в SUPPLEMENT.
-    const isInSupplementPhase =
-        isSupplement || typedPurchase.fulfillmentStatus === 'REORDER';
+    // ФИКС #11: колонка «Доступно» показывается в REORDER.
+    const isInSupplementPhase = typedPurchase.fulfillmentStatus === 'REORDER';
     const canTogglePublish = (status: string) => status !== 'DONE';
     const canAddItems = typedPurchase.status !== 'DONE';
     const canRemoveItem = typedPurchase.status !== 'DONE';
@@ -209,7 +207,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                         {items.length === 0 && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={isSupplement ? 16 : 15}
+                                    colSpan={isInSupplementPhase ? 16 : 15}
                                     className="h-24 text-center text-muted-foreground"
                                 >
                                     Нет товаров
@@ -228,7 +226,12 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                     acc + Number(line.quantity ?? 0),
                                 0,
                             );
-                            const sumOtherBaseQuantities = (item.orderLines ?? []).reduce(
+                            const supplementClaimed = (item.orderLines ?? []).reduce(
+                                (acc: number, line: { quantity?: unknown; baseQuantity?: unknown }) =>
+                                    acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)),
+                                0,
+                            );
+                            const totalBaseQuantity = (item.orderLines ?? []).reduce(
                                 (acc: number, line: { baseQuantity?: unknown }) =>
                                     acc + Number(line.baseQuantity ?? 0),
                                 0,
@@ -236,11 +239,12 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                             const freeRemainder = getSupplementPool({
                                 targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
                                 totalOrderedQuantity,
-                                totalReservedRemainder: sumOtherBaseQuantities,
+                                supplementClaimed,
                                 packSize:
                                     item.product.supplierPackageAmount != null
                                         ? Number(item.product.supplierPackageAmount)
                                         : null,
+                                totalBaseQuantity,
                             });
                             return (
                                 <TableRow
@@ -406,9 +410,9 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                 open={publishOpen}
                 onOpenChange={setPublishOpen}
                 publishCount={publishCount}
-                isPending={publishToTelegram.isPending}
+                isPending={purchaseActions.publishAll.isPending}
                 onPublish={() => {
-                    publishToTelegram.mutate({ purchaseId }, { onSuccess: () => setPublishOpen(false) });
+                    purchaseActions.publishAll.mutate({ purchaseId }, { onSuccess: () => setPublishOpen(false) });
                 }}
             />
         </div>

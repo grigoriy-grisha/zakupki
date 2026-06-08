@@ -81,7 +81,12 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                                     acc + Number(line.quantity ?? 0),
                                 0,
                             );
-                            const totalReservedRemainder = (item.orderLines ?? []).reduce(
+                            const supplementClaimed = (item.orderLines ?? []).reduce(
+                                (acc: number, line: { quantity?: unknown; baseQuantity?: unknown }) =>
+                                    acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)),
+                                0,
+                            );
+                            const totalBaseQuantity = (item.orderLines ?? []).reduce(
                                 (acc: number, line: { baseQuantity?: unknown }) =>
                                     acc + Number(line.baseQuantity ?? 0),
                                 0,
@@ -93,8 +98,9 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                             const remainderLeft = getSupplementPool({
                                 targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
                                 totalOrderedQuantity,
-                                totalReservedRemainder,
+                                supplementClaimed,
                                 packSize,
+                                totalBaseQuantity,
                             });
                             const isManualLimit =
                                 item.targetRemainder != null && Number(item.targetRemainder) > 0;

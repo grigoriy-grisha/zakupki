@@ -14,20 +14,6 @@ export const ordersRouter = router({
             return ctx.services.order.adjustQuantity(input.purchaseItemId, ctx.userId, input.delta);
         }),
 
-    // Добавить товар в заказ (absolute quantity)
-    addItem: protectedProcedure
-        .input(z.object({ purchaseItemId: z.number(), quantity: z.number().positive() }))
-        .mutation(async ({ ctx, input }) => {
-            return ctx.services.order.addItem(input.purchaseItemId, ctx.userId, input.quantity);
-        }),
-
-    // Убрать товар из заказа
-    removeItem: protectedProcedure
-        .input(z.object({ purchaseItemId: z.number(), quantity: z.number().positive() }))
-        .mutation(async ({ ctx, input }) => {
-            return ctx.services.order.removeItem(input.purchaseItemId, ctx.userId, input.quantity);
-        }),
-
     // Получить свои заказы
     getMyOrders: protectedProcedure.query(async ({ ctx }) => {
         return ctx.services.order.getUserOrders(ctx.userId);

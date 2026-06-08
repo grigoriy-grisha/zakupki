@@ -584,7 +584,11 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
             (sum, line) => sum + Number(line.quantity ?? 0),
             0,
         );
-        const sumOtherBaseQuantities = item.orderLines.reduce(
+        const supplementClaimed = item.orderLines.reduce(
+            (sum, line) => sum + Math.max(0, Number((line as any).quantity ?? 0) - Number((line as any).baseQuantity ?? 0)),
+            0,
+        );
+        const totalBaseQuantity = item.orderLines.reduce(
             (sum, line) => sum + Number((line as any).baseQuantity ?? 0),
             0,
         );
@@ -592,8 +596,9 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
         const displayedRemainder = getSupplementPool({
             targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
             totalOrderedQuantity,
-            totalReservedRemainder: sumOtherBaseQuantities,
+            supplementClaimed,
             packSize,
+            totalBaseQuantity,
         });
 
         const row = sheet.addRow([

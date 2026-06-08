@@ -11,6 +11,7 @@ import { Package, ChevronRight, X } from 'lucide-react';
 import {
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
+    isSupplementPhase,
 } from '@zakupki/types';
 import { cn } from '@/lib/utils';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
@@ -79,7 +80,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
-    const isSupplement = purchase.status === 'SUPPLEMENT' || purchase.fulfillmentStatus === 'REORDER';
+    const isSupplement = isSupplementPhase(fulfillmentStatus);
 
     return (
         <div className="space-y-6">
@@ -89,12 +90,12 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     <Badge
                         className={
                             'text-sm px-2.5 py-0.5 ' +
-                            (purchase.status === 'SUPPLEMENT'
+                            (isSupplement
                                 ? 'bg-warning-50 text-warning'
                                 : 'bg-success-50 text-success')
                         }
                     >
-                        {purchase.status === 'SUPPLEMENT' ? 'Добор' : 'Активна'}
+                        {isSupplement ? 'Добор' : 'Активна'}
                     </Badge>
                     <Badge variant="outline" className="text-sm px-2.5 py-0.5">
                         <Package className="mr-1 h-3.5 w-3.5" />

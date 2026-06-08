@@ -1,15 +1,26 @@
-import { NotFoundError, ValidationError, canAdjustOrder } from '@zakupki/types';
+import {
+    NotFoundError,
+    ValidationError,
+    calculateOrderAmount,
+    canAddNewItem,
+    canCancelOrder,
+    canDecreaseOrder,
+    canIncreaseFromRemainder,
+} from '@zakupki/types';
 
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
+import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
 /**
- * Простой сервис заказов — только +мин.фасовка / −мин.фасовка.
+ * Сервис заказов — управление строками OrderLine.
+ * Поддерживает этапную модель: COLLECTION / REORDER / PAYMENT / ...
  */
 export class OrderService {
     constructor(
         private repo: OrderRepository,
         private purchaseRepo: PurchaseRepository,
+        private pricingSettings: PricingSettingsService,
     ) {}
 
     /**
@@ -24,103 +35,77 @@ export class OrderService {
             throw new NotFoundError('Товар закупки', purchaseItemId);
         }
 
-        // Проверяем фазу — можно ли вообще менять заказ
-        const status = item.purchase.fulfillmentStatus ?? item.purchase.status;
-        if (!canAdjustOrder(status)) {
-            throw new ValidationError('На этом этапе заказ изменять нельзя');
-        }
-
+        const fulfillmentStatus = (item.purchase.fulfillmentStatus ?? 'COLLECTION') as string;
         const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
         const currentQty = existing ? Number(existing.quantity) : 0;
         const newQty = currentQty + delta;
 
-        if (newQty <= 0) {
-            // Удаляем строку заказа
-            return this.repo.deleteOrderLine(purchaseItemId, userId);
-        }
-
-        // Проверяем остаток
-        const available = Number(item.product.referenceStock) || 0;
-        if (available > 0 && newQty > available) {
-            throw new ValidationError(`Превышен остаток. Доступно: ${available}`);
-        }
-
-        // Вычисляем сумму
-        const pricePerUnit = Number(item.product.pricePerUnit);
-        const amountDue = newQty * pricePerUnit;
-
-        return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
-    }
-
-    /**
-     * Добавить товар в заказ (absolute quantity).
-     * @deprecated Use adjustQuantity instead
-     */
-    async addItem(purchaseItemId: number, userId: number, quantity: number) {
-        if (quantity <= 0) {
-            throw new ValidationError('Количество должно быть больше 0');
-        }
-
-        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        if (!item) {
-            throw new NotFoundError('Товар закупки', purchaseItemId);
-        }
-
-        if (item.purchase.status !== 'ACTIVE') {
-            throw new ValidationError('Закупка неактивна');
-        }
-
-        // Проверяем остаток
-        const available = Number(item.product.referenceStock) || 0;
-        if (available > 0 && quantity > available) {
-            throw new ValidationError(`Доступно только ${available} ${item.product.unitCode}`);
-        }
-
-        // Находим существующую строку заказа или создаём новую
-        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
-        const currentQty = existing ? Number(existing.quantity) : 0;
-        const newQty = currentQty + quantity;
-
-        // Проверяем что не превышаем остаток
-        if (available > 0 && newQty > available) {
-            throw new ValidationError(`Превышен остаток. Доступно: ${available}`);
-        }
-
-        // Вычисляем сумму
-        const pricePerUnit = Number(item.product.pricePerUnit);
-        const amountDue = newQty * pricePerUnit;
-
-        return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
-    }
-
-    /**
-     * Убрать товар из заказа.
-     * @deprecated Use adjustQuantity instead
-     */
-    async removeItem(purchaseItemId: number, userId: number, quantity: number) {
-        if (quantity <= 0) {
-            throw new ValidationError('Количество должно быть больше 0');
-        }
-
-        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
+        // Проверки по этапам
         if (!existing) {
-            throw new ValidationError('Товар не найден в заказе');
+            // Новая строка заказа — можно только в COLLECTION
+            if (!canAddNewItem(fulfillmentStatus)) {
+                throw new ValidationError('На этом этапе нельзя добавить новый товар');
+            }
+        } else if (delta > 0) {
+            // Увеличение — добор из остатка (REORDER, PAYMENT и далее)
+            if (!canIncreaseFromRemainder(fulfillmentStatus)) {
+                throw new ValidationError('На этом этапе нельзя увеличить заказ');
+            }
+        } else {
+            // Уменьшение — COLLECTION/REORDER свободно, PAYMENT+ — не ниже baseQuantity
+            if (!canDecreaseOrder(fulfillmentStatus)) {
+                throw new ValidationError('На этом этапе нельзя уменьшить заказ');
+            }
+            // На PAYMENT и далее — нельзя убавить ниже замороженного baseQuantity
+            if (fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER') {
+                const baseQty = existing.baseQuantity != null ? Number(existing.baseQuantity) : 0;
+                if (baseQty > 0 && newQty < baseQty) {
+                    throw new ValidationError(
+                        `Нельзя убавить ниже базового заказа (${baseQty}). Можно убрать только доборную часть.`,
+                    );
+                }
+            }
         }
-
-        const currentQty = Number(existing.quantity);
-        const newQty = currentQty - quantity;
 
         if (newQty <= 0) {
-            // Удаляем строку заказа
-            return this.repo.deleteOrderLine(purchaseItemId, userId);
+            if (fulfillmentStatus === 'COLLECTION') {
+                // На COLLECTION — чистое удаление, baseQuantity нет
+                return this.repo.deleteOrderLine(purchaseItemId, userId);
+            }
+            // На REORDER+ — обнуляем без удаления, сохраняем baseQuantity
+            // чтобы пользователь мог снова добрать из остатка
+            if (existing) {
+                return this.repo.zeroOutOrderLine(purchaseItemId, userId);
+            }
+            return null;
         }
 
-        // Пересчитываем сумму
-        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        const pricePerUnit = item ? Number(item.product.pricePerUnit) : 0;
-        const amountDue = newQty * pricePerUnit;
+        // Вычисляем сумму через calculateOrderAmount
+        const amountDue = await this.computeAmountDue(newQty, item);
 
         return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
+    }
+
+    /**
+     * Вычислить сумму заказа через calculateOrderAmount.
+     */
+    private async computeAmountDue(
+        quantity: number,
+        item: Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>,
+    ): Promise<number> {
+        if (!item) return 0;
+
+        const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
+
+        return calculateOrderAmount(quantity, {
+            priceTiers: item.product.priceTiers,
+            pricePerUnit: Number(item.product.pricePerUnit),
+            priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
+            supplierPackageAmount: item.product.supplierPackageAmount,
+            supplierPackageUnit: item.product.supplierPackageUnit,
+            supplierPackagePrice: item.product.supplierPackagePrice,
+            packDiscountPercent,
+        });
     }
 
     async getUserOrders(userId: number) {
@@ -139,6 +124,13 @@ export class OrderService {
         if (line.userId !== userId) {
             throw new ValidationError('Нельзя отменить чужой заказ');
         }
+
+        const fulfillmentStatus =
+            line.purchaseItem?.purchase?.fulfillmentStatus ?? 'COLLECTION';
+        if (!canCancelOrder(fulfillmentStatus)) {
+            throw new ValidationError('На этом этапе нельзя отменить заказ');
+        }
+
         return this.repo.cancelOrder(id);
     }
 

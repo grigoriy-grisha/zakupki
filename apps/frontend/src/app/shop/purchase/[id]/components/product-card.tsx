@@ -85,13 +85,18 @@ export function ProductCard({
 
     // Только ACTIVE строки (исключаем CANCELLED)
     const activeLines = (item.orderLines ?? []).filter((line) => line.status !== 'CANCELLED');
-    // Сумма baseQuantity ДРУГИХ пользователей (для pool расчёта)
-    const sumOtherBaseQuantities = activeLines.reduce(
-        (acc, line) => acc + Number(line.baseQuantity ?? 0),
+    // Сколько другие пользователи уже добрали сверх базового заказа
+    const supplementClaimed = activeLines.reduce(
+        (acc, line) => acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)),
         0,
     );
     const totalOrderedQuantity = activeLines.reduce(
         (acc, line) => acc + Number(line.quantity ?? 0),
+        0,
+    );
+    // Σ(baseQuantity) — замороженное количество для фиксации пачек
+    const totalBaseQuantity = activeLines.reduce(
+        (acc, line) => acc + Number(line.baseQuantity ?? 0),
         0,
     );
 
@@ -101,8 +106,9 @@ export function ProductCard({
         currentQuantity,
         availableRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
         packSize,
-        sumOtherRemainders: sumOtherBaseQuantities,
+        sumOtherRemainders: supplementClaimed,
         totalOrderedQuantity,
+        totalBaseQuantity,
         orderQtyOptions,
     });
 
