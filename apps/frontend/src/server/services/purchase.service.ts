@@ -9,6 +9,7 @@ import type { TelegramPublishService } from './telegram-publish.service';
 import {
     canTransitionFulfillment,
     isFreezePoint,
+    isPaymentPlusFreezePoint,
     isUnfreezePoint,
     FULFILLMENT_TRANSITIONS,
 } from '@zakupki/types';
@@ -72,8 +73,10 @@ export class PurchaseService {
 
         const result = await this.repo.updateFulfillmentStatus(id, next);
 
-        // Заморозка baseQuantity при COLLECTION → REORDER
-        if (isFreezePoint(next)) {
+        // Заморозка baseQuantity при COLLECTION → REORDER И при REORDER → PAYMENT+
+        // (повторная заморозка COLLECTION-строк, удалённых/пересозданных на REORDER).
+        // freezeBaseQuantities идемпотентен: фильтрует `baseQuantity: null`.
+        if (isFreezePoint(next) || isPaymentPlusFreezePoint(next)) {
             await this.orderRepo.freezeBaseQuantities(id);
         }
 

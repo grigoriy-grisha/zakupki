@@ -40,46 +40,6 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(@types/node@25.8.0)(vite@8.0.14(@types/node@25.8.0)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.1))
 
-  apps/bot:
-    dependencies:
-      '@grammyjs/auto-retry':
-        specifier: ^2.0.2
-        version: 2.0.2(grammy@1.43.0)
-      '@zakupki/database':
-        specifier: workspace:*
-        version: link:../../shared/database
-      '@zakupki/queue':
-        specifier: workspace:*
-        version: link:../../shared/queue
-      '@zakupki/storage':
-        specifier: workspace:*
-        version: link:../../shared/storage
-      '@zakupki/types':
-        specifier: workspace:*
-        version: link:../../shared/types
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-      grammy:
-        specifier: ^1.36.1
-        version: 1.43.0
-      https-proxy-agent:
-        specifier: ^7.0.6
-        version: 7.0.6
-      ioredis:
-        specifier: ^5.10.1
-        version: 5.10.1
-    devDependencies:
-      '@types/node':
-        specifier: ^25.6.2
-        version: 25.8.0
-      tsx:
-        specifier: ^4.21.0
-        version: 4.22.1
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
   apps/frontend:
     dependencies:
       '@grammyjs/auto-retry':

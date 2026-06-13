@@ -197,7 +197,7 @@ export class PurchaseRepository {
 
     async findUnpublishedItems(purchaseId: number) {
         return dbClient.purchaseItem.findMany({
-            where: { purchaseId, publicationState: 'DRAFT' },
+            where: { purchaseId, tgMessageId: null },
             select: { id: true },
         });
     }
@@ -267,10 +267,14 @@ export class PurchaseRepository {
                 orderLines: {
                     select: {
                         id: true,
+                        purchaseItemId: true,
                         userId: true,
                         quantity: true,
+                        amountDue: true,
                         baseQuantity: true,
+                        packageCount: true,
                         status: true,
+                        createdOnStage: true,
                     },
                 },
                 purchase: true,

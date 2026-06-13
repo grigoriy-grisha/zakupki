@@ -17,6 +17,7 @@ import { getUnitByCode } from '@zakupki/types';
 
 import type { ReactNode } from 'react';
 import type { usePurchasePaymentDetail } from '../hooks/use-purchase-payment-detail';
+import { aggregateByItem } from '../../../lib/order-aggregation';
 
 interface OrdersSummaryCardProps {
     paymentDetail: ReturnType<typeof usePurchasePaymentDetail>;
@@ -40,6 +41,20 @@ export function OrdersSummaryCard({
         [purchaseItems],
     );
 
+    // Юзер видит 1 запись на товар: COLLECTION + REORDER-pkg объединяем.
+    const aggregatedByItem = useMemo(
+        () => aggregateByItem(myOrdersInPurchase as never),
+        [myOrdersInPurchase],
+    );
+    // Берём source-строку для доступа к unitCode/purchaseItem.product (per-row данные)
+    const sourceByItemId = useMemo(() => {
+        const map = new Map<number, (typeof myOrdersInPurchase)[number]>();
+        for (const order of myOrdersInPurchase) {
+            if (!map.has(order.purchaseItemId)) map.set(order.purchaseItemId, order);
+        }
+        return map;
+    }, [myOrdersInPurchase]);
+
     return (
         <Card>
             <CardContent className="p-5 space-y-4">
@@ -59,17 +74,20 @@ export function OrdersSummaryCard({
                 </div>
 
                 <div className="space-y-2">
-                    {myOrdersInPurchase.map((order) => {
-                        const product = productByItemId.get(order.purchaseItemId);
+                    {Array.from(aggregatedByItem.entries()).map(([itemId, agg]) => {
+                        const product = productByItemId.get(itemId);
+                        const source = sourceByItemId.get(itemId);
                         const photoId =
                             product != null
                                 ? getProductPhotoId(product)
-                                : (order.purchaseItem?.product?.photos?.[0]?.id ?? null);
-                        const label = product != null ? undefined : (order.purchaseItem?.product?.name ?? 'Товар');
+                                : (source?.purchaseItem?.product?.photos?.[0]?.id ?? null);
+                        const label = product != null ? undefined : (source?.purchaseItem?.product?.name ?? 'Товар');
+                        const unitCode = source?.purchaseItem?.product?.unitCode;
+                        const unitShort = unitCode ? getUnitByCode(unitCode)?.shortName ?? '' : '';
 
                         return (
                             <div
-                                key={order.id}
+                                key={itemId}
                                 className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2"
                             >
                                 <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -81,11 +99,15 @@ export function OrdersSummaryCard({
                                     )}
                                 </div>
                                 <span className="shrink-0 text-right text-sm font-medium">
-                                    {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                    {order.purchaseItem?.product?.unitCode ? getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '' : ''}
+                                    {agg.quantity.toLocaleString('ru-RU')} {unitShort}
+                                    {agg.packageCount > 0 && (
+                                        <span className="ml-1 text-muted-foreground">
+                                            + {agg.packageCount} упак.
+                                        </span>
+                                    )}
                                     <br />
                                     <span className="text-muted-foreground">
-                                        {Number(order.amountDue).toLocaleString('ru-RU')} ₽
+                                        {agg.amountDue.toLocaleString('ru-RU')} ₽
                                     </span>
                                 </span>
                             </div>

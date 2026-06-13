@@ -38,17 +38,6 @@ export function useRemovePurchaseItem(purchaseId: number) {
     });
 }
 
-export function useToggleShouldPublish(purchaseId: number) {
-    const utils = trpc.useUtils();
-
-    return trpc.purchases.toggleShouldPublish.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
-}
-
 export function usePublishItemToTg(purchaseId: number) {
     const utils = trpc.useUtils();
 

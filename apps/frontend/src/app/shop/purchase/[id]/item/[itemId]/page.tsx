@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useMemo } from 'react';
 import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { ProductPricePanel } from '@/app/shop/components/product-price-panel';
 import { QuantityButtons } from '@/app/shop/components/quantity-buttons';
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import { aggregateUserLines } from '../../../../lib/order-aggregation';
 import {
     buildShopItemDescriptionRows,
     type ProductCatalogCardSource,
@@ -27,15 +28,53 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const purchaseItemId = Number(itemIdStr);
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
-    const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
-    const { data: myOrders } = trpc.orders.getMyOrders.useQuery();
     const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
 
-    const item = purchase?.items.find((i: any) => i.id === purchaseItemId) as ShopPurchaseItem | undefined;
-    const existingOrder = myOrders?.find((o: any) => o.purchaseItemId === purchaseItemId);
-    const currentQuantity = existingOrder ? Number(existingOrder.quantity ?? 0) : 0;
-    const currentPackageCount = (existingOrder as any)?.packageCount ?? 0;
-    const baseQuantity = existingOrder?.baseQuantity != null ? Number(existingOrder.baseQuantity) : 0;
+    if (isLoading || !purchase) {
+        return (
+            <div className="space-y-4">
+                <Skeleton className="h-8 w-64" />
+                <div className="flex gap-6">
+                    <Skeleton className="h-64 w-64" />
+                    <div className="flex-1 space-y-3">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-32 w-full" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return <ItemDetailContent purchase={purchase} purchaseId={purchaseId} purchaseItemId={purchaseItemId} packDiscountPercent={packDiscountPercent} />;
+}
+
+function ItemDetailContent({
+    purchase,
+    purchaseId,
+    purchaseItemId,
+    packDiscountPercent,
+}: {
+    purchase: any;
+    purchaseId: number;
+    purchaseItemId: number;
+    packDiscountPercent: number;
+}) {
+    const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
+    const { data: myOrders } = trpc.orders.getMyOrders.useQuery();
+
+    const item = purchase.items.find((i: any) => i.id === purchaseItemId) as ShopPurchaseItem | undefined;
+    // С createdOnStage у пользователя может быть две строки на один товар: COLLECTION + REORDER.
+    // Агрегируем через mergeLines (shared) — единая логика с ботом и админкой.
+    const aggregated = useMemo(
+        () => aggregateUserLines((myOrders ?? []) as never, purchaseItemId),
+        [myOrders, purchaseItemId],
+    );
+    const currentQuantity = aggregated.quantity;
+    const currentPackageCount = aggregated.packageCount;
+    const baseQuantity = aggregated.baseQuantity;
+
+    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
 
     const product = item?.product as
         | (ProductLabelSource & {
@@ -52,39 +91,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
           })
         | undefined;
 
-    const fulfillmentStatus = purchase?.fulfillmentStatus ?? 'COLLECTION';
-
-    const ctx = useItemOrderControls({
-        purchaseId,
-        purchaseItemId,
-        item: item!,
-        currentQuantity,
-        currentPackageCount,
-        baseQuantity,
-        fulfillmentStatus,
-        packDiscountPercent,
-    });
-
-    const minPackageAmount = product?.minPackageAmount != null ? Number(product.minPackageAmount) : null;
-    const minPackageUnit = product?.minPackageUnit ?? null;
-
-    if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <Skeleton className="h-8 w-64" />
-                <div className="flex gap-6">
-                    <Skeleton className="h-64 w-64" />
-                    <div className="flex-1 space-y-3">
-                        <Skeleton className="h-8 w-48" />
-                        <Skeleton className="h-6 w-32" />
-                        <Skeleton className="h-32 w-full" />
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (!purchase || !item || !product) {
+    if (!item || !product) {
         return (
             <Card>
                 <CardContent className="flex flex-col items-center py-16">
@@ -97,6 +104,72 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         );
     }
 
+    return (
+        <ItemDetailLoaded
+            purchase={purchase}
+            purchaseId={purchaseId}
+            purchaseItemId={purchaseItemId}
+            item={item}
+            product={product}
+            attributeTypes={attributeTypes}
+            currentQuantity={currentQuantity}
+            currentPackageCount={currentPackageCount}
+            baseQuantity={baseQuantity}
+            fulfillmentStatus={fulfillmentStatus}
+            packDiscountPercent={packDiscountPercent}
+        />
+    );
+}
+
+function ItemDetailLoaded({
+    purchase,
+    purchaseId,
+    purchaseItemId,
+    item,
+    product,
+    attributeTypes,
+    currentQuantity,
+    currentPackageCount,
+    baseQuantity,
+    fulfillmentStatus,
+    packDiscountPercent,
+}: {
+    purchase: any;
+    purchaseId: number;
+    purchaseItemId: number;
+    item: ShopPurchaseItem;
+    product: ProductLabelSource & {
+        pricePerUnit: string | number;
+        priceTiers?: unknown;
+        description?: string | null;
+        supplierPackageAmount?: string | number | null;
+        supplierPackageUnit?: string | null;
+        supplierPackagePrice?: string | number | null;
+        unit: { shortName: string; multiplicity: string | number } | null;
+        minPackageAmount: string | number | null;
+        minPackageUnit: string | null;
+        photos: { id: number }[];
+    };
+    attributeTypes: any;
+    currentQuantity: number;
+    currentPackageCount: number;
+    baseQuantity: number;
+    fulfillmentStatus: string;
+    packDiscountPercent: number;
+}) {
+    const ctx = useItemOrderControls({
+        purchaseId,
+        purchaseItemId,
+        item,
+        currentQuantity,
+        currentPackageCount,
+        baseQuantity,
+        fulfillmentStatus,
+        packDiscountPercent,
+    });
+
+    const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
+    const minPackageUnit = product.minPackageUnit ?? null;
     const isSupplement = isSupplementPhase(fulfillmentStatus);
 
     return (

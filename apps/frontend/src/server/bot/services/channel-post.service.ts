@@ -73,7 +73,6 @@ export class ChannelPostService {
             include: {
                 product: {
                     include: {
-                        unit: true,
                         photos: { orderBy: { sortOrder: 'asc' }, take: 1, select: { id: true, objectKey: true, mimeType: true } },
                     },
                 },
@@ -90,16 +89,23 @@ export class ChannelPostService {
             throw new UnrecoverableError(`PurchaseItem ${purchaseItemId} not found`);
         }
 
-        const firstPhoto = item.product.photos[0];
-        const photo = firstPhoto ? await this.fetchPhoto(firstPhoto) : undefined;
-
-        const text = buildProductPostText(item.product);
-
         if (isEdit && item.tgMessageId && item.tgChannelId) {
+            const firstPhoto = item.product.photos[0];
+            const photo = firstPhoto ? await this.fetchPhoto(firstPhoto) : undefined;
+            const text = buildProductPostText(item.product);
             await this.editPost(purchaseItemId, item.tgChannelId, Number(item.tgMessageId), text, photo);
             return;
         }
 
+        // Guard: skip if already posted (prevents duplicates on retry / double-enqueue)
+        if (!isEdit && item.tgMessageId) {
+            console.log(`[TG queue] Item ${purchaseItemId} already posted (${item.tgMessageId}), skipping`);
+            return;
+        }
+
+        const firstPhoto = item.product.photos[0];
+        const photo = firstPhoto ? await this.fetchPhoto(firstPhoto) : undefined;
+        const text = buildProductPostText(item.product);
         await this.createPost(purchaseItemId, text, photo);
     }
 
@@ -193,7 +199,7 @@ export class ChannelPostService {
 
         await dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
-            data: { tgMessageId: String(messageId), tgChannelId: this.channelId! },
+            data: { tgMessageId: String(messageId), tgChannelId: this.channelId!, publicationState: 'PUBLISHED' },
         });
 
         try {

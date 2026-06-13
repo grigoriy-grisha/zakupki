@@ -34,7 +34,7 @@ export interface PostProduct {
     pricePerUnit: unknown;
     minPackageAmount: unknown;
     minPackageUnit: string | null;
-    unit: { shortName: string } | null;
+    unitCode: string;
 }
 
 export type ChannelPostPhoto = {

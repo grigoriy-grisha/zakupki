@@ -79,11 +79,12 @@ export const purchasesRouter = router({
         return ctx.services.purchase.activate(input.purchaseId);
     }),
 
-    publishToTelegram: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
-        const unpublishedItems = await ctx.services.purchase.findItemsToPublish(input.purchaseId);
-        const queued = await ctx.services.telegramPublish.enqueuePurchaseItems(unpublishedItems.map((i) => i.id));
-        return { queued };
-    }),
+    publishToTelegram: adminProcedure
+        .input(z.object({ purchaseId: z.number(), purchaseItemIds: z.array(z.number()).min(1) }))
+        .mutation(async ({ ctx, input }) => {
+            const queued = await ctx.services.telegramPublish.enqueuePurchaseItems(input.purchaseItemIds);
+            return { queued };
+        }),
 
     complete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.purchase.complete(input.id);
@@ -92,12 +93,6 @@ export const purchasesRouter = router({
     deleteDraft: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.purchase.deleteDraft(input.id);
     }),
-
-    toggleShouldPublish: adminProcedure
-        .input(z.object({ purchaseItemId: z.number(), value: z.boolean() }))
-        .mutation(async ({ ctx, input }) => {
-            return ctx.services.purchase.setPublicationState(input.purchaseItemId, input.value ? 'PUBLISHED' : 'DRAFT');
-        }),
 
     setAvailableQuantities: adminProcedure
         .input(

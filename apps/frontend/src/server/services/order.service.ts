@@ -1,22 +1,20 @@
-import {
-    NotFoundError,
-    ValidationError,
-    calculateOrderAmount,
-    canAddNewItem,
-    canCancelOrder,
-    canDecreaseOrder,
-    canIncreaseFromRemainder,
-} from '@zakupki/types';
+import { canCancelOrder, NotFoundError, OrderBook, ValidationError } from '@zakupki/types';
+import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
+import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
-type StageAction = 'add_new' | 'increase' | 'decrease';
-
 /**
- * Сервис заказов — управление строками OrderLine.
- * Поддерживает этапную модель: COLLECTION / REORDER / PAYMENT / ...
+ * Сервис заказов — Application-слой.
+ *
+ * Тонкая прослойка: fetch (репозитории) → map (Prisma→домен) → OrderBook (чистая
+ * бизнес-логика, immutable aggregate) → persist (эффекты). Вся бизнес-логика живёт
+ * в OrderBook (shared/types/src/order/) и тестируется без БД.
+ *
+ * Ключевое: COLLECTION-строки (createdOnStage='COLLECTION') — базовый заказ,
+ * supplement-строки (createdOnStage!='COLLECTION') — добор из остатков.
  */
 export class OrderService {
     constructor(
@@ -25,78 +23,41 @@ export class OrderService {
         private pricingSettings: PricingSettingsService,
     ) {}
 
-    // ── Public API ────────────────────────────────────────────────
+    // ── Public API: мутации ─────────────────────────────────────────
 
     /**
-     * Изменить количество на delta (может быть положительным или отрицательным).
+     * Изменить количество на delta.
+     * COLLECTION/REORDER → COLLECTION-строка; PAYMENT+ → supplement-строка.
      */
-    async adjustQuantity(purchaseItemId: number, userId: number, delta: number) {
+    async adjustQuantity(purchaseItemId: number, userId: number, delta: number): Promise<void> {
         if (delta === 0) return;
-
-        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
-
-        const fulfillmentStatus = (item.purchase.fulfillmentStatus ?? 'COLLECTION') as string;
-        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
-        const currentQty = existing ? Number(existing.quantity) : 0;
-        const newQty = currentQty + delta;
-        const baseQty = existing?.baseQuantity != null ? Number(existing.baseQuantity) : 0;
-
-        // Определяем тип действия и валидируем
-        const action: StageAction = !existing ? 'add_new' : delta > 0 ? 'increase' : 'decrease';
-        this.validateStageAction(action, fulfillmentStatus, newQty, baseQty);
-
-        // Обнуление / удаление
-        if (newQty <= 0) {
-            return this.resolveZeroQuantity(fulfillmentStatus, existing, purchaseItemId, userId);
-        }
-
-        const currentPkgCount = existing?.packageCount ?? 0;
-        const amountDue = await this.computeAmountDueWithPackages(newQty, currentPkgCount, item);
-        return this.repo.upsertOrderLine(purchaseItemId, userId, newQty, amountDue);
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        const result = OrderBook.create(item, lines).adjust(userId, delta);
+        if (!result.ok) throw new ValidationError(result.error.message);
+        await this.persistEffects(result.changes);
     }
 
     /**
      * Изменить количество упаковок на delta (+1 / -1).
+     * Упаковки доступны только на COLLECTION и REORDER — всегда COLLECTION-строка.
      */
-    async adjustPackageCount(purchaseItemId: number, userId: number, delta: number) {
+    async adjustPackageCount(purchaseItemId: number, userId: number, delta: number): Promise<void> {
         if (delta === 0) return;
-
-        const item = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
-        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
-
-        const fulfillmentStatus = (item.purchase.fulfillmentStatus ?? 'COLLECTION') as string;
-
-        // Упаковки доступны только на COLLECTION и REORDER
-        if (fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER') {
-            throw new ValidationError('На этом этапе нельзя добавить упаковку');
-        }
-
-        const packAmount = item.product.supplierPackageAmount;
-        if (!packAmount || Number(packAmount) <= 0) {
-            throw new ValidationError('У товара не указан размер упаковки поставщика');
-        }
-
-        const existing = await this.repo.findByPurchaseItemAndUser(purchaseItemId, userId);
-        const currentPkgCount = existing?.packageCount ?? 0;
-        const newPkgCount = currentPkgCount + delta;
-
-        if (newPkgCount < 0) {
-            throw new ValidationError('Количество упаковок не может быть отрицательным');
-        }
-
-        // Если OrderLine не существует — можно создать только на COLLECTION
-        if (!existing && !canAddNewItem(fulfillmentStatus)) {
-            throw new ValidationError('На этом этапе нельзя добавить новый товар');
-        }
-
-        const qty = existing ? Number(existing.quantity) : 0;
-        const amountDue = await this.computeAmountDueWithPackages(qty, newPkgCount, item);
-        return this.repo.upsertOrderLine(purchaseItemId, userId, qty, amountDue, newPkgCount);
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        const result = OrderBook.create(item, lines).adjustPackages(userId, delta);
+        if (!result.ok) throw new ValidationError(result.error.message);
+        await this.persistEffects(result.changes);
     }
+
+    // ── Public API: запросы ────────────────────────────────────────
 
     async getUserOrders(userId: number) {
         return this.repo.getByUser(userId);
+    }
+
+    /** Все ACTIVE строки пользователя для purchaseItem (базовые + supplement). */
+    async getActiveLinesForUserItem(purchaseItemId: number, userId: number) {
+        return this.repo.findAllActiveLinesForUserItem(purchaseItemId, userId);
     }
 
     async getByPurchase(purchaseId: number) {
@@ -128,7 +89,10 @@ export class OrderService {
         const orders = await this.repo.findActiveOrdersByUserId(userId);
         if (orders.length === 0) return [];
 
-        const byPurchase = new Map<number, { purchaseId: number; tag: string; fulfillmentStatus: string; totalDue: number }>();
+        const byPurchase = new Map<
+            number,
+            { purchaseId: number; tag: string; fulfillmentStatus: string; totalDue: number }
+        >();
         for (const line of orders) {
             const p = line.purchaseItem.purchase;
             const existing = byPurchase.get(p.id);
@@ -150,14 +114,15 @@ export class OrderService {
         const lines = await this.repo.findByUserAndPurchase(userId, purchaseId);
         if (lines.length === 0) return null;
 
-        const tag = lines[0]!.purchaseItem.purchase.tag;
+        const first = lines[0]!;
+        const tag = first.purchaseItem.purchase.tag;
         const totalDue = lines.reduce((sum, l) => sum + Number(l.amountDue), 0);
 
         return {
             purchaseOrderId: null as any,
             tag,
             totalDue,
-            supplier: (lines[0]!.purchaseItem.purchase as any).supplier ?? null,
+            supplier: (first.purchaseItem.purchase as any).supplier ?? null,
             lines: lines.map((l) => ({
                 id: l.id,
                 quantity: Number(l.quantity),
@@ -167,6 +132,7 @@ export class OrderService {
                 purchaseItem: l.purchaseItem,
                 userId: l.userId,
                 baseQuantity: l.baseQuantity,
+                createdOnStage: (l as any).createdOnStage,
                 tgChatMessageId: l.tgChatMessageId,
                 createdAt: l.createdAt,
                 updatedAt: l.updatedAt,
@@ -174,78 +140,35 @@ export class OrderService {
         };
     }
 
-    // ── Private helpers ───────────────────────────────────────────
+    // ── Внутренние: загрузка контекста + persistence ───────────────
 
-    private validateStageAction(action: StageAction, fulfillmentStatus: string, newQty: number, baseQty: number) {
-        switch (action) {
-            case 'add_new':
-                if (!canAddNewItem(fulfillmentStatus))
-                    throw new ValidationError('На этом этапе нельзя добавить новый товар');
-                break;
-            case 'increase':
-                if (!canIncreaseFromRemainder(fulfillmentStatus))
-                    throw new ValidationError('На этом этапе нельзя увеличить заказ');
-                break;
-            case 'decrease': {
-                if (!canDecreaseOrder(fulfillmentStatus))
-                    throw new ValidationError('На этом этапе нельзя уменьшить заказ');
-                const isFloorStage = fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER';
-                if (isFloorStage && baseQty > 0 && newQty < baseQty) {
-                    throw new ValidationError(
-                        `Нельзя убавить ниже базового заказа (${baseQty}). Можно убрать только доборную часть.`,
-                    );
-                }
-                break;
+    /** Загружает PurchaseItem + строки, мапит в доменную модель (PurchaseItem + OrderLine[]). */
+    private async loadItem(purchaseItemId: number): Promise<{ item: PurchaseItem; lines: OrderLine[] }> {
+        const row = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
+        if (!row) throw new NotFoundError('Товар закупки', purchaseItemId);
+
+        const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
+        return {
+            item: mapToPurchaseItem(row, packDiscountPercent),
+            lines: toOrderLines(row.orderLines as any),
+        };
+    }
+
+    /** Применяет доменные эффекты через репозиторий. */
+    private async persistEffects(effects: OrderEffect[]): Promise<void> {
+        for (const effect of effects) {
+            if (effect.type === 'delete') {
+                await this.repo.deleteOrderLineById(effect.lineId);
+            } else {
+                await this.repo.upsertOrderLine(
+                    effect.purchaseItemId,
+                    effect.userId,
+                    effect.quantity,
+                    effect.amountDue,
+                    effect.packageCount,
+                    effect.createdOnStage,
+                );
             }
         }
-    }
-
-    private async resolveZeroQuantity(
-        fulfillmentStatus: string,
-        existing: Awaited<ReturnType<OrderRepository['findByPurchaseItemAndUser']>>,
-        purchaseItemId: number,
-        userId: number,
-    ) {
-        if (fulfillmentStatus === 'COLLECTION') {
-            return this.repo.deleteOrderLine(purchaseItemId, userId);
-        }
-        if (existing) {
-            return this.repo.zeroOutOrderLine(purchaseItemId, userId);
-        }
-        return null;
-    }
-
-    private async computeAmountDue(
-        quantity: number,
-        item: Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>,
-    ): Promise<number> {
-        if (!item) return 0;
-        const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
-        return calculateOrderAmount(quantity, {
-            priceTiers: item.product.priceTiers,
-            pricePerUnit: Number(item.product.pricePerUnit),
-            priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-            supplierPackageAmount: item.product.supplierPackageAmount,
-            supplierPackageUnit: item.product.supplierPackageUnit,
-            supplierPackagePrice: item.product.supplierPackagePrice,
-            packDiscountPercent,
-        });
-    }
-
-    private async computeAmountDueWithPackages(
-        quantity: number,
-        packageCount: number,
-        item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>,
-    ): Promise<number> {
-        const baseAmount = await this.computeAmountDue(quantity, item);
-        const pkgPrice = this.getPackagePrice(item);
-        return baseAmount + packageCount * pkgPrice;
-    }
-
-    private getPackagePrice(item: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>): number {
-        if (item.product.supplierPackagePrice != null && Number(item.product.supplierPackagePrice) > 0) {
-            return Number(item.product.supplierPackagePrice);
-        }
-        return Number(item.product.pricePerUnit) * Number(item.product.supplierPackageAmount ?? 0);
     }
 }

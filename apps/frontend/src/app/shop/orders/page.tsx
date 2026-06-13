@@ -9,14 +9,15 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppLink } from '@/components/app-link';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, ShoppingCart, ArrowRight, CircleCheck, Clock, CreditCard } from 'lucide-react';
+import { ClipboardList, ShoppingCart, ArrowRight } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { MyPaymentRow } from '@/components/shop/my-payment-row';
 import { summarizePurchasePayments, type ShopPaymentView } from '@/components/shop/payment-proof';
+import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
+import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import {
     PURCHASE_FULFILLMENT_LABELS,
     PURCHASE_STATUS_LABELS,
@@ -26,66 +27,6 @@ import {
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
-
-type MyOrderLine = {
-    id: number;
-    purchaseItemId: number;
-    quantity: unknown;
-    amountDue: unknown;
-    purchaseOrderId?: number | null;
-    purchaseItem?: {
-        product?: ProductLabelSource & {
-            photos: { id: number }[];
-            unitCode: string;
-        };
-        purchase?: {
-            id: number;
-            tag: string;
-            supplier: string;
-            fulfillmentStatus: string | null;
-            status: string;
-        };
-    };
-};
-
-type OrderPurchaseGroup = {
-    id: number;
-    orderNumber: number | null;
-    tag: string;
-    supplier: string;
-    status: string;
-    fulfillmentStatus: string | null;
-    orders: MyOrderLine[];
-};
-
-function groupOrdersByPurchase(orders: MyOrderLine[]): OrderPurchaseGroup[] {
-    const grouped = new Map<number, OrderPurchaseGroup>();
-
-    for (const order of orders) {
-        const purchase = order.purchaseItem?.purchase;
-        if (!purchase) continue;
-        const pid = purchase.id;
-        const purchaseOrderId = order.purchaseOrderId ?? null;
-        if (!grouped.has(pid)) {
-            grouped.set(pid, {
-                id: pid,
-                orderNumber: purchaseOrderId,
-                tag: purchase.tag,
-                supplier: purchase.supplier,
-                status: purchase.status,
-                fulfillmentStatus: purchase.fulfillmentStatus ?? null,
-                orders: [],
-            });
-        }
-        const group = grouped.get(pid)!;
-        if (group.orderNumber == null && purchaseOrderId != null) {
-            group.orderNumber = purchaseOrderId;
-        }
-        group.orders.push(order);
-    }
-
-    return Array.from(grouped.values());
-}
 
 function OrdersEmptyState({
     title,
@@ -122,14 +63,13 @@ function PurchaseOrderCard({
     myPayments: { purchaseId: number; status: string; amount: unknown; children?: { amount: unknown }[] }[] | undefined;
     isPast: boolean;
 }) {
-    const total = group.orders.reduce((s, o) => s + Number(o.amountDue), 0);
     const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fs];
     const purchaseStatus = group.status as PurchaseStatus;
     const completed = isPurchaseCompleted(purchaseStatus);
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
-    const paymentSummary = summarizePurchasePayments(total, purchasePayments);
+    const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
     const { remaining, hasPending, isFullyPaid } = paymentSummary;
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
@@ -164,15 +104,16 @@ function PurchaseOrderCard({
                 </div>
             </CardHeader>
             <CardContent className="space-y-0">
-                {group.orders.map((order, idx) => {
-                    const product = order.purchaseItem?.product;
+                {group.orders.map((order, idx: number) => {
+                    const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
+                        order.source.purchaseItem?.product;
                     const shortName = product?.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? '' : '';
                     const photo = product?.photos?.[0];
-                    const qty = Number(order.quantity);
-                    const amount = Number(order.amountDue);
+                    const qty = order.quantity;
+                    const amount = order.amountDue;
 
                     return (
-                        <div key={order.id}>
+                        <div key={order.purchaseItemId}>
                             {idx > 0 && <Separator />}
                             <AppLink
                                 href={`/shop/purchase/${group.id}/item/${order.purchaseItemId}`}
@@ -213,81 +154,21 @@ function PurchaseOrderCard({
                     <div className="space-y-2 py-3">
                         <p className="text-xs font-medium text-muted-foreground">Ваши оплаты</p>
                         {purchasePayments.map((p, idx) => (
-                            <MyPaymentRow key={(p as { id?: number }).id ?? idx} payment={p as unknown as ShopPaymentView} />
+                            <MyPaymentRow key={(p as any).id ?? idx} payment={p as unknown as ShopPaymentView} />
                         ))}
                     </div>
                 )}
 
-                <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                    {isFullyPaid ? (
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-success">
-                                <CircleCheck className="h-4 w-4" />
-                                <span className="font-medium">Оплачено</span>
-                            </div>
-                            <span className="font-semibold">{total.toLocaleString('ru-RU')} ₽</span>
-                        </div>
-                    ) : hasPending ? (
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-warning">
-                                <Clock className="h-4 w-4" />
-                                <span className="font-medium">Ожидает подтверждения</span>
-                            </div>
-                            <span className="font-semibold">{total.toLocaleString('ru-RU')} ₽</span>
-                        </div>
-                    ) : isPast ? (
-                        <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">
-                                Итого:{' '}
-                                <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
-                            </span>
-                            {remaining > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                    К оплате было {remaining.toLocaleString('ru-RU')} ₽
-                                </span>
-                            )}
-                        </div>
-                    ) : remaining > 0 && paymentOpen ? (
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <span>
-                                    К оплате:{' '}
-                                    <span className="font-medium text-foreground">
-                                        {remaining.toLocaleString('ru-RU')} ₽
-                                    </span>
-                                </span>
-                            </div>
-                            <PurchasePaymentDialog
-                                purchaseId={group.id}
-                                remaining={remaining}
-                                hasPending={hasPending}
-                                paymentOpen={paymentOpen}
-                                triggerVariant="link"
-                            />
-                        </div>
-                    ) : paymentOpen ? (
-                        <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">
-                                Итого:{' '}
-                                <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {group.orders.length} {group.orders.length === 1 ? 'позиция' : 'позиции'}
-                            </span>
-                        </div>
-                    ) : (
-                        <div>
-                            <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
-                            <button
-                                disabled
-                                className="mt-1.5 flex w-full cursor-not-allowed items-center justify-center gap-1 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground/50"
-                            >
-                                <CreditCard className="h-3 w-3" />
-                                Ждём начала оплаты
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <PaymentStatusBlock
+                    total={group.total}
+                    remaining={remaining}
+                    hasPending={hasPending}
+                    isFullyPaid={isFullyPaid}
+                    isPast={isPast}
+                    paymentOpen={paymentOpen}
+                    purchaseId={group.id}
+                    orderCount={group.orders.length}
+                />
             </CardContent>
         </Card>
     );
@@ -299,7 +180,7 @@ export default function OrdersPage() {
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
 
     const { activeGroups, pastGroups } = useMemo(() => {
-        const all = groupOrdersByPurchase((myOrders ?? []) as unknown as MyOrderLine[]);
+        const all = groupOrdersByPurchase((myOrders ?? []) as any);
         return {
             activeGroups: all.filter((g) => !isPurchaseCompleted(g.status)),
             pastGroups: all.filter((g) => isPurchaseCompleted(g.status)),

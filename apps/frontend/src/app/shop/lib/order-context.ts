@@ -7,8 +7,10 @@ import {
     isSupplementPhase,
     buildOrderQtyOptions,
     getOrderQuantityStep,
+    OrderBook,
+    toOrderLinesVO,
 } from '@zakupki/types';
-import { buildShopOrderQuantityContext } from './order-quantity';
+import type { PurchaseFulfillmentStatus, PurchaseItem } from '@zakupki/types';
 import type { ShopPurchaseItem } from './types';
 
 export interface ItemOrderContextInput {
@@ -60,15 +62,24 @@ export interface ItemOrderContext {
     minAllowed: number;
 }
 
+/**
+ * Строит UI-контекст заказа.
+ *
+ * Расчёт пула делегируется в доменную стратегию (getStageStrategy + computePoolInfo) —
+ * ТАКАЯ ЖЕ логика, как в OrderService на бэке. Единый источник истины.
+ *
+ * maxAllowed = availablePool + currentQuantity (не baseQuantity!) —
+ * пользователь может иметь текущее + остаток пула. Совпадает с бэком.
+ */
 export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderContext {
-    const { item, currentQuantity, currentPackageCount, baseQuantity, fulfillmentStatus, packDiscountPercent } = input;
+    const { item, currentQuantity, currentPackageCount, baseQuantity, fulfillmentStatus, packDiscountPercent } =
+        input;
     const product = item.product;
     const unit = getUnitByCode(product.unitCode);
     const shortName = unit?.shortName ?? 'ед.';
     const multiplicity = Number(product.multiplicity) || 1;
     const price = Number(item.priceOverride ?? product.pricePerUnit);
 
-    // Шаги
     const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product.minPackageUnit ?? null;
     const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
@@ -88,29 +99,35 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         regularStep,
     });
 
-    // Пул добора — расчёт по orderLines
-    const activeLines = (item.orderLines ?? []).filter((line) => line.status !== 'CANCELLED');
-    const supplementClaimed = activeLines.reduce(
-        (acc, line) => acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)),
-        0,
-    );
-    const totalOrderedQuantity = activeLines.reduce((acc, line) => acc + Number(line.quantity ?? 0), 0);
-    const totalBaseQuantity = activeLines.reduce((acc, line) => acc + Number(line.baseQuantity ?? 0), 0);
-
+    // Пул добора — через доменный aggregate OrderBook.remainder (сырой пул, без userId).
+    // currentQuantity в расчёте пула не участвует (используется ниже для maxAllowed/canAddMore),
+    // поэтому достаточно глобального остатка книги.
     const isSupplement = isSupplementPhase(fulfillmentStatus);
-    const qtyCtx = buildShopOrderQuantityContext({
-        isSupplement,
-        baseQuantity,
-        currentQuantity,
-        availableRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-        packSize,
-        sumOtherRemainders: supplementClaimed,
-        totalOrderedQuantity,
-        totalBaseQuantity,
-        orderQtyOptions,
-    });
+    const purchaseItem: PurchaseItem = {
+        purchaseItemId: item.id,
+        pricePerUnit: Number(product.pricePerUnit),
+        priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
+        priceTiers: (product.priceTiers as PurchaseItem['priceTiers']) ?? null,
+        packDiscountPercent,
+        supplierPackageAmount: packSize,
+        supplierPackageUnit: product.supplierPackageUnit ?? null,
+        supplierPackagePrice:
+            product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
+        unitCode: product.unitCode,
+        multiplicity,
+        minPackageAmount,
+        minPackageUnit,
+        supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
+        fulfillmentStatus: fulfillmentStatus as PurchaseFulfillmentStatus,
+        targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
+    };
+    const book = OrderBook.create(purchaseItem, toOrderLinesVO((item.orderLines ?? []) as any[]));
+    const availablePool = book.remainder;
 
-    const availablePool = qtyCtx.availablePool;
+    const freeRemainderLabel =
+        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
+            ? `Можно докинуть: ${availablePool} ${shortName}`
+            : null;
 
     // Упаковка
     const hasSupplierPackage = packSize != null && packSize > 0;
@@ -136,8 +153,11 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
-    // Границы
-    const maxAllowed = availablePool != null ? availablePool + baseQuantity : Number.POSITIVE_INFINITY;
+    // Границы — ЕДИНОЕ правило с бэком: maxAllowed = pool + currentQuantity
+    const maxAllowed =
+        availablePool != null && Number.isFinite(availablePool)
+            ? availablePool + currentQuantity
+            : Number.POSITIVE_INFINITY;
     const minAllowed =
         fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
 
@@ -149,12 +169,6 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const canDecrease =
         currentQuantity > 0 &&
         (fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER' || currentQuantity > baseQuantity);
-
-    // Лейбл остатка
-    const freeRemainderLabel =
-        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
-            ? `Можно докинуть: ${availablePool} ${shortName}`
-            : null;
 
     return {
         shortName,

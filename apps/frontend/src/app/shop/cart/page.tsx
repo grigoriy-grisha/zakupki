@@ -7,59 +7,34 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { AppLink } from '@/components/app-link';
-import { ShoppingCart, Trash2, ArrowRight, CircleCheck, Clock, CreditCard } from 'lucide-react';
+import { ShoppingCart, Trash2, ArrowRight } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
-import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-controls';
 import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { MyPaymentRow } from '@/components/shop/my-payment-row';
 import { summarizePurchasePayments, type ShopPaymentView } from '@/components/shop/payment-proof';
+import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { cn } from '@/lib/utils';
+import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import { toast } from 'sonner';
 
 export default function CartPage() {
     const router = useAppRouter();
     const utils = trpc.useUtils();
     const { data: myOrders, isLoading } = trpc.orders.getMyOrders.useQuery();
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
-    const deleteOrder = trpc.orders.deleteOrder.useMutation();
 
-    // Group orders by purchase
-    const grouped = new Map<
-        number,
-        {
-            id: number;
-            tag: string;
-            supplier: string;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            orders: any[];
-            total: number;
-            fulfillmentStatus: string | null;
-        }
-    >();
+    // Используем adjustQuantity вместо deleteOrder — service сам делает zero-out/hard delete
+    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
+        onSuccess: () => {
+            void utils.orders.getMyOrders.invalidate();
+        },
+        onError: (err) => toast.error(err.message),
+    });
 
-    if (myOrders) {
-        for (const order of myOrders) {
-            const purchase = (order as any).purchaseItem?.purchase;
-            if (!purchase) continue;
-            const pid = purchase.id as number;
-            if (!grouped.has(pid)) {
-                grouped.set(pid, {
-                    id: pid,
-                    tag: purchase.tag,
-                    supplier: purchase.supplier,
-                    orders: [],
-                    total: 0,
-                    fulfillmentStatus: (purchase as any).fulfillmentStatus ?? null,
-                });
-            }
-            const group = grouped.get(pid)!;
-            group.orders.push(order);
-            group.total += Number(order.amountDue);
-        }
-    }
+    const groups = groupOrdersByPurchase((myOrders ?? []) as any);
 
     if (isLoading) {
         return (
@@ -95,14 +70,12 @@ export default function CartPage() {
         );
     }
 
-    const groups = Array.from(grouped.values());
-
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-semibold tracking-tight">Корзина</h1>
 
-            {groups.map((group) => {
-                const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
+            {groups.map((group: OrderPurchaseGroup) => {
+                const purchasePayments = myPayments?.filter((p: any) => p.purchaseId === group.id) ?? [];
                 const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
                 const { confirmedPaid: totalPaid, remaining, hasPending, isFullyPaid } = paymentSummary;
                 const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
@@ -129,29 +102,19 @@ export default function CartPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-0">
-                            {group.orders.map((order, idx) => {
-                                const purchaseItem = (
-                                    order as {
-                                        purchaseItem?: {
-                                            id: number;
-                                            minQty: unknown;
-                                            product?: ProductLabelSource & {
-                                                photos: { id: number }[];
-                                                unit: { shortName: string; multiplicity: string | number } | null;
-                                                minPackageAmount: string | number | null;
-                                                minPackageUnit: string | null;
-                                            };
-                                        };
-                                    }
-                                ).purchaseItem;
-                                const product = purchaseItem?.product;
+                            {group.orders.map((order, idx: number) => {
+                                const product: (ProductLabelSource & {
+                                    photos: { id: number }[];
+                                    unit: { shortName: string; multiplicity: string | number } | null;
+                                }) | undefined = order.source.purchaseItem?.product;
                                 const shortName = product?.unit?.shortName ?? 'ед.';
                                 const photo = product?.photos?.[0];
-                                const qty = Number(order.quantity);
-                                const amount = Number(order.amountDue);
+                                const qty = order.quantity;
+                                const amount = order.amountDue;
+                                const purchaseItemId = order.purchaseItemId;
 
                                 return (
-                                    <div key={order.id}>
+                                    <div key={order.purchaseItemId}>
                                         {idx > 0 && <Separator />}
                                         <div className="flex items-start gap-3 py-3">
                                             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -177,41 +140,21 @@ export default function CartPage() {
                                                     />
                                                 )}
                                                 <p className="mt-0.5 text-xs text-muted-foreground">
-                                                    {amount.toLocaleString('ru-RU')} ₽
+                                                    {qty} {shortName} · {amount.toLocaleString('ru-RU')} ₽
                                                 </p>
                                             </div>
                                             <div className="flex shrink-0 flex-col items-end gap-1.5">
-                                                {purchaseItem && product?.unit && (
-                                                    <CartLineQuantityControls
-                                                        orderId={order.id}
-                                                        purchaseItemId={purchaseItem.id}
-                                                        purchaseId={group.id}
-                                                        quantity={qty}
-                                                        unitShort={shortName}
-                                                        multiplicity={Number(product.unit.multiplicity)}
-                                                        minPackageAmount={
-                                                            product.minPackageAmount != null
-                                                                ? Number(product.minPackageAmount)
-                                                                : null
-                                                        }
-                                                        minPackageUnit={product.minPackageUnit}
-                                                        purchaseItemMinQty={
-                                                            purchaseItem.minQty != null
-                                                                ? Number(purchaseItem.minQty)
-                                                                : null
-                                                        }
-                                                    />
-                                                )}
                                                 <Button
                                                     variant="ghost"
                                                     size="icon-sm"
                                                     className="text-muted-foreground hover:text-destructive"
-                                                    disabled={deleteOrder.isPending}
+                                                    disabled={adjustMutation.isPending}
                                                     onClick={() => {
-                                                        deleteOrder.mutate(
-                                                            { id: order.id },
-                                                            { onSuccess: () => utils.orders.getMyOrders.invalidate() },
-                                                        );
+                                                        // adjustQuantity с -qty → service делает zero-out на REORDER+ или hard delete на COLLECTION
+                                                        adjustMutation.mutate({
+                                                            purchaseItemId,
+                                                            delta: -qty,
+                                                        });
                                                     }}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -240,36 +183,41 @@ export default function CartPage() {
                                     <div>
                                         <p className="text-xs text-muted-foreground">Осталось</p>
                                         <p
-                                            className={cn(
-                                                'text-lg font-bold',
-                                                remaining > 0 ? 'text-warning' : 'text-success',
-                                            )}
+                                            className={`text-lg font-bold ${
+                                                remaining > 0 ? 'text-warning' : 'text-success'
+                                            }`}
                                         >
                                             {remaining.toLocaleString('ru-RU')} ₽
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Payments list */}
                                 {purchasePayments.length > 0 && (
                                     <div className="space-y-2 pt-2 border-t">
-                                        {purchasePayments.map((p) => (
+                                        {purchasePayments.map((p: any) => (
                                             <MyPaymentRow key={p.id} payment={p as ShopPaymentView} />
                                         ))}
                                     </div>
                                 )}
 
-                                {/* Status / Pay button */}
                                 {isFullyPaid ? (
-                                    <div className="flex items-center justify-center gap-2 rounded-lg bg-success-50 py-2 text-success">
-                                        <CircleCheck className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Полностью оплачено</span>
-                                    </div>
+                                    <PaymentStatusBlock
+                                        total={group.total}
+                                        remaining={remaining}
+                                        hasPending={hasPending}
+                                        isFullyPaid={isFullyPaid}
+                                        paymentOpen={paymentOpen}
+                                        purchaseId={group.id}
+                                    />
                                 ) : hasPending ? (
-                                    <div className="flex items-center justify-center gap-2 rounded-lg bg-warning/10 py-2 text-warning">
-                                        <Clock className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Ожидает подтверждения оплаты</span>
-                                    </div>
+                                    <PaymentStatusBlock
+                                        total={group.total}
+                                        remaining={remaining}
+                                        hasPending={hasPending}
+                                        isFullyPaid={isFullyPaid}
+                                        paymentOpen={paymentOpen}
+                                        purchaseId={group.id}
+                                    />
                                 ) : paymentOpen && remaining > 0 ? (
                                     <PurchasePaymentDialog
                                         purchaseId={group.id}
@@ -279,10 +227,14 @@ export default function CartPage() {
                                         buttonSize="default"
                                     />
                                 ) : remaining > 0 ? (
-                                    <div className="flex items-center justify-center gap-2 rounded-lg bg-muted py-2 text-muted-foreground">
-                                        <Clock className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Ждём начала оплаты</span>
-                                    </div>
+                                    <PaymentStatusBlock
+                                        total={group.total}
+                                        remaining={remaining}
+                                        hasPending={hasPending}
+                                        isFullyPaid={isFullyPaid}
+                                        paymentOpen={false}
+                                        purchaseId={group.id}
+                                    />
                                 ) : null}
                             </div>
                         </CardContent>

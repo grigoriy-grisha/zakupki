@@ -1,7 +1,9 @@
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
+import { getUnitByCode } from '@zakupki/types';
 
 import type { ChannelPostPhoto, PostProduct } from '../domain/types';
+import { escapeHtml } from './html';
 
 export function normalizeChatId(raw: string): string {
     const trimmed = raw.trim();
@@ -13,10 +15,6 @@ export function normalizeChatId(raw: string): string {
 export function getChannelIdFromEnv(): string | null {
     const raw = (process.env.TELEGRAM_CHANNEL_ID ?? process.env.TG_CHANNEL_ID)?.trim();
     return raw ? normalizeChatId(raw) : null;
-}
-
-function escapeHtml(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function htmlToTelegramHtml(html: string): string {
@@ -92,7 +90,7 @@ export function buildProductPostText(product: PostProduct): string {
     }
 
     const price = Number(product.pricePerUnit);
-    const shortName = product.unit?.shortName ?? 'ед.';
+    const shortName = product.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? 'ед.' : 'ед.';
     if (Number.isFinite(price) && price > 0) {
         lines.push(`${price.toLocaleString('ru-RU')} ₽/${escapeHtml(shortName)}`);
     }

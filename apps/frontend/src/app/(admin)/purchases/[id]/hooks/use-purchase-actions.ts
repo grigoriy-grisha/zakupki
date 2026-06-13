@@ -77,13 +77,6 @@ export function usePurchaseActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    const setPublicationState = trpc.purchases.toggleShouldPublish.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
     const setTargetRemainder = trpc.purchases.setAvailableQuantities.useMutation({
         onSuccess: () => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
@@ -100,7 +93,6 @@ export function usePurchaseActions(purchaseId: number) {
         updateFulfillmentStatus,
         publishItem,
         removeItem,
-        setPublicationState,
         setTargetRemainder,
     };
 }

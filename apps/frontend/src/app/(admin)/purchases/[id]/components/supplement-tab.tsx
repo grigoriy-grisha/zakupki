@@ -8,7 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { productPhotoUrl } from '@/lib/product-photo-url';
-import { getSupplementPool } from '@zakupki/types';
+import { computeRawPool, getStageStrategy, toOrderLinesVO } from '@zakupki/types';
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 import { formatOrderStatValue, getPurchaseItemOrderStats } from '../lib/purchase-item-order-stats';
 import { ItemEditSheet } from './item-edit-sheet';
 import type { PurchaseDetail, PurchaseItem } from '../lib/types';
@@ -76,31 +77,22 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                         {remainderItems.map((item) => {
                             const shortName = item.product.unit?.shortName ?? '';
                             const stats = getPurchaseItemOrderStats(item);
-                            const totalOrderedQuantity = (item.orderLines ?? []).reduce(
-                                (acc: number, line: { quantity?: unknown }) =>
-                                    acc + Number(line.quantity ?? 0),
-                                0,
-                            );
-                            const supplementClaimed = (item.orderLines ?? []).reduce(
-                                (acc: number, line: { quantity?: unknown; baseQuantity?: unknown }) =>
-                                    acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)),
-                                0,
-                            );
-                            const totalBaseQuantity = (item.orderLines ?? []).reduce(
-                                (acc: number, line: { baseQuantity?: unknown }) =>
-                                    acc + Number(line.baseQuantity ?? 0),
-                                0,
-                            );
                             const packSize =
                                 item.product.supplierPackageAmount != null
                                     ? Number(item.product.supplierPackageAmount)
                                     : null;
-                            const remainderLeft = getSupplementPool({
-                                targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-                                totalOrderedQuantity,
-                                supplementClaimed,
+                            // Пул добора — через доменную стратегию
+                            const strategy = getStageStrategy(
+                                (purchase as any).fulfillmentStatus as PurchaseFulfillmentStatus,
+                            );
+                            const aggregation = strategy.aggregateForPool(
+                                toOrderLinesVO((item.orderLines ?? []) as any[]),
+                            );
+                            const remainderLeft = computeRawPool({
+                                targetRemainder:
+                                    item.targetRemainder != null ? Number(item.targetRemainder) : null,
                                 packSize,
-                                totalBaseQuantity,
+                                aggregation,
                             });
                             const isManualLimit =
                                 item.targetRemainder != null && Number(item.targetRemainder) > 0;

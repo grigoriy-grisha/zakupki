@@ -50,8 +50,39 @@ export function isPurchasePaymentOpen(status: PurchaseFulfillmentStatus | null |
     return idx >= 0 && paymentIdx >= 0 && idx >= paymentIdx;
 }
 
-// Supplement pool calculation
-export { getSupplementPool } from './supplement';
+// Order domain — ООП (rich entities + aggregate root)
+export {
+    OrderLine,
+    OrderBook,
+    getStageStrategy,
+    CollectionStage,
+    ReorderStage,
+    PaymentPlusStage,
+    computeRawPool,
+    computePoolInfo,
+    computeAmountDue,
+    computeAmountDueWithPackages,
+    computePackagePrice,
+    mergeLines,
+    toOrderLineVO,
+    toOrderLinesVO,
+} from './order';
+export type {
+    StageStrategy,
+    PoolAggregation,
+    OrderLineVO,
+    OrderLineProps,
+    OrderLineStatus,
+    AdjustResult,
+    PurchaseItem,
+    OrderEffect,
+    OrderError,
+    OrderErrorCode,
+    PoolInfo,
+    AggregatedOrder,
+    OrderDisplayContext,
+    OrderLineRowLike,
+} from './order';
 
 // Pricing
 export {
@@ -151,5 +182,6 @@ export {
     FULFILLMENT_TRANSITIONS,
     canTransitionFulfillment,
     isFreezePoint,
+    isPaymentPlusFreezePoint,
     isUnfreezePoint,
 } from './purchase-fulfillment';

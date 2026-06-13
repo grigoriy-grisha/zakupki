@@ -11,7 +11,8 @@ import { trpc } from '@/lib/client/trpc';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '../../../products/lib';
-import { getSupplementPool, parsePriceTiers } from '@zakupki/types';
+import { computeRawPool, getStageStrategy, parsePriceTiers, toOrderLinesVO } from '@zakupki/types';
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import {
     formatPrice510Cell,
@@ -32,7 +33,7 @@ import {
     purchaseItemTgCellClass,
     purchaseItemStatsLeadCellClass,
 } from '../lib/table-styles';
-import { usePurchaseActions, useRemovePurchaseItem, useToggleShouldPublish } from '../hooks';
+import { usePurchaseActions, useRemovePurchaseItem } from '../hooks';
 import { ProductPickerDialog } from './product-picker-dialog';
 import { ItemEditSheet } from './item-edit-sheet';
 import { PublishToTgDialog } from './publish-to-tg-dialog';
@@ -71,11 +72,11 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
     const removeItem = useRemovePurchaseItem(purchaseId);
-    const togglePublish = useToggleShouldPublish(purchaseId);
     const purchaseActions = usePurchaseActions(purchaseId);
 
     const [editItem, setEditItem] = useState<number | null>(null);
     const [publishOpen, setPublishOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [deleteTarget, setDeleteTarget] = useState<{
         id: number;
         product: ProductLabelSource;
@@ -92,11 +93,10 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
     const isActive = typedPurchase.status === 'ACTIVE';
     // ФИКС #11: колонка «Доступно» показывается в REORDER.
     const isInSupplementPhase = typedPurchase.fulfillmentStatus === 'REORDER';
-    const canTogglePublish = (status: string) => status !== 'DONE';
     const canAddItems = typedPurchase.status !== 'DONE';
     const canRemoveItem = typedPurchase.status !== 'DONE';
     const existingProductIds = new Set<number>(items.map((item) => item.productId));
-    const publishCount = items.filter((item) => item.publicationState === 'DRAFT' && !item.tgMessageId).length;
+    const publishCount = selectedIds.size;
 
     return (
         <div className="space-y-4">
@@ -219,32 +219,21 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                             const published = !!item.tgMessageId;
                             const tiers = getProductPriceTiers(item.product.priceTiers);
                             const stats = getPurchaseItemOrderStats(item);
-                            // Свободный остаток = либо ручной target pool минус зарезервированное,
-                            // либо авто-расчёт по «остатку последней пачки».
-                            const totalOrderedQuantity = (item.orderLines ?? []).reduce(
-                                (acc: number, line: { quantity?: unknown }) =>
-                                    acc + Number(line.quantity ?? 0),
-                                0,
+                            // Пул добора — через доменную стратегию (REORDER: baseQuantity-based, PAYMENT+: createdOnStage-based)
+                            const strategy = getStageStrategy(
+                                typedPurchase.fulfillmentStatus as PurchaseFulfillmentStatus,
                             );
-                            const supplementClaimed = (item.orderLines ?? []).reduce(
-                                (acc: number, line: { quantity?: unknown; baseQuantity?: unknown }) =>
-                                    acc + Math.max(0, Number(line.quantity ?? 0) - Number(line.baseQuantity ?? 0)),
-                                0,
+                            const aggregation = strategy.aggregateForPool(
+                                toOrderLinesVO((item.orderLines ?? []) as any[]),
                             );
-                            const totalBaseQuantity = (item.orderLines ?? []).reduce(
-                                (acc: number, line: { baseQuantity?: unknown }) =>
-                                    acc + Number(line.baseQuantity ?? 0),
-                                0,
-                            );
-                            const freeRemainder = getSupplementPool({
-                                targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-                                totalOrderedQuantity,
-                                supplementClaimed,
+                            const freeRemainder = computeRawPool({
+                                targetRemainder:
+                                    item.targetRemainder != null ? Number(item.targetRemainder) : null,
                                 packSize:
                                     item.product.supplierPackageAmount != null
                                         ? Number(item.product.supplierPackageAmount)
                                         : null,
-                                totalBaseQuantity,
+                                aggregation,
                             });
                             return (
                                 <TableRow
@@ -300,14 +289,16 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                                 <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
                                             ) : (
                                                 <Checkbox
-                                                    checked={item.publicationState === 'PUBLISHED'}
-                                                    disabled={
-                                                        !canTogglePublish(typedPurchase.status) || togglePublish.isPending
-                                                    }
-                                                    aria-label="Опубликовать в Telegram"
+                                                    checked={selectedIds.has(item.id)}
+                                                    disabled={typedPurchase.status === 'DONE'}
+                                                    aria-label="Выбрать для публикации в Telegram"
                                                     onCheckedChange={(v) => {
                                                         if (typeof v === 'boolean') {
-                                                            togglePublish.mutate({ purchaseItemId: item.id, value: v });
+                                                            setSelectedIds((prev) => {
+                                                                const next = new Set(prev);
+                                                                v ? next.add(item.id) : next.delete(item.id);
+                                                                return next;
+                                                            });
                                                         }
                                                     }}
                                                 />
@@ -408,11 +399,22 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
 
             <PublishToTgDialog
                 open={publishOpen}
-                onOpenChange={setPublishOpen}
+                onOpenChange={(open) => {
+                    setPublishOpen(open);
+                    if (!open) setSelectedIds(new Set());
+                }}
                 publishCount={publishCount}
                 isPending={purchaseActions.publishAll.isPending}
                 onPublish={() => {
-                    purchaseActions.publishAll.mutate({ purchaseId }, { onSuccess: () => setPublishOpen(false) });
+                    purchaseActions.publishAll.mutate(
+                        { purchaseId, purchaseItemIds: [...selectedIds] },
+                        {
+                            onSuccess: () => {
+                                setPublishOpen(false);
+                                setSelectedIds(new Set());
+                            },
+                        },
+                    );
                 }}
             />
         </div>

@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
-import { getSupplementPool, parsePriceTiers, type PriceTier } from '@zakupki/types';
+import { computeRawPool, getStageStrategy, parsePriceTiers, toOrderLinesVO, type PriceTier } from '@zakupki/types';
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
@@ -36,6 +37,7 @@ type ExportPurchase = {
     tag: string;
     supplier: string;
     status: string;
+    fulfillmentStatus?: string | null;
     minAmount: unknown;
     deadline: string | Date;
     items: {
@@ -578,27 +580,16 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
             quantitiesByUser.set(line.userId, formatMoney(line.quantity));
         });
 
-        // Реальный свободный остаток для добора = target pool минус зарезервированное,
-        // либо авто-расчёт по «остатку последней пачки» (если админ targetRemainder не задал).
-        const totalOrderedQuantity = item.orderLines.reduce(
-            (sum, line) => sum + Number(line.quantity ?? 0),
-            0,
+        // Пул добора — через доменную стратегию (REORDER: baseQuantity-based, PAYMENT+: createdOnStage-based)
+        const strategy = getStageStrategy(
+            (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
         );
-        const supplementClaimed = item.orderLines.reduce(
-            (sum, line) => sum + Math.max(0, Number((line as any).quantity ?? 0) - Number((line as any).baseQuantity ?? 0)),
-            0,
-        );
-        const totalBaseQuantity = item.orderLines.reduce(
-            (sum, line) => sum + Number((line as any).baseQuantity ?? 0),
-            0,
-        );
+        const aggregation = strategy.aggregateForPool(toOrderLinesVO(item.orderLines as any[]));
         const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
-        const displayedRemainder = getSupplementPool({
+        const displayedRemainder = computeRawPool({
             targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-            totalOrderedQuantity,
-            supplementClaimed,
             packSize,
-            totalBaseQuantity,
+            aggregation,
         });
 
         const row = sheet.addRow([

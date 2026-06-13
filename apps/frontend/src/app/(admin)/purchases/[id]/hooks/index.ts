@@ -1,7 +1,6 @@
 export {
     useAddPurchaseItems,
     useRemovePurchaseItem,
-    useToggleShouldPublish,
     usePublishItemToTg,
 } from './use-purchase-items';
 export { usePurchaseActions } from './use-purchase-actions';

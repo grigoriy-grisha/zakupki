@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useMemo } from 'react';
 import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,22 +16,11 @@ import {
 import { cn } from '@/lib/utils';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import type { ShopPurchaseItem, ShopOrderLine } from '@/app/shop/lib/types';
+import { aggregateByItem } from '../../lib/order-aggregation';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 import { ProductCard } from './components';
 import { FilterTree } from './components/filter-tree';
-
-function buildOrderMaps(myOrders: { purchaseItemId: number; quantity: unknown; packageCount?: unknown; baseQuantity?: unknown }[]) {
-    const qty = new Map<number, number>();
-    const pkg = new Map<number, number>();
-    const base = new Map<number, number>();
-    for (const o of myOrders) {
-        qty.set(o.purchaseItemId, Number(o.quantity));
-        pkg.set(o.purchaseItemId, Number(o.packageCount ?? 0));
-        base.set(o.purchaseItemId, o.baseQuantity != null ? Number(o.baseQuantity) : 0);
-    }
-    return { qty, pkg, base };
-}
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
@@ -56,8 +45,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         totalCount,
     } = usePurchaseFilterTree(items);
 
-    const { qty: orderQtyMap, pkg: orderPackageCountMap, base: orderBaseQuantityMap } = buildOrderMaps(
-        paymentDetail.myOrdersInPurchase,
+    const aggregatedByItem = useMemo(
+        () => aggregateByItem(paymentDetail.myOrdersInPurchase as never),
+        [paymentDetail.myOrdersInPurchase],
     );
 
     if (isLoading) {
@@ -197,22 +187,25 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         <p className="text-sm text-muted-foreground">Товаров: {filteredItems.length}</p>
 
                         <div className="grid grid-cols-2 items-stretch gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredItems.map((item) => (
-                                <ProductCard
-                                    key={item.id}
-                                    item={{
-                                        ...item,
-                                        quantity: orderQtyMap.get(item.id) ?? 0,
-                                        packageCount: orderPackageCountMap.get(item.id) ?? 0,
-                                    }}
-                                    purchaseId={id}
-                                    packDiscountPercent={packDiscountPercent}
-                                    baseQuantity={orderBaseQuantityMap.get(item.id) ?? undefined}
-                                    isSupplement={isSupplement}
-                                    canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
-                                    fulfillmentStatus={fulfillmentStatus}
-                                />
-                            ))}
+                            {filteredItems.map((item) => {
+                                const agg = aggregatedByItem.get(item.id);
+                                return (
+                                    <ProductCard
+                                        key={item.id}
+                                        item={{
+                                            ...item,
+                                            quantity: agg?.quantity ?? 0,
+                                            packageCount: agg?.packageCount ?? 0,
+                                        }}
+                                        purchaseId={id}
+                                        packDiscountPercent={packDiscountPercent}
+                                        baseQuantity={agg?.baseQuantity ?? undefined}
+                                        isSupplement={isSupplement}
+                                        canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
+                                        fulfillmentStatus={fulfillmentStatus}
+                                    />
+                                );
+                            })}
                         </div>
 
                         {filteredItems.length === 0 && (

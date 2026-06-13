@@ -236,10 +236,20 @@ model OrderLine {
   amountDue      Decimal         @db.Decimal(10, 2)
   status         OrderLineStatus @default(ACTIVE)
 
+  // Этап закупки, на котором была создана эта строка.
+  // COLLECTION — базовый заказ (замораживается на PAYMENT+).
+  // PAYMENT+ — доборный заказ из остатков (можно убирать до 0).
+  createdOnStage PurchaseFulfillmentStatus @default(COLLECTION)
+
   // Замороженный снимок quantity из COLLECTION. Устанавливается при
-  // COLLECTION→REORDER. NULL во время COLLECTION.
-  // На REORDER пользователь может добавлять/убавлять от этого базового количества.
+  // COLLECTION→REORDER. NULL для supplement-строк (PAYMENT+).
+  // Используется только на REORDER для расчёта пула добора.
   baseQuantity Decimal? @db.Decimal(10, 3)
+
+  // Замороженный снимок packageCount из COLLECTION. Устанавливается при
+  // COLLECTION→REORDER атомарно с baseQuantity. NULL для supplement-строк
+  // и для COLLECTION-строк до заморозки.
+  basePackageCount Int?
 
   // Количество целых упаковок поставщика. Упаковка — нераспечатанная пачка,
   // которую организатор отправляет как есть (без расфасовки).
@@ -252,7 +262,7 @@ model OrderLine {
   purchaseItem    PurchaseItem @relation(fields: [purchaseItemId], references: [id])
   user            User         @relation(fields: [userId], references: [id])
 
-  @@unique([purchaseItemId, userId])
+  @@unique([purchaseItemId, userId, createdOnStage])
   @@index([userId])
   @@index([purchaseItemId])
   @@index([status])

@@ -5,16 +5,23 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ShoppingCart, Trash2, ArrowRight, CircleCheck, Clock, CreditCard } from 'lucide-react';
+import { ShoppingCart, Trash2, ArrowRight, Minus, Plus } from 'lucide-react';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
-import { CartLineQuantityControls } from '@/components/shop/cart-line-quantity-controls';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import type { ProductLabelSource } from '@/app/(admin)/products/lib';
-import { cn } from '@/lib/utils';
-import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus, getUnitByCode } from '@zakupki/types';
-import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
+import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
 import { summarizePurchasePayments } from '@/components/shop/payment-proof';
+import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
+import {
+    PURCHASE_FULFILLMENT_LABELS,
+    isPurchasePaymentOpen,
+    type PurchaseFulfillmentStatus,
+    getUnitByCode,
+    getOrderQuantityStep,
+    buildOrderQtyOptions,
+} from '@zakupki/types';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
+import { toast } from 'sonner';
 
 interface CartSheetProps {
     open: boolean;
@@ -24,52 +31,19 @@ interface CartSheetProps {
 export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     const router = useAppRouter();
     const utils = trpc.useUtils();
-    const { data: myOrders } = trpc.orders.getMyOrders.useQuery(undefined, { enabled: open });
+    const { data: myOrders, isLoading } = trpc.orders.getMyOrders.useQuery(undefined, { enabled: open });
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery(undefined, { enabled: open });
-    const deleteOrder = trpc.orders.deleteOrder.useMutation();
 
-    // Group by purchase
-    const grouped = new Map<
-        number,
-        {
-            id: number;
-            orderNumber: number | null;
-            tag: string;
-            supplier: string;
-            orders: NonNullable<typeof myOrders>;
-            total: number;
-            fulfillmentStatus: string | null;
-        }
-    >();
-
-    if (myOrders) {
-        for (const order of myOrders) {
-            const purchase = (order as any).purchaseItem?.purchase;
-            if (!purchase) continue;
-            const pid = purchase.id as number;
-            const purchaseOrderId = (order as { purchaseOrderId?: number | null }).purchaseOrderId ?? null;
-            if (!grouped.has(pid)) {
-                grouped.set(pid, {
-                    id: pid,
-                    orderNumber: purchaseOrderId,
-                    tag: purchase.tag,
-                    supplier: purchase.supplier,
-                    orders: [],
-                    total: 0,
-                    fulfillmentStatus: (purchase as any).fulfillmentStatus ?? null,
-                });
-            }
-            const group = grouped.get(pid)!;
-            if (group.orderNumber == null && purchaseOrderId != null) {
-                group.orderNumber = purchaseOrderId;
-            }
-            group.orders.push(order);
-            group.total += Number(order.amountDue);
-        }
-    }
-
-    const groups = grouped.size > 0 ? Array.from(grouped.values()) : [];
+    const groups = groupOrdersByPurchase((myOrders ?? []) as any);
     const grandTotal = myOrders?.reduce((s, o) => s + Number(o.amountDue), 0) ?? 0;
+
+    // Одна мутация для ± (используется всеми строками)
+    const adjustMutation = trpc.orders.adjustQuantity.useMutation({
+        onSuccess: () => {
+            void utils.orders.getMyOrders.invalidate();
+        },
+        onError: (err) => toast.error(err.message),
+    });
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -106,14 +80,12 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     <>
                         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
                             {groups.map((group) => {
-                                const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
+                                const purchasePayments = myPayments?.filter((p: any) => p.purchaseId === group.id) ?? [];
                                 const { remaining, hasPending, isFullyPaid } = summarizePurchasePayments(
                                     group.total,
                                     purchasePayments,
                                 );
                                 const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
-                                const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fs];
-                                const paymentOpen = isPurchasePaymentOpen(fs);
 
                                 return (
                                     <div key={group.id}>
@@ -135,28 +107,39 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                         </div>
 
                                         {group.orders.map((order) => {
-                                            const purchaseItem = (
-                                                order as {
-                                                    purchaseItem?: {
-                                                        id: number;
-                                                        product?: ProductLabelSource & {
-                                                            photos: { id: number }[];
-                                                            unitCode: string;
-                                                            multiplicity: string | number;
-                                                            minPackageAmount: string | number | null;
-                                                            minPackageUnit: string | null;
-                                                        };
-                                                    };
-                                                }
-                                            ).purchaseItem;
-                                            const product = purchaseItem?.product;
-                                            const shortName = product?.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? 'ед.' : 'ед.';
+                                            const product: (ProductLabelSource & {
+                                                photos: { id: number }[];
+                                                unitCode: string;
+                                                multiplicity?: string | number;
+                                                minPackageAmount?: string | number | null;
+                                                minPackageUnit?: string | null;
+                                            }) | undefined = order.source.purchaseItem?.product;
+                                            const shortName = product?.unitCode
+                                                ? getUnitByCode(product.unitCode)?.shortName ?? 'ед.'
+                                                : 'ед.';
                                             const photo = product?.photos?.[0];
-                                            const qty = Number(order.quantity);
-                                            const amount = Number(order.amountDue);
+                                            const qty = order.quantity;
+                                            const amount = order.amountDue;
+                                            const purchaseItemId = order.purchaseItemId;
+
+                                            // Шаг для ± (из multiplicity / minPackage)
+                                            const orderStep = product
+                                                ? getOrderQuantityStep(
+                                                      buildOrderQtyOptions({
+                                                          multiplicity: Number(product.multiplicity ?? 1),
+                                                          minPackageAmount:
+                                                              product.minPackageAmount != null
+                                                                  ? Number(product.minPackageAmount)
+                                                                  : null,
+                                                          minPackageUnit: product.minPackageUnit ?? null,
+                                                          purchaseItemMinQty: null,
+                                                          unitShort: shortName,
+                                                      }),
+                                                  )
+                                                : 1;
 
                                             return (
-                                                <div key={order.id} className="flex gap-2 py-2">
+                                                <div key={order.purchaseItemId} className="flex gap-2 py-2">
                                                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
                                                         {photo ? (
                                                             <img
@@ -181,102 +164,48 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                                 />
                                                             )}
                                                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                                                {amount.toLocaleString('ru-RU')} ₽
+                                                                {qty} {shortName} · {amount.toLocaleString('ru-RU')} ₽
                                                             </p>
                                                         </div>
                                                         <div className="flex items-center justify-between gap-2">
-                                                            {purchaseItem && product?.unitCode ? (
-                                                                <CartLineQuantityControls
-                                                                    orderId={order.id}
-                                                                    purchaseItemId={purchaseItem.id}
-                                                                    purchaseId={group.id}
-                                                                    quantity={qty}
-                                                                    unitShort={shortName}
-                                                                    multiplicity={Number(product.multiplicity)}
-                                                                    minPackageAmount={
-                                                                        product.minPackageAmount != null
-                                                                            ? Number(product.minPackageAmount)
-                                                                            : null
-                                                                    }
-                                                                    minPackageUnit={product.minPackageUnit}
-                                                                    purchaseItemMinQty={null}
-                                                                />
-                                                            ) : (
-                                                                <span />
+                                                            {purchaseItemId && (
+                                                                <div className="flex shrink-0 items-center gap-0.5">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        disabled={adjustMutation.isPending}
+                                                                        aria-label={`Убрать ${orderStep} ${shortName}`}
+                                                                        onClick={() => {
+                                                                            // adjustQuantity с отрицательным delta
+                                                                            // service сам делает zero-out на REORDER+ или hard delete на COLLECTION
+                                                                            adjustMutation.mutate({
+                                                                                purchaseItemId,
+                                                                                delta: -qty,
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </div>
                                                             )}
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon-sm"
-                                                                className="shrink-0 text-muted-foreground hover:text-destructive"
-                                                                disabled={deleteOrder.isPending}
-                                                                onClick={() => {
-                                                                    deleteOrder.mutate(
-                                                                        { id: order.id },
-                                                                        {
-                                                                            onSuccess: () =>
-                                                                                utils.orders.getMyOrders.invalidate(),
-                                                                        },
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
                                                         </div>
                                                     </div>
                                                 </div>
                                             );
                                         })}
 
-                                        {/* Payment status */}
-                                        <div className="mt-1 rounded-lg bg-muted/50 p-2 text-xs">
-                                            {isFullyPaid ? (
-                                                <div className="flex items-center gap-1 text-success">
-                                                    <CircleCheck className="h-3.5 w-3.5" />
-                                                    <span className="font-medium">Оплачено</span>
-                                                </div>
-                                            ) : hasPending ? (
-                                                <div className="flex items-center gap-1 text-warning">
-                                                    <Clock className="h-3.5 w-3.5" />
-                                                    <span className="font-medium">Ожидает подтверждения</span>
-                                                </div>
-                                            ) : remaining > 0 && paymentOpen ? (
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-muted-foreground">
-                                                        К оплате:{' '}
-                                                        <span className="font-medium text-foreground">
-                                                            {remaining.toLocaleString('ru-RU')} ₽
-                                                        </span>
-                                                    </span>
-                                                    <PurchasePaymentDialog
-                                                        purchaseId={group.id}
-                                                        remaining={remaining}
-                                                        hasPending={hasPending}
-                                                        paymentOpen={paymentOpen}
-                                                        triggerVariant="link"
-                                                    />
-                                                </div>
-                                            ) : paymentOpen ? (
-                                                <span className="text-muted-foreground">
-                                                    Итого:{' '}
-                                                    <span className="font-medium text-foreground">
-                                                        {group.total.toLocaleString('ru-RU')} ₽
-                                                    </span>
-                                                </span>
-                                            ) : (
-                                                <div>
-                                                    <span className="font-medium text-foreground">
-                                                        {group.total.toLocaleString('ru-RU')} ₽
-                                                    </span>
-                                                    <button
-                                                        disabled
-                                                        className="mt-1 flex w-full items-center justify-center gap-1 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground/50 cursor-not-allowed"
-                                                    >
-                                                        <CreditCard className="h-3 w-3" />
-                                                        Ждём начала оплаты
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <PaymentStatusBlock
+                                            total={group.total}
+                                            remaining={remaining}
+                                            hasPending={hasPending}
+                                            isFullyPaid={isFullyPaid}
+                                            paymentOpen={isPurchasePaymentOpen(fs)}
+                                            purchaseId={group.id}
+                                            orderCount={group.orders.length}
+                                            size="compact"
+                                        />
 
                                         <Separator className="mt-3" />
                                     </div>

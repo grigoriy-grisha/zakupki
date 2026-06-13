@@ -5,16 +5,18 @@
  *
  * | Действие              | COLLECTION | REORDER | PAYMENT | После PAYMENT |
  * |-----------------------|------------|---------|---------|---------------|
- * | Добавить новый товар  | ✅         | ❌      | ❌      | ❌            |
+ * | Добавить новый товар  | ✅         | ✅      | ✅      | ✅            |
  * | Убавить существующий  | ✅         | ✅      | ❌      | ❌            |
  * | Убрать полностью      | ✅         | ✅      | ❌      | ❌            |
  * | Добрать из остатка    | ❌         | ✅      | ✅      | ✅            |
  * | Отменить весь заказ   | ✅         | ✅      | ✅      | ❌            |
  */
 
-/** Статусы, на которых можно добавлять НОВЫЙ товар (создавать OrderLine). */
+/** Статусы, на которых можно добавлять НОВЫЙ товар (создавать OrderLine) из свободного остатка. */
 export function canAddNewItem(fulfillmentStatus: string): boolean {
-    return fulfillmentStatus === 'COLLECTION';
+    if (fulfillmentStatus === 'COLLECTION') return true;
+    // На этапах добора (REORDER+) тоже можно создать OrderLine из остатка
+    return isSupplementPhase(fulfillmentStatus);
 }
 
 /**

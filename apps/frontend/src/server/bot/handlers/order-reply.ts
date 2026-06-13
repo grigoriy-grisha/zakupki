@@ -1,7 +1,9 @@
 import type { CustomContext } from '../domain/types';
-import { reactOrderAccepted } from '../lib/order-ack';
 import { getChannelPostThreadId, isOrderCollectionMessage } from '../lib/telegram-chat';
 import { OrderCollectionService } from '../services/order-collection.service';
+import { formatOrderReply } from '../lib/format-order-reply';
+import { reactOrderAccepted } from '../lib/order-ack';
+import { serviceContainer } from '@/server/lib/service-container';
 
 export async function orderReplyHandler(ctx: CustomContext) {
     if (!ctx.message || !('text' in ctx.message) || !ctx.message.text) return;
@@ -18,7 +20,7 @@ export async function orderReplyHandler(ctx: CustomContext) {
 
     if (!/^[-+]?\d/.test(ctx.message.text.trim())) {
         await ctx.reply(
-            'Напишите количество числом. Например:\n• 10 — добавить 10\n• +10 — добавить 10\n• -5 — убрать 5',
+            'Напишите количество числом. Например:\n• 10 — добавить 10\n• +10 — добавить 10\n• +2п — добавить 2 пачки\n• -5 — убрать 5\n• -1п — убрать пачку',
             { reply_parameters: { message_id: ctx.message.message_id } },
         );
         return;
@@ -51,5 +53,27 @@ export async function orderReplyHandler(ctx: CustomContext) {
         `[order] Saved: user ${ctx.from.id}, ${result.productName}, total ${result.quantity} ${result.unitShort}`,
     );
 
+    // Получаем packDiscountPercent для форматирования
+    let packDiscountPercent = 0;
+    try {
+        packDiscountPercent = await serviceContainer.pricingSettings.getBeadPackPriceDiscountPercent();
+    } catch {
+        // fallback — без скидки
+    }
+
+    const replyText = formatOrderReply(result, packDiscountPercent);
+
     await reactOrderAccepted(ctx);
+
+    try {
+        await ctx.reply(replyText, {
+            reply_parameters: { message_id: ctx.message.message_id },
+            parse_mode: 'HTML',
+        });
+    } catch {
+        // Fallback без HTML
+        await ctx.reply(replyText.replace(/<[^>]+>/g, ''), {
+            reply_parameters: { message_id: ctx.message.message_id },
+        });
+    }
 }

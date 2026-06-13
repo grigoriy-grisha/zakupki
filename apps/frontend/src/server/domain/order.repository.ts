@@ -1,4 +1,4 @@
-import { dbClient, Prisma } from '@zakupki/database';
+import { dbClient } from '@zakupki/database';
 import { NotFoundError } from '@zakupki/types';
 
 import { productInclude } from './product-include';
@@ -14,6 +14,7 @@ export class OrderRepository {
         quantity: number,
         amountDue: number,
         packageCount?: number,
+        createdOnStage: string = 'COLLECTION',
     ) {
         const purchaseItem = await dbClient.purchaseItem.findUnique({
             where: { id: purchaseItemId },
@@ -34,35 +35,31 @@ export class OrderRepository {
         }
 
         return dbClient.orderLine.upsert({
-            where: { purchaseItemId_userId: { purchaseItemId, userId } },
+            where: { purchaseItemId_userId_createdOnStage: { purchaseItemId, userId, createdOnStage: createdOnStage as any } },
             create: {
                 purchaseItemId,
                 userId,
                 ...data,
                 ...(packageCount != null ? { packageCount } : {}),
+                createdOnStage: createdOnStage as any,
             },
             update: data,
         });
     }
 
     /**
-     * Удалить строку заказа (hard delete — только для COLLECTION).
+     * Удалить строку заказа по id (hard delete).
      */
-    async deleteOrderLine(purchaseItemId: number, userId: number) {
-        return dbClient.orderLine.deleteMany({
-            where: { purchaseItemId, userId },
-        });
+    async deleteOrderLineById(id: number) {
+        return dbClient.orderLine.delete({ where: { id } });
     }
 
     /**
-     * Обнулить строку заказа без удаления — сохранить baseQuantity.
-     * Используется на REORDER+ вместо hard delete, чтобы не потерять
-     * информацию о базовом заказе и разрешить повторный добор.
+     * Удалить все строки пользователя для purchaseItem (hard delete — COLLECTION).
      */
-    async zeroOutOrderLine(purchaseItemId: number, userId: number) {
-        return dbClient.orderLine.update({
-            where: { purchaseItemId_userId: { purchaseItemId, userId } },
-            data: { quantity: 0, amountDue: 0, packageCount: 0 },
+    async deleteAllLinesForUserItem(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.deleteMany({
+            where: { purchaseItemId, userId },
         });
     }
 
@@ -94,24 +91,22 @@ export class OrderRepository {
         });
     }
 
-    findByPurchaseItemAndUser(purchaseItemId: number, userId: number) {
+    /**
+     * Найти COLLECTION-строку (базовый заказ) пользователя.
+     */
+    findBaseLine(purchaseItemId: number, userId: number) {
         return dbClient.orderLine.findUnique({
-            where: { purchaseItemId_userId: { purchaseItemId, userId } },
+            where: { purchaseItemId_userId_createdOnStage: { purchaseItemId, userId, createdOnStage: 'COLLECTION' as any } },
         });
     }
 
-    findPurchaseOrder(userId: number, purchaseId: number) {
-        return dbClient.purchaseOrder.findUnique({
-            where: { userId_purchaseId: { userId, purchaseId } },
+    /**
+     * Найти все ACTIVE строки пользователя для purchaseItem (базовые + supplement).
+     */
+    findAllActiveLinesForUserItem(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.findMany({
+            where: { purchaseItemId, userId, status: 'ACTIVE' },
         });
-    }
-
-    findPurchaseOrdersByUser(userId: number) {
-        return dbClient.purchaseOrder.findMany({ where: { userId } });
-    }
-
-    findPurchaseOrdersByPurchase(purchaseId: number) {
-        return dbClient.purchaseOrder.findMany({ where: { purchaseId } });
     }
 
     findActiveOrdersByUserId(userId: number) {
@@ -201,13 +196,6 @@ export class OrderRepository {
         });
     }
 
-    async getByPurchaseItem(purchaseItemId: number) {
-        return dbClient.orderLine.findMany({
-            where: { purchaseItemId, status: 'ACTIVE' },
-            include: { user: true },
-        });
-    }
-
     /**
      * Удалить все заказы пользователя в закупке.
      */
@@ -221,31 +209,35 @@ export class OrderRepository {
     }
 
     /**
-     * Заморозить baseQuantity для всех строк закупки (при переходе COLLECTION → REORDER).
-     * Устанавливает baseQuantity = current quantity для всех ACTIVE строк.
+     * Заморозить baseQuantity и basePackageCount для COLLECTION-строк закупки
+     * (при переходе COLLECTION → REORDER).
      */
     async freezeBaseQuantities(purchaseId: number) {
         const lines = await dbClient.orderLine.findMany({
             where: {
                 status: 'ACTIVE',
                 baseQuantity: null,
+                createdOnStage: 'COLLECTION',
                 purchaseItem: { purchaseId },
             },
-            select: { id: true, quantity: true },
+            select: { id: true, quantity: true, packageCount: true },
         });
 
         await dbClient.$transaction(
             lines.map((line) =>
                 dbClient.orderLine.update({
                     where: { id: line.id },
-                    data: { baseQuantity: line.quantity },
+                    data: {
+                        baseQuantity: line.quantity,
+                        basePackageCount: line.packageCount,
+                    },
                 }),
             ),
         );
     }
 
     /**
-     * Разморозить baseQuantity при откате REORDER → COLLECTION.
+     * Разморозить baseQuantity и basePackageCount при откате REORDER → COLLECTION.
      */
     async unfreezeBaseQuantities(purchaseId: number) {
         await dbClient.orderLine.updateMany({
@@ -253,7 +245,10 @@ export class OrderRepository {
                 status: 'ACTIVE',
                 purchaseItem: { purchaseId },
             },
-            data: { baseQuantity: null },
+            data: {
+                baseQuantity: null,
+                basePackageCount: null,
+            },
         });
     }
 
