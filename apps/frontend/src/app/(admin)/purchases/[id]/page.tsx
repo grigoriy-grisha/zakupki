@@ -181,7 +181,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         <Button
                             disabled={actions.activate.isPending}
                             onClick={() => {
-                                actions.activate.mutate({ purchaseId: id }, { onSuccess: () => setActivateOpen(false) });
+                                actions.activate.mutate(
+                                    { purchaseId: id },
+                                    { onSuccess: () => setActivateOpen(false) },
+                                );
                             }}
                         >
                             {actions.activate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

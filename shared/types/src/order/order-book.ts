@@ -11,10 +11,11 @@
  */
 import { OrderLine, type OrderLineProps } from './order-line';
 import { computePoolInfo, computeRawPool } from './pool';
+import { computeSupplierLimitInfo } from './limit';
 import { getStageConfig } from './stages';
 import { mergeLines } from './aggregation';
 import { buildDisplayContext } from './order-display';
-import { applyUpdates, type LineUpdate, type MultiUpdate } from './strategies/atomic';
+import { aggregateForPool, applyUpdates, toActiveVOs, type LineUpdate, type MultiUpdate } from './strategies/atomic';
 import { makeStrategy } from './strategies/concrete-strategies';
 import { StageStrategy } from './strategies/stage-strategy';
 import type {
@@ -28,9 +29,7 @@ import type {
 } from './types';
 
 /** Результат immutable-операции: новый снимок + изменения для persistence, либо ошибка. */
-export type AdjustResult =
-    | { ok: true; book: OrderBook; changes: OrderEffect[] }
-    | { ok: false; error: OrderError };
+export type AdjustResult = { ok: true; book: OrderBook; changes: OrderEffect[] } | { ok: false; error: OrderError };
 
 // ── Aggregate ───────────────────────────────────────────────────────
 
@@ -109,15 +108,48 @@ export class OrderBook {
                 totalOrderedQuantity: 0,
             };
         }
-        const baseQty = this.userLines(userId).filter((l) => l.isBase).reduce((s, l) => s + l.quantity, 0);
-        const suppQty = this.userLines(userId).filter((l) => l.isSupplement).reduce((s, l) => s + l.quantity, 0);
+        const baseQty = this.userLines(userId)
+            .filter((l) => l.isBase)
+            .reduce((s, l) => s + l.quantity, 0);
+        const suppQty = this.userLines(userId)
+            .filter((l) => l.isSupplement)
+            .reduce((s, l) => s + l.quantity, 0);
         const currentQty = cfg.target === 'base' ? baseQty + suppQty : suppQty;
-        return computePoolInfo({
+        const poolInfo = computePoolInfo({
             targetRemainder: this.item.targetRemainder,
             packSize: this.item.supplierPackageAmount,
             aggregation: this.poolAggregation(),
             currentQty,
         });
+
+        // Supplier limit (если задан) — действует как жёсткий верх для всех этапов.
+        // Применяется даже когда poolApplies=false (COLLECTION): используем
+        // aggregateForPool с явным stage, чтобы не дублировать inline-цикл.
+        if (this.item.supplierLimit != null) {
+            const aggregation = cfg.poolApplies
+                ? poolInfo.totalOrderedQuantity > 0
+                    ? {
+                          totalBaseQuantity: poolInfo.totalBaseQuantity,
+                          supplementClaimed: poolInfo.supplementClaimed,
+                          totalOrderedQuantity: poolInfo.totalOrderedQuantity,
+                      }
+                    : this.poolAggregation()
+                : aggregateForPool('COLLECTION', toActiveVOs(this.lines));
+            const limitInfo = computeSupplierLimitInfo({
+                supplierLimit: this.item.supplierLimit,
+                aggregation,
+                currentQty,
+            });
+            if (limitInfo.maxAllowed < poolInfo.maxAllowed) {
+                return {
+                    ...poolInfo,
+                    maxAllowed: limitInfo.maxAllowed,
+                    canAddMore: limitInfo.canAddMore,
+                };
+            }
+        }
+
+        return poolInfo;
     }
 
     displayContextFor(userId: number): OrderDisplayContext {
@@ -142,7 +174,10 @@ export class OrderBook {
     adjustPackages(userId: number, delta: number): AdjustResult {
         if (delta === 0) return ok(this);
         if (!this.item.supplierPackageAmount) {
-            return { ok: false, error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' } };
+            return {
+                ok: false,
+                error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' },
+            };
         }
         return this.runStrategy((s) => s.adjustPackages(userId, delta));
     }

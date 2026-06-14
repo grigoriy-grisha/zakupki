@@ -103,10 +103,12 @@ export default function CartPage() {
                         </CardHeader>
                         <CardContent className="space-y-0">
                             {group.orders.map((order, idx: number) => {
-                                const product: (ProductLabelSource & {
-                                    photos: { id: number }[];
-                                    unit: { shortName: string; multiplicity: string | number } | null;
-                                }) | undefined = order.source.purchaseItem?.product;
+                                const product:
+                                    | (ProductLabelSource & {
+                                          photos: { id: number }[];
+                                          unit: { shortName: string; multiplicity: string | number } | null;
+                                      })
+                                    | undefined = order.source.purchaseItem?.product;
                                 const shortName = product?.unit?.shortName ?? 'ед.';
                                 const photo = product?.photos?.[0];
                                 const qty = order.quantity;

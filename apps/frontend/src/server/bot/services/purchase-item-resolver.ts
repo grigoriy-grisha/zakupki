@@ -25,6 +25,8 @@ const ITEM_INCLUDE = {
     },
     orderLines: { select: { quantity: true } },
     purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
+    supplierLimit: true,
+    supplierLimitUnit: true,
 } as const;
 
 /**

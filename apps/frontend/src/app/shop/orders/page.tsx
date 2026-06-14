@@ -107,7 +107,7 @@ function PurchaseOrderCard({
                 {group.orders.map((order, idx: number) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
-                    const shortName = product?.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? '' : '';
+                    const shortName = product?.unitCode ? (getUnitByCode(product.unitCode)?.shortName ?? '') : '';
                     const photo = product?.photos?.[0];
                     const qty = order.quantity;
                     const amount = order.amountDue;

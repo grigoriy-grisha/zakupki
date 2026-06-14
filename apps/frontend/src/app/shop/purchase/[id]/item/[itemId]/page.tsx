@@ -46,7 +46,14 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
         );
     }
 
-    return <ItemDetailContent purchase={purchase} purchaseId={purchaseId} purchaseItemId={purchaseItemId} packDiscountPercent={packDiscountPercent} />;
+    return (
+        <ItemDetailContent
+            purchase={purchase}
+            purchaseId={purchaseId}
+            purchaseItemId={purchaseItemId}
+            packDiscountPercent={packDiscountPercent}
+        />
+    );
 }
 
 function ItemDetailContent({
@@ -210,12 +217,7 @@ function ItemDetailLoaded({
                 {/* Photo */}
                 <div className="relative h-72 w-full shrink-0 overflow-hidden rounded-xl bg-muted lg:h-96 lg:w-96">
                     {product.photos?.[0] ? (
-                        <ProductPhotoPreview
-                            photoId={product.photos[0].id}
-                            alt={product.name}
-                            fill
-                            zoomSize="lg"
-                        />
+                        <ProductPhotoPreview photoId={product.photos[0].id} alt={product.name} fill zoomSize="lg" />
                     ) : (
                         <div className="flex h-full items-center justify-center">
                             <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
@@ -263,7 +265,9 @@ function ItemDetailLoaded({
                                 {/* Current quantity */}
                                 <div className="text-center">
                                     <span className="text-4xl font-bold tabular-nums">
-                                        {currentQuantity % 1 === 0 ? currentQuantity : currentQuantity.toFixed(3).replace(/\.?0+$/, '')}
+                                        {currentQuantity % 1 === 0
+                                            ? currentQuantity
+                                            : currentQuantity.toFixed(3).replace(/\.?0+$/, '')}
                                     </span>
                                     <span className="ml-2 text-lg text-muted-foreground">{ctx.shortName}</span>
                                     <p
@@ -276,7 +280,8 @@ function ItemDetailLoaded({
                                     </p>
                                     {ctx.fullPacks > 0 && (
                                         <p className="text-xs text-success">
-                                            Скидка за {ctx.fullPacks} {ctx.fullPacks === 1 ? 'целую пачку' : 'целые пачки'}
+                                            Скидка за {ctx.fullPacks}{' '}
+                                            {ctx.fullPacks === 1 ? 'целую пачку' : 'целые пачки'}
                                         </p>
                                     )}
                                 </div>

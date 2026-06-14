@@ -14,8 +14,9 @@ export type PurchaseProductFieldSource = {
     supplierPackagePrice?: string | number | null;
     supplierPackageTiers?: unknown;
     supplementStep?: string | number | null;
-    referenceStock?: string | number | null;
-    referenceStockUnit?: string | null;
+    // Глобальный лимит поставщика (per-purchase). Хранится в PurchaseItem.
+    supplierLimit?: string | number | null;
+    supplierLimitUnit?: string | null;
     unitCode?: string;
 };
 
@@ -33,7 +34,7 @@ export function resolveProductPackageUnit(product: PurchaseProductFieldSource): 
     for (const candidate of [
         product.minPackageUnit,
         product.supplierPackageUnit,
-        product.referenceStockUnit,
+        product.supplierLimitUnit,
         product.unitCode ? getUnitByCode(product.unitCode)?.shortName : null,
     ]) {
         const normalized = normalizePackageUnit(candidate);
@@ -42,17 +43,19 @@ export function resolveProductPackageUnit(product: PurchaseProductFieldSource): 
     return PACKAGE_UNITS[0];
 }
 
-export function withCatalogPackageUnits<T extends {
-    tiers: { unit: string }[];
-    supPkgTiers: { unit: string }[];
-    minPkgUnit: string;
-    referenceStockUnit: string;
-}>(state: T, catalogUnit: PackageUnit): T {
+export function withCatalogPackageUnits<
+    T extends {
+        tiers: { unit: string }[];
+        supPkgTiers: { unit: string }[];
+        minPkgUnit: string;
+        supplierLimitUnit: string;
+    },
+>(state: T, catalogUnit: PackageUnit): T {
     return {
         ...state,
         tiers: state.tiers.map((t) => ({ ...t, unit: normalizePackageUnit(t.unit) ?? catalogUnit })),
         supPkgTiers: state.supPkgTiers.map((t) => ({ ...t, unit: normalizePackageUnit(t.unit) ?? catalogUnit })),
         minPkgUnit: normalizePackageUnit(state.minPkgUnit) ?? catalogUnit,
-        referenceStockUnit: normalizePackageUnit(state.referenceStockUnit) ?? catalogUnit,
+        supplierLimitUnit: normalizePackageUnit(state.supplierLimitUnit) ?? catalogUnit,
     };
 }

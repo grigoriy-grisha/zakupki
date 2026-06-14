@@ -42,7 +42,12 @@ export class ServiceContainer {
     public readonly settings = new SettingsService();
     public readonly pricingSettings = new PricingSettingsService(this.settings);
     public readonly order = new OrderService(this.orderRepo, this.purchaseRepo, this.pricingSettings);
-    public readonly purchase = new PurchaseService(this.purchaseRepo, this.productRepo, this.telegramPublish, this.orderRepo);
+    public readonly purchase = new PurchaseService(
+        this.purchaseRepo,
+        this.productRepo,
+        this.telegramPublish,
+        this.orderRepo,
+    );
     public readonly product = new ProductService(this.productRepo);
     public readonly payment = new PaymentService(this.paymentRepo);
     public readonly promoCode = new PromoCodeService(this.promoCodeRepo);

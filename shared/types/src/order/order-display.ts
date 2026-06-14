@@ -16,10 +16,11 @@ import {
 import { computeAmountDueWithPackages, computePackagePrice } from './pricing';
 import { getStageConfig } from './stages';
 import { computePoolInfo } from './pool';
+import { computeSupplierLimitInfo } from './limit';
 import { aggregateForPool } from './strategies/atomic';
 import { mergeLines } from './aggregation';
 import { getUnitShortName } from './utils';
-import type { OrderDisplayContext, OrderLineVO, PurchaseItem } from './types';
+import type { OrderDisplayContext, OrderLineVO, PoolInfo, PurchaseItem } from './types';
 import type { OrderLine } from './order-line';
 
 export function buildDisplayContext(
@@ -63,7 +64,10 @@ export function buildDisplayContext(
     const packDiscountInfo = getPackDiscountPricingInfo(item, item.packDiscountPercent);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
-    const maxAllowed = availablePool != null && Number.isFinite(availablePool) ? availablePool + currentQuantity : Number.POSITIVE_INFINITY;
+    const maxAllowed =
+        availablePool != null && Number.isFinite(availablePool)
+            ? availablePool + currentQuantity
+            : Number.POSITIVE_INFINITY;
     const minAllowed = cfg.target === 'supplement' ? frozenBase : 0;
 
     const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
@@ -97,8 +101,15 @@ export function buildDisplayContext(
 
 function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: number) {
     const cfg = getStageConfig(item.fulfillmentStatus);
+    const userLines = filterUserLines(lines, userId);
+    const baseQty = sumQty(userLines, (l) => l.isBase);
+    const suppQty = sumQty(userLines, (l) => l.isSupplement);
+    const currentQty = cfg.target === 'base' ? baseQty + suppQty : suppQty;
+
+    // Базовый pool (targetRemainder / packs) — работает только на REORDER/PAYMENT+
+    let poolInfo: PoolInfo;
     if (!cfg.poolApplies) {
-        return {
+        poolInfo = {
             pool: null,
             maxAllowed: Number.POSITIVE_INFINITY,
             canAddMore: Number.POSITIVE_INFINITY,
@@ -106,17 +117,40 @@ function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: 
             totalBaseQuantity: 0,
             totalOrderedQuantity: 0,
         };
+    } else {
+        poolInfo = computePoolInfo({
+            targetRemainder: item.targetRemainder,
+            packSize: item.supplierPackageAmount,
+            aggregation: aggregateForPool(item.fulfillmentStatus, activeVOs(lines)),
+            currentQty,
+        });
     }
-    const userLines = filterUserLines(lines, userId);
-    const baseQty = sumQty(userLines, (l) => l.isBase);
-    const suppQty = sumQty(userLines, (l) => l.isSupplement);
-    const currentQty = cfg.target === 'base' ? baseQty + suppQty : suppQty;
-    return computePoolInfo({
-        targetRemainder: item.targetRemainder,
-        packSize: item.supplierPackageAmount,
-        aggregation: aggregateForPool(item.fulfillmentStatus, activeVOs(lines)),
-        currentQty,
-    });
+
+    // Supplier limit (если задан) — глобальный остаток поставщика, действует
+    // на ВСЕХ этапах (включая COLLECTION). Берём минимум из pool и supplier limit.
+    if (item.supplierLimit != null) {
+        const aggregation = cfg.poolApplies
+            ? {
+                  totalBaseQuantity: poolInfo.totalBaseQuantity,
+                  supplementClaimed: poolInfo.supplementClaimed,
+                  totalOrderedQuantity: poolInfo.totalOrderedQuantity,
+              }
+            : aggregateForPool('COLLECTION', activeVOs(lines));
+        const limitInfo = computeSupplierLimitInfo({
+            supplierLimit: item.supplierLimit,
+            aggregation,
+            currentQty,
+        });
+        if (limitInfo.maxAllowed < poolInfo.maxAllowed) {
+            return {
+                ...poolInfo,
+                maxAllowed: limitInfo.maxAllowed,
+                canAddMore: limitInfo.canAddMore,
+            };
+        }
+    }
+
+    return poolInfo;
 }
 
 function filterUserLines(lines: readonly OrderLine[], userId: number): readonly OrderLine[] {

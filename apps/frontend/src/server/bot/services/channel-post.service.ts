@@ -73,7 +73,11 @@ export class ChannelPostService {
             include: {
                 product: {
                     include: {
-                        photos: { orderBy: { sortOrder: 'asc' }, take: 1, select: { id: true, objectKey: true, mimeType: true } },
+                        photos: {
+                            orderBy: { sortOrder: 'asc' },
+                            take: 1,
+                            select: { id: true, objectKey: true, mimeType: true },
+                        },
                     },
                 },
                 orderLines: { select: { quantity: true } },

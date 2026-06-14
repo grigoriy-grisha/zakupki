@@ -3,6 +3,7 @@
 ## Контекст
 
 **Проблема:** Бизнес-логика заказов размазана по 10+ файлам в разных слоях приложения:
+
 - `OrderService` (server) — 434 строки, связан с Prisma-типами, репозиториями, async settings
 - `OrderCollectionService` (bot) — парсит текст, делегирует в OrderService, агрегирует результат
 - `order-context.ts` + `order-quantity.ts` (frontend) — дублирует расчёт пула, агрегацию, permissions
@@ -10,6 +11,7 @@
 - `order-strategies.ts` / `supplement.ts` (shared) — pure-функции, но разобщены
 
 **Следствия:**
+
 - Изменение бизнес-правил требует правок в 5+ местах
 - Невозможно написать юнит-тест — логика прибита к DB через Prisma-типы
 - Типы из БД протекают повсюду (`NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>`)
@@ -83,12 +85,12 @@ export interface OrderLineVO {
     id: number;
     purchaseItemId: number;
     userId: number;
-    quantity: number;         // уже Number(), не Decimal
+    quantity: number; // уже Number(), не Decimal
     amountDue: number;
     packageCount: number;
     status: 'ACTIVE' | 'CANCELLED';
     createdOnStage: PurchaseFulfillmentStatus;
-    baseQuantity: number | null;  // null = не заморожен
+    baseQuantity: number | null; // null = не заморожен
 }
 
 /** Контекст товара закупки — всё что нужно для принятия решения */
@@ -123,13 +125,9 @@ export interface PurchaseItemContext {
 
 // ── Результаты ──────────────────────────────────
 
-export type AdjustQuantityResult =
-    | { ok: true; effects: OrderEffect[] }
-    | { ok: false; error: OrderError };
+export type AdjustQuantityResult = { ok: true; effects: OrderEffect[] } | { ok: false; error: OrderError };
 
-export type AdjustPackageResult =
-    | { ok: true; effects: OrderEffect[] }
-    | { ok: false; error: OrderError };
+export type AdjustPackageResult = { ok: true; effects: OrderEffect[] } | { ok: false; error: OrderError };
 
 export interface OrderEffect {
     type: 'upsert' | 'delete' | 'zero_out';
@@ -220,12 +218,7 @@ export interface StageStrategy {
     onZeroQuantity(line: OrderLineVO): 'hard_delete' | 'zero_out';
 
     /** Валидация пула (null = пул не применим) */
-    validatePool(
-        item: PurchaseItemContext,
-        userId: number,
-        newQty: number,
-        currentQty: number,
-    ): OrderError | null;
+    validatePool(item: PurchaseItemContext, userId: number, newQty: number, currentQty: number): OrderError | null;
 
     /** Агрегация строк для pool calc */
     aggregateForPool(lines: OrderLineVO[]): {
@@ -239,6 +232,7 @@ export interface StageStrategy {
 Три реализации:
 
 #### `CollectionStage` (COLLECTION)
+
 - `canAddNew() → true`, `canIncrease() → true`, `canDecrease() → true`
 - `targetLineType → 'base'`
 - `packagesAllowed() → true`
@@ -247,6 +241,7 @@ export interface StageStrategy {
 - `aggregateForPool() → { totalBase: 0, supplement: 0, total: sum(qty) }` (pool не используется)
 
 #### `ReorderStage` (REORDER)
+
 - `canAddNew() → true`, `canIncrease() → true`, `canDecrease() → true`
 - `targetLineType → 'base'` (работаем с COLLECTION-строкой!)
 - `packagesAllowed() → true`
@@ -255,6 +250,7 @@ export interface StageStrategy {
 - `aggregateForPool()` — supplement = `Σ max(0, qty - baseQuantity)` для каждой ACTIVE строки (baseQuantity-based, не createdOnStage)
 
 #### `PaymentPlusStage` (PAYMENT и далее)
+
 - `canAddNew() → true`, `canIncrease() → true`, `canDecrease() → true` (но не ниже baseQuantity)
 - `targetLineType → 'supplement'` (работаем с supplement-строкой!)
 - `packagesAllowed() → false`
@@ -430,15 +426,18 @@ shared/types/src/order/
 ## Изменения в существующих файлах
 
 ### 1. `shared/types/src/supplement.ts` → DEPRECATED
+
 - `aggregateOrderLinesByStage` → переносится в `order/aggregation.ts`
 - `getSupplementPool` → переносится в `order/pool.ts`
 - Старый файл переэкспортит для обратной совместимости
 
 ### 2. `shared/types/src/order-strategies.ts` → DEPRECATED
+
 - Все `can*` функции → переносятся в `order/stages/` и `order/order-domain.ts`
 - Старый файл переэкспортит для обратной совместимости
 
 ### 3. `apps/frontend/src/server/services/order.service.ts` — СУЩЕСТВЕННО УПРОЩАЕТСЯ
+
 **Было:** 434 строки бизнес-логики + DB-зависимости
 **Станет:** ~120 строк "fetch → map → call domain → persist"
 
@@ -465,25 +464,31 @@ export class OrderService {
 ```
 
 ### 4. `apps/frontend/src/server/bot/services/order-collection.service.ts` — УПРОЩАЕТСЯ
+
 - `applyQuantityDelta` / `applyPackDelta` — делегируют в `OrderDomain`
 - Агрегация результата — через `OrderDomain.aggregateUserLines()`
 - Парсинг текста остаётся (это presentation logic)
 
 ### 5. `apps/frontend/src/app/shop/lib/order-context.ts` → ЗАМЕНЯЕТСЯ
+
 - `buildItemOrderContext()` → одна строка: `OrderDomain.buildDisplayContext(item, userId)`
 - Вся логика шагов, пула, разрешений — в домене
 
 ### 6. `apps/frontend/src/app/shop/lib/order-quantity.ts` → УПРОЩАЕТСЯ
+
 - `buildShopOrderQuantityContext()` → делегирует в `OrderDomain.computePool()`
 
 ### 7. `apps/frontend/src/app/shop/lib/order-grouping.ts` → ЗАМЕНЯЕТСЯ
+
 - `groupOrdersByPurchase()` → использует `OrderDomain.aggregateUserLines()`
 - `MergedOrderLine` → alias для `AggregatedOrder`
 
 ### 8. `apps/frontend/src/app/(admin)/purchases/[id]/components/items-tab.tsx`
+
 - Убирается дублирующий расчёт пула — используется `OrderDomain.computePool()`
 
 ### 9. `apps/frontend/src/server/bot/handlers/orders.ts`
+
 - `formatPurchaseDetail` → использует `OrderDomain.aggregateAllLines()`
 
 ---
@@ -491,48 +496,59 @@ export class OrderService {
 ## План реализации (пошагово)
 
 ### Шаг 1: Создать доменные типы
+
 - Файл: `shared/types/src/order/types.ts`
 - Все интерфейсы из раздела «Доменные типы» выше
 - Экспорт через `shared/types/src/order/index.ts` и `shared/types/src/index.ts`
 
 ### Шаг 2: Реализовать стратегии этапов
+
 - `shared/types/src/order/stages/collection.stage.ts`
 - `shared/types/src/order/stages/reorder.stage.ts`
 - `shared/types/src/order/stages/payment-plus.stage.ts`
 - `shared/types/src/order/stages/index.ts` — интерфейс + фабрика
 
 ### Шаг 3: Реализовать pool.ts и aggregation.ts
+
 - `shared/types/src/order/pool.ts` — `computeSupplementPool()` из текущего `supplement.ts`, адаптированный под `OrderLineVO[]`
 - `shared/types/src/order/aggregation.ts` — `aggregateLines()`, `mergeUserLines()`, `groupLinesByPurchase()`
 
 ### Шаг 4: Реализовать pricing.ts
+
 - `shared/types/src/order/pricing.ts` — `computeAmountDue()` как обёртка над `calculateOrderAmount()`
 
 ### Шаг 5: Реализовать фасад OrderDomain
+
 - `shared/types/src/order/order-domain.ts`
 - `adjustQuantity()`, `adjustPackageCount()`, `computePool()`, `buildDisplayContext()`, `canPerformAction()`
 - Все методы — pure sync functions
 
 ### Шаг 6: Refactor OrderService (server)
+
 - Map Prisma → `PurchaseItemContext`
 - Делегировать в `OrderDomain`
 - `persistEffects()` — маппинг `OrderEffect[]` в вызовы репозитория
 
 ### Шаг 7: Refactor bot OrderCollectionService
+
 - Использовать `OrderDomain.adjustQuantity()` вместо `serviceContainer.order.adjustQuantity()`
 - Использовать `OrderDomain.aggregateUserLines()` для результата
 
 ### Шаг 8: Refactor frontend order-context
+
 - `buildItemOrderContext()` → делегировать в `OrderDomain.buildDisplayContext()`
 - `order-quantity.ts` → упростить
 
 ### Шаг 9: Refactor order-grouping
+
 - Использовать `OrderDomain.aggregateUserLines()` / `aggregateAllLines()`
 
 ### Шаг 10: Refactor admin items-tab
+
 - Заменить inline pool calc на `OrderDomain.computePool()`
 
 ### Шаг 11: Обновить barrel exports
+
 - Старые `supplement.ts` и `order-strategies.ts` — добавить `@deprecated`, переэкспорт из нового расположения
 
 ---
@@ -553,17 +569,16 @@ export function mapToPurchaseItemContext(
         purchaseItemId: item.id,
         pricePerUnit: Number(item.product.pricePerUnit),
         priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-        priceTiers: item.product.priceTiers as any ?? null,
+        priceTiers: (item.product.priceTiers as any) ?? null,
         packDiscountPercent,
-        supplierPackageAmount: item.product.supplierPackageAmount != null
-            ? Number(item.product.supplierPackageAmount) : null,
+        supplierPackageAmount:
+            item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null,
         supplierPackageUnit: item.product.supplierPackageUnit ?? null,
-        supplierPackagePrice: item.product.supplierPackagePrice != null
-            ? Number(item.product.supplierPackagePrice) : null,
+        supplierPackagePrice:
+            item.product.supplierPackagePrice != null ? Number(item.product.supplierPackagePrice) : null,
         unitCode: item.product.unitCode,
         multiplicity: Number(item.product.multiplicity),
-        minPackageAmount: item.product.minPackageAmount != null
-            ? Number(item.product.minPackageAmount) : null,
+        minPackageAmount: item.product.minPackageAmount != null ? Number(item.product.minPackageAmount) : null,
         minPackageUnit: item.product.minPackageUnit ?? null,
         supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
         fulfillmentStatus: (item.purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
@@ -636,28 +651,28 @@ describe('OrderDomain.adjustQuantity', () => {
 1. **typecheck** — `pnpm typecheck` проходит без ошибок
 2. **Существующие тесты** — `pnpm test` проходит (старые переэкспорты)
 3. **Новые тесты** — `shared/types/src/order/__tests__/` покрывают:
-   - adjustQuantity для каждого этапа (COLLECTION, REORDER, PAYMENT)
-   - adjustPackageCount
-   - computePool для REORDER (baseQuantity-based) и PAYMENT (createdOnStage-based)
-   - aggregateLines
-   - buildDisplayContext
+    - adjustQuantity для каждого этапа (COLLECTION, REORDER, PAYMENT)
+    - adjustPackageCount
+    - computePool для REORDER (baseQuantity-based) и PAYMENT (createdOnStage-based)
+    - aggregateLines
+    - buildDisplayContext
 4. **Ручное тестирование:**
-   - REORDER: добавить из остатка → работает
-   - REORDER: убавить и добавить обратно → pool не теряется
-   - PAYMENT+: supplement через createdOnStage
-   - Bot: `/orders` показывает агрегированные данные
-   - Admin: «Доступно» показывает корректный pool
-   - Shop: корзина, страница заказа — данные корректны
+    - REORDER: добавить из остатка → работает
+    - REORDER: убавить и добавить обратно → pool не теряется
+    - PAYMENT+: supplement через createdOnStage
+    - Bot: `/orders` показывает агрегированные данные
+    - Admin: «Доступно» показывает корректный pool
+    - Shop: корзина, страница заказа — данные корректны
 
 ---
 
 ## Итого: что даёт рефакторинг
 
-| Было                                  | Станет                                    |
-|---------------------------------------|-------------------------------------------|
-| Логика в 10+ файлах                   | Логика в 1 доменном модуле                |
-| Prisma-типы в бизнес-логике           | Чистые TS-интерфейсы                      |
-| Невозможно тестировать без DB         | Юнит-тесты одной строкой                  |
-| Pool logic дублируется 5 раз          | Один `computePool()`                      |
-| Stage routing через if/else в сервисе | Стратегии с полиморфизмом                 |
-| Изменение правил → 5 файлов           | Изменение правил → 1 стратегия            |
+| Было                                  | Станет                         |
+| ------------------------------------- | ------------------------------ |
+| Логика в 10+ файлах                   | Логика в 1 доменном модуле     |
+| Prisma-типы в бизнес-логике           | Чистые TS-интерфейсы           |
+| Невозможно тестировать без DB         | Юнит-тесты одной строкой       |
+| Pool logic дублируется 5 раз          | Один `computePool()`           |
+| Stage routing через if/else в сервисе | Стратегии с полиморфизмом      |
+| Изменение правил → 5 файлов           | Изменение правил → 1 стратегия |

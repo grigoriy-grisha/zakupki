@@ -2,7 +2,7 @@ import { stripAttributesFromName } from '../product-label';
 import { isPositive, formatNumber, formatRubles } from '@/lib/utils/format';
 
 import type { DescriptionFields } from './types';
-import { formatSupplierPackageLines } from './template-engine';
+import { formatStockLine, formatSupplierPackageLines } from './template-engine';
 
 /** Текст описания для закупки / Telegram */
 export function buildProductDescriptionText(input: DescriptionFields): string {
@@ -53,9 +53,10 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
         }
     }
 
-    if (input.referenceStock != null && Number(input.referenceStock) >= 0 && input.referenceStockUnit) {
+    const stockLine = formatStockLine(input);
+    if (stockLine) {
         lines.push('');
-        lines.push(`СВОБОДНО: ${formatNumber(input.referenceStock)} ${input.referenceStockUnit}`);
+        lines.push(`СВОБОДНО: ${stockLine}`);
     }
 
     return lines.join('\n');

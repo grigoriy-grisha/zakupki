@@ -64,7 +64,11 @@ export function getProductTitleAttributeNames(
 }
 
 /** Тип или его предок/потомок участвует в первой строке заголовка. */
-function isTypeInTitleBranch(typeId: number, maps: ReturnType<typeof buildTypeMaps>, showInTitleByTypeId?: ShowInTitleByTypeId): boolean {
+function isTypeInTitleBranch(
+    typeId: number,
+    maps: ReturnType<typeof buildTypeMaps>,
+    showInTitleByTypeId?: ShowInTitleByTypeId,
+): boolean {
     return (
         typeHasShowInTitle(typeId, maps, showInTitleByTypeId) ||
         typeOrAncestorShowsInTitle(typeId, maps, showInTitleByTypeId) ||

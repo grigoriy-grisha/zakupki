@@ -128,11 +128,9 @@ export const examplesRouter = router({
             return ctx.services.example.list(input?.search);
         }),
 
-    create: adminProcedure
-        .input(z.object({ name: z.string().min(1) }))
-        .mutation(async ({ ctx, input }) => {
-            return ctx.services.example.create(input);
-        }),
+    create: adminProcedure.input(z.object({ name: z.string().min(1) })).mutation(async ({ ctx, input }) => {
+        return ctx.services.example.create(input);
+    }),
 });
 ```
 
@@ -288,10 +286,10 @@ export function useCreateProduct() {
 
 1. Services throw `AppError` subclasses from `@zakupki/types`
 2. `errorFormatter` in `trpc.ts` maps them to `TRPCError` with correct HTTP codes:
-   - `NotFoundError` → `NOT_FOUND` (404)
-   - `ValidationError` → `BAD_REQUEST` (400)
-   - `ForbiddenError` → `FORBIDDEN` (403)
-   - `BusinessRuleError` → `BAD_REQUEST` (400)
+    - `NotFoundError` → `NOT_FOUND` (404)
+    - `ValidationError` → `BAD_REQUEST` (400)
+    - `ForbiddenError` → `FORBIDDEN` (403)
+    - `BusinessRuleError` → `BAD_REQUEST` (400)
 3. Use `handleDbConflict()` for Prisma P2002 unique constraint violations → `CONFLICT` (409)
 
 ### Bot

@@ -214,6 +214,10 @@ model PurchaseItem {
   targetRemainder  Decimal?         @db.Decimal(10, 3)
   // Шаг +/− на этапе добора (REORDER+). Если null — используется обычная фасовка.
   supplementStep   Decimal?         @db.Decimal(10, 3)
+  // Максимум, который один покупатель может заказать (в ед. supplierLimitUnit).
+  // Если null — без ограничений. Действует на всех этапах.
+  supplierLimit    Decimal?         @db.Decimal(10, 3)
+  supplierLimitUnit String?
   tgMessageId      String?
   tgChannelId      String?
   publicationState PublicationState @default(DRAFT)

@@ -55,6 +55,8 @@ export interface ShopPurchaseItem {
     priceOverride: string | null;
     targetRemainder: string | number | null;
     supplementStep?: string | number | null;
+    supplierLimit?: string | number | null;
+    supplierLimitUnit?: string | null;
     minQty: string | number | null;
     product: ShopPurchaseItemProduct;
     orderLines: ShopOrderLineInItem[];

@@ -80,7 +80,8 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                     <>
                         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
                             {groups.map((group) => {
-                                const purchasePayments = myPayments?.filter((p: any) => p.purchaseId === group.id) ?? [];
+                                const purchasePayments =
+                                    myPayments?.filter((p: any) => p.purchaseId === group.id) ?? [];
                                 const { remaining, hasPending, isFullyPaid } = summarizePurchasePayments(
                                     group.total,
                                     purchasePayments,
@@ -107,15 +108,17 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                         </div>
 
                                         {group.orders.map((order) => {
-                                            const product: (ProductLabelSource & {
-                                                photos: { id: number }[];
-                                                unitCode: string;
-                                                multiplicity?: string | number;
-                                                minPackageAmount?: string | number | null;
-                                                minPackageUnit?: string | null;
-                                            }) | undefined = order.source.purchaseItem?.product;
+                                            const product:
+                                                | (ProductLabelSource & {
+                                                      photos: { id: number }[];
+                                                      unitCode: string;
+                                                      multiplicity?: string | number;
+                                                      minPackageAmount?: string | number | null;
+                                                      minPackageUnit?: string | null;
+                                                  })
+                                                | undefined = order.source.purchaseItem?.product;
                                             const shortName = product?.unitCode
-                                                ? getUnitByCode(product.unitCode)?.shortName ?? 'ед.'
+                                                ? (getUnitByCode(product.unitCode)?.shortName ?? 'ед.')
                                                 : 'ед.';
                                             const photo = product?.photos?.[0];
                                             const qty = order.quantity;

@@ -131,6 +131,19 @@ function normalizePlaceholderKey(key: string): string {
     return key.trim().toLowerCase().replace(/\s+/g, '_');
 }
 
+/**
+ * Значение для метки {{свободно}}: «СВОБОДНО: 45 гр».
+ * Приоритет — supplierLimit (per-purchase глобальный лимит), fallback —
+ * referenceStock (поле каталога, для обратной совместимости).
+ * Возвращает null если ничего не задано.
+ */
+export function formatStockLine(fields: DescriptionFields): string | null {
+    const amount = fields.supplierLimit ?? fields.referenceStock;
+    const unit = fields.supplierLimitUnit ?? fields.referenceStockUnit;
+    if (amount == null || Number(amount) < 0 || !unit) return null;
+    return `${formatNumber(amount)} ${unit}`;
+}
+
 /** Подставляет поля товара в шаблон поста по меткам {{ключ}}. Только значения полей, без подписей. */
 export function applyPostTemplate(templateHtml: string, fields: DescriptionFields): string {
     const tpl = (templateHtml ?? '').trim();
@@ -200,10 +213,7 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
             const line = formatDiscountedPackLine(fields);
             return line ? escapeHtml(line) : '';
         })(),
-        свободно:
-            fields.referenceStock != null && Number(fields.referenceStock) >= 0 && fields.referenceStockUnit
-                ? escapeHtml(`${formatNumber(fields.referenceStock)} ${fields.referenceStockUnit}`)
-                : '',
+        свободно: formatStockLine(fields) ? escapeHtml(formatStockLine(fields) as string) : '',
         тег: tag ? escapeHtml(tag) : '',
     };
 }

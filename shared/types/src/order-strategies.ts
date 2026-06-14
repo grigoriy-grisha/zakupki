@@ -41,11 +41,7 @@ export function canIncreaseFromRemainder(fulfillmentStatus: string): boolean {
 
 /** Статусы, на которых можно ОТМЕНИТЬ заказ. */
 export function canCancelOrder(fulfillmentStatus: string): boolean {
-    return (
-        fulfillmentStatus === 'COLLECTION' ||
-        fulfillmentStatus === 'REORDER' ||
-        fulfillmentStatus === 'PAYMENT'
-    );
+    return fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER' || fulfillmentStatus === 'PAYMENT';
 }
 
 /** Обратная совместимость — можно ли вообще менять заказ. */

@@ -6,13 +6,7 @@ import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PurchaseCard, PurchaseForm } from './components';
 
 export default function PurchasesPage() {
@@ -42,7 +36,7 @@ export default function PurchasesPage() {
                 <TabsContent value={tab} className="mt-4">
                     {isLoading ? (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {Array.from({length: 6}).map((_, i) => (
+                            {Array.from({ length: 6 }).map((_, i) => (
                                 <Skeleton key={i} className="h-40" />
                             ))}
                         </div>

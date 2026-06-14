@@ -145,7 +145,10 @@ export class PaymentService {
         const payments = await this.repo.getByUser(userId);
 
         const lines = payments.map((p) => {
-            const childAmount = (p.children ?? []).reduce((s: number, c: { amount: unknown }) => s + Number(c.amount), 0);
+            const childAmount = (p.children ?? []).reduce(
+                (s: number, c: { amount: unknown }) => s + Number(c.amount),
+                0,
+            );
             const total = Number(p.amount) + childAmount;
             const statusCfg: Record<string, { emoji: string; label: string }> = {
                 PENDING: { emoji: '⏳', label: 'Ожидает проверки' },

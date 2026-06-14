@@ -1,15 +1,20 @@
 import { InlineKeyboard } from 'grammy';
 
-import { getUnitByCode, isPurchasePaymentOpen, mergeLines, PURCHASE_FULFILLMENT_LABELS, toOrderLinesVO, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import {
+    getUnitByCode,
+    isPurchasePaymentOpen,
+    mergeLines,
+    PURCHASE_FULFILLMENT_LABELS,
+    toOrderLinesVO,
+    type PurchaseFulfillmentStatus,
+} from '@zakupki/types';
 import { serviceContainer } from '@/server/lib/service-container';
 
 import type { CustomContext } from '../domain/types';
 import { formatPurchaseButtonLabel } from '../lib/purchase-button-label';
 import { escapeHtml } from '../lib/html';
 
-function buildPurchasesKeyboard(
-    purchases: Awaited<ReturnType<typeof serviceContainer.order.getActivePurchases>>,
-) {
+function buildPurchasesKeyboard(purchases: Awaited<ReturnType<typeof serviceContainer.order.getActivePurchases>>) {
     const keyboard = new InlineKeyboard();
     for (const p of purchases) {
         const label = formatPurchaseButtonLabel(p.tag, p.fulfillmentStatus);
@@ -45,15 +50,14 @@ async function replyPurchasesList(ctx: CustomContext, edit = false) {
     }
 }
 
-function formatPurchasesList(
-    purchases: Awaited<ReturnType<typeof serviceContainer.order.getActivePurchases>>,
-): string {
+function formatPurchasesList(purchases: Awaited<ReturnType<typeof serviceContainer.order.getActivePurchases>>): string {
     if (purchases.length === 0) {
         return 'У вас нет заказов в активных закупках.';
     }
 
     const lines = purchases.map((p) => {
-        const statusLabel = PURCHASE_FULFILLMENT_LABELS[p.fulfillmentStatus as PurchaseFulfillmentStatus] ?? p.fulfillmentStatus;
+        const statusLabel =
+            PURCHASE_FULFILLMENT_LABELS[p.fulfillmentStatus as PurchaseFulfillmentStatus] ?? p.fulfillmentStatus;
         return `• <b>${escapeHtml(p.tag)}</b>\n  ${escapeHtml(statusLabel)} · ${p.totalDue.toLocaleString('ru-RU')} ₽`;
     });
 
@@ -77,12 +81,7 @@ async function showPurchaseDetail(ctx: CustomContext, purchaseId: number) {
     const canPay = Boolean(paymentOpen && payment && payment.remaining > 0 && !payment.hasPending);
 
     const text = formatPurchaseDetail(detail, payment, fulfillmentStatus);
-    const keyboard = buildDetailKeyboard(
-        purchaseId,
-        canPay,
-        paymentOpen,
-        Boolean(payment && payment.remaining > 0),
-    );
+    const keyboard = buildDetailKeyboard(purchaseId, canPay, paymentOpen, Boolean(payment && payment.remaining > 0));
 
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(text, {
@@ -105,7 +104,7 @@ function formatPurchaseDetail(
         const product = line.purchaseItem?.product;
         const piId = line.purchaseItem?.id ?? 0;
         const name = product?.name ?? 'Товар';
-        const unit = product ? getUnitByCode(product.unitCode)?.shortName ?? '' : '';
+        const unit = product ? (getUnitByCode(product.unitCode)?.shortName ?? '') : '';
 
         const aggregated = mergeLines(toOrderLinesVO([line as any]));
         const existing = groupedLines.get(piId);

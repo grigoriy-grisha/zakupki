@@ -19,8 +19,7 @@ export function CharacteristicsTab() {
             deleteTitle="Удалить характеристику"
             renderDeleteDescription={(item) => (
                 <>
-                    Удалить <strong>{item.name}</strong>? Связь с типами атрибутов и значения у товаров
-                    будут удалены.
+                    Удалить <strong>{item.name}</strong>? Связь с типами атрибутов и значения у товаров будут удалены.
                 </>
             )}
         />

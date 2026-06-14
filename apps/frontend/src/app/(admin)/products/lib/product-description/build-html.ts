@@ -10,6 +10,7 @@ import {
     boldLinesParagraph,
     linesParagraph,
     mixedParagraph,
+    formatStockLine,
     formatSupplierPackageLines,
 } from './template-engine';
 
@@ -69,9 +70,10 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         }
     }
 
-    if (input.referenceStock != null && Number(input.referenceStock) >= 0 && input.referenceStockUnit) {
+    const stockLine = formatStockLine(input);
+    if (stockLine) {
         blocks.push(blankParagraph());
-        blocks.push(paragraph(`СВОБОДНО: ${formatNumber(input.referenceStock)} ${input.referenceStockUnit}`));
+        blocks.push(paragraph(`СВОБОДНО: ${stockLine}`));
     }
 
     return normalizeNovelHtml(blocks.join(''));

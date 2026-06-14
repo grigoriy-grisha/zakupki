@@ -69,6 +69,8 @@ export function makeItem(stage: Stage, overrides: Partial<PurchaseItem> = {}): P
         multiplicity: 1,
         minPackageUnit: null,
         supplementStep: null,
+        supplierLimit: null,
+        supplierLimitUnit: null,
         fulfillmentStatus: stage,
         ...STAGE_DEFAULTS[stage],
         ...overrides,

@@ -96,10 +96,7 @@ export function serializeDefault<K extends SettingKey>(key: K): string {
 }
 
 /** Парсинг строкового значения из БД в типизированное. */
-export function parseSettingValue<K extends SettingKey>(
-    key: K,
-    raw: string | null | undefined,
-): SettingValue<K> {
+export function parseSettingValue<K extends SettingKey>(key: K, raw: string | null | undefined): SettingValue<K> {
     const def = getAnySettingDef(key);
 
     if (raw == null || raw === '') {

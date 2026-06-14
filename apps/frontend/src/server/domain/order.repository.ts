@@ -35,7 +35,9 @@ export class OrderRepository {
         }
 
         return dbClient.orderLine.upsert({
-            where: { purchaseItemId_userId_createdOnStage: { purchaseItemId, userId, createdOnStage: createdOnStage as any } },
+            where: {
+                purchaseItemId_userId_createdOnStage: { purchaseItemId, userId, createdOnStage: createdOnStage as any },
+            },
             create: {
                 purchaseItemId,
                 userId,
@@ -96,7 +98,9 @@ export class OrderRepository {
      */
     findBaseLine(purchaseItemId: number, userId: number) {
         return dbClient.orderLine.findUnique({
-            where: { purchaseItemId_userId_createdOnStage: { purchaseItemId, userId, createdOnStage: 'COLLECTION' as any } },
+            where: {
+                purchaseItemId_userId_createdOnStage: { purchaseItemId, userId, createdOnStage: 'COLLECTION' as any },
+            },
         });
     }
 

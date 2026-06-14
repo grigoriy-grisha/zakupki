@@ -127,6 +127,7 @@ Routes can be prefixed with `/tg/` or `/vk/` for Telegram/VK mini-app contexts. 
 ### Import Sorting
 
 Enforced via `eslint-plugin-simple-import-sort`. Order:
+
 1. External packages
 2. Internal `@zakupki/*` packages
 3. Relative imports
@@ -166,9 +167,9 @@ Enforced via `eslint-plugin-simple-import-sort`. Order:
 ### Error Handling
 
 - **Custom error hierarchy** in `shared/types/src/errors.ts`:
-  - `AppError` (base, has `code` + `message`)
-  - `NotFoundError`, `ValidationError`, `ForbiddenError`
-  - `BusinessRuleError` → `InsufficientStockError`, `PurchaseNotActiveError`, `InvalidPaymentTransitionError`
+    - `AppError` (base, has `code` + `message`)
+    - `NotFoundError`, `ValidationError`, `ForbiddenError`
+    - `BusinessRuleError` → `InsufficientStockError`, `PurchaseNotActiveError`, `InvalidPaymentTransitionError`
 - **tRPC**: `errorFormatter` maps `AppError` → `TRPCError` with correct HTTP codes
 - **Bot**: try/catch in services, user-friendly Russian error messages
 - **DB conflicts**: `handleDbConflict()` utility converts Prisma P2002 → TRPCError CONFLICT
@@ -194,6 +195,7 @@ Enforced via `eslint-plugin-simple-import-sort`. Order:
 ## Environment Variables
 
 See `.env.example`. Key variables:
+
 - `DATABASE_URL` — PostgreSQL connection string
 - `REDIS_URL` — Redis connection string
 - `BOT_TOKEN` — Telegram bot token

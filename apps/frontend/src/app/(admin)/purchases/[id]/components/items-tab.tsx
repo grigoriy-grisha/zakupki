@@ -227,8 +227,7 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                 toOrderLinesVO((item.orderLines ?? []) as any[]),
                             );
                             const freeRemainder = computeRawPool({
-                                targetRemainder:
-                                    item.targetRemainder != null ? Number(item.targetRemainder) : null,
+                                targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
                                 packSize:
                                     item.product.supplierPackageAmount != null
                                         ? Number(item.product.supplierPackageAmount)
@@ -324,7 +323,9 @@ export function ItemsTab({ purchaseId }: ItemsTabProps) {
                                         <TableCell className="text-center">
                                             {item.targetRemainder !== null && item.targetRemainder !== undefined ? (
                                                 <Badge
-                                                    variant={Number(item.targetRemainder) > 0 ? 'outline' : 'destructive'}
+                                                    variant={
+                                                        Number(item.targetRemainder) > 0 ? 'outline' : 'destructive'
+                                                    }
                                                     className="font-mono"
                                                 >
                                                     {Number(item.targetRemainder)} {shortName}

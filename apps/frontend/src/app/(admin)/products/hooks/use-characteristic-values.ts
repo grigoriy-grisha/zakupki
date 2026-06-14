@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { buildAutoCharacteristicValues, collectLinkedCharacteristicIds, type AttributeListItem } from '../lib/product-form-utils';
+import {
+    buildAutoCharacteristicValues,
+    collectLinkedCharacteristicIds,
+    type AttributeListItem,
+} from '../lib/product-form-utils';
 
 type CharacteristicSource = {
     id: number;
@@ -78,7 +82,15 @@ export function useCharacteristicValues(
             }
             return next;
         });
-    }, [selectedAttrsKey, linkedCharIdsKey, attributeTypes, allCharacteristics, attributesList, linkedCharIdsOrdered, savedCharValuesById]);
+    }, [
+        selectedAttrsKey,
+        linkedCharIdsKey,
+        attributeTypes,
+        allCharacteristics,
+        attributesList,
+        linkedCharIdsOrdered,
+        savedCharValuesById,
+    ]);
 
     function characteristicsPayload() {
         return linkedCharIdsOrdered

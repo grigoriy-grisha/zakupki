@@ -7,6 +7,7 @@ import {
     isSupplementPhase,
     buildOrderQtyOptions,
     getOrderQuantityStep,
+    mapToPurchaseItem,
     OrderBook,
     toOrderLinesVO,
 } from '@zakupki/types';
@@ -72,8 +73,7 @@ export interface ItemOrderContext {
  * пользователь может иметь текущее + остаток пула. Совпадает с бэком.
  */
 export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderContext {
-    const { item, currentQuantity, currentPackageCount, baseQuantity, fulfillmentStatus, packDiscountPercent } =
-        input;
+    const { item, currentQuantity, currentPackageCount, baseQuantity, fulfillmentStatus, packDiscountPercent } = input;
     const product = item.product;
     const unit = getUnitByCode(product.unitCode);
     const shortName = unit?.shortName ?? 'ед.';
@@ -103,24 +103,29 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     // currentQuantity в расчёте пула не участвует (используется ниже для maxAllowed/canAddMore),
     // поэтому достаточно глобального остатка книги.
     const isSupplement = isSupplementPhase(fulfillmentStatus);
-    const purchaseItem: PurchaseItem = {
-        purchaseItemId: item.id,
-        pricePerUnit: Number(product.pricePerUnit),
-        priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-        priceTiers: (product.priceTiers as PurchaseItem['priceTiers']) ?? null,
+    const purchaseItem: PurchaseItem = mapToPurchaseItem(
+        {
+            id: item.id,
+            priceOverride: item.priceOverride,
+            targetRemainder: item.targetRemainder,
+            supplementStep: item.supplementStep,
+            supplierLimit: item.supplierLimit,
+            supplierLimitUnit: item.supplierLimitUnit ?? null,
+            product: {
+                pricePerUnit: product.pricePerUnit,
+                priceTiers: product.priceTiers,
+                supplierPackageAmount: packSize,
+                supplierPackageUnit: product.supplierPackageUnit ?? null,
+                supplierPackagePrice: product.supplierPackagePrice,
+                unitCode: product.unitCode,
+                multiplicity,
+                minPackageAmount,
+                minPackageUnit: product.minPackageUnit ?? null,
+            },
+            purchase: { fulfillmentStatus },
+        },
         packDiscountPercent,
-        supplierPackageAmount: packSize,
-        supplierPackageUnit: product.supplierPackageUnit ?? null,
-        supplierPackagePrice:
-            product.supplierPackagePrice != null ? Number(product.supplierPackagePrice) : null,
-        unitCode: product.unitCode,
-        multiplicity,
-        minPackageAmount,
-        minPackageUnit,
-        supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
-        fulfillmentStatus: fulfillmentStatus as PurchaseFulfillmentStatus,
-        targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-    };
+    );
     const book = OrderBook.create(purchaseItem, toOrderLinesVO((item.orderLines ?? []) as any[]));
     const availablePool = book.remainder;
 
@@ -158,8 +163,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         availablePool != null && Number.isFinite(availablePool)
             ? availablePool + currentQuantity
             : Number.POSITIVE_INFINITY;
-    const minAllowed =
-        fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
+    const minAllowed = fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
 
     // Разрешения
     const hasOrder = currentQuantity > 0 || currentPackageCount > 0;

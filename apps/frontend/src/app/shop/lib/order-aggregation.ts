@@ -36,10 +36,7 @@ export interface AggregatedForUser {
 }
 
 /** Агрегировать все строки юзера по одному purchaseItemId. */
-export function aggregateUserLines(
-    lines: AggregatableOrderLine[],
-    purchaseItemId: number,
-): AggregatedForUser {
+export function aggregateUserLines(lines: AggregatableOrderLine[], purchaseItemId: number): AggregatedForUser {
     const filtered = lines.filter((l) => l.purchaseItemId === purchaseItemId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const merged = mergeLines(toOrderLinesVO(filtered as any));

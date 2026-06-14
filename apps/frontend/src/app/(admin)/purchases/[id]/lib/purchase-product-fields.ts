@@ -23,8 +23,4 @@ export {
     type PurchaseProductFormState,
 } from './purchase-price-tiers';
 
-export {
-    templateStorageKey,
-    resolveDefaultTemplateId,
-    persistTemplateChoice,
-} from './template-storage';
+export { templateStorageKey, resolveDefaultTemplateId, persistTemplateChoice } from './template-storage';

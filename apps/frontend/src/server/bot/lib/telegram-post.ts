@@ -90,7 +90,7 @@ export function buildProductPostText(product: PostProduct): string {
     }
 
     const price = Number(product.pricePerUnit);
-    const shortName = product.unitCode ? getUnitByCode(product.unitCode)?.shortName ?? 'ед.' : 'ед.';
+    const shortName = product.unitCode ? (getUnitByCode(product.unitCode)?.shortName ?? 'ед.') : 'ед.';
     if (Number.isFinite(price) && price > 0) {
         lines.push(`${price.toLocaleString('ru-RU')} ₽/${escapeHtml(shortName)}`);
     }

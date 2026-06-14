@@ -82,10 +82,9 @@ export function CrudFormDialog<T extends FieldValues>({
 
     function onSubmit(data: T) {
         if (mode === 'edit' && item) {
-            updateMutation.mutate(
-                { id: item.id, ...data } as { id: number } & Partial<T>,
-                { onSuccess: () => setOpen(false) },
-            );
+            updateMutation.mutate({ id: item.id, ...data } as { id: number } & Partial<T>, {
+                onSuccess: () => setOpen(false),
+            });
         } else {
             createMutation.mutate(data, { onSuccess: () => setOpen(false) });
         }
@@ -127,9 +126,7 @@ export function CrudFormDialog<T extends FieldValues>({
                             )}
                         </div>
                     ))}
-                    {fields[0]?.hint && (
-                        <p className="text-xs text-muted-foreground">{fields[0].hint}</p>
-                    )}
+                    {fields[0]?.hint && <p className="text-xs text-muted-foreground">{fields[0].hint}</p>}
                     <Button type="submit" disabled={isPending} className="w-full">
                         {isPending && <span className="mr-2">⏳</span>}
                         {isEdit ? 'Сохранить' : 'Создать'}

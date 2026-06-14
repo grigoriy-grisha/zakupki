@@ -4,10 +4,7 @@ import { formatQtyLabel } from './utils';
 /**
  * Badge для фото на доборе — показывает остаток в кружке.
  */
-export function formatSupplementPhotoRemainderBadge(
-    _remainder: number,
-    _maxRemainder: number,
-): string {
+export function formatSupplementPhotoRemainderBadge(_remainder: number, _maxRemainder: number): string {
     // Упрощённо — возвращаем пустую строку, badge рисуется в UI по другому
     return '';
 }

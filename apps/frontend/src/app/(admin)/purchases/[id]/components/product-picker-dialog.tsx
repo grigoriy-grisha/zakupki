@@ -217,8 +217,6 @@ function ProductDetail({
                             supplierPackagePrice: data.supplierPackagePrice ?? undefined,
                             supplierPackageTiers:
                                 data.supplierPackageTiers.length > 0 ? data.supplierPackageTiers : undefined,
-                            referenceStock: data.referenceStock ?? undefined,
-                            referenceStockUnit: data.referenceStockUnit ?? undefined,
                         },
                         {
                             onSuccess: () => {

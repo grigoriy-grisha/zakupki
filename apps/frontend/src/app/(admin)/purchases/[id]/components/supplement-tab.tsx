@@ -24,8 +24,7 @@ interface SupplementTabProps {
  * выставил targetRemainder > 0. Остальное — обычные товары без добора.
  */
 function isOnRemainder(item: PurchaseItem): boolean {
-    const hasPack =
-        item.product.supplierPackageAmount != null && Number(item.product.supplierPackageAmount) > 0;
+    const hasPack = item.product.supplierPackageAmount != null && Number(item.product.supplierPackageAmount) > 0;
     const hasManual = item.targetRemainder != null && Number(item.targetRemainder) > 0;
     return hasPack || hasManual;
 }
@@ -34,7 +33,7 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
     const [editItem, setEditItem] = useState<number | null>(null);
 
-    const allItems = ((purchase as unknown as PurchaseDetail | null)?.items) ?? [];
+    const allItems = (purchase as unknown as PurchaseDetail | null)?.items ?? [];
     const remainderItems = useMemo(() => allItems.filter(isOnRemainder), [allItems]);
 
     if (isLoading || !purchase) {
@@ -69,8 +68,8 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                         {remainderItems.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                    Нет товаров с пачкой поставщика. Добавьте фасовку в редактировании товара,
-                                    чтобы открыть добор.
+                                    Нет товаров с пачкой поставщика. Добавьте фасовку в редактировании товара, чтобы
+                                    открыть добор.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -89,13 +88,11 @@ export function SupplementTab({ purchaseId }: SupplementTabProps) {
                                 toOrderLinesVO((item.orderLines ?? []) as any[]),
                             );
                             const remainderLeft = computeRawPool({
-                                targetRemainder:
-                                    item.targetRemainder != null ? Number(item.targetRemainder) : null,
+                                targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
                                 packSize,
                                 aggregation,
                             });
-                            const isManualLimit =
-                                item.targetRemainder != null && Number(item.targetRemainder) > 0;
+                            const isManualLimit = item.targetRemainder != null && Number(item.targetRemainder) > 0;
                             return (
                                 <TableRow
                                     key={item.id}

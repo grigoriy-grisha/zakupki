@@ -99,9 +99,7 @@ export function PaymentStatusBlock({
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                         <span>
                             К оплате:{' '}
-                            <span className="font-medium text-foreground">
-                                {remaining.toLocaleString('ru-RU')} ₽
-                            </span>
+                            <span className="font-medium text-foreground">{remaining.toLocaleString('ru-RU')} ₽</span>
                         </span>
                     </div>
                     <PurchasePaymentDialog

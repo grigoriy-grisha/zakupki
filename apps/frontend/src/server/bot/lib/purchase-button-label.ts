@@ -13,10 +13,7 @@ const FULFILLMENT_BUTTON_LABELS: Record<PurchaseFulfillmentStatus, string> = {
     READY_FOR_PICKUP: 'К выдаче',
 };
 
-export function formatPurchaseButtonLabel(
-    tag: string,
-    fulfillmentStatus: string | null | undefined,
-): string {
+export function formatPurchaseButtonLabel(tag: string, fulfillmentStatus: string | null | undefined): string {
     const status = (fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const statusLabel = FULFILLMENT_BUTTON_LABELS[status] ?? PURCHASE_FULFILLMENT_LABELS[status];
     return `${tag} · ${statusLabel}`.slice(0, 64);

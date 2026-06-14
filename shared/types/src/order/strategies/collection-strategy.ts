@@ -6,15 +6,18 @@
  *  - adjustPackages → addPackages на base-строку (canAddPackages=true)
  *  - 4 admin* методов — default в BaseMutableStrategy
  *  - aggregateForPool: totalOrdered = Σ qty активных строк
+ *
+ * Также проверяет глобальный supplierLimit (если задан): на adjust(+) и
+ * adjustPackages(+) — не даёт сумме всех заказов превысить лимит.
  */
 import type { OrderLine } from '../order-line';
+import { validateSupplierLimit } from '../limit';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
     applySetPackagesOnLine,
     applySetQtyOnLine,
     applyZeroOutOnLine,
     err,
-    forbidden,
     ok,
     resolveTargetLine,
     type MultiUpdate,
@@ -34,6 +37,13 @@ export class CollectionStrategy extends BaseMutableStrategy {
             if (!line) return ok(); // delta<0 на пустом месте — no-op
             return applyZeroOutOnLine(line);
         }
+
+        // Supplier limit check (глобальный пул, не зависит от poolApplies)
+        if (delta > 0) {
+            const limitErr = validateSupplierLimit(this.item, newQty, currentQty, this.aggregateForPool());
+            if (limitErr) return err(limitErr);
+        }
+
         return applySetQtyOnLine(this.item, line, userId, true, newQty);
     }
 
@@ -41,10 +51,22 @@ export class CollectionStrategy extends BaseMutableStrategy {
         if (delta === 0) return ok();
         // Pre-check `supplierPackageAmount` уже сделан в OrderBook.adjustPackages.
         const line = this.findBaseLine(userId);
+        const currentQty = line?.quantity ?? 0;
         const newPkgCount = (line?.packageCount ?? 0) + delta;
         if (newPkgCount < 0) {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
         }
+
+        // Supplier limit check: пакеты добавляют qty, проверяем глобальный пул.
+        // supplierPackageAmount добавляется к qty (qty += pkg * supplierPackageAmount).
+        if (delta > 0 && this.item.supplierPackageAmount != null) {
+            const newQty = currentQty + newPkgCount * this.item.supplierPackageAmount;
+            if (newQty > 0) {
+                const limitErr = validateSupplierLimit(this.item, newQty, currentQty, this.aggregateForPool());
+                if (limitErr) return err(limitErr);
+            }
+        }
+
         return applySetPackagesOnLine(this.item, line, userId, true, newPkgCount);
     }
 

@@ -1,5 +1,4 @@
-import { computePackagePrice, getUnitByCode, mergeLines, toOrderLinesVO } from '@zakupki/types';
-import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+import { computePackagePrice, getUnitByCode, mapToPurchaseItem, mergeLines, toOrderLinesVO } from '@zakupki/types';
 import { serviceContainer } from '@/server/lib/service-container';
 
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
@@ -50,8 +49,7 @@ export class OrderCollectionService {
             return {
                 ok: false,
                 reason: 'invalid_quantity',
-                message:
-                    'Напишите количество числом, например: 10 (граммов) или +2п (две пачки) или -1п (снять пачку)',
+                message: 'Напишите количество числом, например: 10 (граммов) или +2п (две пачки) или -1п (снять пачку)',
             };
         }
 
@@ -131,30 +129,10 @@ export class OrderCollectionService {
 
     private getItemPricing(item: ResolvedItem) {
         const unitShort = getUnitByCode(item.product.unitCode)?.shortName ?? 'ед.';
-        const packSize =
-            item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
+        const packSize = item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
         const pricePerUnit = Number(item.priceOverride ?? item.product.pricePerUnit);
-        // computePackagePrice (shared) принимает PurchaseItem; собираем минимум полей.
-        const packagePrice = computePackagePrice({
-            purchaseItemId: item.id,
-            pricePerUnit,
-            priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-            priceTiers: null,
-            packDiscountPercent: 0,
-            supplierPackageAmount: packSize,
-            supplierPackageUnit: item.product.supplierPackageUnit ?? null,
-            supplierPackagePrice:
-                item.product.supplierPackagePrice != null ? Number(item.product.supplierPackagePrice) : null,
-            unitCode: item.product.unitCode ?? 'piece',
-            multiplicity: Number(item.product.multiplicity ?? 1),
-            minPackageAmount:
-                item.product.minPackageAmount != null ? Number(item.product.minPackageAmount) : null,
-            minPackageUnit: item.product.minPackageUnit ?? null,
-            supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
-            fulfillmentStatus: (item.purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
-            targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-        });
-
+        // mapToPurchaseItem в shared — единая конвертация Prisma/tRPC → PurchaseItem.
+        const packagePrice = computePackagePrice(mapToPurchaseItem(item, 0));
         return { unitShort, packSize, pricePerUnit, packagePrice };
     }
 
@@ -189,9 +167,7 @@ export class OrderCollectionService {
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
         const minPackaging =
-            Number(purchaseItem.product.minPackageAmount) ||
-            Number(purchaseItem.product.multiplicity) ||
-            1;
+            Number(purchaseItem.product.minPackageAmount) || Number(purchaseItem.product.multiplicity) || 1;
         const steps = Math.round(parsed.amount / minPackaging);
         const delta = parsed.kind === 'add' ? steps * minPackaging : -steps * minPackaging;
         return serviceContainer.order.adjustQuantity(purchaseItem.id, userId, delta);

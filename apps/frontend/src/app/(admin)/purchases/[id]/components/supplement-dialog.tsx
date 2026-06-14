@@ -39,8 +39,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                     item.targetRemainder !== null && item.targetRemainder !== undefined
                         ? String(Number(item.targetRemainder))
                         : '';
-                stepMap[item.id] =
-                    item.supplementStep != null ? String(Number(item.supplementStep)) : '';
+                stepMap[item.id] = item.supplementStep != null ? String(Number(item.supplementStep)) : '';
             }
             setQuantities(qtyMap);
             setSupplementSteps(stepMap);
@@ -78,9 +77,9 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                 <DialogHeader>
                     <DialogTitle>Остатки для добора</DialogTitle>
                     <DialogDescription>
-                        Укажите target-остаток для добора по каждому товару — сколько грамм/штук суммарно
-                        смогут заказать участники на этом этапе. Оставьте пустым, если без ограничения.
-                        Остаток пересчитывается автоматически по мере заказов.
+                        Укажите target-остаток для добора по каждому товару — сколько грамм/штук суммарно смогут
+                        заказать участники на этом этапе. Оставьте пустым, если без ограничения. Остаток пересчитывается
+                        автоматически по мере заказов.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -103,7 +102,9 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-28 shrink-0">
-                                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Остаток</label>
+                                        <label className="text-[10px] text-muted-foreground mb-0.5 block">
+                                            Остаток
+                                        </label>
                                         <Input
                                             type="number"
                                             step="0.001"
@@ -120,7 +121,9 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                         />
                                     </div>
                                     <div className="w-28 shrink-0">
-                                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Фасовка добора</label>
+                                        <label className="text-[10px] text-muted-foreground mb-0.5 block">
+                                            Фасовка добора
+                                        </label>
                                         <Input
                                             type="number"
                                             step="0.001"

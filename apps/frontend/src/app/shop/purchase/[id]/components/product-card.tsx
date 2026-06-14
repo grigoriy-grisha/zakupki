@@ -141,8 +141,7 @@ export function ProductCard({
                                     <span className="text-sm text-muted-foreground">
                                         {ctx.currentQuantity > 0 && `${ctx.currentQuantity} ${ctx.shortName}`}
                                         {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0 && ' + '}
-                                        {ctx.currentPackageCount > 0 && `${ctx.currentPackageCount} упак.`}{' '}
-                                        ·{' '}
+                                        {ctx.currentPackageCount > 0 && `${ctx.currentPackageCount} упак.`} ·{' '}
                                         <span className="font-semibold text-foreground">
                                             {ctx.total.toLocaleString('ru-RU')} ₽
                                         </span>

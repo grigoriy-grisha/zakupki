@@ -53,8 +53,7 @@ export function QuantityButtons({
                     disabled={!canDecrease}
                     onClick={onRemove}
                 >
-                    <Minus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />
-                    −{activeStep} {shortName}
+                    <Minus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />−{activeStep} {shortName}
                 </Button>
                 <Button
                     variant="outline"
@@ -63,8 +62,7 @@ export function QuantityButtons({
                     disabled={!canAdd}
                     onClick={onAdd}
                 >
-                    <Plus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />
-                    +{activeStep} {shortName}
+                    <Plus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />+{activeStep} {shortName}
                 </Button>
             </div>
 
@@ -89,8 +87,7 @@ export function QuantityButtons({
                         onClick={onAddPackage}
                     >
                         <Plus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />
-                        {size === 'sm' ? `+Упак.` : `+Упак.`}{' '}
-                        {packSize != null && `(${packSize} ${shortName})`}
+                        {size === 'sm' ? `+Упак.` : `+Упак.`} {packSize != null && `(${packSize} ${shortName})`}
                     </Button>
                 </div>
             )}

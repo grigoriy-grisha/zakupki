@@ -1,9 +1,6 @@
 import type { ProductLabelSource } from '../product-label';
 import type { AttributeTypeMeta, ShowInTitleByTypeId } from '../product-label';
-import {
-    getProductAttributeNames,
-    getProductTitleAttributeNames,
-} from '../product-label';
+import { getProductAttributeNames, getProductTitleAttributeNames } from '../product-label';
 import {
     resolveProductCharacteristics,
     type AttributeListItem,
@@ -14,11 +11,7 @@ export type { DescriptionFields } from './types';
 
 export { buildProductDescriptionText } from './build-text';
 export { buildDescriptionHtml } from './build-html';
-export {
-    applyPostTemplate,
-    stripPlaceholderHintDebris,
-    POST_TEMPLATE_PLACEHOLDERS,
-} from './template-engine';
+export { applyPostTemplate, stripPlaceholderHintDebris, POST_TEMPLATE_PLACEHOLDERS } from './template-engine';
 export { normalizeNovelHtml } from './normalize-html';
 
 export type ProductCharacteristicsCatalog = {

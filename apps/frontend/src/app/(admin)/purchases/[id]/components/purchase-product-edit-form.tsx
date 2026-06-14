@@ -41,8 +41,9 @@ export type PurchaseProductSaveData = {
     supplierPackagePrice: number | null;
     supplierPackageTiers: { amount: number; unit: string; price: number }[];
     supplementStep: number | null;
-    referenceStock: number | null;
-    referenceStockUnit: string | null;
+    // Глобальный лимит поставщика — per-purchase, сохраняется в PurchaseItem.
+    supplierLimit: number | null;
+    supplierLimitUnit: string | null;
 };
 
 interface PurchaseProductEditFormProps {
@@ -55,8 +56,8 @@ interface PurchaseProductEditFormProps {
         supplierPackagePrice?: string | number | null;
         supplierPackageTiers?: unknown;
         supplementStep?: string | number | null;
-        referenceStock?: string | number | null;
-        referenceStockUnit?: string | null;
+        supplierLimit?: string | number | null;
+        supplierLimitUnit?: string | null;
         description?: string | null;
         priceTiers?: unknown;
         unit?: { shortName?: string | null; name?: string | null } | null;
@@ -78,8 +79,8 @@ function applyPurchaseFields(
         setMinPkgUnit: (v: string | null) => void;
         setSupPkgTiers: (v: PurchaseProductFormState['supPkgTiers']) => void;
         setSupplementStep: (v: number | null) => void;
-        setReferenceStock: (v: number | null) => void;
-        setReferenceStockUnit: (v: string | null) => void;
+        setSupplierLimit: (v: number | null) => void;
+        setSupplierLimitUnit: (v: string | null) => void;
     },
     next: PurchaseProductFormState,
 ) {
@@ -89,8 +90,8 @@ function applyPurchaseFields(
     setters.setMinPkgUnit(next.minPkgUnit);
     setters.setSupPkgTiers(next.supPkgTiers);
     setters.setSupplementStep(next.supplementStep);
-    setters.setReferenceStock(next.referenceStock);
-    setters.setReferenceStockUnit(next.referenceStockUnit);
+    setters.setSupplierLimit(next.supplierLimit);
+    setters.setSupplierLimitUnit(next.supplierLimitUnit);
 }
 
 function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
@@ -126,8 +127,8 @@ export function PurchaseProductEditForm({
     const [minPkgUnit, setMinPkgUnit] = useState<string | null>(initial.minPkgUnit);
     const [supPkgTiers, setSupPkgTiers] = useState(initial.supPkgTiers);
     const [supplementStep, setSupplementStep] = useState<number | null>(initial.supplementStep);
-    const [referenceStock, setReferenceStock] = useState<number | null>(initial.referenceStock);
-    const [referenceStockUnit, setReferenceStockUnit] = useState<string | null>(initial.referenceStockUnit);
+    const [supplierLimit, setSupplierLimit] = useState<number | null>(initial.supplierLimit);
+    const [supplierLimitUnit, setSupplierLimitUnit] = useState<string | null>(initial.supplierLimitUnit);
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
     const [priceError, setPriceError] = useState<string | null>(null);
@@ -155,8 +156,8 @@ export function PurchaseProductEditForm({
                 setMinPkgUnit,
                 setSupPkgTiers,
                 setSupplementStep,
-                setReferenceStock,
-                setReferenceStockUnit,
+                setSupplierLimit,
+                setSupplierLimitUnit,
             },
             next,
         );
@@ -202,8 +203,8 @@ export function PurchaseProductEditForm({
             supplierPackageAmount: primarySupplierPack.amount,
             supplierPackageUnit: primarySupplierPack.unit,
             supplierPackagePrice: primarySupplierPack.price,
-            referenceStock: referenceStock,
-            referenceStockUnit: referenceStockUnit,
+            supplierLimit,
+            supplierLimitUnit,
             purchaseTag,
             packDiscountPercent,
         }),
@@ -217,8 +218,8 @@ export function PurchaseProductEditForm({
             tiers,
             supPkgTiers,
             primarySupplierPack,
-            referenceStock,
-            referenceStockUnit,
+            supplierLimit,
+            supplierLimitUnit,
             purchaseTag,
             packDiscountPercent,
         ],
@@ -332,8 +333,8 @@ export function PurchaseProductEditForm({
             minPackageUnit: minPkgUnit,
             ...supplierPack,
             supplementStep,
-            referenceStock: referenceStock,
-            referenceStockUnit: referenceStockUnit,
+            supplierLimit,
+            supplierLimitUnit,
         });
     }
 
@@ -413,18 +414,15 @@ export function PurchaseProductEditForm({
 
             <div className="space-y-1">
                 <PackageEditor
-                    label="У поставщика (для поста)"
-                    amount={referenceStock}
-                    unit={referenceStockUnit ?? PACKAGE_UNITS[0]}
-                    onAmountChange={setReferenceStock}
-                    onUnitChange={setReferenceStockUnit}
+                    label="Лимит у поставщика (на всех покупателей)"
+                    amount={supplierLimit}
+                    unit={supplierLimitUnit ?? PACKAGE_UNITS[0]}
+                    onAmountChange={setSupplierLimit}
+                    onUnitChange={setSupplierLimitUnit}
                 />
                 <p className="text-xs text-muted-foreground">
-                    Справочное поле для поста в Telegram («СВОБОДНО: 45 гр»).{' '}
-                    <span className="font-medium text-foreground">
-                        Это не лимит дозаказа
-                    </span>{' '}
-                    — лимит задаётся отдельно кнопкой «Остатки для добора» на странице закупки.
+                    Глобальный лимит остатка у поставщика: суммарно все покупатели не могут заказать больше этого
+                    количества ни на одном этапе (COLLECTION / REORDER / PAYMENT). Если не задан — без ограничений.
                 </p>
             </div>
 

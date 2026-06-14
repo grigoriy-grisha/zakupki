@@ -84,7 +84,10 @@ export const productsRouter = router({
         if (expectedVersion != null) {
             const updated = await ctx.services.product.updateWithVersionCheck(id, data, expectedVersion);
             if (!updated) {
-                throw new AppError('CONFLICT', 'Товар был изменён другим пользователем. Обновите страницу и попробуйте снова.');
+                throw new AppError(
+                    'CONFLICT',
+                    'Товар был изменён другим пользователем. Обновите страницу и попробуйте снова.',
+                );
             }
             return updated;
         }

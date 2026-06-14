@@ -82,8 +82,8 @@ export function emptyPurchaseFields(unit?: string): PurchaseProductFormState {
         minPkgUnit: u,
         supPkgTiers: [{ amount: 0, unit: u, price: 0 }],
         supplementStep: null,
-        referenceStock: null,
-        referenceStockUnit: u,
+        supplierLimit: null,
+        supplierLimitUnit: u,
     };
 }
 
@@ -108,8 +108,8 @@ export function savedPurchaseFields(
             minPkgUnit: product.minPackageUnit ?? catalogUnit,
             supPkgTiers: getInitialSupplierTiers(product, catalogUnit),
             supplementStep: product.supplementStep != null ? Number(product.supplementStep) : null,
-            referenceStock: product.referenceStock != null ? Math.trunc(Number(product.referenceStock)) : null,
-            referenceStockUnit: product.referenceStockUnit ?? catalogUnit,
+            supplierLimit: product.supplierLimit != null ? Math.trunc(Number(product.supplierLimit)) : null,
+            supplierLimitUnit: product.supplierLimitUnit ?? catalogUnit,
         },
         catalogUnit,
     );
@@ -132,6 +132,6 @@ export type PurchaseProductFormState = {
     minPkgUnit: string;
     supPkgTiers: PurchasePriceTier[];
     supplementStep: number | null;
-    referenceStock: number | null;
-    referenceStockUnit: string;
+    supplierLimit: number | null;
+    supplierLimitUnit: string;
 };

@@ -92,9 +92,11 @@ export function applySetQtyOnLine(
 ): MultiUpdate {
     const usesPackages = line?.isBase ?? targetIsBase;
     const pkgCount = line?.packageCount ?? 0;
-    const amountDue = usesPackages ? computeAmountDueWithPackages(newQty, pkgCount, item) : computeAmountDue(newQty, item);
-    const createdOnStage: PurchaseFulfillmentStatus = line?.createdOnStage
-        ?? (targetIsBase ? 'COLLECTION' : item.fulfillmentStatus);
+    const amountDue = usesPackages
+        ? computeAmountDueWithPackages(newQty, pkgCount, item)
+        : computeAmountDue(newQty, item);
+    const createdOnStage: PurchaseFulfillmentStatus =
+        line?.createdOnStage ?? (targetIsBase ? 'COLLECTION' : item.fulfillmentStatus);
     const newLine = line
         ? line.withQuantity(newQty, amountDue)
         : makeNewLine(item, userId, createdOnStage, newQty, amountDue, pkgCount);
@@ -117,8 +119,8 @@ export function applySetPackagesOnLine(
         return { updates: [{ old: line, new: null }], effects: [{ type: 'delete', lineId: line.id }] };
     }
     const amountDue = computeAmountDueWithPackages(qty, newPkgCount, item);
-    const createdOnStage: PurchaseFulfillmentStatus = line?.createdOnStage
-        ?? (targetIsBase ? 'COLLECTION' : item.fulfillmentStatus);
+    const createdOnStage: PurchaseFulfillmentStatus =
+        line?.createdOnStage ?? (targetIsBase ? 'COLLECTION' : item.fulfillmentStatus);
     const newLine = line
         ? line.withQuantity(qty, amountDue).withPackageCount(newPkgCount)
         : makeNewLine(item, userId, createdOnStage, qty, amountDue, newPkgCount);
@@ -229,7 +231,11 @@ export function resolveTargetLine(
 // ── REORDER split helper ────────────────────────────────────────────
 
 /** REORDER: распределяет delta между заполнением базы (до baseQuantity) и spillover. */
-export function splitReorderDelta(delta: number, baseFrozen: number, currentBase: number): { fillBase: number; spillover: number } {
+export function splitReorderDelta(
+    delta: number,
+    baseFrozen: number,
+    currentBase: number,
+): { fillBase: number; spillover: number } {
     const baseGap = Math.max(0, baseFrozen - currentBase);
     const fillBase = Math.min(delta, baseGap);
     return { fillBase, spillover: delta - fillBase };

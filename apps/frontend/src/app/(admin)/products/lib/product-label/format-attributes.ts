@@ -1,12 +1,13 @@
 import { escapeRegExp } from '@/lib/utils/html';
 
-import { attributeTypeId, buildTypeMaps, sortAttributeValuesByTypeTree, buildShowInTitleByTypeId, isShowInTitle } from './type-tree';
-import type {
-    ProductAttributeValueSource,
-    AttributeTypeMeta,
-    ShowInTitleByTypeId,
-    ProductLabelSource,
-} from './types';
+import {
+    attributeTypeId,
+    buildTypeMaps,
+    sortAttributeValuesByTypeTree,
+    buildShowInTitleByTypeId,
+    isShowInTitle,
+} from './type-tree';
+import type { ProductAttributeValueSource, AttributeTypeMeta, ShowInTitleByTypeId, ProductLabelSource } from './types';
 
 /** Форматирует значение атрибута: «Бренд Значение» или «Родитель / Значение». */
 export function formatAttributeValueName(v: ProductAttributeValueSource): string {

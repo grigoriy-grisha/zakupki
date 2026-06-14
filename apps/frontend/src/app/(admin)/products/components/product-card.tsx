@@ -67,7 +67,10 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                 <div className="relative aspect-square w-20 shrink-0 bg-muted sm:w-full">
                     {photo ? (
                         <img
-                            src={productPhotoUrl(photo.id, `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`)}
+                            src={productPhotoUrl(
+                                photo.id,
+                                `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`,
+                            )}
                             alt={product.name}
                             className="h-full w-full object-cover transition-transform group-hover:scale-105"
                         />

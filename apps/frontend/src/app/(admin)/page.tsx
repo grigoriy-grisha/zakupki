@@ -16,11 +16,7 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
-                icon={LayoutDashboard}
-                title="Dashboard"
-                description="Обзор ваших закупок"
-            />
+            <PageHeader icon={LayoutDashboard} title="Dashboard" description="Обзор ваших закупок" />
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="p-4 shadow-sm">

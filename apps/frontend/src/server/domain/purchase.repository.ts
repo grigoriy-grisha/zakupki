@@ -181,7 +181,9 @@ export class PurchaseRepository {
         return dbClient.$transaction(async (tx) => {
             const results = [];
             for (const item of items) {
-                const data: Record<string, unknown> = { targetRemainder: item.targetRemainder };
+                const data: { targetRemainder: number | null; supplementStep?: number | null } = {
+                    targetRemainder: item.targetRemainder,
+                };
                 if (item.supplementStep !== undefined) {
                     data.supplementStep = item.supplementStep;
                 }
@@ -255,7 +257,13 @@ export class PurchaseRepository {
     async findItemWithProductAndTg(id: number) {
         return dbClient.purchaseItem.findUnique({
             where: { id },
-            select: { productId: true, tgMessageId: true, tgChannelId: true },
+            select: {
+                productId: true,
+                tgMessageId: true,
+                tgChannelId: true,
+                supplierLimit: true,
+                supplierLimitUnit: true,
+            },
         });
     }
 
@@ -282,18 +290,43 @@ export class PurchaseRepository {
         });
     }
 
-    async updatePurchaseItemPriceOverride(purchaseItemId: number, priceOverride: number | null) {
+    /**
+     * Универсальный апдейт PurchaseItem. Поддерживает partial update —
+     * любая комбинация полей за один round-trip.
+     */
+    async updatePurchaseItem(
+        purchaseItemId: number,
+        data: Partial<{
+            priceOverride: number | null;
+            supplementStep: number | null;
+            supplierLimit: number | null;
+            supplierLimitUnit: string | null;
+            targetRemainder: number | null;
+        }>,
+    ) {
         return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
-            data: { priceOverride },
+            data,
         });
     }
 
+    /** @deprecated Используйте updatePurchaseItem({ priceOverride }). */
+    async updatePurchaseItemPriceOverride(purchaseItemId: number, priceOverride: number | null) {
+        return this.updatePurchaseItem(purchaseItemId, { priceOverride });
+    }
+
+    /** @deprecated Используйте updatePurchaseItem({ supplementStep }). */
     async updatePurchaseItemSupplementStep(purchaseItemId: number, supplementStep: number | null) {
-        return dbClient.purchaseItem.update({
-            where: { id: purchaseItemId },
-            data: { supplementStep },
-        });
+        return this.updatePurchaseItem(purchaseItemId, { supplementStep });
+    }
+
+    /** @deprecated Используйте updatePurchaseItem({ supplierLimit, supplierLimitUnit }). */
+    async updatePurchaseItemSupplierLimit(
+        purchaseItemId: number,
+        supplierLimit: number | null,
+        supplierLimitUnit: string | null,
+    ) {
+        return this.updatePurchaseItem(purchaseItemId, { supplierLimit, supplierLimitUnit });
     }
 
     async updatePurchaseItemProduct(purchaseItemId: number, productData: Record<string, unknown>) {

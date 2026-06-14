@@ -60,12 +60,16 @@ export {
     validateSupplementPool,
     computeRawPool,
     computePoolInfo,
+    computeRawSupplierLimit,
+    computeSupplierLimitInfo,
+    validateSupplierLimit,
     computeAmountDue,
     computeAmountDueWithPackages,
     computePackagePrice,
     mergeLines,
     toOrderLineVO,
     toOrderLinesVO,
+    mapToPurchaseItem,
     // ООП StageStrategy (v3)
     StageStrategy,
     makeStrategy,
@@ -92,6 +96,8 @@ export type {
     AggregatedOrder,
     OrderDisplayContext,
     OrderLineRowLike,
+    PurchaseItemRowLike,
+    SupplierLimitInfo,
     StageStrategyShim,
 } from './order';
 

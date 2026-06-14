@@ -42,10 +42,7 @@ export function OrdersSummaryCard({
     );
 
     // Юзер видит 1 запись на товар: COLLECTION + REORDER-pkg объединяем.
-    const aggregatedByItem = useMemo(
-        () => aggregateByItem(myOrdersInPurchase as never),
-        [myOrdersInPurchase],
-    );
+    const aggregatedByItem = useMemo(() => aggregateByItem(myOrdersInPurchase as never), [myOrdersInPurchase]);
     // Берём source-строку для доступа к unitCode/purchaseItem.product (per-row данные)
     const sourceByItemId = useMemo(() => {
         const map = new Map<number, (typeof myOrdersInPurchase)[number]>();
@@ -83,7 +80,7 @@ export function OrdersSummaryCard({
                                 : (source?.purchaseItem?.product?.photos?.[0]?.id ?? null);
                         const label = product != null ? undefined : (source?.purchaseItem?.product?.name ?? 'Товар');
                         const unitCode = source?.purchaseItem?.product?.unitCode;
-                        const unitShort = unitCode ? getUnitByCode(unitCode)?.shortName ?? '' : '';
+                        const unitShort = unitCode ? (getUnitByCode(unitCode)?.shortName ?? '') : '';
 
                         return (
                             <div
@@ -101,9 +98,7 @@ export function OrdersSummaryCard({
                                 <span className="shrink-0 text-right text-sm font-medium">
                                     {agg.quantity.toLocaleString('ru-RU')} {unitShort}
                                     {agg.packageCount > 0 && (
-                                        <span className="ml-1 text-muted-foreground">
-                                            + {agg.packageCount} упак.
-                                        </span>
+                                        <span className="ml-1 text-muted-foreground">+ {agg.packageCount} упак.</span>
                                     )}
                                     <br />
                                     <span className="text-muted-foreground">

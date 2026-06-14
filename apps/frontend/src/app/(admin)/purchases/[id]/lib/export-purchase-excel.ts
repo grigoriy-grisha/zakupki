@@ -581,9 +581,7 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
         });
 
         // Пул добора — через доменную стратегию (REORDER: baseQuantity-based, PAYMENT+: createdOnStage-based)
-        const strategy = getStageStrategy(
-            (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
-        );
+        const strategy = getStageStrategy((purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus);
         const aggregation = strategy.aggregateForPool(toOrderLinesVO(item.orderLines as any[]));
         const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
         const displayedRemainder = computeRawPool({

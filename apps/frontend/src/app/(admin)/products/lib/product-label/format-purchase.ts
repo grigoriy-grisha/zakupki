@@ -1,8 +1,5 @@
 import { buildShowInTitleByTypeId } from './type-tree';
-import {
-    getProductDisplayName,
-    formatProductAttributesLine,
-} from './format-attributes';
+import { getProductDisplayName, formatProductAttributesLine } from './format-attributes';
 import { getProductTitleAttributeNames } from './format-title';
 import type { ProductLabelSource, AttributeTypeMeta, ShowInTitleByTypeId } from './types';
 
@@ -22,7 +19,10 @@ function getPurchaseProductSubtitleParts(product: ProductLabelSource, attributeT
         .filter(Boolean);
 }
 
-export function getPurchaseProductSubtitleLine(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string {
+export function getPurchaseProductSubtitleLine(
+    product: ProductLabelSource,
+    attributeTypes?: AttributeTypeMeta[],
+): string {
     const parts = getPurchaseProductSubtitleParts(product, attributeTypes);
     if (parts.length > 0) return parts.join(' ');
 

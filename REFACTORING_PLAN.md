@@ -3,11 +3,13 @@
 ## Current State
 
 Three files with mixed concerns:
+
 - `pricing.ts` (216 lines): Order quantity validation, price calculation
 - `pack-discount-pricing.ts` (64 lines): Supplier pack logic, unit detection
 - `supplement-order.ts` (276 lines): Supplement/reorder logic
 
 **Main problems:**
+
 1. Fragile unit detection via string matching (`trim().toLowerCase().startsWith()`)
 2. Unit logic scattered across files
 3. Hard to maintain and extend
@@ -44,97 +46,97 @@ shared/types/src/
 ### Phase 1: Create Unit System (non-breaking)
 
 1. Create `units/types.ts`:
-   - `UnitType` enum: `GRAM`, `PIECE`, `TUBE`
-   - `UnitInfo` interface with metadata
+    - `UnitType` enum: `GRAM`, `PIECE`, `TUBE`
+    - `UnitInfo` interface with metadata
 
 2. Create `units/detector.ts`:
-   - `detectUnitType(raw: string): UnitType | null` - replaces `normalizeSupplierPackUnit()`
-   - `isGramUnit(unit: UnitType): boolean`
-   - `isPieceUnit(unit: UnitType): boolean`
-   - Use centralized unit name mappings
+    - `detectUnitType(raw: string): UnitType | null` - replaces `normalizeSupplierPackUnit()`
+    - `isGramUnit(unit: UnitType): boolean`
+    - `isPieceUnit(unit: UnitType): boolean`
+    - Use centralized unit name mappings
 
 3. Create `units/constants.ts`:
-   - Unit name aliases and variations
-   - Minimum order quantities per unit type
+    - Unit name aliases and variations
+    - Minimum order quantities per unit type
 
 4. Create `units/index.ts`:
-   - Export public API
+    - Export public API
 
 ### Phase 2: Refactor pack-discount-pricing.ts
 
 1. Create `pricing/types.ts`:
-   - Move `SupplierPackProductFields`, `PackDiscountPricingInfo`
+    - Move `SupplierPackProductFields`, `PackDiscountPricingInfo`
 
 2. Create `pricing/calculation.ts`:
-   - Move `getSupplierPackSize()`, `countFullSupplierPacks()`, `getPackDiscountPricingInfo()`
-   - Replace `normalizeSupplierPackUnit()` with `detectUnitType()`
-   - Replace `isGramSupplierPackProduct()` with `isGramPackProduct()` using new unit system
+    - Move `getSupplierPackSize()`, `countFullSupplierPacks()`, `getPackDiscountPricingInfo()`
+    - Replace `normalizeSupplierPackUnit()` with `detectUnitType()`
+    - Replace `isGramSupplierPackProduct()` with `isGramPackProduct()` using new unit system
 
 3. Create `pricing/formatting.ts`:
-   - Move `formatPackDiscountHint()`, `formatPackDiscountBanner()`
+    - Move `formatPackDiscountHint()`, `formatPackDiscountBanner()`
 
 4. Create `pricing/index.ts`:
-   - Export all pricing functions
+    - Export all pricing functions
 
 5. Keep `pack-discount-pricing.ts` as re-export layer for backward compatibility
 
 ### Phase 3: Refactor pricing.ts
 
 1. Move types to `pricing/types.ts`:
-   - `PriceTier`, `CalculateOrderAmountOptions`, `OrderQuantityOptions`
+    - `PriceTier`, `CalculateOrderAmountOptions`, `OrderQuantityOptions`
 
 2. Create `pricing/calculation.ts` (extend):
-   - Move `calculateOrderAmount()`, `roundMoney()`, `parsePriceTiers()`
+    - Move `calculateOrderAmount()`, `roundMoney()`, `parsePriceTiers()`
 
 3. Create `pricing/quantity-rules.ts`:
-   - Move `getOrderQuantityStep()`, `getMinOrderQuantity()`
-   - Helper functions: `roundUpToStep()`, `isMultipleOf()`
+    - Move `getOrderQuantityStep()`, `getMinOrderQuantity()`
+    - Helper functions: `roundUpToStep()`, `isMultipleOf()`
 
 4. Create `pricing/validation.ts`:
-   - Move `getOrderQuantityValidationError()`, `isValidOrderQuantity()`, `snapOrderQuantity()`
+    - Move `getOrderQuantityValidationError()`, `isValidOrderQuantity()`, `snapOrderQuantity()`
 
 5. Create `pricing/formatting.ts` (extend):
-   - Move `formatMinPackageHint()`, `formatMinPackageOrderHint()`
+    - Move `formatMinPackageHint()`, `formatMinPackageOrderHint()`
 
 6. Keep `pricing.ts` as re-export layer
 
 ### Phase 4: Refactor supplement-order.ts
 
 1. Create `supplement/types.ts`:
-   - Move `SupplementLineState`
+    - Move `SupplementLineState`
 
 2. Create `supplement/phases.ts`:
-   - Move `PURCHASE_FULFILLMENT_STATUSES`, `PurchaseFulfillmentStatus`
-   - Move `isSupplementRemainderOnlyPhase()`, `isSupplementPacksAllowed()`
+    - Move `PURCHASE_FULFILLMENT_STATUSES`, `PurchaseFulfillmentStatus`
+    - Move `isSupplementRemainderOnlyPhase()`, `isSupplementPacksAllowed()`
 
 3. Create `supplement/quantity-rules.ts`:
-   - Move `SUPPLEMENT_MIN_ORDER_QTY`, `SUPPLEMENT_MIN_ORDER_QTY_PIECES`
-   - Move `getSupplementMinOrderQty()`, `getSupplementEffectiveMinQty()`, `getSupplementUiOrderStep()`
-   - **Replace `isPieceOrderUnit()` with `detectUnitType()` + `isPieceUnit()`**
+    - Move `SUPPLEMENT_MIN_ORDER_QTY`, `SUPPLEMENT_MIN_ORDER_QTY_PIECES`
+    - Move `getSupplementMinOrderQty()`, `getSupplementEffectiveMinQty()`, `getSupplementUiOrderStep()`
+    - **Replace `isPieceOrderUnit()` with `detectUnitType()` + `isPieceUnit()`**
 
 4. Create `supplement/remainder.ts`:
-   - Move `getDisplayedSupplementRemainder()`, `getSupplementMaxPacks()`
+    - Move `getDisplayedSupplementRemainder()`, `getSupplementMaxPacks()`
 
 5. Create `supplement/validation.ts`:
-   - Move `getSupplementOrderValidationError()`, `isValidSupplementOrder()`
+    - Move `getSupplementOrderValidationError()`, `isValidSupplementOrder()`
 
 6. Create `supplement/snapping.ts`:
-   - Move `snapSupplementOrder()`
+    - Move `snapSupplementOrder()`
 
 7. Create `supplement/formatting.ts`:
-   - Move all `formatSupplement*` functions
-   - Move `getSupplementRemainderStep()`
+    - Move all `formatSupplement*` functions
+    - Move `getSupplementRemainderStep()`
 
 8. Create `supplement/index.ts`:
-   - Export all supplement functions
+    - Export all supplement functions
 
 9. Keep `supplement-order.ts` as re-export layer
 
 ### Phase 5: Update Main Index
 
 1. Update `shared/types/src/index.ts`:
-   - Import from new module structure
-   - Maintain all existing exports for backward compatibility
+    - Import from new module structure
+    - Maintain all existing exports for backward compatibility
 
 ### Phase 6: Testing & Validation
 
@@ -142,9 +144,9 @@ shared/types/src/
 2. Run `pnpm test` - ensure all tests pass
 3. Run `pnpm lint` - ensure code style is correct
 4. Manual verification:
-   - Unit detection works for all variations (гр, g, gram, шт, piece, туба, tube)
-   - Pricing calculations unchanged
-   - Supplement validation unchanged
+    - Unit detection works for all variations (гр, g, gram, шт, piece, туба, tube)
+    - Pricing calculations unchanged
+    - Supplement validation unchanged
 
 ## Key Improvements
 
@@ -164,6 +166,7 @@ shared/types/src/
 ## Files to Create
 
 **New files (15 total):**
+
 - `units/types.ts`
 - `units/detector.ts`
 - `units/constants.ts`
@@ -184,10 +187,12 @@ shared/types/src/
 - `supplement/index.ts`
 
 **Files to modify (4 total):**
+
 - `pack-discount-pricing.ts` → re-export layer
 - `pricing.ts` → re-export layer
 - `supplement-order.ts` → re-export layer
 - `index.ts` → update imports
 
 **Files to delete (0):**
+
 - None initially (re-export layers maintain compatibility)

@@ -154,13 +154,18 @@ export class PurchaseService {
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
     }
 
-    async updateItemProduct(purchaseItemId: number, productData: Record<string, unknown>, priceOverride: number | null) {
+    async updateItemProduct(
+        purchaseItemId: number,
+        productData: Record<string, unknown>,
+        priceOverride: number | null,
+    ) {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         // Write price override to PurchaseItem (per-purchase pricing)
         // Don't write pricePerUnit to the shared product — use priceOverride on the item
-        const { pricePerUnit, supplementStep, ...nonPriceFields } = productData as Record<string, unknown>;
+        const { pricePerUnit, supplementStep, supplierLimit, supplierLimitUnit, ...nonPriceFields } =
+            productData as Record<string, unknown>;
         void pricePerUnit; // consumed via priceOverride below
 
         // Update product fields (description, packaging, etc.) but NOT pricePerUnit
@@ -168,13 +173,20 @@ export class PurchaseService {
             await this.productRepo.update(item.productId, nonPriceFields as any);
         }
 
-        // Set or clear price override on the purchase item
-        await this.repo.updatePurchaseItemPriceOverride(purchaseItemId, priceOverride);
-
-        // Update supplementStep on PurchaseItem if provided
-        if (supplementStep !== undefined) {
-            await this.repo.updatePurchaseItemSupplementStep(purchaseItemId, supplementStep as number | null);
+        // Собираем partial update PurchaseItem за один round-trip.
+        // Только поля, которые явно пришли из формы (не undefined).
+        const itemUpdate: {
+            priceOverride: number | null;
+            supplementStep?: number | null;
+            supplierLimit?: number | null;
+            supplierLimitUnit?: string | null;
+        } = { priceOverride };
+        if (supplementStep !== undefined) itemUpdate.supplementStep = supplementStep as number | null;
+        if (supplierLimit !== undefined) {
+            itemUpdate.supplierLimit = supplierLimit as number | null;
+            itemUpdate.supplierLimitUnit = (supplierLimitUnit as string | null) ?? null;
         }
+        await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
 
         return item;
     }

@@ -32,7 +32,10 @@ function redirectIfNotAdmin(
 // Читаем роль напрямую из JWT токена. JWT создаётся при логине.
 // Если роль изменилась в БД — нужно перелогиниться для обновления JWT.
 // maxAge: 0 заставляет токен обновляться при каждом запросе (без server-side сессий).
-const JWT_OPTIONS = { secret: process.env.NEXTAUTH_SECRET, cookies: { sessionToken: { name: 'next-auth.session-token', options: { maxAge: 0 } } } };
+const JWT_OPTIONS = {
+    secret: process.env.NEXTAUTH_SECRET,
+    cookies: { sessionToken: { name: 'next-auth.session-token', options: { maxAge: 0 } } },
+};
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

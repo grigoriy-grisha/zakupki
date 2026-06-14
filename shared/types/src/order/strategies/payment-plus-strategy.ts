@@ -8,12 +8,14 @@
  * COLLECTION-строке:
  *  - adjust → addQty на supplement-for-stage строку (target='supplement')
  *  - pool check обязателен (cfg.target==='supplement' && cfg.poolApplies)
+ *  - supplier limit check (глобальный остаток поставщика, если задан)
  *  - empty-decrease → forbidden (нельзя создать отрицательный заказ)
  *  - adjustPackages → forbidden (cfg.canAddPackages=false)
  *  - 4 admin* методов — default в BaseMutableStrategy
  *  - aggregateForPool: totalBase = Σ qty COLLECTION-строк, supplement = Σ qty не-COLLECTION
  */
 import { validateSupplementPool } from '../pool';
+import { validateSupplierLimit } from '../limit';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
     aggregateForPool,
@@ -35,15 +37,21 @@ export class PaymentPlusStrategy extends BaseMutableStrategy {
         const currentQty = line?.quantity ?? 0;
         const newQty = currentQty + delta;
 
-        // Pool check (cfg.target='supplement' && cfg.poolApplies для PAYMENT+)
-        if (delta > 0 && this.cfg.poolApplies) {
-            const poolErr = validateSupplementPool(
-                this.item,
-                newQty,
-                currentQty,
-                aggregateForPool(this.item.fulfillmentStatus, toActiveVOs(this.lines)),
-            );
-            if (poolErr) return err(poolErr);
+        // delta>0 → проверяем pool (если применим) и supplier limit.
+        // Агрегируем один раз — используется обеими проверками.
+        if (delta > 0) {
+            const aggregation = aggregateForPool(this.item.fulfillmentStatus, toActiveVOs(this.lines));
+
+            if (this.cfg.poolApplies) {
+                const poolErr = validateSupplementPool(this.item, newQty, currentQty, aggregation);
+                if (poolErr) return err(poolErr);
+            }
+
+            // Supplier limit (глобальный остаток поставщика). Проверяем только
+            // supplement-прирост — frozen base уже не меняется и был проверен
+            // на COLLECTION/REORDER.
+            const limitErr = validateSupplierLimit(this.item, newQty, currentQty, aggregation);
+            if (limitErr) return err(limitErr);
         }
 
         // Уменьшение на пустом месте

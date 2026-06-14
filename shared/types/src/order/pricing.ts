@@ -35,10 +35,6 @@ export function computePackagePrice(item: PurchaseItem): number {
 /**
  * Сумма заказа с учётом упаковок: amountDue(qty) + packageCount * packagePrice.
  */
-export function computeAmountDueWithPackages(
-    quantity: number,
-    packageCount: number,
-    item: PurchaseItem,
-): number {
+export function computeAmountDueWithPackages(quantity: number, packageCount: number, item: PurchaseItem): number {
     return computeAmountDue(quantity, item) + packageCount * computePackagePrice(item);
 }

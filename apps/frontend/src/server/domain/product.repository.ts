@@ -59,7 +59,10 @@ export class ProductRepository {
     /** Возвращает продукты с флагом inActivePurchase для UI. */
     async listWithPurchaseFlag(search?: string) {
         const products = await this.list(search);
-        const lockedIds = await findProductIdsInActivePurchases(dbClient, products.map((p) => p.id));
+        const lockedIds = await findProductIdsInActivePurchases(
+            dbClient,
+            products.map((p) => p.id),
+        );
         return products.map((p) => ({ ...p, inActivePurchase: lockedIds.has(p.id) }));
     }
 

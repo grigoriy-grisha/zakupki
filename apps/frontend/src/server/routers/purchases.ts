@@ -119,10 +119,7 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { items, skippedCount } = await ctx.services.purchase.addItems(
-                input.purchaseId,
-                input.productIds,
-            );
+            const { items, skippedCount } = await ctx.services.purchase.addItems(input.purchaseId, input.productIds);
 
             if (items.length === 0) {
                 throw new TRPCError({
@@ -180,15 +177,20 @@ export const purchasesRouter = router({
                             }),
                         )
                         .optional(),
-                    referenceStock: z.number().nullable().optional(),
-                    referenceStockUnit: z.string().nullable().optional(),
                     supplementStep: z.number().nullable().optional(),
+                    // Глобальный лимит поставщика (per-purchase). Сохраняется в PurchaseItem.
+                    supplierLimit: z.number().nullable().optional(),
+                    supplierLimitUnit: z.string().nullable().optional(),
                 }),
                 priceOverride: z.number().nullable().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const item = await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product, input.priceOverride ?? null);
+            const item = await ctx.services.purchase.updateItemProduct(
+                input.purchaseItemId,
+                input.product,
+                input.priceOverride ?? null,
+            );
 
             if (item.tgMessageId) {
                 await ctx.services.telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);
@@ -197,10 +199,8 @@ export const purchasesRouter = router({
             return { ok: true };
         }),
 
-    recalculateAmounts: adminProcedure
-        .input(z.object({ purchaseId: z.number() }))
-        .mutation(async ({ ctx, input }) => {
-            await ctx.services.purchase.recalculateAmounts(input.purchaseId);
-            return { ok: true };
-        }),
+    recalculateAmounts: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
+        await ctx.services.purchase.recalculateAmounts(input.purchaseId);
+        return { ok: true };
+    }),
 });

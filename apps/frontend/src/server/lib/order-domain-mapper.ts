@@ -3,14 +3,14 @@
  *
  * Граница приложения: конвертирует Prisma-объекты (с Decimal) в чистые
  * доменные объекты (с number) для OrderBook.
+ *
+ * Логика маппинга PurchaseItem живёт в shared (`mapToPurchaseItem`),
+ * здесь — тонкая обёртка для удобства вызова.
  */
-import { OrderLine, parsePriceTiers } from '@zakupki/types';
-import type {
-    OrderLineStatus,
-    PriceTier,
-    PurchaseFulfillmentStatus,
-    PurchaseItem,
-} from '@zakupki/types';
+import { mapToPurchaseItem as sharedMapToPurchaseItem, OrderLine } from '@zakupki/types';
+import type { OrderLineStatus, PurchaseFulfillmentStatus, PurchaseItem } from '@zakupki/types';
+
+export { mapToPurchaseItem } from '@zakupki/types';
 
 /** Минимальный интерфейс строки, совместимый с Prisma orderLine. */
 interface OrderLineRow {
@@ -30,49 +30,11 @@ interface OrderLineRow {
  * Конвертация Prisma findItemWithPrice → PurchaseItem (без orderLines).
  * Для OrderBook: строки передаются отдельно через toOrderLines.
  */
-export function mapToPurchaseItem(
-    item: {
-        id: number;
-        targetRemainder?: unknown;
-        supplementStep?: unknown;
-        product: {
-            pricePerUnit: unknown;
-            priceTiers?: unknown;
-            supplierPackageAmount?: unknown;
-            supplierPackageUnit?: string | null;
-            supplierPackagePrice?: unknown;
-            unitCode?: string;
-            multiplicity?: unknown;
-            minPackageAmount?: unknown;
-            minPackageUnit?: string | null;
-        };
-        priceOverride?: unknown;
-        purchase: {
-            fulfillmentStatus?: string | null;
-        };
-    },
+export function mapPurchaseItem(
+    item: Parameters<typeof sharedMapToPurchaseItem>[0],
     packDiscountPercent: number,
 ): PurchaseItem {
-    return {
-        purchaseItemId: item.id,
-        pricePerUnit: Number(item.product.pricePerUnit),
-        priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-        priceTiers: (parsePriceTiers(item.product.priceTiers) as PriceTier[]) ?? null,
-        packDiscountPercent,
-        supplierPackageAmount:
-            item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null,
-        supplierPackageUnit: item.product.supplierPackageUnit ?? null,
-        supplierPackagePrice:
-            item.product.supplierPackagePrice != null ? Number(item.product.supplierPackagePrice) : null,
-        unitCode: item.product.unitCode ?? 'piece',
-        multiplicity: Number(item.product.multiplicity ?? 1),
-        minPackageAmount:
-            item.product.minPackageAmount != null ? Number(item.product.minPackageAmount) : null,
-        minPackageUnit: item.product.minPackageUnit ?? null,
-        supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
-        fulfillmentStatus: (item.purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
-        targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-    };
+    return sharedMapToPurchaseItem(item, packDiscountPercent);
 }
 
 /** Конвертация Prisma orderLines → OrderLine[] (immutable entities) — один шаг без VO-прослойки. */

@@ -8,11 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, ChevronRight, X } from 'lucide-react';
-import {
-    PURCHASE_FULFILLMENT_LABELS,
-    type PurchaseFulfillmentStatus,
-    isSupplementPhase,
-} from '@zakupki/types';
+import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus, isSupplementPhase } from '@zakupki/types';
 import { cn } from '@/lib/utils';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import type { ShopPurchaseItem, ShopOrderLine } from '@/app/shop/lib/types';
@@ -88,9 +84,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     <Badge
                         className={
                             'text-sm px-2.5 py-0.5 ' +
-                            (isSupplement
-                                ? 'bg-warning-50 text-warning'
-                                : 'bg-success-50 text-success')
+                            (isSupplement ? 'bg-warning-50 text-warning' : 'bg-success-50 text-success')
                         }
                     >
                         {isSupplement ? 'Добор' : 'Активна'}
@@ -201,7 +195,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                                         packDiscountPercent={packDiscountPercent}
                                         baseQuantity={agg?.baseQuantity ?? undefined}
                                         isSupplement={isSupplement}
-                                        canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
+                                        canAddPackage={
+                                            fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'
+                                        }
                                         fulfillmentStatus={fulfillmentStatus}
                                     />
                                 );

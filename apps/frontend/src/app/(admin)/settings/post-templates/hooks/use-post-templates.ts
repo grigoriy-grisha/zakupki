@@ -10,7 +10,9 @@ export function useCreatePostTemplate() {
     const utils = trpc.useUtils();
     return trpc.postTemplates.create.useMutation({
         onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], 'Шаблон создан'),
-        onError: (err) => { toast.error(err.message); },
+        onError: (err) => {
+            toast.error(err.message);
+        },
     });
 }
 
@@ -18,7 +20,9 @@ export function useUpdatePostTemplate() {
     const utils = trpc.useUtils();
     return trpc.postTemplates.update.useMutation({
         onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], 'Шаблон сохранён'),
-        onError: (err) => { toast.error(err.message); },
+        onError: (err) => {
+            toast.error(err.message);
+        },
     });
 }
 
@@ -26,6 +30,8 @@ export function useDeletePostTemplate() {
     const utils = trpc.useUtils();
     return trpc.postTemplates.delete.useMutation({
         onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], 'Шаблон удалён'),
-        onError: (err) => { toast.error(err.message); },
+        onError: (err) => {
+            toast.error(err.message);
+        },
     });
 }

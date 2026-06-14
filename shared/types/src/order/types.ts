@@ -65,6 +65,13 @@ export interface PurchaseItem {
     fulfillmentStatus: PurchaseFulfillmentStatus;
     /** Явно заданный админом остаток добора. null — авторасчёт по пачкам. */
     targetRemainder: number | null;
+    /**
+     * Глобальный лимит остатка у поставщика (в ед. supplierLimitUnit).
+     * Суммарно все пользователи не могут заказать больше этого лимита ни на одном этапе.
+     * null — без ограничений.
+     */
+    supplierLimit: number | null;
+    supplierLimitUnit: string | null;
 }
 
 // ── Эффекты (результат операций) ───────────────────────────────────
@@ -102,6 +109,7 @@ export interface OrderError {
 export type OrderErrorCode =
     | 'forbidden'
     | 'pool_exceeded'
+    | 'limit_exceeded'
     | 'below_base'
     | 'no_package'
     | 'negative'

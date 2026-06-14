@@ -3,7 +3,6 @@ import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
-
 const settingKeySchema = z.string().refine(isSettingKey, { message: 'Неизвестный ключ настройки' });
 
 export const settingsRouter = router({

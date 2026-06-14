@@ -18,7 +18,12 @@ export type { StageConfig, TargetLineType, ZeroQuantityAction } from './stages';
 // StageStrategy (ООП стратегии по стадиям закупки)
 export { StageStrategy, BaseMutableStrategy, getStageStrategy } from './strategies/stage-strategy';
 export type { StageStrategyShim } from './strategies/stage-strategy';
-export { CollectionStrategy, ReorderStrategy, PaymentPlusStrategy, makeStrategy } from './strategies/concrete-strategies';
+export {
+    CollectionStrategy,
+    ReorderStrategy,
+    PaymentPlusStrategy,
+    makeStrategy,
+} from './strategies/concrete-strategies';
 
 // Internal-типы (нужны OrderBook, экспортируются для совместимости)
 export type { LineUpdate, MultiUpdate } from './strategies/atomic';
@@ -27,11 +32,13 @@ export { applyUpdates } from './strategies/atomic';
 export { buildDisplayContext } from './order-display';
 
 export { computeRawPool, computePoolInfo, validateSupplementPool } from './pool';
+export { computeRawSupplierLimit, computeSupplierLimitInfo, validateSupplierLimit } from './limit';
+export type { SupplierLimitInfo } from './limit';
 export { aggregateForPool } from './strategies/atomic';
 export { computeAmountDue, computeAmountDueWithPackages, computePackagePrice } from './pricing';
 export { mergeLines } from './aggregation';
-export { toOrderLineVO, toOrderLinesVO } from './mapping';
-export type { OrderLineRowLike } from './mapping';
+export { toOrderLineVO, toOrderLinesVO, mapToPurchaseItem } from './mapping';
+export type { OrderLineRowLike, PurchaseItemRowLike } from './mapping';
 
 export type {
     OrderLineVO,

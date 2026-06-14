@@ -13,10 +13,7 @@ export const FULFILLMENT_TRANSITIONS: Record<PurchaseFulfillmentStatus, readonly
     READY_FOR_PICKUP: [],
 };
 
-export function canTransitionFulfillment(
-    from: PurchaseFulfillmentStatus,
-    to: PurchaseFulfillmentStatus,
-): boolean {
+export function canTransitionFulfillment(from: PurchaseFulfillmentStatus, to: PurchaseFulfillmentStatus): boolean {
     return (FULFILLMENT_TRANSITIONS[from] ?? []).includes(to);
 }
 

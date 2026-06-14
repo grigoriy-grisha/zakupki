@@ -39,9 +39,7 @@ export class SettingsService {
         }
     }
 
-    async getMany<K extends readonly SettingKey[]>(
-        keys: K,
-    ): Promise<{ [I in K[number]]: SettingValue<I> }> {
+    async getMany<K extends readonly SettingKey[]>(keys: K): Promise<{ [I in K[number]]: SettingValue<I> }> {
         const out: Record<string, unknown> = {};
         for (const k of keys) {
             out[k] = await this.get(k);

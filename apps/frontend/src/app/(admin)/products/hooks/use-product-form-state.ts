@@ -8,11 +8,7 @@ import { productCreateSchema, type ProductCreateFormValues } from '../lib';
 import { useAttributeCatalog } from './use-attribute-catalog';
 import { usePhotoState } from './use-photo-state';
 import { useCharacteristicValues } from './use-characteristic-values';
-import {
-    revokePendingFiles,
-    type AttributeListItem,
-    type PendingFile,
-} from '../lib/product-form-utils';
+import { revokePendingFiles, type AttributeListItem, type PendingFile } from '../lib/product-form-utils';
 
 type ProductAttributeValueShape = {
     attribute: { id: number; typeId: number };
@@ -96,10 +92,7 @@ export function useProductFormState(editId: number | null, existing: ProductForm
     }
 
     // Photo state
-    const { photoIds, setPhotoIds, pendingFiles, setPendingFiles } = usePhotoState(
-        editId,
-        existing?.photos,
-    );
+    const { photoIds, setPhotoIds, pendingFiles, setPendingFiles } = usePhotoState(editId, existing?.photos);
     pendingFilesRef.current = pendingFiles;
 
     // Characteristic values

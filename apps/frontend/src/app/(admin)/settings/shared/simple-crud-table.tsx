@@ -105,14 +105,21 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                 onOpenChange={(open) => !open && setDeleteTarget(null)}
                 title={deleteTitle}
                 description={
-                    deleteTarget
-                        ? renderDeleteDescription
-                            ? renderDeleteDescription(deleteTarget)
-                            : <>Удалить <strong>{deleteTarget.name}</strong>?</>
-                        : ''
+                    deleteTarget ? (
+                        renderDeleteDescription ? (
+                            renderDeleteDescription(deleteTarget)
+                        ) : (
+                            <>
+                                Удалить <strong>{deleteTarget.name}</strong>?
+                            </>
+                        )
+                    ) : (
+                        ''
+                    )
                 }
                 onConfirm={() => {
-                    if (deleteTarget) deleteMutation.mutate({ id: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
+                    if (deleteTarget)
+                        deleteMutation.mutate({ id: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
                 }}
                 loading={deleteMutation.isPending}
             />

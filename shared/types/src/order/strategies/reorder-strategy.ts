@@ -15,6 +15,7 @@
  */
 import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
 import { validateSupplementPool } from '../pool';
+import { validateSupplierLimit } from '../limit';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
     aggregateForPool,
@@ -52,16 +53,19 @@ export class ReorderStrategy extends BaseMutableStrategy {
             return err(forbidden('На этом этапе нельзя добавить новый товар'));
         }
 
+        // Агрегируем один раз — используется и для pool, и для supplier limit.
+        const aggregation = aggregateForPool('REORDER', toActiveVOs(this.lines));
+
         // Pool: на суммарный user total
         const userCurrent = (base?.quantity ?? 0) + (supp?.quantity ?? 0);
         const userNew = userCurrent + delta;
-        const poolErr = validateSupplementPool(
-            this.item,
-            userNew,
-            userCurrent,
-            aggregateForPool('REORDER', toActiveVOs(this.lines)),
-        );
+        const poolErr = validateSupplementPool(this.item, userNew, userCurrent, aggregation);
         if (poolErr) return err(poolErr);
+
+        // Supplier limit: глобальный остаток поставщика. Если задан — не даёт сумме
+        // всех заказов превысить лимит. Может быть жёстче, чем pool (если оба заданы).
+        const limitErr = validateSupplierLimit(this.item, userNew, userCurrent, aggregation);
+        if (limitErr) return err(limitErr);
 
         // Split: fillBase = сколько delta идёт в base (до baseQuantity), spillover — в supp
         const { fillBase, spillover } = splitReorderDelta(delta, base?.baseQuantity ?? 0, base?.quantity ?? 0);
@@ -73,7 +77,9 @@ export class ReorderStrategy extends BaseMutableStrategy {
             const amountDue = computeAmountDueWithPackages(newQty, base.packageCount, this.item);
             const newBase = base.withQuantity(newQty, amountDue);
             updates.push({ old: base, new: newBase });
-            effects.push(makeUpsertEffect(this.item, userId, base.createdOnStage, newQty, amountDue, base.packageCount));
+            effects.push(
+                makeUpsertEffect(this.item, userId, base.createdOnStage, newQty, amountDue, base.packageCount),
+            );
         }
         if (spillover > 0) {
             const newQty = (supp?.quantity ?? 0) + spillover;
@@ -159,6 +165,23 @@ export class ReorderStrategy extends BaseMutableStrategy {
         }
         if (newBasePkg < 0 || newReorderPkg < 0) {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
+        }
+
+        // Supplier limit check: пакеты дают qty (pkg * supplierPackageAmount).
+        // Если delta>0 и пакеты увеличивают qty — проверяем глобальный пул.
+        if (delta > 0 && this.item.supplierPackageAmount != null) {
+            const pkgDeltaQty = delta * this.item.supplierPackageAmount;
+            const userCurrent = base.quantity + (supp?.quantity ?? 0);
+            const userNew = userCurrent + pkgDeltaQty;
+            if (userNew > 0) {
+                const limitErr = validateSupplierLimit(
+                    this.item,
+                    userNew,
+                    userCurrent,
+                    aggregateForPool('REORDER', toActiveVOs(this.lines)),
+                );
+                if (limitErr) return err(limitErr);
+            }
         }
 
         const updates: LineUpdate[] = [];

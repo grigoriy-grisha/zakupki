@@ -106,14 +106,7 @@ export abstract class BaseMutableStrategy extends StageStrategy {
             return {
                 updates: [{ old: target, new: target.withQuantity(newQty, amountDue) }],
                 effects: [
-                    makeUpsertEffect(
-                        this.item,
-                        userId,
-                        target.createdOnStage,
-                        newQty,
-                        amountDue,
-                        target.packageCount,
-                    ),
+                    makeUpsertEffect(this.item, userId, target.createdOnStage, newQty, amountDue, target.packageCount),
                 ],
             };
         }
@@ -152,14 +145,7 @@ export abstract class BaseMutableStrategy extends StageStrategy {
                     : computeAmountDue(newQty, this.item);
                 updates.push({ old: line, new: line.withQuantity(newQty, amountDue) });
                 effects.push(
-                    makeUpsertEffect(
-                        this.item,
-                        userId,
-                        line.createdOnStage,
-                        newQty,
-                        amountDue,
-                        line.packageCount,
-                    ),
+                    makeUpsertEffect(this.item, userId, line.createdOnStage, newQty, amountDue, line.packageCount),
                 );
             } else {
                 // qty=0 → zeroOut (delete or keep packages)
@@ -240,15 +226,24 @@ const STATIC_STRATEGIES: Record<PurchaseFulfillmentStatus, StageStrategyShim> = 
     COLLECTION: { stageName: 'COLLECTION', aggregateForPool: (vos) => aggregateForPool('COLLECTION', vos) },
     REORDER: { stageName: 'REORDER', aggregateForPool: (vos) => aggregateForPool('REORDER', vos) },
     PAYMENT: { stageName: 'PAYMENT', aggregateForPool: (vos) => aggregateForPool('PAYMENT', vos) },
-    SUPPLIER_ASSEMBLY: { stageName: 'SUPPLIER_ASSEMBLY', aggregateForPool: (vos) => aggregateForPool('SUPPLIER_ASSEMBLY', vos) },
-    PREPARING_SHIPMENT_RF: { stageName: 'PREPARING_SHIPMENT_RF', aggregateForPool: (vos) => aggregateForPool('PREPARING_SHIPMENT_RF', vos) },
+    SUPPLIER_ASSEMBLY: {
+        stageName: 'SUPPLIER_ASSEMBLY',
+        aggregateForPool: (vos) => aggregateForPool('SUPPLIER_ASSEMBLY', vos),
+    },
+    PREPARING_SHIPMENT_RF: {
+        stageName: 'PREPARING_SHIPMENT_RF',
+        aggregateForPool: (vos) => aggregateForPool('PREPARING_SHIPMENT_RF', vos),
+    },
     IN_TRANSIT_RF: { stageName: 'IN_TRANSIT_RF', aggregateForPool: (vos) => aggregateForPool('IN_TRANSIT_RF', vos) },
     IN_TRANSIT_TO_ORGANIZER: {
         stageName: 'IN_TRANSIT_TO_ORGANIZER',
         aggregateForPool: (vos) => aggregateForPool('IN_TRANSIT_TO_ORGANIZER', vos),
     },
     PACKAGING: { stageName: 'PACKAGING', aggregateForPool: (vos) => aggregateForPool('PACKAGING', vos) },
-    READY_FOR_PICKUP: { stageName: 'READY_FOR_PICKUP', aggregateForPool: (vos) => aggregateForPool('READY_FOR_PICKUP', vos) },
+    READY_FOR_PICKUP: {
+        stageName: 'READY_FOR_PICKUP',
+        aggregateForPool: (vos) => aggregateForPool('READY_FOR_PICKUP', vos),
+    },
 };
 
 export function getStageStrategy(stage: PurchaseFulfillmentStatus): StageStrategyShim {

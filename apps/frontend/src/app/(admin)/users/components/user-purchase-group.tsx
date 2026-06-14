@@ -64,7 +64,9 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                        {order.purchaseItem?.product?.unitCode ? getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '' : ''}
+                                        {order.purchaseItem?.product?.unitCode
+                                            ? (getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '')
+                                            : ''}
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
                                         {Number(order.amountDue).toLocaleString('ru-RU')} ₽

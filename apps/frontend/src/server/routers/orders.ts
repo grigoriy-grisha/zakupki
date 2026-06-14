@@ -9,7 +9,15 @@ export const ordersRouter = router({
      * При result <= 0 заказ удаляется.
      */
     adjustQuantity: protectedProcedure
-        .input(z.object({ purchaseItemId: z.number(), delta: z.number().int().refine((d) => d !== 0) }))
+        .input(
+            z.object({
+                purchaseItemId: z.number(),
+                delta: z
+                    .number()
+                    .int()
+                    .refine((d) => d !== 0),
+            }),
+        )
         .mutation(async ({ ctx, input }) => {
             return ctx.services.order.adjustQuantity(input.purchaseItemId, ctx.userId, input.delta);
         }),
