@@ -57,7 +57,12 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                 ) : (
                     <PurchaseProductEditForm
                         key={product.id}
-                        product={{ ...product, supplementStep: (item as any).supplementStep }}
+                        product={{
+                            ...product,
+                            supplementStep: item.supplementStep,
+                            supplierLimit: item.supplierLimit,
+                            supplierLimitUnit: item.supplierLimitUnit,
+                        }}
                         loadSavedDescription
                         purchaseTag={(purchase as unknown as PurchaseDetail)?.tag}
                         initialTiers={tiers}

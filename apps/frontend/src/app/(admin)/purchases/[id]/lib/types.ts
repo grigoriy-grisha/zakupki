@@ -55,6 +55,10 @@ export interface PurchaseItem {
     tgMessageId: string | null;
     tgChannelId: string | null;
     targetRemainder: string | number | null;
+    supplementStep?: string | number | null;
+    /** Глобальный лимит остатка у поставщика (per-purchase). */
+    supplierLimit?: string | number | null;
+    supplierLimitUnit?: string | null;
     product: PurchaseItemProduct;
     orderLines: OrderLineRef[];
 }

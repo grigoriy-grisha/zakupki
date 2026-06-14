@@ -25,9 +25,10 @@ const ITEM_INCLUDE = {
     },
     orderLines: { select: { quantity: true } },
     purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
-    supplierLimit: true,
-    supplierLimitUnit: true,
 } as const;
+
+// Prisma по умолчанию возвращает все scalar-поля (supplierLimit, supplierLimitUnit и др.)
+// наряду с relations из ITEM_INCLUDE — отдельный select не требуется.
 
 /**
  * Разрешает PurchaseItem по контексту Telegram-сообщения.
