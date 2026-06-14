@@ -54,10 +54,10 @@ export function isPurchasePaymentOpen(status: PurchaseFulfillmentStatus | null |
 export {
     OrderLine,
     OrderBook,
+    getStageConfig,
+    aggregateForPool,
     getStageStrategy,
-    CollectionStage,
-    ReorderStage,
-    PaymentPlusStage,
+    validateSupplementPool,
     computeRawPool,
     computePoolInfo,
     computeAmountDue,
@@ -66,9 +66,19 @@ export {
     mergeLines,
     toOrderLineVO,
     toOrderLinesVO,
+    // ООП StageStrategy (v3)
+    StageStrategy,
+    makeStrategy,
+    CollectionStrategy,
+    ReorderStrategy,
+    PaymentPlusStrategy,
 } from './order';
 export type {
-    StageStrategy,
+    StageConfig,
+    TargetLineType,
+    ZeroQuantityAction,
+    LineUpdate,
+    MultiUpdate,
     PoolAggregation,
     OrderLineVO,
     OrderLineProps,
@@ -82,6 +92,7 @@ export type {
     AggregatedOrder,
     OrderDisplayContext,
     OrderLineRowLike,
+    StageStrategyShim,
 } from './order';
 
 // Pricing

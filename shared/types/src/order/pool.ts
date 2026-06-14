@@ -1,17 +1,14 @@
 /**
  * Расчёт пула добора (supplement pool).
  *
- * Перенесено из supplement.ts и адаптировано под чистые доменные типы.
- * Логика идентична, но работает с OrderLineVO (number, не Decimal).
- *
  * Два пути:
  *  1. targetRemainder задан админом → pool = targetRemainder - supplementClaimed.
  *  2. Авторасчёт по пачкам: pool = packsNeeded * packSize - totalOrdered,
  *     где packsNeeded фиксируется по замороженному baseQuantity (REORDER)
  *     или по totalOrdered (COLLECTION, до заморозки).
  */
-import type { PoolInfo } from './types';
-import type { PoolAggregation } from './stages';
+import type { OrderError, PoolAggregation, PoolInfo, PurchaseItem } from './types';
+import { getUnitShortName } from './utils';
 
 /**
  * Считает «сырой» пул (сколько остатка доступно всем вместе) без привязки
@@ -83,4 +80,41 @@ export function computePoolInfo(input: {
         totalBaseQuantity: input.aggregation.totalBaseQuantity,
         totalOrderedQuantity: input.aggregation.totalOrderedQuantity,
     };
+}
+
+/**
+ * Проверяет, не превышает ли newQty доступный пул. `maxAllowed = pool + currentQty`
+ * (пул уже вычтен на supplementClaimed включая этого пользователя).
+ * Возвращает `null` если валидно или ограничений нет.
+ */
+export function validateSupplementPool(
+    item: PurchaseItem,
+    newQty: number,
+    currentQty: number,
+    aggregation: PoolAggregation,
+): OrderError | null {
+    const pool = computeRawPool({
+        targetRemainder: item.targetRemainder,
+        packSize: item.supplierPackageAmount,
+        aggregation,
+    });
+    if (pool == null) return null;
+
+    const maxAllowed = pool + currentQty;
+    if (newQty > maxAllowed + 1e-9) {
+        const canAddMore = Math.max(0, maxAllowed - currentQty);
+        const unitShort = getUnitShortName(item.unitCode);
+        return {
+            code: 'pool_exceeded',
+            message: formatPoolExceededMessage(canAddMore, unitShort),
+            canAddMore,
+            unitShort,
+        };
+    }
+    return null;
+}
+
+function formatPoolExceededMessage(canAddMore: number, unitShort: string): string {
+    const formatted = canAddMore % 1 === 0 ? String(canAddMore) : canAddMore.toFixed(3).replace(/\.?0+$/, '');
+    return `Нельзя добавить больше остатка. Можно ещё: ${formatted} ${unitShort}`;
 }

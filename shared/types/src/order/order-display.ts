@@ -1,0 +1,136 @@
+/**
+ * UI-контекст заказа — pure projection из (item, lines, userId).
+ *
+ * Выделено из OrderBook, чтобы отделить presentation от домена.
+ * Не меняет состояние, не делает эффектов, не зависит от `this`.
+ * Используется через `OrderBook.displayContextFor(userId)` (делегат).
+ */
+import {
+    buildOrderQtyOptions,
+    countFullSupplierPacks,
+    getOrderQuantityStep,
+    getPackDiscountPricingInfo,
+    getSupplementStep,
+    isSupplementPhase,
+} from '../index';
+import { computeAmountDueWithPackages, computePackagePrice } from './pricing';
+import { getStageConfig } from './stages';
+import { computePoolInfo } from './pool';
+import { aggregateForPool } from './strategies/atomic';
+import { mergeLines } from './aggregation';
+import { getUnitShortName } from './utils';
+import type { OrderDisplayContext, OrderLineVO, PurchaseItem } from './types';
+import type { OrderLine } from './order-line';
+
+export function buildDisplayContext(
+    item: PurchaseItem,
+    lines: readonly OrderLine[],
+    userId: number,
+): OrderDisplayContext {
+    const cfg = getStageConfig(item.fulfillmentStatus);
+    const shortName = getUnitShortName(item.unitCode);
+    const multiplicity = item.multiplicity || 1;
+    const price = item.priceOverride ?? item.pricePerUnit;
+    const packSize = item.supplierPackageAmount;
+
+    const total = mergeLines(filterUserLines(lines, userId).map((l) => l.toVO()));
+    const currentQuantity = total.quantity;
+    const currentPackageCount = total.packageCount;
+    const frozenBase = total.baseQuantity;
+
+    const activeStep = getSupplementStep({
+        fulfillmentStatus: item.fulfillmentStatus,
+        supplementStep: item.supplementStep,
+        regularStep: getOrderQuantityStep(
+            buildOrderQtyOptions({
+                multiplicity,
+                minPackageAmount: item.minPackageAmount,
+                minPackageUnit: item.minPackageUnit ?? null,
+                purchaseItemMinQty: null,
+                unitShort: shortName,
+            }),
+        ),
+    });
+
+    const poolInfo = buildPoolInfo(item, lines, userId);
+    const availablePool = poolInfo.pool;
+    const isSupplement = isSupplementPhase(item.fulfillmentStatus);
+    const hasSupplierPackage = packSize != null && packSize > 0;
+    const showPackageButtons = cfg.canAddPackages && hasSupplierPackage;
+    const packagePrice = computePackagePrice(item);
+    const packageTotal = currentPackageCount * packagePrice;
+    const amountDue = computeAmountDueWithPackages(currentQuantity, currentPackageCount, item);
+    const packDiscountInfo = getPackDiscountPricingInfo(item, item.packDiscountPercent);
+    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
+
+    const maxAllowed = availablePool != null && Number.isFinite(availablePool) ? availablePool + currentQuantity : Number.POSITIVE_INFINITY;
+    const minAllowed = cfg.target === 'supplement' ? frozenBase : 0;
+
+    const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
+    const poolExhausted = isSupplement && availablePool != null && availablePool <= 1e-9;
+    const isSoldOut = poolExhausted && !hasOrder;
+    const canAdd = currentQuantity < maxAllowed;
+    const canDecrease = currentQuantity > 0 && (cfg.target === 'base' || currentQuantity > frozenBase);
+
+    return {
+        shortName,
+        price,
+        currentQuantity,
+        currentPackageCount,
+        activeStep,
+        isSupplement,
+        pool: poolInfo,
+        isSoldOut,
+        packSize,
+        showPackageButtons,
+        packagePrice,
+        packageTotal,
+        total: amountDue,
+        fullPacks,
+        canAdd,
+        canDecrease,
+        hasOrder,
+        maxAllowed,
+        minAllowed,
+    };
+}
+
+function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: number) {
+    const cfg = getStageConfig(item.fulfillmentStatus);
+    if (!cfg.poolApplies) {
+        return {
+            pool: null,
+            maxAllowed: Number.POSITIVE_INFINITY,
+            canAddMore: Number.POSITIVE_INFINITY,
+            supplementClaimed: 0,
+            totalBaseQuantity: 0,
+            totalOrderedQuantity: 0,
+        };
+    }
+    const userLines = filterUserLines(lines, userId);
+    const baseQty = sumQty(userLines, (l) => l.isBase);
+    const suppQty = sumQty(userLines, (l) => l.isSupplement);
+    const currentQty = cfg.target === 'base' ? baseQty + suppQty : suppQty;
+    return computePoolInfo({
+        targetRemainder: item.targetRemainder,
+        packSize: item.supplierPackageAmount,
+        aggregation: aggregateForPool(item.fulfillmentStatus, activeVOs(lines)),
+        currentQty,
+    });
+}
+
+function filterUserLines(lines: readonly OrderLine[], userId: number): readonly OrderLine[] {
+    return lines.filter((l) => l.userId === userId && l.isActive);
+}
+
+function activeVOs(lines: readonly OrderLine[]): OrderLineVO[] {
+    return lines.filter((l) => l.isActive).map((l) => l.toVO());
+}
+
+function sumQty(lines: readonly OrderLine[], pred: (l: OrderLine) => boolean): number {
+    let s = 0;
+    for (const l of lines) {
+        if (pred(l)) s += l.quantity;
+    }
+    return s;
+}

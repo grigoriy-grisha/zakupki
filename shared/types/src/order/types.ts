@@ -109,6 +109,13 @@ export type OrderErrorCode =
 
 // ── Пул добора ─────────────────────────────────────────────────────
 
+/** Агрегация строк заказа для расчёта пула добора. */
+export interface PoolAggregation {
+    totalBaseQuantity: number;
+    supplementClaimed: number;
+    totalOrderedQuantity: number;
+}
+
 export interface PoolInfo {
     /** null — пул не ограничивает (COLLECTION или нет пачек/remainder). */
     pool: number | null;
