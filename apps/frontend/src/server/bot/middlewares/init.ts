@@ -3,6 +3,7 @@ import { serviceContainer } from '@/server/lib/service-container';
 
 import type { CustomContext } from '../domain/types';
 import { PROFILE_REFRESH_INTERVAL } from '../domain/constants';
+import { log } from '../lib/logger';
 
 export function initMiddleware() {
     return async (ctx: CustomContext, next: () => Promise<void>) => {
@@ -41,7 +42,7 @@ export function initMiddleware() {
             ctx.session.telegramId = ctx.from.id;
             ctx.session.profileRefreshedAt = Date.now();
         } catch (err) {
-            console.error('[init] createOrGetUser failed:', err);
+            log.error({ err, telegramId }, 'createOrGetUser failed');
         }
 
         await next();

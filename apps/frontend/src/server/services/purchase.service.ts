@@ -1,18 +1,13 @@
-import { NotFoundError, ValidationError, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import { calculateOrderAmount, NotFoundError, ValidationError } from '@zakupki/types';
 
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import { OrderRepository } from '../domain/order.repository';
-import { PurchaseRepository } from '../domain/purchase.repository';
 import { ProductRepository } from '../domain/product.repository';
+import { PurchaseRepository } from '../domain/purchase.repository';
 import { handleDbConflict } from '../lib/error-utils';
+import type { EventBus } from '@zakupki/queue';
+import type { PricingSettingsService } from './settings/pricing-settings';
 import type { TelegramPublishService } from './telegram-publish.service';
-import {
-    canTransitionFulfillment,
-    isFreezePoint,
-    isPaymentPlusFreezePoint,
-    isUnfreezePoint,
-    FULFILLMENT_TRANSITIONS,
-} from '@zakupki/types';
 
 export class PurchaseService {
     constructor(
@@ -20,6 +15,8 @@ export class PurchaseService {
         private productRepo: ProductRepository,
         private telegramPublish: TelegramPublishService,
         private orderRepo: OrderRepository,
+        private eventBus: EventBus,
+        private pricingSettings: PricingSettingsService,
     ) {}
 
     async list(status?: string) {
@@ -54,67 +51,6 @@ export class PurchaseService {
         }
     }
 
-    async updateStatus(id: number, status: string) {
-        return this.repo.updateStatus(id, status);
-    }
-
-    async updateFulfillmentStatus(id: number, fulfillmentStatus: string) {
-        const purchase = await this.repo.getById(id);
-        if (!purchase) throw new NotFoundError('Закупка', id);
-        const current = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
-        const next = fulfillmentStatus as PurchaseFulfillmentStatus;
-
-        if (!canTransitionFulfillment(current, next)) {
-            const allowed = FULFILLMENT_TRANSITIONS[current] ?? [];
-            throw new ValidationError(
-                `Недопустимый переход: ${current} → ${next}. Разрешено: ${allowed.join(', ') || '(нет)'} `,
-            );
-        }
-
-        const result = await this.repo.updateFulfillmentStatus(id, next);
-
-        // Заморозка baseQuantity при COLLECTION → REORDER И при REORDER → PAYMENT+
-        // (повторная заморозка COLLECTION-строк, удалённых/пересозданных на REORDER).
-        // freezeBaseQuantities идемпотентен: фильтрует `baseQuantity: null`.
-        if (isFreezePoint(next) || isPaymentPlusFreezePoint(next)) {
-            await this.orderRepo.freezeBaseQuantities(id);
-        }
-
-        // Разморозка при откате REORDER → COLLECTION
-        if (isUnfreezePoint(next)) {
-            await this.orderRepo.unfreezeBaseQuantities(id);
-        }
-
-        return result;
-    }
-
-    async activate(purchaseId: number) {
-        const purchase = await this.repo.getById(purchaseId);
-        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
-        if (purchase.status !== 'DRAFT') {
-            throw new ValidationError('Активировать можно только черновик');
-        }
-        return this.repo.updateStatus(purchaseId, 'ACTIVE');
-    }
-
-    async findItemsToPublish(purchaseId: number) {
-        const purchase = await this.repo.getById(purchaseId);
-        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
-        if (purchase.status !== 'ACTIVE') {
-            throw new ValidationError('Публиковать в Telegram можно только для активной закупки');
-        }
-        return this.repo.findUnpublishedItems(purchaseId);
-    }
-
-    async complete(id: number) {
-        const purchase = await this.repo.getById(id);
-        if (!purchase) throw new NotFoundError('Закупка', id);
-        if (purchase.status !== 'ACTIVE') {
-            throw new ValidationError('Завершить можно только активную закупку');
-        }
-        return this.repo.updateStatus(id, 'DONE');
-    }
-
     async deleteDraft(id: number) {
         const purchase = await this.repo.getById(id);
         if (!purchase) throw new NotFoundError('Закупка', id);
@@ -124,6 +60,15 @@ export class PurchaseService {
         const deleted = await this.repo.deleteDraft(id);
         if (!deleted) throw new NotFoundError('Закупка', id);
         return deleted;
+    }
+
+    async findItemsToPublish(purchaseId: number) {
+        const purchase = await this.repo.getById(purchaseId);
+        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
+        if (purchase.status !== 'ACTIVE') {
+            throw new ValidationError('Публиковать в Telegram можно только для активной закупки');
+        }
+        return this.repo.findUnpublishedItems(purchaseId);
     }
 
     async setPublicationState(purchaseItemId: number, state: 'DRAFT' | 'PUBLISHED') {
@@ -164,7 +109,7 @@ export class PurchaseService {
 
         // Write price override to PurchaseItem (per-purchase pricing)
         // Don't write pricePerUnit to the shared product — use priceOverride on the item
-        const { pricePerUnit, supplementStep, supplierLimit, supplierLimitUnit, ...nonPriceFields } =
+        const { pricePerUnit, supplementStep, supplierLimit, supplierLimitUnit, targetRemainder, ...nonPriceFields } =
             productData as Record<string, unknown>;
         void pricePerUnit; // consumed via priceOverride below
 
@@ -175,18 +120,24 @@ export class PurchaseService {
 
         // Собираем partial update PurchaseItem за один round-trip.
         // Только поля, которые явно пришли из формы (не undefined).
+        // supplierLimitUnit не сбрасывается в null, если не пришёл — иначе
+        // buildStatusBlock скрывает блок количеств целиком (если unit не указан).
         const itemUpdate: {
             priceOverride: number | null;
             supplementStep?: number | null;
             supplierLimit?: number | null;
             supplierLimitUnit?: string | null;
+            targetRemainder?: number | null;
         } = { priceOverride };
         if (supplementStep !== undefined) itemUpdate.supplementStep = supplementStep as number | null;
-        if (supplierLimit !== undefined) {
-            itemUpdate.supplierLimit = supplierLimit as number | null;
-            itemUpdate.supplierLimitUnit = (supplierLimitUnit as string | null) ?? null;
-        }
+        if (supplierLimit !== undefined) itemUpdate.supplierLimit = supplierLimit as number | null;
+        if (supplierLimitUnit !== undefined) itemUpdate.supplierLimitUnit = supplierLimitUnit as string | null;
+        if (targetRemainder !== undefined) itemUpdate.targetRemainder = targetRemainder as number | null;
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
+
+        // Emit в шину доменных событий (попадает в debounce-окно 7s).
+        // Воркер в боте сам подтянет актуальные данные из БД и обновит пост в канале.
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
 
         return item;
     }
@@ -219,8 +170,8 @@ export class PurchaseService {
         const item = await this.repo.findItemWithPurchase(id);
         if (!item) throw new NotFoundError('Позиция закупки', id);
 
-        if (item.tgMessageId && item.tgChannelId) {
-            await this.telegramPublish.enqueueDeleteChannelPost(item.tgChannelId, item.tgMessageId);
+        if (item.tgMessageId) {
+            await this.telegramPublish.enqueueDeleteChannelPost(id);
         }
 
         return this.repo.removeItem(id);
@@ -230,7 +181,11 @@ export class PurchaseService {
         purchaseId: number,
         items: { purchaseItemId: number; targetRemainder: number | null; supplementStep?: number | null }[],
     ) {
-        return this.repo.setAvailableQuantities(purchaseId, items);
+        const result = await this.repo.setAvailableQuantities(purchaseId, items);
+        // targetRemainder/supplementStep влияют на статусный блок поста — emit'им обновление
+        // для каждого item (попадает в debounce 7s в шине channel-post-events).
+        await Promise.all(items.map((i) => this.eventBus.emitPurchaseItemChanged(i.purchaseItemId)));
+        return result;
     }
 
     async findItemWithPrice(purchaseItemId: number) {
@@ -240,13 +195,17 @@ export class PurchaseService {
     /**
      * Пересчитать amountDue для всех ACTIVE заказов в закупке.
      * Вызывается после изменения цены админом (priceOverride, priceTiers).
+     * После пересчёта эмитит `emitPurchaseItemChanged` для каждого item — воркер
+     * перерендерит пост в канале (включая «Свободно к заказу»).
      */
     async recalculateAmounts(purchaseId: number) {
-        const { calculateOrderAmount } = await import('@zakupki/types');
         const purchase = await this.repo.getById(purchaseId);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
 
+        const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
+        const touchedItemIds = new Set<number>();
         for (const item of purchase.items) {
+            let touched = false;
             for (const line of item.orderLines) {
                 if (line.status !== 'ACTIVE') continue;
                 const qty = Number(line.quantity);
@@ -257,10 +216,14 @@ export class PurchaseService {
                     supplierPackageAmount: item.product.supplierPackageAmount,
                     supplierPackageUnit: item.product.supplierPackageUnit,
                     supplierPackagePrice: item.product.supplierPackagePrice,
-                    packDiscountPercent: 0, // TODO: get from PricingSettingsService when wired
+                    packDiscountPercent,
                 });
                 await this.orderRepo.updateAmountDue(line.id, amountDue);
+                touched = true;
             }
+            if (touched) touchedItemIds.add(item.id);
         }
+
+        await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
     }
 }

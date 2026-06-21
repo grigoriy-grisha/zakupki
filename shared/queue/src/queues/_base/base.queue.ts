@@ -28,7 +28,7 @@ export abstract class BaseQueue<DataType = unknown, ResultType = unknown, NameTy
         onFailed,
     }: {
         handler: Processor<DataType, ResultType, NameType>;
-        onFailed?: (job: Job<DataType, ResultType, NameType>, err: Error) => unknown;
+        onFailed?: (job: Job<DataType, ResultType, NameType>, err: Error, final: boolean) => unknown;
         onCompleted?: (job: Job<DataType, ResultType, NameType>, result: ResultType) => unknown;
     }): Worker<DataType, ResultType, NameType> {
         if (this.worker) throw new Error('Worker is already initialized');
@@ -46,9 +46,11 @@ export abstract class BaseQueue<DataType = unknown, ResultType = unknown, NameTy
                     return;
                 }
 
-                if (error.name === 'UnrecoverableError' || job.attemptsMade >= (job.opts?.attempts || 1)) {
-                    onFailed(job, error);
-                }
+                const isFinal =
+                    error.name === 'UnrecoverableError' || job.attemptsMade >= (job.opts?.attempts || 1);
+                // Логируем КАЖДЫЙ failed (не только финальный) — иначе пропустим
+                // промежуточные ретраи и не поймём что джоба застряла на 5 попыток.
+                onFailed(job, error, isFinal);
             });
         }
 

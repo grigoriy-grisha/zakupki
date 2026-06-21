@@ -3,6 +3,7 @@ import { getChannelPostThreadId, isOrderCollectionMessage } from '../lib/telegra
 import { OrderCollectionService } from '../services/order-collection.service';
 import { formatOrderReply } from '../lib/format-order-reply';
 import { reactOrderAccepted } from '../lib/order-ack';
+import { log } from '../lib/logger';
 import { serviceContainer } from '@/server/lib/service-container';
 
 export async function orderReplyHandler(ctx: CustomContext) {
@@ -42,15 +43,22 @@ export async function orderReplyHandler(ctx: CustomContext) {
     });
 
     if (!result.ok) {
-        console.warn(
-            `[order] Failed for user ${ctx.from.id} in chat ${ctx.chat.id}: ${result.reason} — ${result.message}`,
+        log.warn(
+            { telegramId: ctx.from.id, chatId: ctx.chat.id, reason: result.reason, message: result.message },
+            'order failed',
         );
         await ctx.reply(result.message, { reply_parameters: { message_id: ctx.message.message_id } });
         return;
     }
 
-    console.log(
-        `[order] Saved: user ${ctx.from.id}, ${result.productName}, total ${result.quantity} ${result.unitShort}`,
+    log.info(
+        {
+            telegramId: ctx.from.id,
+            product: result.productName,
+            quantity: result.quantity,
+            unit: result.unitShort,
+        },
+        'order saved',
     );
 
     // Получаем packDiscountPercent для форматирования

@@ -251,16 +251,24 @@ export function splitReorderDelta(
  *  - REORDER: totalBase = Σ baseQuantity, supplement = Σ max(0, qty - bq).
  *  - PAYMENT+: totalBase = Σ qty COLLECTION-строк, supplement = Σ qty не-COLLECTION.
  */
-export function aggregateForPool(stage: PurchaseFulfillmentStatus, lines: OrderLineVO[]): PoolAggregation {
+export function aggregateForPool(
+    stage: PurchaseFulfillmentStatus,
+    lines: OrderLineVO[],
+    packSize: number | null = null,
+): PoolAggregation {
     let totalBaseQuantity = 0;
     let supplementClaimed = 0;
     let totalOrderedQuantity = 0;
+    let totalOrderedWithPackages = 0;
+    const pack = packSize ?? 0;
 
     if (stage === 'COLLECTION') {
         for (const line of lines) {
-            if (line.status !== 'CANCELLED') totalOrderedQuantity += line.quantity;
+            if (line.status === 'CANCELLED') continue;
+            totalOrderedQuantity += line.quantity;
+            totalOrderedWithPackages += line.quantity + line.packageCount * pack;
         }
-        return { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity };
+        return { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity, totalOrderedWithPackages };
     }
 
     if (stage === 'REORDER') {
@@ -270,18 +278,20 @@ export function aggregateForPool(stage: PurchaseFulfillmentStatus, lines: OrderL
             totalBaseQuantity += bq;
             supplementClaimed += Math.max(0, line.quantity - bq);
             totalOrderedQuantity += line.quantity;
+            totalOrderedWithPackages += line.quantity + line.packageCount * pack;
         }
-        return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity };
+        return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity, totalOrderedWithPackages };
     }
 
     // PAYMENT+
     for (const line of lines) {
         if (line.status === 'CANCELLED') continue;
         totalOrderedQuantity += line.quantity;
+        totalOrderedWithPackages += line.quantity + line.packageCount * pack;
         if (line.createdOnStage === 'COLLECTION') totalBaseQuantity += line.quantity;
         else supplementClaimed += line.quantity;
     }
-    return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity };
+    return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity, totalOrderedWithPackages };
 }
 
 // ── Result constructors ─────────────────────────────────────────────

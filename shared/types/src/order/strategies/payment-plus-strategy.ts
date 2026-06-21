@@ -74,12 +74,16 @@ export class PaymentPlusStrategy extends BaseMutableStrategy {
         let totalBaseQuantity = 0;
         let supplementClaimed = 0;
         let totalOrderedQuantity = 0;
+        let totalOrderedWithPackages = 0;
+        const pack = this.item.supplierPackageAmount ?? 0;
         for (const line of this.lines) {
             if (!line.isActive) continue;
+            const qty = Number(line.quantity) + Number(line.packageCount) * pack;
             totalOrderedQuantity += line.quantity;
+            totalOrderedWithPackages += qty;
             if (line.isBase) totalBaseQuantity += line.quantity;
             else supplementClaimed += line.quantity;
         }
-        return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity };
+        return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity, totalOrderedWithPackages };
     }
 }

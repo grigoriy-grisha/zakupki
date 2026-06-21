@@ -8,6 +8,7 @@
 import {
     buildOrderQtyOptions,
     countFullSupplierPacks,
+    effectiveQty,
     getOrderQuantityStep,
     getPackDiscountPricingInfo,
     getSupplementStep,
@@ -102,8 +103,12 @@ export function buildDisplayContext(
 function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: number) {
     const cfg = getStageConfig(item.fulfillmentStatus);
     const userLines = filterUserLines(lines, userId);
-    const baseQty = sumQty(userLines, (l) => l.isBase);
-    const suppQty = sumQty(userLines, (l) => l.isSupplement);
+    const packSize = item.supplierPackageAmount;
+    // currentQty юзера: qty + пакеты как qty (effective). Это то, что лимит/пул
+    // должны учитывать, иначе юзер с qty=70 + pkg=1 (30г) при limit=100 пускает
+    // сверх лимита.
+    const baseQty = sumEffective(userLines, (l) => l.isBase, packSize);
+    const suppQty = sumEffective(userLines, (l) => l.isSupplement, packSize);
     const currentQty = cfg.target === 'base' ? baseQty + suppQty : suppQty;
 
     // Базовый pool (targetRemainder / packs) — работает только на REORDER/PAYMENT+
@@ -116,12 +121,13 @@ function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: 
             supplementClaimed: 0,
             totalBaseQuantity: 0,
             totalOrderedQuantity: 0,
+            totalOrderedWithPackages: 0,
         };
     } else {
         poolInfo = computePoolInfo({
             targetRemainder: item.targetRemainder,
-            packSize: item.supplierPackageAmount,
-            aggregation: aggregateForPool(item.fulfillmentStatus, activeVOs(lines)),
+            packSize,
+            aggregation: aggregateForPool(item.fulfillmentStatus, activeVOs(lines), packSize),
             currentQty,
         });
     }
@@ -134,8 +140,9 @@ function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: 
                   totalBaseQuantity: poolInfo.totalBaseQuantity,
                   supplementClaimed: poolInfo.supplementClaimed,
                   totalOrderedQuantity: poolInfo.totalOrderedQuantity,
+                  totalOrderedWithPackages: poolInfo.totalOrderedWithPackages,
               }
-            : aggregateForPool('COLLECTION', activeVOs(lines));
+            : aggregateForPool('COLLECTION', activeVOs(lines), packSize);
         const limitInfo = computeSupplierLimitInfo({
             supplierLimit: item.supplierLimit,
             aggregation,
@@ -161,10 +168,14 @@ function activeVOs(lines: readonly OrderLine[]): OrderLineVO[] {
     return lines.filter((l) => l.isActive).map((l) => l.toVO());
 }
 
-function sumQty(lines: readonly OrderLine[], pred: (l: OrderLine) => boolean): number {
+function sumEffective(
+    lines: readonly OrderLine[],
+    pred: (l: OrderLine) => boolean,
+    packSize: number | null,
+): number {
     let s = 0;
     for (const l of lines) {
-        if (pred(l)) s += l.quantity;
+        if (pred(l)) s += effectiveQty(l, packSize);
     }
     return s;
 }

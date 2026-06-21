@@ -67,6 +67,7 @@ export function computePoolInfo(input: {
             supplementClaimed: input.aggregation.supplementClaimed,
             totalBaseQuantity: input.aggregation.totalBaseQuantity,
             totalOrderedQuantity: input.aggregation.totalOrderedQuantity,
+            totalOrderedWithPackages: input.aggregation.totalOrderedWithPackages,
         };
     }
 
@@ -79,6 +80,7 @@ export function computePoolInfo(input: {
         supplementClaimed: input.aggregation.supplementClaimed,
         totalBaseQuantity: input.aggregation.totalBaseQuantity,
         totalOrderedQuantity: input.aggregation.totalOrderedQuantity,
+        totalOrderedWithPackages: input.aggregation.totalOrderedWithPackages,
     };
 }
 

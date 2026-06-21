@@ -3,11 +3,11 @@
 export type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'ARRIVED' | 'DONE';
 
 export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
-    DRAFT: 'Chernovik',
-    ACTIVE: 'Aktivnaya',
-    CLOSED: 'Zakryta',
-    ARRIVED: 'Prishla',
-    DONE: 'Zavershena',
+    DRAFT: 'Черновик',
+    ACTIVE: 'Активная',
+    CLOSED: 'Закрыта',
+    ARRIVED: 'Прибыла',
+    DONE: 'Завершена',
 };
 
 /** Zakupka zavershena organizatorom — zakazy ukhodyat v «proshlye». */
@@ -31,15 +31,15 @@ export const PURCHASE_FULFILLMENT_STATUSES = [
 export type PurchaseFulfillmentStatus = (typeof PURCHASE_FULFILLMENT_STATUSES)[number];
 
 export const PURCHASE_FULFILLMENT_LABELS: Record<PurchaseFulfillmentStatus, string> = {
-    COLLECTION: 'Sbor zakazov',
-    REORDER: 'Dobory',
-    PAYMENT: 'Oplata zakazov',
-    SUPPLIER_ASSEMBLY: 'Na komplektatsii u postavshchika',
-    PREPARING_SHIPMENT_RF: 'Podgotovka k otpravke v RF',
-    IN_TRANSIT_RF: 'Edet v RF',
-    IN_TRANSIT_TO_ORGANIZER: 'Edet do organizatora',
-    PACKAGING: 'Fasovka',
-    READY_FOR_PICKUP: 'Zakazy gotovy k vydache (otpravke)',
+    COLLECTION: 'Сбор заказов',
+    REORDER: 'Доборы',
+    PAYMENT: 'Оплата заказов',
+    SUPPLIER_ASSEMBLY: 'Комплектация',
+    PREPARING_SHIPMENT_RF: 'Отправка в РФ',
+    IN_TRANSIT_RF: 'Едет в РФ',
+    IN_TRANSIT_TO_ORGANIZER: 'До организатора',
+    PACKAGING: 'Фасовка',
+    READY_FOR_PICKUP: 'К выдаче',
 };
 
 /** Oplata dostupna na etape PAYMENT i vsekh posleduyushchikh. */
@@ -76,6 +76,10 @@ export {
     CollectionStrategy,
     ReorderStrategy,
     PaymentPlusStrategy,
+    effectiveQty,
+    sumEffectiveQty,
+    userEffectiveQty,
+    totalOrderedQuantity,
 } from './order';
 export type {
     StageConfig,
@@ -140,6 +144,9 @@ export {
     formatSupplementCardPreviewHint,
     formatSupplementOrderHint,
 } from './supplement-formatting';
+
+// Payment proof MIME types
+export { PROOF_MIME_TYPES, PROOF_MIME_BY_EXT } from './proof-mime';
 
 // Errors
 export {

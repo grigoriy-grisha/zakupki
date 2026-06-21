@@ -73,7 +73,7 @@ async function showPurchaseDetail(ctx: CustomContext, purchaseId: number) {
         return;
     }
 
-    const payment = await serviceContainer.payment.getPurchasePaymentInfo(userId, purchaseId);
+    const payment = await serviceContainer.botPayment.getPurchasePaymentInfo(userId, purchaseId);
     const fulfillmentStatus = detail.lines[0]?.purchaseItem?.purchase?.fulfillmentStatus as
         | PurchaseFulfillmentStatus
         | undefined;

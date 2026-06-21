@@ -1,4 +1,11 @@
-import { computePackagePrice, getUnitByCode, mapToPurchaseItem, mergeLines, toOrderLinesVO } from '@zakupki/types';
+import {
+    computePackagePrice,
+    getOrderQuantityStep,
+    getUnitByCode,
+    mapToPurchaseItem,
+    mergeLines,
+    toOrderLinesVO,
+} from '@zakupki/types';
 import { serviceContainer } from '@/server/lib/service-container';
 
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
@@ -70,7 +77,7 @@ export class OrderCollectionService {
         const pricing = this.getItemPricing(purchaseItem);
 
         try {
-            const result = await this.applyDelta(purchaseItem, user.id, parsed);
+            await this.applyDelta(purchaseItem, user.id, parsed);
 
             // После операции получаем ВСЕ строки пользователя для этого purchaseItem
             // (с createdOnStage их может быть две: COLLECTION + supplement) и объединяем.
@@ -154,11 +161,9 @@ export class OrderCollectionService {
     ) {
         const count = Math.round(parsed.amount);
         const sign = parsed.kind === 'add' ? 1 : -1;
-        let lastResult: any = null;
-        for (let i = 0; i < count; i++) {
-            lastResult = await serviceContainer.order.adjustPackageCount(purchaseItemId, userId, sign);
-        }
-        return lastResult;
+        // Один round-trip: adjustPackages(userId, delta) принимает delta > 1 и считает
+        // supplier-limit за один проход по актуальному агрегату (корректнее N вызовов по ±1).
+        return serviceContainer.order.adjustPackageCount(purchaseItemId, userId, count * sign);
     }
 
     private async applyQuantityDelta(
@@ -166,10 +171,12 @@ export class OrderCollectionService {
         userId: number,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
-        const minPackaging =
-            Number(purchaseItem.product.minPackageAmount) || Number(purchaseItem.product.multiplicity) || 1;
-        const steps = Math.round(parsed.amount / minPackaging);
-        const delta = parsed.kind === 'add' ? steps * minPackaging : -steps * minPackaging;
+        const step = getOrderQuantityStep({
+            minPackageAmount: Number(purchaseItem.product.minPackageAmount) || null,
+            multiplicity: Number(purchaseItem.product.multiplicity) || null,
+        });
+        const steps = Math.round(parsed.amount / step);
+        const delta = parsed.kind === 'add' ? steps * step : -steps * step;
         return serviceContainer.order.adjustQuantity(purchaseItem.id, userId, delta);
     }
 }

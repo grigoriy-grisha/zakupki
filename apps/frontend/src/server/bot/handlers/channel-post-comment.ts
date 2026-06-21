@@ -1,79 +1,40 @@
 import type { Message } from 'grammy/types';
+import { createLogger } from '@zakupki/logger';
 
 import type { CustomContext } from '../domain/types';
-import { getLinkedDiscussionChatId } from '../lib/channel-discussion';
-import {
-    SHOP_COMMENT_TEXT,
-    formatShopCommentError,
-    markShopCommentPosted,
-    shopCommentReplyOptions,
-    wasShopCommentPosted,
-} from '../lib/post-shop-comment';
+import { isLinkedDiscussionChat } from '../lib/telegram-chat';
 import { getChannelIdFromEnv } from '../lib/telegram-post';
-import { chatIdsMatch } from '../lib/telegram-chat';
-import { shopUrlKeyboard } from '../lib/webapp-url';
+import { getDiscussionMessageStore } from '../lib/discussion-message-store';
 
-function isOurChannelAutomaticForward(message: Message, chatId: number): boolean {
-    if (!message.is_automatic_forward) return false;
+const log = createLogger('channel-post-comment');
 
-    const channelId = getChannelIdFromEnv();
-    if (message.sender_chat?.type === 'channel' && channelId && chatIdsMatch(message.sender_chat.id, channelId)) {
-        return true;
+function getChannelPostIdFromForward(message: Message): number | null {
+    if (message.forward_origin?.type === 'channel') {
+        return message.forward_origin.message_id;
     }
-
-    const origin = message.forward_origin;
-    if (origin?.type === 'channel' && channelId && chatIdsMatch(origin.chat.id, channelId)) {
-        return true;
-    }
-
-    const discussionId = getLinkedDiscussionChatId();
-    if (discussionId && chatIdsMatch(chatId, discussionId)) {
-        return true;
-    }
-
-    return false;
+    const legacy = (message as { forward_from_message_id?: number }).forward_from_message_id;
+    return legacy ?? null;
 }
 
+/**
+ * Handler `is_automatic_forward` в обсуждении канала. Единственная задача —
+ * проиндексировать `channelPostMessageId → discussionMessageId` в Redis.
+ * Shop-комментарий и статус-комментарии отправляет TgPostWorker (через
+ * очередь tg-post-jobs).
+ */
 export async function channelPostShopCommentHandler(ctx: CustomContext) {
     if (!ctx.message || !ctx.chat) return;
     if (!ctx.message.is_automatic_forward) return;
-    if (!isOurChannelAutomaticForward(ctx.message, ctx.chat.id)) return;
+    if (!isLinkedDiscussionChat(ctx.chat.id)) return;
 
-    const channelPostId =
-        ctx.message.forward_origin?.type === 'channel'
-            ? ctx.message.forward_origin.message_id
-            : (ctx.message as { forward_from_message_id?: number }).forward_from_message_id;
-
+    const channelPostId = getChannelPostIdFromForward(ctx.message);
     if (channelPostId == null) {
-        console.warn('[TG] Автопересылка без id поста канала');
+        log.warn({ messageId: ctx.message.message_id }, 'auto-forward without channel post id');
         return;
     }
 
-    if (wasShopCommentPosted(channelPostId)) {
-        return;
-    }
-
-    try {
-        await ctx.reply(SHOP_COMMENT_TEXT, shopCommentReplyOptions(ctx.message.message_id));
-        markShopCommentPosted(channelPostId);
-        console.log(
-            `[TG] Shop comment reply on discussion msg ${ctx.message.message_id} (channel post ${channelPostId})`,
-        );
-    } catch (err) {
-        const replyMarkup = shopUrlKeyboard();
-        if (replyMarkup) {
-            try {
-                await ctx.reply(SHOP_COMMENT_TEXT, {
-                    reply_parameters: { message_id: ctx.message.message_id },
-                });
-                markShopCommentPosted(channelPostId);
-                console.log(`[TG] Shop comment text-only reply under post ${channelPostId}`);
-                return;
-            } catch (retryErr) {
-                console.error('[TG] Shop comment failed:', formatShopCommentError(retryErr));
-                return;
-            }
-        }
-        console.error('[TG] Shop comment failed:', formatShopCommentError(err));
-    }
+    const channelId = getChannelIdFromEnv();
+    if (!channelId) return;
+    await getDiscussionMessageStore().set(channelId, channelPostId, ctx.message.message_id);
+    log.debug({ channelPostId, discussionMessageId: ctx.message.message_id }, 'indexed');
 }

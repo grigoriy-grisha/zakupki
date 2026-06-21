@@ -12,6 +12,7 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
             totalBaseQuantity: 0,
             supplementClaimed: 0,
             totalOrderedQuantity: 0,
+            totalOrderedWithPackages: 0,
         });
         expect(err).toBeNull();
     });
@@ -22,6 +23,7 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
             totalBaseQuantity: 0,
             supplementClaimed: 0,
             totalOrderedQuantity: 0,
+            totalOrderedWithPackages: 0,
         });
         expect(err).toBeNull();
     });
@@ -32,6 +34,7 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
             totalBaseQuantity: 0,
             supplementClaimed: 0,
             totalOrderedQuantity: 0,
+            totalOrderedWithPackages: 0,
         });
         expect(err).not.toBeNull();
         expect(err!.code).toBe('limit_exceeded');
@@ -50,6 +53,7 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
             totalBaseQuantity: 100,
             supplementClaimed: 0,
             totalOrderedQuantity: 200,
+            totalOrderedWithPackages: 200,
         });
         expect(err).not.toBeNull();
         expect(err!.code).toBe('limit_exceeded');
@@ -59,7 +63,7 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
     it('computeRawSupplierLimit: limit=150, total=120 → 30', () => {
         const pool = computeRawSupplierLimit({
             supplierLimit: 150,
-            aggregation: { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity: 120 },
+            aggregation: { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity: 120, totalOrderedWithPackages: 120 },
         });
         expect(pool).toBe(30);
     });
@@ -67,7 +71,7 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
     it('computeRawSupplierLimit: limit=150, total=200 → 0 (не отрицательное)', () => {
         const pool = computeRawSupplierLimit({
             supplierLimit: 150,
-            aggregation: { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity: 200 },
+            aggregation: { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity: 200, totalOrderedWithPackages: 200 },
         });
         expect(pool).toBe(0);
     });
@@ -75,8 +79,22 @@ describe('Limit. Валидатор: validateSupplierLimit', () => {
     it('computeRawSupplierLimit: limit=null → null', () => {
         const pool = computeRawSupplierLimit({
             supplierLimit: null,
-            aggregation: { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity: 50 },
+            aggregation: { totalBaseQuantity: 0, supplementClaimed: 0, totalOrderedQuantity: 50, totalOrderedWithPackages: 50 },
         });
         expect(pool).toBeNull();
+    });
+
+    it('computeRawSupplierLimit: учитывает пакеты в totalOrderedWithPackages', () => {
+        // qty=100, pkg=2 (по 30) → effective=160. limit=150. pool = 150-160 = -10 → 0.
+        const pool = computeRawSupplierLimit({
+            supplierLimit: 150,
+            aggregation: {
+                totalBaseQuantity: 0,
+                supplementClaimed: 0,
+                totalOrderedQuantity: 100,
+                totalOrderedWithPackages: 160,
+            },
+        });
+        expect(pool).toBe(0);
     });
 });

@@ -1,0 +1,41 @@
+
+https://prudishly-jocular-dachshund.cloudpub.ru/api/trpc/products.update?batch=1
+[
+    {
+        "error": {
+            "message": "Custom Id cannot contain :",
+            "code": -32603,
+            "data": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "httpStatus": 500,
+                "stack": "Error: Custom Id cannot contain :\n    at Job.validateOptions (C:\\Users\\grisha_blyat\\PhpstormProjects\\untitled18\\apps\\frontend\\.next\\dev\\server\\chunks\\04ek_bullmq_dist_esm_0tyry5u._.js:3658:23)\n    at Job.addJob (C:\\Users\\grisha_blyat\\PhpstormProjects\\untitled18\\apps\\frontend\\.next\\dev\\server\\chunks\\04ek_bullmq_dist_esm_0tyry5u._.js:3618:14)\n    at Job.create (C:\\Users\\grisha_blyat\\PhpstormProjects\\untitled18\\apps\\frontend\\.next\\dev\\server\\chunks\\04ek_bullmq_dist_esm_0tyry5u._.js:2775:28)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Queue.addJob (C:\\Users\\grisha_blyat\\PhpstormProjects\\untitled18\\apps\\frontend\\.next\\dev\\server\\chunks\\04ek_bullmq_dist_esm_0tyry5u._.js:18450:25)\n    at async C:\\Users\\grisha_blyat\\PhpstormProjects\\untitled18\\apps\\frontend\\.next\\dev\\server\\chunks\\04ek_bullmq_dist_esm_0tyry5u._.js:18415:25",
+                "path": "products.update"
+            }
+        }
+    }
+]
+
+тело {
+       "id": 2,
+       "description": "<p>test tovar</p>",
+       "pricePerUnit": 100,
+       "priceTiers": [
+         {
+           "amount": 10,
+           "unit": "гр",
+           "price": 1000
+         }
+       ],
+       "minPackageAmount": 5,
+       "minPackageUnit": "гр",
+       "supplierPackageAmount": 100,
+       "supplierPackageUnit": "гр",
+       "supplierPackagePrice": 10000,
+       "supplierPackageTiers": [
+         {
+           "amount": 100,
+           "unit": "гр",
+           "price": 10000
+         }
+       ]
+     }

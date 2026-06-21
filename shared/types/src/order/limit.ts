@@ -27,6 +27,10 @@ export interface SupplierLimitInfo {
  * Считает «сырой» остаток supplierLimit (сколько ещё можно добрать всем вместе)
  * без привязки к конкретному пользователю.
  *
+ * Использует `totalOrderedWithPackages` — effective qty с учётом пакетов.
+ * Пакеты = qty для целей supplier limit, чтобы юзер с qty=70 + pkg=1 (30г) при
+ * limit=100 не мог взять ещё пачку.
+ *
  * @returns null если ограничений нет (supplierLimit == null).
  */
 export function computeRawSupplierLimit(input: {
@@ -35,7 +39,7 @@ export function computeRawSupplierLimit(input: {
 }): number | null {
     const { supplierLimit, aggregation } = input;
     if (supplierLimit == null) return null;
-    return Math.max(0, supplierLimit - aggregation.totalOrderedQuantity);
+    return Math.max(0, supplierLimit - aggregation.totalOrderedWithPackages);
 }
 
 /**

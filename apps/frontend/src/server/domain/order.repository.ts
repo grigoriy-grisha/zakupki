@@ -213,6 +213,23 @@ export class OrderRepository {
     }
 
     /**
+     * Вернуть список PurchaseItem.id, на которые у пользователя есть ACTIVE-строки
+     * в данной закупке. Используется OrderService, чтобы эмитить обновление поста
+     * после `deleteAllByUserAndPurchase`.
+     */
+    async findPurchaseItemIdsByUserAndPurchase(userId: number, purchaseId: number): Promise<number[]> {
+        const rows = await dbClient.orderLine.findMany({
+            where: {
+                userId,
+                purchaseItem: { purchaseId },
+            },
+            select: { purchaseItemId: true },
+            distinct: ['purchaseItemId'],
+        });
+        return rows.map((r) => r.purchaseItemId);
+    }
+
+    /**
      * Заморозить baseQuantity и basePackageCount для COLLECTION-строк закупки
      * (при переходе COLLECTION → REORDER).
      */

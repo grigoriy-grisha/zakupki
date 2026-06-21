@@ -19,6 +19,7 @@ import {
     orderReplyHandler,
 } from './handlers';
 import { isOrderCollectionMessage } from './lib/telegram-chat';
+import { log } from './lib/logger';
 
 function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
     return {
@@ -34,7 +35,7 @@ function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
 export function createBot({ token, proxyUrl }: CreateBotOptions) {
     const proxy = proxyUrl?.trim();
     if (proxy) {
-        console.log('[bot] Telegram API via proxy');
+        log.info('Telegram API via proxy');
     }
 
     const bot = new Bot<CustomContext>(token, proxy ? botConfigWithProxy(proxy) : undefined);
@@ -62,6 +63,10 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
         await next();
     });
 
+    // Единственный handler на is_automatic_forward — внутри делает и индексацию
+    // (для статус-комментариев через reply_parameters), и shop-комментарий.
+    // grammY вызывает только ОДИН handler на событие, поэтому дублировать
+    // `bot.on('message:is_automatic_forward', ...)` нельзя.
     bot.on('message:is_automatic_forward', channelPostShopCommentHandler);
 
     bot.command('start', startCommand);
@@ -90,17 +95,14 @@ export function createBot({ token, proxyUrl }: CreateBotOptions) {
         await ctx.reply('Используйте /start чтобы открыть магазин.');
     });
     bot.catch((err) => {
-        console.error(err);
-        const ctx = err.ctx;
-        console.error(`Error while handling update ${ctx.update.update_id}:`);
         const e = err.error;
-        if (e instanceof GrammyError) {
-            console.error('GrammyError:', e.description);
-        } else if (e instanceof HttpError) {
-            console.error('HttpError:', e);
-        } else {
-            console.error('Unknown error:', e);
-        }
+        const errorMeta =
+            e instanceof GrammyError
+                ? { kind: 'GrammyError', description: e.description }
+                : e instanceof HttpError
+                  ? { kind: 'HttpError', error: e }
+                  : { kind: 'Unknown', error: e };
+        log.error({ updateId: err.ctx.update.update_id, ...errorMeta }, 'error while handling update');
     });
 
     return bot;

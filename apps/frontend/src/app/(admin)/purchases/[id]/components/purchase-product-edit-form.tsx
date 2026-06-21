@@ -44,6 +44,8 @@ export type PurchaseProductSaveData = {
     // Глобальный лимит поставщика — per-purchase, сохраняется в PurchaseItem.
     supplierLimit: number | null;
     supplierLimitUnit: string | null;
+    // Fix #8: целевой остаток теперь редактируется и в ItemEditSheet.
+    targetRemainder: number | null;
 };
 
 interface PurchaseProductEditFormProps {
@@ -58,6 +60,7 @@ interface PurchaseProductEditFormProps {
         supplementStep?: string | number | null;
         supplierLimit?: string | number | null;
         supplierLimitUnit?: string | null;
+        targetRemainder?: string | number | null;
         description?: string | null;
         priceTiers?: unknown;
         unit?: { shortName?: string | null; name?: string | null } | null;
@@ -81,6 +84,7 @@ function applyPurchaseFields(
         setSupplementStep: (v: number | null) => void;
         setSupplierLimit: (v: number | null) => void;
         setSupplierLimitUnit: (v: string | null) => void;
+        setTargetRemainder: (v: number | null) => void;
     },
     next: PurchaseProductFormState,
 ) {
@@ -92,6 +96,7 @@ function applyPurchaseFields(
     setters.setSupplementStep(next.supplementStep);
     setters.setSupplierLimit(next.supplierLimit);
     setters.setSupplierLimitUnit(next.supplierLimitUnit);
+    setters.setTargetRemainder(next.targetRemainder);
 }
 
 function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
@@ -129,6 +134,7 @@ export function PurchaseProductEditForm({
     const [supplementStep, setSupplementStep] = useState<number | null>(initial.supplementStep);
     const [supplierLimit, setSupplierLimit] = useState<number | null>(initial.supplierLimit);
     const [supplierLimitUnit, setSupplierLimitUnit] = useState<string | null>(initial.supplierLimitUnit);
+    const [targetRemainder, setTargetRemainder] = useState<number | null>(initial.targetRemainder);
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
     const [priceError, setPriceError] = useState<string | null>(null);
@@ -158,6 +164,7 @@ export function PurchaseProductEditForm({
                 setSupplementStep,
                 setSupplierLimit,
                 setSupplierLimitUnit,
+                setTargetRemainder,
             },
             next,
         );
@@ -335,6 +342,7 @@ export function PurchaseProductEditForm({
             supplementStep,
             supplierLimit,
             supplierLimitUnit,
+            targetRemainder,
         });
     }
 
@@ -423,6 +431,23 @@ export function PurchaseProductEditForm({
                 <p className="text-xs text-muted-foreground">
                     Глобальный лимит остатка у поставщика: суммарно все покупатели не могут заказать больше этого
                     количества ни на одном этапе (COLLECTION / REORDER / PAYMENT). Если не задан — без ограничений.
+                </p>
+            </div>
+
+            <div className="space-y-1">
+                <Label htmlFor="targetRemainder">Целевой остаток (добор)</Label>
+                <Input
+                    id="targetRemainder"
+                    type="number"
+                    step="0.001"
+                    min={0}
+                    placeholder="0"
+                    value={targetRemainder != null ? String(targetRemainder) : ''}
+                    onChange={(e) => setTargetRemainder(e.target.value === '' ? null : Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                    Сколько ещё нужно добрать у поставщика на этапе REORDER. Отображается в посте как «🎯 Целевой
+                    остаток: N ед.» (Fix #8). Оставьте пустым, если добор не нужен.
                 </p>
             </div>
 

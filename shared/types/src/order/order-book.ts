@@ -15,6 +15,7 @@ import { computeSupplierLimitInfo } from './limit';
 import { getStageConfig } from './stages';
 import { mergeLines } from './aggregation';
 import { buildDisplayContext } from './order-display';
+import { effectiveQty } from './order-math';
 import { aggregateForPool, applyUpdates, toActiveVOs, type LineUpdate, type MultiUpdate } from './strategies/atomic';
 import { makeStrategy } from './strategies/concrete-strategies';
 import { StageStrategy } from './strategies/stage-strategy';
@@ -98,6 +99,7 @@ export class OrderBook {
 
     poolFor(userId: number): PoolInfo {
         const cfg = getStageConfig(this.item.fulfillmentStatus);
+        const packSize = this.item.supplierPackageAmount;
         if (!cfg.poolApplies) {
             return {
                 pool: null,
@@ -106,18 +108,18 @@ export class OrderBook {
                 supplementClaimed: 0,
                 totalBaseQuantity: 0,
                 totalOrderedQuantity: 0,
+                totalOrderedWithPackages: 0,
             };
         }
-        const baseQty = this.userLines(userId)
-            .filter((l) => l.isBase)
-            .reduce((s, l) => s + l.quantity, 0);
-        const suppQty = this.userLines(userId)
-            .filter((l) => l.isSupplement)
-            .reduce((s, l) => s + l.quantity, 0);
+        // currentQty юзера: qty + пакеты как qty (effective). Иначе supplierLimit
+        // пустит сверх лимита (баг: qty=70 + pkg=1 (30г) при limit=100).
+        const userUserLines = this.userLines(userId);
+        const baseQty = userUserLines.filter((l) => l.isBase).reduce((s, l) => s + effectiveQty(l, packSize), 0);
+        const suppQty = userUserLines.filter((l) => l.isSupplement).reduce((s, l) => s + effectiveQty(l, packSize), 0);
         const currentQty = cfg.target === 'base' ? baseQty + suppQty : suppQty;
         const poolInfo = computePoolInfo({
             targetRemainder: this.item.targetRemainder,
-            packSize: this.item.supplierPackageAmount,
+            packSize,
             aggregation: this.poolAggregation(),
             currentQty,
         });
@@ -132,9 +134,10 @@ export class OrderBook {
                           totalBaseQuantity: poolInfo.totalBaseQuantity,
                           supplementClaimed: poolInfo.supplementClaimed,
                           totalOrderedQuantity: poolInfo.totalOrderedQuantity,
+                          totalOrderedWithPackages: poolInfo.totalOrderedWithPackages,
                       }
                     : this.poolAggregation()
-                : aggregateForPool('COLLECTION', toActiveVOs(this.lines));
+                : aggregateForPool('COLLECTION', toActiveVOs(this.lines), packSize);
             const limitInfo = computeSupplierLimitInfo({
                 supplierLimit: this.item.supplierLimit,
                 aggregation,

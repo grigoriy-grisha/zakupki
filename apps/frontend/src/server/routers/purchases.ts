@@ -61,7 +61,7 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            return ctx.services.purchase.updateStatus(input.id, input.status);
+            return ctx.services.purchaseStatus.updateStatus(input.id, input.status);
         }),
 
     updateFulfillmentStatus: adminProcedure
@@ -72,11 +72,11 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            return ctx.services.purchase.updateFulfillmentStatus(input.id, input.fulfillmentStatus);
+            return ctx.services.purchaseStatus.updateFulfillmentStatus(input.id, input.fulfillmentStatus);
         }),
 
     activate: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
-        return ctx.services.purchase.activate(input.purchaseId);
+        return ctx.services.purchaseStatus.activate(input.purchaseId);
     }),
 
     publishToTelegram: adminProcedure
@@ -87,7 +87,7 @@ export const purchasesRouter = router({
         }),
 
     complete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        return ctx.services.purchase.complete(input.id);
+        return ctx.services.purchaseStatus.complete(input.id);
     }),
 
     deleteDraft: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
@@ -181,21 +181,20 @@ export const purchasesRouter = router({
                     // Глобальный лимит поставщика (per-purchase). Сохраняется в PurchaseItem.
                     supplierLimit: z.number().nullable().optional(),
                     supplierLimitUnit: z.string().nullable().optional(),
+                    // Fix #8: targetRemainder теперь редактируется и через ItemEditSheet.
+                    targetRemainder: z.number().nullable().optional(),
                 }),
                 priceOverride: z.number().nullable().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const item = await ctx.services.purchase.updateItemProduct(
+            await ctx.services.purchase.updateItemProduct(
                 input.purchaseItemId,
                 input.product,
                 input.priceOverride ?? null,
             );
-
-            if (item.tgMessageId) {
-                await ctx.services.telegramPublish.enqueueEditPurchaseItem(input.purchaseItemId);
-            }
-
+            // Edit поста в канале обрабатывается шиной channel-post-events —
+            // PurchaseService.updateItemProduct уже вызывает eventBus.emitPurchaseItemChanged.
             return { ok: true };
         }),
 

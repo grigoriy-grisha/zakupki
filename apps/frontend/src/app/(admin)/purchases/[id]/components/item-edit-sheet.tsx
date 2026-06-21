@@ -62,6 +62,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                             supplementStep: item.supplementStep,
                             supplierLimit: item.supplierLimit,
                             supplierLimitUnit: item.supplierLimitUnit,
+                            targetRemainder: item.targetRemainder,
                         }}
                         loadSavedDescription
                         purchaseTag={(purchase as unknown as PurchaseDetail)?.tag}

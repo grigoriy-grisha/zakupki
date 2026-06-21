@@ -1,6 +1,6 @@
 import { InlineKeyboard, type NextFunction } from 'grammy';
 
-import { isPurchasePaymentOpen } from '@zakupki/types';
+import { isPurchasePaymentOpen, PROOF_MIME_BY_EXT, PROOF_MIME_TYPES } from '@zakupki/types';
 import { serviceContainer } from '@/server/lib/service-container';
 
 import type { CustomContext } from '../domain/types';
@@ -27,7 +27,7 @@ export async function payCommand(ctx: CustomContext) {
     }
 
     const userId = ctx.session.userId!;
-    const payable = await serviceContainer.payment.getPayablePurchases(userId);
+    const payable = await serviceContainer.botPayment.getPayablePurchases(userId);
 
     if (payable.length === 0) {
         const active = await serviceContainer.order.getActivePurchases(userId);
@@ -85,7 +85,7 @@ export async function payCallbackQuery(ctx: CustomContext) {
             return;
         }
 
-        const info = await serviceContainer.payment.getPurchasePaymentInfo(userId, purchaseId);
+        const info = await serviceContainer.botPayment.getPurchasePaymentInfo(userId, purchaseId);
         if (!info || info.remaining <= 0 || info.hasPending) {
             await ctx.answerCallbackQuery({ text: 'Оплата недоступна' });
             await ctx.editMessageText('Эта закупка больше недоступна для оплаты. Нажмите /pay снова.');
@@ -121,7 +121,7 @@ export async function payCallbackQuery(ctx: CustomContext) {
             return;
         }
 
-        const info = await serviceContainer.payment.getPurchasePaymentInfo(userId, purchaseId);
+        const info = await serviceContainer.botPayment.getPurchasePaymentInfo(userId, purchaseId);
         if (!info || info.remaining <= 0 || info.hasPending) {
             await ctx.answerCallbackQuery({ text: 'Оплата недоступна' });
             return;
@@ -213,15 +213,6 @@ function messageHasPaymentFile(ctx: CustomContext): boolean {
     );
 }
 
-const PROOF_MIME_BY_EXT: Record<string, string> = {
-    pdf: 'application/pdf',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-    gif: 'image/gif',
-};
-
 function mimeFromDocument(fileName: string | undefined, mimeType: string | undefined): string | null {
     if (mimeType && mimeType !== 'application/octet-stream') {
         return mimeType;
@@ -275,8 +266,7 @@ export async function paymentProofHandler(ctx: CustomContext) {
         return;
     }
 
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
-    if (!allowed.includes(mimeType)) {
+    if (!PROOF_MIME_TYPES.has(mimeType)) {
         await ctx.reply('Допустимы только изображения и PDF (до 5 МБ).');
         return;
     }
@@ -285,7 +275,7 @@ export async function paymentProofHandler(ctx: CustomContext) {
 
     try {
         const proofData = await downloadTelegramFile(ctx.api, fileId, BOT_TOKEN);
-        await serviceContainer.payment.submitPaymentWithProof({
+        await serviceContainer.botPayment.submitPaymentWithProof({
             userId: ctx.session.userId!,
             purchaseId: flow.purchaseId,
             amount: flow.amount,

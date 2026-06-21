@@ -1,9 +1,14 @@
 import { NotFoundError } from '@zakupki/types';
+import { dbClient } from '@zakupki/database';
 
 import { ProductRepository, type ProductCreateData, type ProductWriteData } from '../domain/product.repository';
+import type { EventBus } from '@zakupki/queue';
 
 export class ProductService {
-    constructor(private repo: ProductRepository) {}
+    constructor(
+        private repo: ProductRepository,
+        private eventBus: EventBus,
+    ) {}
 
     async list(search?: string) {
         return this.repo.listWithPurchaseFlag(search);
@@ -20,7 +25,18 @@ export class ProductService {
     }
 
     async update(id: number, data: ProductWriteData) {
-        return this.repo.update(id, data);
+        const result = await this.repo.update(id, data);
+
+        // Emit в шину: найти все PurchaseItem с этим Product, у которых УЖЕ есть пост
+        // в канале (tgMessageId != null), и обновить их. Дедуп по `pi:<id>` сольёт
+        // несколько emit'ов в одно обновление в течение debounce-окна.
+        const linkedItems = await dbClient.purchaseItem.findMany({
+            where: { productId: id, tgMessageId: { not: null } },
+            select: { id: true },
+        });
+        await Promise.all(linkedItems.map((it) => this.eventBus.emitPurchaseItemChanged(it.id)));
+
+        return result;
     }
 
     async updateWithVersionCheck(id: number, data: ProductWriteData, expectedVersion: number) {

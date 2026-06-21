@@ -109,4 +109,55 @@ describe('T. Сосуществование qty и pkg на REORDER-линии',
         // packageCount = COLLECTION(3) + REORDER(2) = 5
         expect(total.packageCount).toBe(5);
     });
+
+    // ── BUG: adjust(+qty) не должен обнулять пакеты на supp-строке ──
+    //
+    // Сценарий: на REORDER юзер имеет REORDER-пакеты (через adjustPackages(+N)).
+    // Затем жмёт adjust(+qty) для добора граммов. Раньше эффект уезжал в БД
+    // с packageCount=0, и пакеты "терялись" (асимметрия с adjust(-qty), который
+    // сохранял пакеты через supp.packageCount).
+
+    it('adjust(+qty) на REORDER сохраняет pkg на supp-строке', () => {
+        const book = setupBook();
+        // Добавляем 2 пачки на REORDER: supp.packageCount=2, qty=10.
+        const book2 = applyAdjustPackages(book, 1, 2);
+        expect(book2.supplementLineFor(1)?.packageCount).toBe(2);
+
+        // adjust(+5) — qty на supp должна расти, packageCount НЕ обнуляться.
+        const result = book2.adjust(1, 5);
+
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.book.supplementLineFor(1)?.quantity).toBe(15);
+        // Пакеты сохранились — adjust(+qty) не сбрасывает их.
+        expect(result.book.supplementLineFor(1)?.packageCount).toBe(2);
+        // Effect для REORDER содержит прежний packageCount (=2), не 0.
+        const suppEffect = result.changes.find((c) => c.type === 'upsert' && c.createdOnStage === 'REORDER');
+        expect(suppEffect).toBeDefined();
+        if (suppEffect?.type === 'upsert') {
+            expect(suppEffect.packageCount).toBe(2);
+        }
+    });
+
+    it('adjust(+qty) на REORDER когда нет supp — создаёт с pkg=0', () => {
+        // COLLECTION: qty=80, pkg=3, base.frozenPkg=3 (gap=0).
+        // adjust(+5) — fillBase=0, spillover=5 → новая REORDER-строка с pkg=0.
+        const book = OrderBook.create(makeItem('REORDER', { targetRemainder: 50 }), [
+            makeFrozenCollectionLine({
+                id: 1,
+                quantity: 80,
+                baseQuantity: 80,
+                amountDue: 8000,
+                packageCount: 3,
+                basePackageCount: 3,
+            }),
+        ]);
+        const result = book.adjust(1, 5);
+
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        const supp = result.book.supplementLineFor(1);
+        expect(supp?.quantity).toBe(5);
+        expect(supp?.packageCount).toBe(0); // новая строка, пакетов нет
+    });
 });

@@ -21,6 +21,7 @@
         "@trpc/server": "^11.17.0",
         "@vkid/sdk": "2.6.5",
         "@zakupki/database": "workspace:*",
+        "@zakupki/logger": "workspace:*",
         "@zakupki/queue": "workspace:*",
         "@zakupki/storage": "workspace:*",
         "@zakupki/types": "workspace:*",

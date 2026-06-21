@@ -16,6 +16,7 @@
 import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
 import { validateSupplementPool } from '../pool';
 import { validateSupplierLimit } from '../limit';
+import { effectiveQty } from '../order-math';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
     aggregateForPool,
@@ -54,10 +55,13 @@ export class ReorderStrategy extends BaseMutableStrategy {
         }
 
         // Агрегируем один раз — используется и для pool, и для supplier limit.
-        const aggregation = aggregateForPool('REORDER', toActiveVOs(this.lines));
+        // packSize обязателен: без него пакеты не учитываются в totalOrderedQuantity
+        // и supplierLimit пускает сверх лимита (баг "Доступно: 70 гр" при qty+pkg = limit).
+        const packSize = this.item.supplierPackageAmount;
+        const aggregation = aggregateForPool('REORDER', toActiveVOs(this.lines), packSize);
 
-        // Pool: на суммарный user total
-        const userCurrent = (base?.quantity ?? 0) + (supp?.quantity ?? 0);
+        // Pool: на суммарный user total. Пакеты = qty (effective).
+        const userCurrent = effectiveQty(base, packSize) + effectiveQty(supp, packSize);
         const userNew = userCurrent + delta;
         const poolErr = validateSupplementPool(this.item, userNew, userCurrent, aggregation);
         if (poolErr) return err(poolErr);
@@ -88,7 +92,11 @@ export class ReorderStrategy extends BaseMutableStrategy {
                 ? supp.withQuantity(newQty, amountDue)
                 : makeNewLine(this.item, userId, 'REORDER', newQty, amountDue, 0);
             updates.push({ old: supp, new: newSupp });
-            effects.push(makeUpsertEffect(this.item, userId, 'REORDER', newQty, amountDue, 0));
+            // Не передаём packageCount в effect — БД сохранит прежнее значение supp-строки
+            // (хардкод 0 обнулял пакет при adjust(+qty), что было багом).
+            effects.push(
+                makeUpsertEffect(this.item, userId, 'REORDER', newQty, amountDue, supp?.packageCount ?? 0),
+            );
         }
         return { updates, effects };
     }
@@ -170,15 +178,18 @@ export class ReorderStrategy extends BaseMutableStrategy {
         // Supplier limit check: пакеты дают qty (pkg * supplierPackageAmount).
         // Если delta>0 и пакеты увеличивают qty — проверяем глобальный пул.
         if (delta > 0 && this.item.supplierPackageAmount != null) {
-            const pkgDeltaQty = delta * this.item.supplierPackageAmount;
-            const userCurrent = base.quantity + (supp?.quantity ?? 0);
+            const packSize = this.item.supplierPackageAmount;
+            const pkgDeltaQty = delta * packSize;
+            // userCurrent должен учитывать и текущие пакеты, иначе лимит считается
+            // только от qty и разрешает превысить supplierLimit.
+            const userCurrent = effectiveQty(base, packSize) + effectiveQty(supp, packSize);
             const userNew = userCurrent + pkgDeltaQty;
             if (userNew > 0) {
                 const limitErr = validateSupplierLimit(
                     this.item,
                     userNew,
                     userCurrent,
-                    aggregateForPool('REORDER', toActiveVOs(this.lines)),
+                    aggregateForPool('REORDER', toActiveVOs(this.lines), packSize),
                 );
                 if (limitErr) return err(limitErr);
             }
@@ -223,13 +234,17 @@ export class ReorderStrategy extends BaseMutableStrategy {
         let totalBaseQuantity = 0;
         let supplementClaimed = 0;
         let totalOrderedQuantity = 0;
+        let totalOrderedWithPackages = 0;
+        const pack = this.item.supplierPackageAmount ?? 0;
         for (const line of this.lines) {
             if (!line.isActive) continue;
             const bq = line.baseQuantity ?? 0;
+            const qty = Number(line.quantity) + Number(line.packageCount) * pack;
             totalBaseQuantity += bq;
             supplementClaimed += Math.max(0, line.quantity - bq);
             totalOrderedQuantity += line.quantity;
+            totalOrderedWithPackages += qty;
         }
-        return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity };
+        return { totalBaseQuantity, supplementClaimed, totalOrderedQuantity, totalOrderedWithPackages };
     }
 }

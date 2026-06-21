@@ -17,6 +17,8 @@ export type PurchaseProductFieldSource = {
     // Глобальный лимит поставщика (per-purchase). Хранится в PurchaseItem.
     supplierLimit?: string | number | null;
     supplierLimitUnit?: string | null;
+    // Fix #8: целевой остаток (на этапе REORDER) — теперь редактируется и в ItemEditSheet.
+    targetRemainder?: string | number | null;
     unitCode?: string;
 };
 

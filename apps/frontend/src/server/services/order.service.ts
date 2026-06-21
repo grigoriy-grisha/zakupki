@@ -3,6 +3,7 @@ import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
+import { EventBus } from '@zakupki/queue';
 import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
@@ -15,12 +16,17 @@ import type { PricingSettingsService } from '../services/settings/pricing-settin
  *
  * Ключевое: COLLECTION-строки (createdOnStage='COLLECTION') — базовый заказ,
  * supplement-строки (createdOnStage!='COLLECTION') — добор из остатков.
+ *
+ * Каждая мутация, меняющая сумму активных orderLines, эмитит
+ * `eventBus.emitPurchaseItemChanged` — это пушит обновление поста в канале
+ * (worker пересобирает «Свободно к заказу» из актуальной БД).
  */
 export class OrderService {
     constructor(
         private repo: OrderRepository,
         private purchaseRepo: PurchaseRepository,
         private pricingSettings: PricingSettingsService,
+        private eventBus: EventBus,
     ) {}
 
     // ── Public API: мутации ─────────────────────────────────────────
@@ -35,6 +41,7 @@ export class OrderService {
         const result = OrderBook.create(item, lines).adjust(userId, delta);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
     }
 
     /**
@@ -47,6 +54,7 @@ export class OrderService {
         const result = OrderBook.create(item, lines).adjustPackages(userId, delta);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
     }
 
     // ── Public API: запросы ────────────────────────────────────────
@@ -64,6 +72,11 @@ export class OrderService {
         return this.repo.getByPurchase(purchaseId);
     }
 
+    /** Все строки пользователя (для расчёта карты оплат ботом). */
+    async findAllActiveByUser(userId: number) {
+        return this.repo.findAllByUserId(userId);
+    }
+
     async cancelOrder(id: number, userId: number) {
         const line = await this.repo.findById(id);
         if (!line) return null;
@@ -74,15 +87,23 @@ export class OrderService {
         if (!canCancelOrder(fulfillmentStatus)) {
             throw new ValidationError('На этом этапе нельзя отменить заказ');
         }
-        return this.repo.cancelOrder(id);
+        const result = await this.repo.cancelOrder(id);
+        await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
+        return result;
     }
 
     async delete(id: number) {
-        return this.repo.delete(id);
+        const line = await this.repo.findById(id);
+        const result = await this.repo.delete(id);
+        if (line) await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
+        return result;
     }
 
     async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
-        return this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
+        const itemIds = await this.repo.findPurchaseItemIdsByUserAndPurchase(userId, purchaseId);
+        const result = await this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
+        await Promise.all(itemIds.map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+        return result;
     }
 
     async getActivePurchases(userId: number) {

@@ -21,7 +21,11 @@
         "paths": {
             "@/*": ["./src/*"],
             "@zakupki/database": ["../../shared/database/src/database.ts"],
-            "@zakupki/database/*": ["../../shared/database/generated/client/*"]
+            "@zakupki/database/*": ["../../shared/database/generated/client/*"],
+            "@zakupki/types": ["../../shared/types/src/index.ts"],
+            "@zakupki/queue": ["../../shared/queue/src/index.ts"],
+            "@zakupki/storage": ["../../shared/storage/src/index.ts"],
+            "@zakupki/logger": ["../../shared/logger/src/index.ts"]
         }
     },
     "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],

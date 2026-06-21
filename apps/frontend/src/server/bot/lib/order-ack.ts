@@ -1,17 +1,14 @@
 import { GrammyError } from 'grammy';
 
 import type { CustomContext } from '../domain/types';
+import { log } from './logger';
 
 /** Grammy типизирует стандартный набор; ❤ — красное сердце в Telegram. */
 const ACK_REACTIONS = ['❤', '👍', '🎉'] as const;
 
-function formatApiError(err: unknown): string {
-    if (err instanceof GrammyError) {
-        return `${err.error_code}: ${err.description}`;
-    }
-    if (err instanceof Error) {
-        return err.message;
-    }
+function describeError(err: unknown): string {
+    if (err instanceof GrammyError) return `${err.error_code}: ${err.description}`;
+    if (err instanceof Error) return err.message;
     return String(err);
 }
 
@@ -19,17 +16,17 @@ function formatApiError(err: unknown): string {
 export async function reactOrderAccepted(ctx: CustomContext): Promise<void> {
     const message = ctx.message;
     if (!message) {
-        console.warn('[order] reactOrderAccepted: no message in context');
+        log.warn('reactOrderAccepted: no message in context');
         return;
     }
 
     for (const emoji of ACK_REACTIONS) {
         try {
             await ctx.react(emoji);
-            console.log(`[order] Reaction ${emoji} on message ${message.message_id}`);
+            log.debug({ emoji, messageId: message.message_id }, 'reaction set');
             return;
         } catch (err) {
-            console.warn(`[order] ctx.react(${emoji}): ${formatApiError(err)}`);
+            log.warn({ emoji, messageId: message.message_id, error: describeError(err) }, 'ctx.react failed');
         }
     }
 
@@ -38,8 +35,8 @@ export async function reactOrderAccepted(ctx: CustomContext): Promise<void> {
             reply_parameters: { message_id: message.message_id },
             disable_notification: true,
         });
-        console.warn(`[order] Sent ❤️ reply fallback for message ${message.message_id}`);
+        log.warn({ messageId: message.message_id }, 'sent ❤️ reply fallback');
     } catch (err) {
-        console.error('[order] Ack failed:', formatApiError(err));
+        log.error({ err, messageId: message.message_id }, 'ack failed');
     }
 }

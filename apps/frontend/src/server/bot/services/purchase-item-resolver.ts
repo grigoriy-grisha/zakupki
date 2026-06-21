@@ -4,6 +4,7 @@ import { dbClient } from '@zakupki/database';
 
 import { getChannelIdFromEnv } from '../lib/telegram-post';
 import { allTelegramPostRefs, type ReplyToMessage, walkReplyChain } from '../lib/resolve-reply-purchase-item';
+import { log } from '../lib/logger';
 
 /** Ключ-кандидат для поиска PurchaseItem по Telegram-контексту. */
 interface LookupCandidate {
@@ -150,7 +151,7 @@ export class PurchaseItemResolver {
             for (const key of keys) pipeline.set(key, String(id), 'EX', CACHE_TTL);
             await pipeline.exec();
         } catch (err) {
-            console.error('[Redis cache] error:', err);
+            log.error({ err, keys }, 'Redis cache set failed');
         }
     }
 }

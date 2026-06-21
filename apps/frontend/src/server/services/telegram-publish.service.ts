@@ -1,12 +1,15 @@
-import type { TelegramChannelPostQueue } from '@zakupki/queue';
 import { AppError, ValidationError } from '@zakupki/types';
 
-import { getTelegramChannelPostQueue } from '../lib/telegram-channel-post-queue';
+import type { EventBus } from '@zakupki/queue';
 
 export type TgPublishQueuedResult = { queued: number };
 
+/**
+ * Публикация товара в Telegram-канал. Тонкая обёртка над EventBus —
+ * только валидирует конфиг и переводит ошибки в понятные сообщения.
+ */
 export class TelegramPublishService {
-    constructor(private readonly queue: TelegramChannelPostQueue = getTelegramChannelPostQueue()) {}
+    constructor(private readonly eventBus: EventBus) {}
 
     private assertChannelConfigured(): void {
         const raw = (process.env.TELEGRAM_CHANNEL_ID ?? process.env.TG_CHANNEL_ID)?.trim();
@@ -17,19 +20,8 @@ export class TelegramPublishService {
 
     async enqueuePurchaseItems(purchaseItemIds: number[]): Promise<number> {
         if (purchaseItemIds.length === 0) return 0;
-
         this.assertChannelConfigured();
-
-        await Promise.all(
-            purchaseItemIds.map((purchaseItemId) =>
-                this.queue.addPurchaseItemPost({
-                    type: 'PURCHASE_ITEM_CHANNEL_POST',
-                    purchaseItemId,
-                }),
-            ),
-        );
-
-        console.log(`[TG queue] Enqueued ${purchaseItemIds.length} post(s)`);
+        await Promise.all(purchaseItemIds.map((id) => this.eventBus.emitPostCreate(id)));
         return purchaseItemIds.length;
     }
 
@@ -37,18 +29,12 @@ export class TelegramPublishService {
         publishToTg: boolean | undefined,
         purchaseItemIds: number[],
     ): Promise<TgPublishQueuedResult | null> {
-        if (!publishToTg || purchaseItemIds.length === 0) {
-            return null;
-        }
-
+        if (!publishToTg || purchaseItemIds.length === 0) return null;
         const queued = await this.enqueuePurchaseItems(purchaseItemIds);
         return { queued };
     }
 
-    /**
-     * Постановка в очередь после успешного addItems.
-     * При ошибке конфигурации — ошибка с пояснением, что товары уже в закупке.
-     */
+    /** Постановка в очередь после успешного addItems. */
     async enqueueAfterAddItems(
         publishToTg: boolean | undefined,
         purchaseItemIds: number[],
@@ -63,27 +49,13 @@ export class TelegramPublishService {
         }
     }
 
-    async enqueueEditPurchaseItem(purchaseItemId: number) {
-        this.assertChannelConfigured();
-        await this.queue.addPurchaseItemPost({
-            type: 'PURCHASE_ITEM_CHANNEL_POST_EDIT',
-            purchaseItemId,
-        });
-        console.log(`[TG queue] Enqueued edit for purchase item ${purchaseItemId}`);
-    }
-
     async publishPurchaseItem(purchaseItemId: number): Promise<{ queued: boolean }> {
         const queued = await this.enqueuePurchaseItems([purchaseItemId]);
         return { queued: queued > 0 };
     }
 
-    async enqueueDeleteChannelPost(tgChannelId: string, tgMessageId: string): Promise<void> {
+    async enqueueDeleteChannelPost(itemId: number): Promise<void> {
         this.assertChannelConfigured();
-        await this.queue.addPurchaseItemPost({
-            type: 'PURCHASE_ITEM_CHANNEL_POST_DELETE',
-            tgChannelId,
-            tgMessageId,
-        });
-        console.log(`[TG queue] Enqueued delete for message ${tgMessageId}`);
+        await this.eventBus.emitPostDelete(itemId);
     }
 }

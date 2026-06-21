@@ -84,6 +84,7 @@ export function emptyPurchaseFields(unit?: string): PurchaseProductFormState {
         supplementStep: null,
         supplierLimit: null,
         supplierLimitUnit: u,
+        targetRemainder: null,
     };
 }
 
@@ -110,6 +111,7 @@ export function savedPurchaseFields(
             supplementStep: product.supplementStep != null ? Number(product.supplementStep) : null,
             supplierLimit: product.supplierLimit != null ? Math.trunc(Number(product.supplierLimit)) : null,
             supplierLimitUnit: product.supplierLimitUnit ?? catalogUnit,
+            targetRemainder: product.targetRemainder != null ? Number(product.targetRemainder) : null,
         },
         catalogUnit,
     );
@@ -134,4 +136,5 @@ export type PurchaseProductFormState = {
     supplementStep: number | null;
     supplierLimit: number | null;
     supplierLimitUnit: string;
+    targetRemainder: number | null;
 };

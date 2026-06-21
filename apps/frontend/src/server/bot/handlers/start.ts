@@ -2,6 +2,7 @@ import { GrammyError } from 'grammy';
 
 import type { CustomContext } from '../domain/types';
 import { getWebAppUrl, shopStartKeyboard } from '../lib/webapp-url';
+import { log } from '../lib/logger';
 
 const START_TEXT = (name: string, hasShop: boolean) =>
     `Привет, ${name}! 👋\n\n` +
@@ -27,11 +28,11 @@ export async function startCommand(ctx: CustomContext) {
         await ctx.reply(text, replyMarkup ? { reply_markup: replyMarkup } : undefined);
     } catch (err) {
         if (err instanceof GrammyError && replyMarkup) {
-            console.warn(`[start] Reply with button failed: ${err.description}`);
+            log.warn({ description: err.description }, 'reply with button failed');
             await ctx.reply(text);
             return;
         }
-        console.error('[start] Failed:', err);
+        log.error({ err }, 'start command failed');
         throw err;
     }
 }

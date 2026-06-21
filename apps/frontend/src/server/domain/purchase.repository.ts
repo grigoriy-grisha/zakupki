@@ -134,7 +134,9 @@ export class PurchaseRepository {
     }
 
     async addItem(purchaseId: number, productId: number) {
-        // Копируем supplementStep из товара как дефолт
+        // Копируем с Product только `supplementStep` (фасовка добора).
+        // `supplierLimit` НЕ копируется — это отдельное поле "Лимит у поставщика",
+        // админ задаёт вручную через ItemEditSheet. По умолчанию null (без лимита).
         const product = await dbClient.product.findUnique({
             where: { id: productId },
             select: { supplementStep: true },

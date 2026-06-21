@@ -117,11 +117,23 @@ export type OrderErrorCode =
 
 // ── Пул добора ─────────────────────────────────────────────────────
 
-/** Агрегация строк заказа для расчёта пула добора. */
+/**
+ * Агрегация строк заказа.
+ *
+ * `totalOrderedQuantity` — сырая сумма quantity (без пакетов). Используется для
+ * расчёта pool добора (supplementClaimed).
+ *
+ * `totalOrderedWithPackages` — effective qty = qty + пакеты * packSize. Используется
+ * для supplier limit: глобальный лимит у поставщика учитывает и qty, и пакеты.
+ *
+ * Эти два значения могут отличаться: пакеты = часть базовой фасовки (не добор),
+ * но считаются как qty для лимита.
+ */
 export interface PoolAggregation {
     totalBaseQuantity: number;
     supplementClaimed: number;
     totalOrderedQuantity: number;
+    totalOrderedWithPackages: number;
 }
 
 export interface PoolInfo {
@@ -135,6 +147,8 @@ export interface PoolInfo {
     supplementClaimed: number;
     totalBaseQuantity: number;
     totalOrderedQuantity: number;
+    /** Effective qty = qty + пакеты*packSize. Для supplier limit. */
+    totalOrderedWithPackages: number;
 }
 
 // ── Агрегация ──────────────────────────────────────────────────────
