@@ -1,10 +1,8 @@
 import type { CustomContext } from '../domain/types';
 import { getChannelPostThreadId, isOrderCollectionMessage } from '../lib/telegram-chat';
 import { OrderCollectionService } from '../services/order-collection.service';
-import { formatOrderReply } from '../lib/format-order-reply';
 import { reactOrderAccepted } from '../lib/order-ack';
 import { log } from '../lib/logger';
-import { serviceContainer } from '@/server/lib/service-container';
 
 export async function orderReplyHandler(ctx: CustomContext) {
     if (!ctx.message || !('text' in ctx.message) || !ctx.message.text) return;
@@ -61,27 +59,5 @@ export async function orderReplyHandler(ctx: CustomContext) {
         'order saved',
     );
 
-    // Получаем packDiscountPercent для форматирования
-    let packDiscountPercent = 0;
-    try {
-        packDiscountPercent = await serviceContainer.pricingSettings.getBeadPackPriceDiscountPercent();
-    } catch {
-        // fallback — без скидки
-    }
-
-    const replyText = formatOrderReply(result, packDiscountPercent);
-
     await reactOrderAccepted(ctx);
-
-    try {
-        await ctx.reply(replyText, {
-            reply_parameters: { message_id: ctx.message.message_id },
-            parse_mode: 'HTML',
-        });
-    } catch {
-        // Fallback без HTML
-        await ctx.reply(replyText.replace(/<[^>]+>/g, ''), {
-            reply_parameters: { message_id: ctx.message.message_id },
-        });
-    }
 }
