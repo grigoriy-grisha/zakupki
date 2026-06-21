@@ -2,18 +2,19 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, ListChecks, Tag, Layers, FileText, Percent } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
 import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
-import { PageHeader } from '../lib/page-header';
 
 export default function SettingsPage() {
     return (
         <div className="space-y-6">
             <PageHeader
-                icon={Settings}
+                variant="with-icon"
+                icon={<Settings className="size-5" />}
                 title="Настройки"
                 description="Управление характеристиками, промокодами и другими параметрами"
                 descriptionMobile="Справочники и параметры системы"

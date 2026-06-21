@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getUnitByCode } from '@zakupki/types';
+import { cn } from '@/lib/utils';
 
 import type { UserPurchaseGroup } from '../lib/group-orders-by-purchase';
 
@@ -18,31 +20,32 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
 
     return (
         <div className="overflow-hidden rounded-md border bg-background">
-            <button
-                type="button"
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent/50"
+            <Button
+                variant="ghost"
+                size="default"
                 aria-expanded={open}
                 onClick={() => setOpen((prev) => !prev)}
+                className="h-auto w-full justify-start gap-3 px-3 py-2.5 text-left"
             >
-                <span className="shrink-0 text-muted-foreground">
-                    {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <span className="shrink-0 text-fg-tertiary">
+                    {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
                     {group.orderNumber != null && (
-                        <p className="text-xs font-medium tabular-nums text-muted-foreground">
+                        <p className="text-12-medium tabular-nums text-fg-tertiary">
                             Заказ №{group.orderNumber}
                         </p>
                     )}
-                    <p className="font-medium leading-tight">{group.tag}</p>
-                    {group.supplier && <p className="truncate text-xs text-muted-foreground">{group.supplier}</p>}
+                    <p className="text-14-medium leading-tight text-fg-primary">{group.tag}</p>
+                    {group.supplier && <p className="truncate text-12-regular text-fg-tertiary">{group.supplier}</p>}
                 </div>
                 <Badge variant="outline" className="shrink-0 font-normal">
                     {group.orders.length} поз.
                 </Badge>
-                <span className="shrink-0 text-sm font-medium tabular-nums">
+                <span className="shrink-0 text-14-medium tabular-nums text-fg-primary">
                     {group.totalDue.toLocaleString('ru-RU')} ₽
                 </span>
-            </button>
+            </Button>
 
             {open && (
                 <div className="border-t bg-muted/20 px-3 py-2">

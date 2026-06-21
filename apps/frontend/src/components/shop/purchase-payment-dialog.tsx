@@ -46,18 +46,16 @@ export function PurchasePaymentDialog({
             </div>
         </div>
     ) : triggerVariant === 'link' ? (
-        <button
-            type="button"
-            className={cn(
-                'flex items-center gap-1 font-medium text-primary hover:underline disabled:pointer-events-none disabled:opacity-50',
-                buttonClassName,
-            )}
+        <Button
+            variant="link"
+            size="sm"
+            className={cn('h-auto gap-1 p-0 text-14-medium text-primary', buttonClassName)}
             onClick={() => form.handleOpenChange(true)}
             disabled={hasPending}
         >
-            <CreditCard className="h-3.5 w-3.5" />
+            <CreditCard className="size-3.5" />
             {hasPending ? 'Ожидает подтверждения' : 'Оплатить'}
-        </button>
+        </Button>
     ) : (
         <Button
             size={buttonSize}
@@ -190,13 +188,16 @@ export function PurchasePaymentDialog({
                                         <span className="text-sm">Файл прикреплён</span>
                                     </div>
                                 )}
-                                <button
+                                <Button
                                     type="button"
+                                    variant="destructive"
+                                    size="icon-xs"
                                     onClick={form.clearFile}
-                                    className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                                    aria-label="Удалить файл"
+                                    className="absolute -top-2 -right-2 size-6 rounded-full"
                                 >
-                                    <X className="h-3 w-3" />
-                                </button>
+                                    <X className="size-3" />
+                                </Button>
                             </div>
                         ) : (
                             <div

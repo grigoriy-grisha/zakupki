@@ -1,6 +1,7 @@
 'use client';
 
 import { trpc } from '@/lib/client/trpc';
+import { Button } from '@/components/ui/button';
 import { useAppPathname } from '@/lib/hooks/use-app-pathname';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
@@ -11,21 +12,18 @@ import { ShopFooter } from './shop-footer';
 
 export function ShopShell({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex h-[100dvh] flex-col">
+        <div className="flex h-[100dvh] flex-col bg-bg-base">
             <ShopHeader />
 
             {/* Mobile: horizontal scrollable purchase tabs */}
-            <div className="border-b md:hidden">
+            <div className="border-b border-border-low md:hidden">
                 <MobilePurchaseTabs />
             </div>
 
-            <div className="flex min-h-0 flex-1">
-                {/* Desktop sidebar */}
+            <div className="flex min-h-0 flex-1 gap-0 md:gap-2 md:p-2">
                 <ShopSidebar className="hidden md:flex" />
 
-                <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-                    <div className="p-4 md:p-6">{children}</div>
-                </main>
+                <main className="min-h-0 flex-1 overflow-y-auto bg-bg-base">{children}</main>
             </div>
 
             <ShopFooter />
@@ -50,18 +48,20 @@ function MobilePurchaseTabs() {
             {purchases.map((purchase) => {
                 const isActive = activePurchaseId === purchase.id;
                 return (
-                    <button
+                    <Button
                         key={purchase.id}
+                        variant="ghost"
+                        size="sm"
                         onClick={() => router.push(`/shop/purchase/${purchase.id}`)}
                         className={cn(
-                            'shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+                            'h-auto shrink-0 rounded-full px-3 py-1.5 text-14-medium',
                             isActive
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary text-muted-foreground hover:text-foreground',
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                : 'bg-bg-soft text-fg-secondary',
                         )}
                     >
                         {purchase.tag || purchase.supplier}
-                    </button>
+                    </Button>
                 );
             })}
         </div>

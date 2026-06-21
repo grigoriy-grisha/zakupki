@@ -6,8 +6,8 @@ import {
     mergeLines,
     toOrderLinesVO,
 } from '@zakupki/types';
-import { serviceContainer } from '@/server/lib/service-container';
 
+import type { ServiceContainer } from '../container/service-container';
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
 import { PurchaseItemResolver } from './purchase-item-resolver';
 
@@ -37,9 +37,18 @@ type ResolvedItem = NonNullable<Awaited<ReturnType<PurchaseItemResolver['resolve
 
 export class OrderCollectionService {
     private resolver: PurchaseItemResolver;
+    private container: ServiceContainer | null;
 
-    constructor(resolver?: PurchaseItemResolver) {
+    constructor(resolver?: PurchaseItemResolver, container?: ServiceContainer) {
         this.resolver = resolver ?? new PurchaseItemResolver();
+        this.container = container ?? null;
+    }
+
+    /**
+     * Вспомогательный: создать сервис с инстансом из ServiceContainer.
+     */
+    static fromContainer(container: ServiceContainer): OrderCollectionService {
+        return new OrderCollectionService(container.purchaseItemResolver, container);
     }
 
     async collectFromReply(params: {
@@ -73,15 +82,17 @@ export class OrderCollectionService {
             };
         }
 
-        const user = await serviceContainer.user.createOrGetUser(params.telegramId, params.userInfo);
+        if (!this.container) {
+            return { ok: false, reason: 'error', message: 'ServiceContainer not wired' };
+        }
+
+        const user = await this.container.userService.upsertFromTelegramBot(params.telegramId, params.userInfo);
         const pricing = this.getItemPricing(purchaseItem);
 
         try {
             await this.applyDelta(purchaseItem, user.id, parsed);
 
-            // После операции получаем ВСЕ строки пользователя для этого purchaseItem
-            // (с createdOnStage их может быть две: COLLECTION + supplement) и объединяем.
-            const allLines = await serviceContainer.order.getActiveLinesForUserItem(purchaseItem.id, user.id);
+            const allLines = await this.container.orderService.getActiveLinesForUserItem(purchaseItem.id, user.id);
             const aggregated = mergeLines(toOrderLinesVO(allLines));
             const hasLines = aggregated.quantity > 0;
 
@@ -138,7 +149,6 @@ export class OrderCollectionService {
         const unitShort = getUnitByCode(item.product.unitCode)?.shortName ?? 'ед.';
         const packSize = item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
         const pricePerUnit = Number(item.priceOverride ?? item.product.pricePerUnit);
-        // mapToPurchaseItem в shared — единая конвертация Prisma/tRPC → PurchaseItem.
         const packagePrice = computePackagePrice(mapToPurchaseItem(item, 0));
         return { unitShort, packSize, pricePerUnit, packagePrice };
     }
@@ -148,6 +158,7 @@ export class OrderCollectionService {
         userId: number,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
+        if (!this.container) return;
         if (parsed.unit === 'packs') {
             return this.applyPackDelta(purchaseItem.id, userId, parsed);
         }
@@ -159,11 +170,10 @@ export class OrderCollectionService {
         userId: number,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
+        if (!this.container) return;
         const count = Math.round(parsed.amount);
         const sign = parsed.kind === 'add' ? 1 : -1;
-        // Один round-trip: adjustPackages(userId, delta) принимает delta > 1 и считает
-        // supplier-limit за один проход по актуальному агрегату (корректнее N вызовов по ±1).
-        return serviceContainer.order.adjustPackageCount(purchaseItemId, userId, count * sign);
+        return this.container.orderService.adjustPackageCount(purchaseItemId, userId, count * sign);
     }
 
     private async applyQuantityDelta(
@@ -171,12 +181,13 @@ export class OrderCollectionService {
         userId: number,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
+        if (!this.container) return;
         const step = getOrderQuantityStep({
             minPackageAmount: Number(purchaseItem.product.minPackageAmount) || null,
             multiplicity: Number(purchaseItem.product.multiplicity) || null,
         });
         const steps = Math.round(parsed.amount / step);
         const delta = parsed.kind === 'add' ? steps * step : -steps * step;
-        return serviceContainer.order.adjustQuantity(purchaseItem.id, userId, delta);
+        return this.container.orderService.adjustQuantity(purchaseItem.id, userId, delta);
     }
 }

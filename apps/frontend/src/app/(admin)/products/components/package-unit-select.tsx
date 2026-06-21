@@ -1,5 +1,12 @@
 'use client';
 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PACKAGE_UNITS } from '../lib';
 
@@ -13,16 +20,17 @@ export function PackageUnitSelect({
     className?: string;
 }) {
     return (
-        <select
-            className={cn('h-9 rounded-md border border-input bg-background px-2 text-sm', className)}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-        >
-            {PACKAGE_UNITS.map((u) => (
-                <option key={u} value={u}>
-                    {u}
-                </option>
-            ))}
-        </select>
+        <Select value={value} onValueChange={onChange}>
+            <SelectTrigger size="sm" className={cn('min-w-20', className)}>
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                {PACKAGE_UNITS.map((u) => (
+                    <SelectItem key={u} value={u}>
+                        {u}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     );
 }

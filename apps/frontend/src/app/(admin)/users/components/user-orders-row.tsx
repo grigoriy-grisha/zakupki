@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
@@ -38,30 +39,32 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
         <>
             <TableRow className="hover:bg-accent/50 transition-colors">
                 <TableCell>
-                    <button
-                        type="button"
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         aria-label={open ? 'Скрыть закупки участника' : 'Показать закупки участника'}
                         aria-expanded={open}
                         onClick={() => setOpen((prev) => !prev)}
+                        className="text-fg-secondary"
                     >
-                        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </button>
+                        {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                    </Button>
                 </TableCell>
                 <TableCell>
-                    <button
-                        type="button"
-                        className="flex items-center gap-2 rounded-md text-left transition-colors hover:bg-accent/60 -m-1 p-1"
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-m-1 h-auto justify-start gap-2 p-1 text-left"
                         onClick={() => onOpenProfile(user)}
                     >
                         <UserAvatar src={avatarUrl} className="size-8 shrink-0" iconClassName="size-4" />
                         <div className="min-w-0">
-                            <p className="font-medium">{name}</p>
+                            <p className="text-14-medium text-fg-primary">{name}</p>
                             {tgUsername && (
-                                <p className="text-xs text-muted-foreground">@{tgUsername.replace(/^@/, '')}</p>
+                                <p className="text-12-regular text-fg-tertiary">@{tgUsername.replace(/^@/, '')}</p>
                             )}
                         </div>
-                    </button>
+                    </Button>
                 </TableCell>
                 <TableCell>
                     <UserRoleSelect userId={user.id} role={user.role} />

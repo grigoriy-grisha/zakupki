@@ -2,12 +2,29 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-function Card({ className, ...props }: React.ComponentProps<'div'>) {
+const cardRoundedMap = {
+    md: 'rounded-md',
+    lg: 'rounded-lg',
+    xl: 'rounded-xl',
+    '2xl': 'rounded-2xl',
+    '3xl': 'rounded-3xl',
+} as const;
+
+type CardRounded = keyof typeof cardRoundedMap;
+
+function Card({
+    className,
+    rounded = 'xl',
+    ...props
+}: React.ComponentProps<'div'> & {
+    rounded?: CardRounded;
+}) {
     return (
         <div
             data-slot="card"
             className={cn(
-                'flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm',
+                'flex flex-col gap-6 border border-border bg-bg-card py-6 text-card-foreground shadow-xs',
+                cardRoundedMap[rounded],
                 className,
             )}
             {...props}
@@ -29,11 +46,23 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
-    return <div data-slot="card-title" className={cn('leading-none font-semibold', className)} {...props} />;
+    return (
+        <div
+            data-slot="card-title"
+            className={cn('text-18-semibold text-fg-primary leading-none tracking-tight', className)}
+            {...props}
+        />
+    );
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
-    return <div data-slot="card-description" className={cn('text-sm text-muted-foreground', className)} {...props} />;
+    return (
+        <div
+            data-slot="card-description"
+            className={cn('text-14-regular text-fg-secondary', className)}
+            {...props}
+        />
+    );
 }
 
 function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
@@ -52,8 +81,21 @@ function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
 
 function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
     return (
-        <div data-slot="card-footer" className={cn('flex items-center px-6 [.border-t]:pt-6', className)} {...props} />
+        <div
+            data-slot="card-footer"
+            className={cn('flex items-center px-6 [.border-t]:pt-6', className)}
+            {...props}
+        />
     );
 }
 
-export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent };
+export {
+    Card,
+    CardHeader,
+    CardFooter,
+    CardTitle,
+    CardAction,
+    CardDescription,
+    CardContent,
+    type CardRounded,
+};

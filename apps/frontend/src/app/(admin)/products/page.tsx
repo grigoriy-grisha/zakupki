@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useProductList, useProductTree } from './hooks';
 import { AttributeTree, ProductCard, ProductSheet } from './components';
-import { PageHeader } from '../lib/page-header';
+import { PageHeader } from '@/components/ui/page-header';
 
 export default function ProductsPage() {
     const [search, setSearch] = useState('');
@@ -35,38 +35,41 @@ export default function ProductsPage() {
         <div className="space-y-4 sm:space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <PageHeader
-                    icon={Package}
                     title="Каталог товаров"
                     description={`${filteredProducts.length} товаров`}
-                    iconClassName="bg-success-50"
                 />
                 <Button
-                    className="w-full sm:w-auto"
+                    className="w-full rounded-full sm:w-auto"
+                    variant="brand"
                     onClick={() => {
                         setEditId(null);
                         setSheetOpen(true);
                     }}
                 >
-                    <Plus className="mr-2 h-4 w-4 shrink-0" />
+                    <Plus className="mr-2 size-4 shrink-0" />
                     <span className="sm:hidden">Добавить</span>
                     <span className="hidden sm:inline">Добавить товар</span>
                 </Button>
             </div>
 
             <div className="flex gap-6">
-                <div className="hidden w-60 shrink-0 md:block">
-                    <div className="rounded-lg border bg-card p-2">
-                        <button
+                <div className="hidden w-[240px] shrink-0 md:block">
+                    <div className="rounded-2xl border border-border bg-bg-card p-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={clearSelection}
                             className={cn(
-                                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors',
-                                selectedId === null && 'bg-accent font-medium',
+                                'h-auto w-full justify-start gap-2 rounded-full px-3 py-1.5 text-14-medium',
+                                selectedId === null
+                                    ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft'
+                                    : 'text-fg-secondary',
                             )}
                         >
-                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <Package className="size-4" />
                             Все товары
-                            <span className="ml-auto text-xs text-muted-foreground">{totalCount}</span>
-                        </button>
+                            <span className="ml-auto text-12-medium text-fg-tertiary">{totalCount}</span>
+                        </Button>
 
                         {isLoading ? (
                             <div className="space-y-2 p-2">
@@ -88,7 +91,7 @@ export default function ProductsPage() {
 
                 <div className="min-w-0 flex-1 space-y-4">
                     <div className="relative w-full sm:max-w-sm">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-tertiary" />
                         <Input
                             placeholder="Поиск по названию или бренду..."
                             value={search}
@@ -147,15 +150,15 @@ export default function ProductsPage() {
                             ))}
                         </div>
                     ) : filteredProducts.length === 0 ? (
-                        <Card>
+                        <Card rounded="2xl">
                             <CardContent className="flex flex-col items-center py-16">
-                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                                    <Package className="h-8 w-8 text-muted-foreground" />
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-bg-soft text-fg-secondary">
+                                    <Package className="size-5" />
                                 </div>
-                                <h2 className="mt-4 text-lg font-medium">
+                                <h2 className="mt-4 text-18-semibold text-fg-primary">
                                     {search ? 'Ничего не найдено' : 'Нет товаров'}
                                 </h2>
-                                <p className="mt-1 text-sm text-muted-foreground">
+                                <p className="mt-1 text-14-regular text-fg-secondary">
                                     {search ? 'Попробуйте другой запрос' : 'Добавьте первый товар'}
                                 </p>
                             </CardContent>

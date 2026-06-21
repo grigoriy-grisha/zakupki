@@ -2,12 +2,22 @@
 
 import { Loader2, Plus, X } from 'lucide-react';
 import { UNITS } from '@zakupki/types';
+import { Controller } from 'react-hook-form';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { SheetFooter } from '@/components/ui/sheet';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Controller, useFormContext } from 'react-hook-form';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { FormField } from '@/components/ui/form-field';
+import { FormSection } from '@/components/ui/form-section';
+import { FormFooter } from '@/components/ui/form-footer';
+import { cn } from '@/lib/utils';
+
 import { useProductFormState, useProductFormSubmit, type ProductFormExisting } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
 import { AttributeTreePicker } from './attribute-tree-picker';
@@ -36,83 +46,96 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
     const errors = state.form.formState.errors;
 
     return (
-        <form onSubmit={state.form.handleSubmit(submit.submitForm)} className="space-y-4 px-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="articleNumber">Номер</Label>
-                    <Input id="articleNumber" {...state.form.register('articleNumber')} />
+        <form onSubmit={state.form.handleSubmit(submit.submitForm)} className="flex flex-col gap-4">
+            {/* === Основное === */}
+            <FormSection card title="Основное">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <FormField label="Артикул" htmlFor="articleNumber">
+                        <Input
+                            id="articleNumber"
+                            className="h-9 rounded-xl"
+                            {...state.form.register('articleNumber')}
+                        />
+                    </FormField>
+                    <FormField
+                        label="Название"
+                        required
+                        htmlFor="name"
+                        error={errors.name?.message}
+                    >
+                        <Input
+                            id="name"
+                            className="h-9 rounded-xl"
+                            {...state.form.register('name')}
+                        />
+                    </FormField>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="name">Название</Label>
-                    <Input id="name" {...state.form.register('name')} />
-                    {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-                </div>
-            </div>
+            </FormSection>
 
-            <div className="space-y-2">
-                <Label>Единица учёта</Label>
-                <Controller
-                    name="unitCode"
-                    control={state.form.control}
-                    render={({ field }) => {
-                        const unitCode = field.value || '';
-                        const valueInList = UNITS.some((u) => u.code === unitCode);
-                        const selectValue = unitCode && valueInList ? unitCode : undefined;
+            {/* === Единица + Категории === */}
+            <FormSection card title="Единица и категории">
+                <FormField label="Единица учёта" required error={errors.unitCode?.message}>
+                    <Controller
+                        name="unitCode"
+                        control={state.form.control}
+                        render={({ field }) => {
+                            const unitCode = field.value || '';
+                            const valueInList = UNITS.some((u) => u.code === unitCode);
+                            const selectValue = unitCode && valueInList ? unitCode : undefined;
+                            return (
+                                <Select
+                                    key={`unit-${editId ?? 'new'}-${unitCode}`}
+                                    value={selectValue}
+                                    onValueChange={field.onChange}
+                                >
+                                    <SelectTrigger className="h-9 rounded-xl">
+                                        <SelectValue placeholder="Выберите единицу" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {UNITS.map((u) => (
+                                            <SelectItem key={u.code} value={u.code}>
+                                                {u.name} ({u.shortName})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            );
+                        }}
+                    />
+                </FormField>
 
-                        return (
-                            <Select
-                                key={`unit-${editId ?? 'new'}-${unitCode}`}
-                                value={selectValue}
-                                onValueChange={field.onChange}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Выберите единицу" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {UNITS.map((u) => (
-                                        <SelectItem key={u.code} value={u.code}>
-                                            {u.name} ({u.shortName})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        );
-                    }}
+                {(state.attributeTypes?.length ?? 0) > 0 && (
+                    <AttributeTreePicker
+                        rootTypes={state.childrenOfType(null)}
+                        childrenOfType={state.childrenOfType}
+                        attrsTreeByType={state.attrsTreeByType}
+                        selectedAttrs={state.selectedAttrs}
+                        onSelect={state.handleSelectType}
+                    />
+                )}
+
+                <ProductCharacteristicsFields
+                    fields={state.activeCharFields}
+                    values={state.charValues}
+                    onChange={(id, value) =>
+                        state.setCharValues((prev) => ({ ...prev, [id]: value }))
+                    }
                 />
-                {errors.unitCode && <p className="text-xs text-destructive">{errors.unitCode.message}</p>}
-            </div>
+            </FormSection>
 
-            {(state.attributeTypes?.length ?? 0) > 0 && (
-                <AttributeTreePicker
-                    rootTypes={state.childrenOfType(null)}
-                    childrenOfType={state.childrenOfType}
-                    attrsTreeByType={state.attrsTreeByType}
-                    selectedAttrs={state.selectedAttrs}
-                    onSelect={state.handleSelectType}
-                />
-            )}
-
-            <ProductCharacteristicsFields
-                fields={state.activeCharFields}
-                values={state.charValues}
-                onChange={(id, value) => state.setCharValues((prev) => ({ ...prev, [id]: value }))}
-            />
-
-            {/* Pricing section */}
-            <div className="space-y-3 rounded-md border p-4">
-                <h3 className="text-sm font-medium">Цены</h3>
-
-                <div className="space-y-2">
-                    <Label htmlFor="pricePerUnit">Цена за единицу (₽)</Label>
+            {/* === Цены и фасовка === */}
+            <FormSection card title="Цены и фасовка">
+                <FormField label="Цена за единицу" hint="Базовая цена за 1 единицу (например, 450 ₽/гр)">
                     <Input
                         id="pricePerUnit"
                         type="number"
                         step="0.01"
                         min={0}
                         placeholder="0.00"
+                        className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
                         {...state.form.register('pricePerUnit', { valueAsNumber: true })}
                     />
-                </div>
+                </FormField>
 
                 <Controller
                     name="priceTiers"
@@ -127,11 +150,6 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                         />
                     )}
                 />
-            </div>
-
-            {/* Packaging section */}
-            <div className="space-y-3 rounded-md border p-4">
-                <h3 className="text-sm font-medium">Фасовка</h3>
 
                 <Controller
                     name="minPackageAmount"
@@ -143,6 +161,7 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                             unit={state.form.watch('minPackageUnit') ?? PACKAGE_UNITS[0]}
                             onAmountChange={(v) => field.onChange(v)}
                             onUnitChange={(v) => state.form.setValue('minPackageUnit', v)}
+                            description="Минимальный шаг заказа (например, 5 гр)"
                         />
                     )}
                 />
@@ -157,79 +176,88 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                             unit={state.form.watch('supplierPackageUnit') ?? PACKAGE_UNITS[0]}
                             onAmountChange={(v) => field.onChange(v)}
                             onUnitChange={(v) => state.form.setValue('supplierPackageUnit', v)}
+                            description="Целая пачка от поставщика (например, 100 гр)"
                         />
                     )}
                 />
 
-                <Controller
-                    name="supplierPackagePrice"
-                    control={state.form.control}
-                    render={({ field }) => (
-                        <div className="space-y-1">
-                            <Label htmlFor="supplierPackagePrice">Цена поставки (₽)</Label>
+                <FormField label="Цена поставки" hint="Цена за 1 упаковку поставщика">
+                    <Controller
+                        name="supplierPackagePrice"
+                        control={state.form.control}
+                        render={({ field }) => (
                             <Input
                                 id="supplierPackagePrice"
                                 type="number"
                                 step="0.01"
                                 min={0}
                                 placeholder="0.00"
+                                className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
                                 value={field.value ?? ''}
-                                onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                onChange={(e) =>
+                                    field.onChange(e.target.value === '' ? null : Number(e.target.value))
+                                }
                             />
-                        </div>
-                    )}
-                />
+                        )}
+                    />
+                </FormField>
 
-                <Controller
-                    name="supplementStep"
-                    control={state.form.control}
-                    render={({ field }) => (
-                        <div className="space-y-1">
-                            <Label htmlFor="supplementStep">Фасовка для добора</Label>
+                <FormField
+                    label="Фасовка для добора"
+                    hint="Шаг +/− на этапе добора. Если не задан — используется мин. фасовка"
+                >
+                    <Controller
+                        name="supplementStep"
+                        control={state.form.control}
+                        render={({ field }) => (
                             <Input
                                 id="supplementStep"
                                 type="number"
                                 step="0.001"
                                 min={0}
                                 placeholder="По умолчанию (мин. фасовка)"
+                                className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
                                 value={field.value ?? ''}
-                                onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                                onChange={(e) =>
+                                    field.onChange(e.target.value === '' ? null : Number(e.target.value))
+                                }
                             />
-                            <p className="text-xs text-muted-foreground">
-                                Шаг +/− на этапе добора. Если не задан — используется мин. фасовка.
-                            </p>
-                        </div>
-                    )}
-                />
-            </div>
+                        )}
+                    />
+                </FormField>
+            </FormSection>
 
-            {/* Reference stock */}
-            <div className="space-y-3 rounded-md border p-4">
-                <h3 className="text-sm font-medium">Остаток</h3>
-
-                <div className="space-y-2">
-                    <Label htmlFor="referenceStock">Доступно (шт.)</Label>
+            {/* === Остаток === */}
+            <FormSection card title="Остаток">
+                <FormField label="Доступно (справочно)" hint="Справочная информация — не лимит">
                     <Input
                         id="referenceStock"
                         type="number"
                         step="1"
                         min={0}
                         placeholder="0"
+                        className="w-32 rounded-xl text-13-medium tabular-nums"
                         {...state.form.register('referenceStock', { valueAsNumber: true })}
                     />
-                    <p className="text-xs text-muted-foreground">Справочная информация — не лимит</p>
-                </div>
-            </div>
+                </FormField>
+            </FormSection>
 
-            <div className="space-y-2">
-                <label className="text-sm font-medium leading-none">Фото</label>
+            {/* === Фото === */}
+            <FormSection card title="Фото">
                 {state.isCreating ? (
                     <div className="flex flex-wrap gap-2">
                         {state.pendingFiles.map((f) => (
                             <div key={f.id} className="relative">
-                                <img src={f.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
-                                <button
+                                <img
+                                    src={f.preview}
+                                    alt=""
+                                    className="h-20 w-20 rounded-xl object-cover"
+                                />
+                                <Button
                                     type="button"
+                                    variant="destructive"
+                                    size="icon-xs"
+                                    aria-label="Удалить фото"
                                     onClick={() =>
                                         state.setPendingFiles((prev) => {
                                             const item = prev.find((x) => x.id === f.id);
@@ -237,13 +265,18 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                                             return prev.filter((x) => x.id !== f.id);
                                         })
                                     }
-                                    className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-destructive-foreground"
+                                    className="absolute -top-1 -right-1 size-5 rounded-full bg-error p-0 text-error-foreground hover:bg-error/90"
                                 >
-                                    <X className="h-3 w-3" />
-                                </button>
+                                    <X className="size-3" />
+                                </Button>
                             </div>
                         ))}
-                        <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary">
+                        <label
+                            className={cn(
+                                'flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border text-fg-tertiary transition-colors',
+                                'hover:border-primary hover:text-primary',
+                            )}
+                        >
                             <input
                                 type="file"
                                 accept="image/*"
@@ -271,14 +304,20 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                         onDeletePhoto={submit.handleDeletePhoto}
                     />
                 )}
-            </div>
+            </FormSection>
 
-            <SheetFooter>
-                <Button type="submit" disabled={submit.isPending} className="w-full">
-                    {submit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {state.isCreating ? 'Создать' : 'Сохранить'}
+            {/* === Sticky footer === */}
+            <FormFooter>
+                <Button
+                    type="submit"
+                    variant="brand"
+                    className="rounded-full"
+                    disabled={submit.isPending}
+                >
+                    {submit.isPending && <Loader2 className="size-4 animate-spin" />}
+                    {state.isCreating ? 'Создать товар' : 'Сохранить'}
                 </Button>
-            </SheetFooter>
+            </FormFooter>
         </form>
     );
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Package, X, ZoomIn } from 'lucide-react';
 
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
 
@@ -49,19 +49,26 @@ export function ProductPhotoPreview({
         close();
     }, [close]);
 
+    const onOpenChange = useCallback(
+        (next: boolean) => {
+            if (next) {
+                setOpen(true);
+            } else {
+                closeAndSwallowClick();
+            }
+        },
+        [closeAndSwallowClick],
+    );
+
+    // Снимаем блокировку body-scroll (Dialog сам это делает) — но Escape и focus нам не нужны отдельно.
     useEffect(() => {
         if (!open) return;
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') close();
+            if (e.key === 'Escape') closeAndSwallowClick();
         };
         window.addEventListener('keydown', onKey);
-        const prevOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => {
-            window.removeEventListener('keydown', onKey);
-            document.body.style.overflow = prevOverflow;
-        };
-    }, [open, close]);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [open, closeAndSwallowClick]);
 
     if (!src) {
         return (
@@ -85,43 +92,36 @@ export function ProductPhotoPreview({
         setOpen(true);
     };
 
-    const lightbox =
-        open && typeof document !== 'undefined'
-            ? createPortal(
-                  <div
-                      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 p-4"
-                      role="dialog"
-                      aria-modal="true"
-                      aria-label={alt}
-                      onPointerDown={(e) => {
-                          if (e.target !== e.currentTarget) return;
-                          e.preventDefault();
-                          e.stopPropagation();
-                          closeAndSwallowClick();
-                      }}
-                  >
-                      <button
-                          type="button"
-                          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white touch-manipulation"
-                          onPointerDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              closeAndSwallowClick();
-                          }}
-                          aria-label="Закрыть"
-                      >
-                          <X className="h-5 w-5" />
-                      </button>
-                      <img
-                          src={src}
-                          alt={alt}
-                          className="max-h-[min(85dvh,900px)] max-w-full object-contain"
-                          onClick={(e) => e.stopPropagation()}
-                      />
-                  </div>,
-                  document.body,
-              )
-            : null;
+    // Лайтбокс — намеренно тёмный «darkroom»: чёрный оверлей, белый текст кнопок.
+    // Это сознательное отступление от дизайн-токенов ради UX.
+    const lightbox = (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent
+                showCloseButton={false}
+                aria-label={alt}
+                className="flex max-h-[100dvh] max-w-[100vw] items-center justify-center border-none bg-transparent p-0 shadow-none data-[state=open]:zoom-in-100"
+            >
+                <img
+                    src={src}
+                    alt={alt}
+                    className="max-h-[min(85dvh,900px)] max-w-full object-contain"
+                    onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                    type="button"
+                    className="fixed top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white touch-manipulation hover:bg-black/65"
+                    onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }}
+                    onClick={closeAndSwallowClick}
+                    aria-label="Закрыть"
+                >
+                    <X className="h-5 w-5" />
+                </button>
+            </DialogContent>
+        </Dialog>
+    );
 
     if (fill) {
         return (

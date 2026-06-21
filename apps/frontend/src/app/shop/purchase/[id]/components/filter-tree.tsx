@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronDown, ChevronRight, FolderOpen, Tag, Package } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderOpen, Package, Tag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { TreeNode } from '@/app/(admin)/products/lib/types';
 
@@ -15,6 +16,10 @@ export interface FilterTreeProps {
     depth?: number;
 }
 
+/**
+ * Дерево фильтрации. Самодостаточный компонент — у него свой `bg-bg-card`,
+ * не зависит от обёртки в page.tsx (на случай, если используется в Sheet/другом месте).
+ */
 export function FilterTree({
     nodes,
     selectedId,
@@ -26,17 +31,23 @@ export function FilterTree({
 }: FilterTreeProps) {
     return (
         <div className="space-y-0.5">
-            <button
+            <Button
+                variant="ghost"
+                size="sm"
                 onClick={onClear}
                 className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors',
-                    selectedId === null && 'bg-accent font-medium',
+                    'h-auto w-full justify-start gap-2 rounded-full px-3 py-2 text-13-medium',
+                    selectedId === null
+                        ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft'
+                        : 'text-fg-secondary',
                 )}
             >
-                <Package className="h-4 w-4 text-muted-foreground" />
+                <Package className="size-4" />
                 Все товары
-                <span className="ml-auto text-xs text-muted-foreground">{totalCount}</span>
-            </button>
+                <span className="ml-auto rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary">
+                    {totalCount}
+                </span>
+            </Button>
 
             <FilterTreeNode
                 nodes={nodes}
@@ -65,15 +76,18 @@ function FilterTreeNode({
                 const isSelected = selectedId === node.id;
                 return (
                     <div key={node.id}>
-                        <button
-                            type="button"
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => onSelect(node)}
                             className={cn(
-                                'flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:bg-accent transition-colors',
-                                isSelected && 'bg-accent font-medium',
-                                node.isTypeFolder && 'text-muted-foreground',
+                                'h-auto w-full justify-start gap-1.5 rounded-full px-3 py-1.5 text-13-medium',
+                                isSelected
+                                    ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft'
+                                    : 'text-fg-secondary',
+                                node.isTypeFolder && !isSelected && 'text-fg-tertiary',
                             )}
-                            style={{ paddingLeft: `${depth * 16 + 12}px` }}
+                            style={{ paddingLeft: `${depth * 14 + 12}px` }}
                         >
                             {hasChildren ? (
                                 <span
@@ -81,32 +95,34 @@ function FilterTreeNode({
                                         e.stopPropagation();
                                         onToggle(node.id);
                                     }}
-                                    className="cursor-pointer"
+                                    className="flex h-5 w-5 items-center justify-center"
                                 >
                                     {isExpanded ? (
-                                        <ChevronDown className="h-3.5 w-3.5" />
+                                        <ChevronDown className="size-3.5" />
                                     ) : (
-                                        <ChevronRight className="h-3.5 w-3.5" />
+                                        <ChevronRight className="size-3.5" />
                                     )}
                                 </span>
                             ) : (
-                                <span className="w-3.5" />
+                                <span className="w-5" />
                             )}
                             {node.isBrandFolder ? (
-                                <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <Tag className="size-3.5 shrink-0 text-fg-tertiary" />
                             ) : (
                                 <FolderOpen
                                     className={cn(
-                                        'h-4 w-4 shrink-0',
-                                        node.isTypeFolder ? 'text-muted-foreground/70' : 'text-muted-foreground',
+                                        'size-4 shrink-0 text-fg-tertiary',
+                                        node.isTypeFolder && 'opacity-70',
                                     )}
                                 />
                             )}
-                            <span className={cn('text-left break-words', node.isTypeFolder && 'font-medium')}>
+                            <span className="min-w-0 flex-1 text-left break-words">
                                 {node.label}
                             </span>
-                            <span className="ml-auto pl-2 text-xs text-muted-foreground">{node.count}</span>
-                        </button>
+                            <span className="ml-auto rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary">
+                                {node.count}
+                            </span>
+                        </Button>
                         {hasChildren && isExpanded && (
                             <FilterTreeNode
                                 nodes={node.children}

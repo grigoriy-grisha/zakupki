@@ -40,54 +40,58 @@ export function QuantityButtons({
     onRemovePackage,
     size = 'sm',
 }: QuantityButtonsProps) {
-    const cls = size === 'sm' ? 'h-9 flex-1 text-xs' : 'h-12 flex-1 text-sm font-medium rounded-xl';
+    const isMd = size === 'md';
+    const btnSize = isMd ? 'default' : 'sm';
+    const btnCls = isMd ? 'min-w-0 flex-1 text-14-medium' : 'min-w-0 flex-1 text-12-medium';
+    const iconCls = isMd ? 'mr-1 size-4' : 'mr-1 size-3';
+    const rowCls = isMd ? 'mx-auto grid max-w-xs grid-cols-2 gap-3' : 'flex gap-1.5';
 
     return (
         <>
             {/* ±мин.фасовка */}
-            <div className={size === 'sm' ? 'flex gap-1.5' : 'mx-auto grid max-w-xs grid-cols-2 gap-3'}>
+            <div className={rowCls}>
                 <Button
                     variant="outline"
-                    size={size === 'sm' ? 'sm' : 'default'}
-                    className={cls}
+                    size={btnSize}
+                    className={btnCls}
                     disabled={!canDecrease}
                     onClick={onRemove}
                 >
-                    <Minus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />−{activeStep} {shortName}
+                    <Minus className={iconCls} />−{activeStep} {shortName}
                 </Button>
                 <Button
                     variant="outline"
-                    size={size === 'sm' ? 'sm' : 'default'}
-                    className={cls}
+                    size={btnSize}
+                    className={btnCls}
                     disabled={!canAdd}
                     onClick={onAdd}
                 >
-                    <Plus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />+{activeStep} {shortName}
+                    <Plus className={iconCls} />+{activeStep} {shortName}
                 </Button>
             </div>
 
             {/* ±упаковка поставщика */}
             {showPackage && (
-                <div className={size === 'sm' ? 'flex gap-1.5' : 'mx-auto grid max-w-xs grid-cols-2 gap-3'}>
+                <div className={rowCls}>
                     <Button
                         variant="outline"
-                        size={size === 'sm' ? 'sm' : 'default'}
-                        className={cls}
+                        size={btnSize}
+                        className={btnCls}
                         disabled={isPending || packageCount <= 0}
                         onClick={onRemovePackage}
                     >
-                        <Minus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />
-                        {size === 'sm' ? '−Упак.' : '−Упак.'}
+                        <Minus className={iconCls} />
+                        −Упак.
                     </Button>
                     <Button
                         variant="outline"
-                        size={size === 'sm' ? 'sm' : 'default'}
-                        className={cls}
+                        size={btnSize}
+                        className={btnCls}
                         disabled={isPending}
                         onClick={onAddPackage}
                     >
-                        <Plus className={size === 'sm' ? 'mr-1 h-3 w-3' : 'mr-1 h-4 w-4'} />
-                        {size === 'sm' ? `+Упак.` : `+Упак.`} {packSize != null && `(${packSize} ${shortName})`}
+                        <Plus className={iconCls} />
+                        +Упак. {packSize != null && `(${packSize} ${shortName})`}
                     </Button>
                 </div>
             )}

@@ -1,3 +1,4 @@
+import type { RedisClient } from '@zakupki/queue';
 import { getRedisConnection } from '@zakupki/queue';
 
 import { log } from './logger';
@@ -15,7 +16,7 @@ const KEY_PREFIX = 'tg_post_to_discussion_msg';
  * чтобы статус-комментарий прикреплялся прямо под форвардом конкретного поста.
  */
 export class DiscussionMessageStore {
-    private redis = getRedisConnection();
+    constructor(private readonly redis: RedisClient = getRedisConnection()) {}
 
     static keyFor(channelId: string, channelPostMessageId: number | string): string {
         return `${KEY_PREFIX}:${channelId}:${channelPostMessageId}`;
@@ -63,6 +64,8 @@ export class DiscussionMessageStore {
 }
 
 let _store: DiscussionMessageStore | null = null;
+
+/** Backward-compat singleton — старые импорты продолжают работать. */
 export function getDiscussionMessageStore(): DiscussionMessageStore {
     if (!_store) _store = new DiscussionMessageStore();
     return _store;

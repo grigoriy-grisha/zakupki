@@ -84,33 +84,35 @@ export function ParticipantRow({
         <>
             <TableRow className="hover:bg-accent/50 transition-colors">
                 <TableCell>
-                    <button
-                        type="button"
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
                         aria-label={open ? 'Скрыть детали' : 'Показать заказы и оплаты'}
                         aria-expanded={open}
                         onClick={toggleDetails}
+                        className="text-fg-secondary"
                     >
-                        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </button>
+                        {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                    </Button>
                 </TableCell>
                 <TableCell className="text-center font-medium tabular-nums">
                     {purchaseOrderId != null ? purchaseOrderId : '—'}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                    <button
-                        type="button"
-                        className="flex items-center gap-2 rounded-md text-left transition-colors hover:bg-accent/60 -m-1 p-1"
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-m-1 h-auto justify-start gap-2 p-1 text-left"
                         onClick={() => onOpenProfile(userId)}
                     >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-12-medium text-primary">
                             {name.charAt(0)}
                         </div>
                         <div>
-                            <p className="font-medium">{name}</p>
-                            {username && <p className="text-xs text-muted-foreground">@{username}</p>}
+                            <p className="text-14-medium text-fg-primary">{name}</p>
+                            {username && <p className="text-12-regular text-fg-tertiary">@{username}</p>}
                         </div>
-                    </button>
+                    </Button>
                 </TableCell>
                 <TableCell className="text-center">
                     <Badge variant="secondary" className="font-normal">

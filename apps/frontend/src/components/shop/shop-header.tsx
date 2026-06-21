@@ -26,39 +26,44 @@ export function ShopHeader() {
 
     return (
         <>
-            <header className="flex h-14 shrink-0 items-center justify-between bg-card px-4">
+            <header className="flex h-14 shrink-0 items-center justify-between bg-bg-card px-4">
                 <AppLink href={isAdmin ? '/' : '/shop'} className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                         <ShoppingCart className="h-4 w-4" />
                     </div>
-                    <span className="text-lg font-semibold tracking-tight">Закупки</span>
+                    <span className="text-18-semibold tracking-tight text-fg-primary">Закупки</span>
                 </AppLink>
 
                 <div className="flex items-center gap-1">
                     {session?.user ? (
                         <>
                             <AppLink href="/shop/profile">
-                                <Button variant="ghost" size="default" className="gap-1.5">
-                                    <User className="h-5 w-5" />
+                                <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
+                                    <User className="h-4 w-4" />
                                     <span className="hidden sm:inline">Профиль</span>
                                 </Button>
                             </AppLink>
                             <AppLink href="/shop/orders">
-                                <Button variant="ghost" size="default" className="gap-1.5">
-                                    <ClipboardList className="h-5 w-5" />
+                                <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
+                                    <ClipboardList className="h-4 w-4" />
                                     <span className="hidden sm:inline">Заказы</span>
                                 </Button>
                             </AppLink>
                             <Button
                                 variant="ghost"
-                                size="default"
-                                className="relative gap-1.5"
+                                size="sm"
+                                className="relative gap-1.5 rounded-full"
                                 onClick={() => setCartOpen(true)}
                             >
-                                <ShoppingCart className="h-5 w-5" />
+                                <ShoppingCart className="h-4 w-4" />
                                 <span className="hidden sm:inline">Корзина</span>
                                 {orderCount > 0 && (
-                                    <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-[10px]">
+                                    <Badge
+                                        variant="accent"
+                                        type="accent"
+                                        size="sm"
+                                        className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-12-medium"
+                                    >
                                         {orderCount}
                                     </Badge>
                                 )}
@@ -66,7 +71,7 @@ export function ShopHeader() {
                             <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                className="text-muted-foreground"
+                                className="rounded-full text-fg-secondary"
                                 onClick={() => {
                                     const base =
                                         process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
@@ -74,13 +79,14 @@ export function ShopHeader() {
                                     const loginPath = platform ? withPlatformPrefix('/login', platform) : '/login';
                                     void signOut({ callbackUrl: `${base}${loginPath}` });
                                 }}
+                                aria-label="Выйти"
                             >
                                 <LogOut className="h-4 w-4" />
                             </Button>
                         </>
                     ) : (
                         <AppLink href={platform ? withPlatformPrefix('/login', platform) : '/login'}>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" className="rounded-full">
                                 <LogIn className="mr-2 h-4 w-4" />
                                 Войти
                             </Button>

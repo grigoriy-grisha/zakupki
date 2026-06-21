@@ -182,7 +182,7 @@ export function PromoCodeDialog() {
                         </div>
                     </div>
 
-                    <Button type="submit" disabled={createMutation.isPending} className="w-full h-11">
+                    <Button type="submit" size="lg" disabled={createMutation.isPending} className="w-full">
                         {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         Создать промокод
                     </Button>

@@ -30,18 +30,19 @@ function SelectableRow({
     onClick: () => void;
 }) {
     return (
-        <button
-            type="button"
+        <Button
+            variant="ghost"
+            size="sm"
             onClick={onClick}
             className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent',
+                'h-auto w-full justify-start gap-2 rounded-md px-2 py-1 text-left text-14-regular',
                 nested && 'ml-3',
-                active && 'bg-accent font-medium',
+                active && 'bg-bg-soft text-14-medium hover:bg-bg-soft',
             )}
         >
-            <Check className={cn('h-4 w-4 shrink-0', active ? 'opacity-100' : 'opacity-0')} />
+            <Check className={cn('size-4 shrink-0', active ? 'opacity-100' : 'opacity-0')} />
             {label}
-        </button>
+        </Button>
     );
 }
 
@@ -154,31 +155,35 @@ export function AttributeTreePicker({
 
                     return (
                         <div key={brand.id}>
-                            <div className="flex items-center gap-0.5 rounded-md hover:bg-accent/50">
-                                <button
+                            <div className="flex items-center gap-0.5 rounded-md hover:bg-bg-soft/50">
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="icon-xs"
                                     onClick={() => toggleBrand(brand.id)}
-                                    className="flex h-7 w-7 shrink-0 items-center justify-center"
+                                    aria-label={brandOpen ? 'Свернуть' : 'Развернуть'}
+                                    className="size-7"
                                 >
                                     <ChevronRight
                                         className={cn(
-                                            'h-4 w-4 text-muted-foreground transition-transform',
+                                            'size-4 text-fg-tertiary transition-transform',
                                             brandOpen && 'rotate-90',
                                         )}
                                     />
-                                </button>
-                                <button
-                                    type="button"
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => onSelect(typeId, brandSelected ? null : brand.id)}
                                     className={cn(
-                                        'flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left text-sm',
-                                        brandSelected && 'bg-accent font-medium',
+                                        'h-auto min-w-0 flex-1 justify-start gap-2 rounded-md px-1 py-1 text-left text-14-regular',
+                                        brandSelected && 'bg-bg-soft text-14-medium hover:bg-bg-soft',
                                     )}
                                 >
-                                    <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                    <Tag className="size-3.5 shrink-0 text-fg-tertiary" />
                                     <span className="truncate">{brand.name}</span>
-                                    {brandSelected && !childSelected && <Check className="ml-auto h-4 w-4 shrink-0" />}
-                                </button>
+                                    {brandSelected && !childSelected && <Check className="ml-auto size-4 shrink-0" />}
+                                </Button>
                             </div>
 
                             {brandOpen && brand.values.length > 0 && (
@@ -214,25 +219,26 @@ export function AttributeTreePicker({
 
             return (
                 <div key={type.id}>
-                    <button
-                        type="button"
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => toggleType(type.id)}
-                        className="flex w-full items-center gap-1 rounded-md px-1 py-1 text-left hover:bg-accent/50"
+                        className="h-auto w-full justify-start gap-1 rounded-md px-1 py-1 text-left text-14-medium hover:bg-bg-soft/50"
                     >
                         <ChevronRight
                             className={cn(
-                                'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                                'size-4 shrink-0 text-fg-tertiary transition-transform',
                                 isOpen && 'rotate-90',
                             )}
                         />
-                        <span className="text-sm font-medium">{type.name}</span>
+                        <span>{type.name}</span>
                         {selectedName && (
-                            <span className="ml-auto truncate pl-2 text-xs text-muted-foreground">{selectedName}</span>
+                            <span className="ml-auto truncate pl-2 text-12-regular text-fg-tertiary">{selectedName}</span>
                         )}
-                    </button>
+                    </Button>
 
                     {isOpen && (
-                        <div className="ml-3 space-y-0.5 border-l-2 border-muted pl-2">
+                        <div className="ml-3 space-y-0.5 border-l-2 border-border-soft pl-2">
                             {hasValues ? renderTypeAttributes(type.id, selected) : null}
                             {children.length > 0 && renderNodes(children)}
                         </div>

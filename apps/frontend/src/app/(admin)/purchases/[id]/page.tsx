@@ -1,198 +1,298 @@
 'use client';
 
-import { use, useState } from 'react';
-import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { trpc } from '@/lib/client/trpc';
+import { use, useMemo, useState } from 'react';
+import { CheckCircle2, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { CheckCircle2, Loader2, Rocket, Trash2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageHeader } from '@/components/ui/page-header';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { STATUS_LABELS } from '../../lib/constants';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { trpc } from '@/lib/client/trpc';
+import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
+
 import { usePurchaseActions } from './hooks';
-import { ExportPurchaseButtons, ItemsTab, ParticipantsTab, SupplementTab } from './components';
-import { PurchaseFulfillmentStatusSelect } from '../components/purchase-fulfillment-status-select';
-import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+import { useParticipantsData } from './hooks/use-participants-data';
+import { STATUS_LABELS } from '../../lib/constants';
+import type { PurchaseDetail, PurchaseItem } from './lib/types';
+import { ItemsTab } from './components/items-tab';
+import { PurchaseStats } from './components/purchase-stats';
+import { PurchaseStepCard } from './components/purchase-step-card';
+import { PurchaseStepper } from './components/purchase-stepper';
+import { AdminSupplementsList } from './components/admin-supplements-list';
+import { AdminParticipantsList } from './components/admin-participants-list';
+import { SupplementDialog } from './components/supplement-dialog';
+import { ExportPurchaseButtons } from './components/export-purchase-buttons';
+
+type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'DONE' | 'CLOSED' | 'ARRIVED';
+type TabId = 'items' | 'supplements' | 'participants';
+
+type FulfillmentStatus =
+    | 'COLLECTION'
+    | 'REORDER'
+    | 'PAYMENT'
+    | 'SUPPLIER_ASSEMBLY'
+    | 'PREPARING_SHIPMENT_RF'
+    | 'IN_TRANSIT_RF'
+    | 'IN_TRANSIT_TO_ORGANIZER'
+    | 'PACKAGING'
+    | 'READY_FOR_PICKUP';
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
     const id = Number(idStr);
+
     const [activateOpen, setActivateOpen] = useState(false);
-    const [completeOpen, setCompleteOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-    const router = useAppRouter();
+    const [remainderOpen, setRemainderOpen] = useState(false);
+    const [selectedForPublish, setSelectedForPublish] = useState(0);
+    const [tab, setTab] = useState<TabId>('items');
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const actions = usePurchaseActions(id);
+    const participantsData = useParticipantsData(id);
+
+    const items = useMemo(
+        () => ((purchase as unknown as PurchaseDetail | null)?.items ?? []) as PurchaseItem[],
+        [purchase],
+    );
+
+    // Shared-хуки для безопасной смены статуса (требуют явного подтверждения).
+    // ВАЖНО: вызываются ДО early-return, чтобы не нарушить Rules of Hooks.
+    const purchaseTag = (purchase as { tag?: string } | undefined)?.tag ?? '';
+
+    const deleteDraftConfirm = useStatusChangeConfirm<PurchaseStatus>({
+        onConfirm: () => actions.deleteDraft.mutate({ id } as never),  // eslint-disable-line @typescript-eslint/no-explicit-any
+        buildMessage: () => ({
+            title: 'Удалить черновик?',
+            description: `Черновик «${purchaseTag}» будет удалён безвозвратно. Это действие нельзя отменить.`,
+            confirmLabel: 'Удалить',
+            variant: 'destructive',
+        }),
+    });
+
+    const completeConfirm = useStatusChangeConfirm<PurchaseStatus>({
+        onConfirm: () => actions.complete.mutate({ id } as never),
+        buildMessage: () => ({
+            title: 'Завершить закупку?',
+            description: (
+                <>
+                    Закупка <strong>{purchaseTag}</strong> будет помечена как завершённая. Участники больше не
+                    смогут делать заказы.
+                </>
+            ),
+            confirmLabel: 'Завершить закупку',
+            variant: 'destructive',
+        }),
+    });
+
+    const remainderItems = useMemo(
+        () =>
+            items.filter((it) => {
+                const hasPack =
+                    it.product.supplierPackageAmount != null && Number(it.product.supplierPackageAmount) > 0;
+                const hasManual = it.targetRemainder != null && Number(it.targetRemainder) > 0;
+                return hasPack || hasManual;
+            }),
+        [items],
+    );
 
     if (isLoading) {
         return (
             <div className="space-y-4">
-                <Skeleton className="h-8 w-64" />
-                <Skeleton className="h-96" />
+                <Skeleton className="h-8 w-64 rounded-md" />
+                <Skeleton className="h-24 w-full rounded-2xl" />
+                <Skeleton className="h-32 w-full rounded-2xl" />
             </div>
         );
     }
 
     if (!purchase) {
-        return <p className="text-muted-foreground">Закупка не найдена</p>;
+        return (
+            <div className="rounded-2xl border border-border bg-bg-card p-10 text-center text-14-regular text-fg-secondary">
+                Закупка не найдена
+            </div>
+        );
     }
 
     const deadline = new Date(purchase.deadline);
     const isDraft = purchase.status === 'DRAFT';
     const canComplete = purchase.status === 'ACTIVE';
-    const fulfillmentStatus = (purchase as { fulfillmentStatus?: PurchaseFulfillmentStatus }).fulfillmentStatus;
+    const fulfillmentStatus = (purchase as { fulfillmentStatus?: string }).fulfillmentStatus as
+        | FulfillmentStatus
+        | undefined;
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{purchase.tag}</h1>
-                        <Badge>{STATUS_LABELS[purchase.status] ?? purchase.status}</Badge>
+        <div className="space-y-5">
+            <PageHeader
+                title={purchase.tag}
+                description={
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-medium text-fg-primary">{purchase.supplier}</span>
+                        <span className="text-fg-tertiary">·</span>
+                        <span>Мин. сумма: {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽</span>
+                        <span className="text-fg-tertiary">·</span>
+                        <span>
+                            До{' '}
+                            {deadline.toLocaleDateString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                            })}
+                        </span>
+                    </span>
+                }
+                badge={
+                    <Badge type="subtle" size="default" variant="neutral">
+                        {STATUS_LABELS[purchase.status] ?? purchase.status}
+                    </Badge>
+                }
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <ExportPurchaseButtons purchaseId={id} />
+                        {isDraft && (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    className="rounded-full"
+                                    onClick={() => deleteDraftConfirm.requestStatusChange({ target: 'DRAFT' })}
+                                >
+                                    <Trash2 className="size-4" />
+                                    <span className="hidden sm:inline">Удалить</span>
+                                </Button>
+                                <Button
+                                    variant="brand"
+                                    className="rounded-full"
+                                    onClick={() => setActivateOpen(true)}
+                                >
+                                    <Rocket className="size-4" />
+                                    <span className="hidden sm:inline">Активировать</span>
+                                </Button>
+                            </>
+                        )}
+                        {canComplete && (
+                            <Button
+                                variant="destructive"
+                                className="rounded-full"
+                                onClick={() => completeConfirm.requestStatusChange({ target: 'DONE' })}
+                            >
+                                <CheckCircle2 className="size-4" />
+                                <span className="hidden sm:inline">Завершить</span>
+                            </Button>
+                        )}
                     </div>
-                    <p className="mt-1 text-muted-foreground">{purchase.supplier}</p>
-                    <p className="text-sm text-muted-foreground">
-                        Мин. сумма: {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽ · До{' '}
-                        {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                    {!isDraft && (
-                        <div className="mt-3 max-w-md space-y-1">
-                            <p className="text-sm font-medium text-muted-foreground">Этап закупки</p>
-                            <PurchaseFulfillmentStatusSelect
-                                value={fulfillmentStatus}
-                                disabled={actions.updateFulfillmentStatus.isPending}
-                                onChange={(next) => {
-                                    actions.updateFulfillmentStatus.mutate({ id, fulfillmentStatus: next });
-                                }}
-                            />
-                        </div>
-                    )}
+                }
+            />
+
+            <PurchaseStepper currentStatus={fulfillmentStatus ?? null} />
+
+            {!isDraft && fulfillmentStatus && (
+                <PurchaseStepCard
+                    purchaseId={id}
+                    status={fulfillmentStatus}
+                    purchaseTag={purchase.tag}
+                    selectedForPublishCount={selectedForPublish}
+                    onClearPublishSelection={() => setSelectedForPublish(0)}
+                    onOpenRemainderDialog={() => setRemainderOpen(true)}
+                />
+            )}
+
+            {isDraft && (
+                <div className="rounded-2xl border border-border bg-bg-card p-4">
+                    <SectionHeader
+                        title="Этап закупки"
+                        description="Черновик не имеет этапа. Активируйте закупку, чтобы участники могли делать заказы."
+                    />
                 </div>
+            )}
 
-                <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:justify-end">
-                    {isDraft && (
-                        <>
-                            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setDeleteOpen(true)}>
-                                <Trash2 className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                                <span className="sm:hidden">Удалить</span>
-                                <span className="hidden sm:inline">Удалить черновик</span>
-                            </Button>
-                            <Button className="w-full sm:w-auto" onClick={() => setActivateOpen(true)}>
-                                <Rocket className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                                <span className="sm:hidden">Активировать</span>
-                                <span className="hidden sm:inline">Активировать закупку</span>
-                            </Button>
-                        </>
-                    )}
-                    {canComplete && (
-                        <Button
-                            variant="destructive"
-                            className="w-full sm:w-auto"
-                            onClick={() => setCompleteOpen(true)}
-                        >
-                            <CheckCircle2 className="mr-2 h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                            <span className="sm:hidden">Завершить</span>
-                            <span className="hidden sm:inline">Завершить закупку</span>
-                        </Button>
-                    )}
-                </div>
-            </div>
+            <PurchaseStats
+                itemsCount={items.length}
+                totalOrders={items.reduce((sum, it) => sum + (it.orderLines?.length ?? 0), 0)}
+                totalDue={participantsData.totalDue}
+                totalPaid={participantsData.totalPaid}
+                totalPending={participantsData.totalPending}
+                participantsCount={participantsData.userIds.length}
+            />
 
-            <ExportPurchaseButtons purchaseId={id} />
-
-            <Tabs defaultValue="items">
-                <TabsList>
-                    <TabsTrigger value="items">Товары</TabsTrigger>
-                    <TabsTrigger value="supplement">Доборы</TabsTrigger>
-                    <TabsTrigger value="participants">Участники</TabsTrigger>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="gap-4">
+                <TabsList variant="line" className="w-full justify-start gap-0">
+                    <TabsTrigger value="items">
+                        <Package className="size-3.5" />
+                        Товары
+                        <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
+                            {items.length}
+                        </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="supplements">
+                        Доборы
+                        <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
+                            {remainderItems.length}
+                        </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="participants">
+                        <Users className="size-3.5" />
+                        Участники
+                        <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
+                            {participantsData.userIds.length}
+                        </span>
+                    </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="items" className="mt-4">
-                    <ItemsTab purchaseId={id} />
+                <TabsContent value="items" className="mt-3 space-y-3">
+                    <SectionHeader
+                        title="Товары в закупке"
+                        description={`${items.length} ${items.length === 1 ? 'товар' : 'товаров'} · нажмите на строку, чтобы редактировать`}
+                    />
+                    <ItemsTab purchaseId={id} onSelectionChange={setSelectedForPublish} />
                 </TabsContent>
 
-                <TabsContent value="supplement" className="mt-4">
-                    <SupplementTab purchaseId={id} />
+                <TabsContent value="supplements" className="mt-3 space-y-3">
+                    <AdminSupplementsList
+                        purchaseId={id}
+                        onOpenRemainderDialog={() => setRemainderOpen(true)}
+                    />
                 </TabsContent>
 
-                <TabsContent value="participants" className="mt-4">
-                    <ParticipantsTab purchaseId={id} />
+                <TabsContent value="participants" className="mt-3 space-y-3">
+                    <AdminParticipantsList purchaseId={id} />
                 </TabsContent>
             </Tabs>
 
-            <ConfirmDialog
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                title="Удалить черновик?"
-                description={
-                    <>
-                        Закупка <strong>{purchase.tag}</strong> и все добавленные в неё товары будут удалены без
-                        возможности восстановления.
-                    </>
-                }
-                loading={actions.deleteDraft.isPending}
-                onConfirm={() => {
-                    actions.deleteDraft.mutate(
-                        { id },
-                        {
-                            onSuccess: () => {
-                                setDeleteOpen(false);
-                                router.push('/purchases');
-                            },
-                        },
-                    );
-                }}
-            />
-
-            <ConfirmDialog
-                open={completeOpen}
-                onOpenChange={setCompleteOpen}
-                title="Вы уверены, что хотите завершить закупку?"
-                description={
-                    <>
-                        Закупка <strong>{purchase.tag}</strong> будет переведена в статус «Завершена». Участники больше
-                        не смогут оформлять и менять заказы.
-                    </>
-                }
-                confirmLabel="Завершить закупку"
-                variant="destructive"
-                loading={actions.complete.isPending}
-                onConfirm={() => {
-                    actions.complete.mutate({ id }, { onSuccess: () => setCompleteOpen(false) });
-                }}
-            />
+            {deleteDraftConfirm.dialog}
+            {completeConfirm.dialog}
 
             <Dialog open={activateOpen} onOpenChange={setActivateOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Активировать закупку?</DialogTitle>
                     </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Закупка станет доступна участникам для заказов. Публикация в Telegram выполняется отдельно
-                        кнопкой «Опубликовать в TG».
+                    <p className="text-sm text-fg-secondary">
+                        Закупка станет доступна участникам для заказов. Публикация в Telegram выполняется
+                        отдельно кнопкой «Опубликовать в TG».
                     </p>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setActivateOpen(false)}>
+                        <Button
+                            variant="outline"
+                            className="rounded-full"
+                            onClick={() => setActivateOpen(false)}
+                        >
                             Отмена
                         </Button>
                         <Button
+                            variant="brand"
+                            className="rounded-full"
                             disabled={actions.activate.isPending}
-                            onClick={() => {
-                                actions.activate.mutate(
-                                    { purchaseId: id },
-                                    { onSuccess: () => setActivateOpen(false) },
-                                );
-                            }}
+                            onClick={() => actions.activate.mutate({ id } as never)}
                         >
-                            {actions.activate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {actions.activate.isPending && <Loader2 className="size-4 animate-spin" />}
                             Активировать
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <SupplementDialog purchaseId={id} open={remainderOpen} onOpenChange={setRemainderOpen} />
         </div>
     );
 }

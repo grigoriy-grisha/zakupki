@@ -61,8 +61,8 @@ export function ProductSheet({ open, onOpenChange, editId: propEditId }: Product
                 onOpenChange(v);
             }}
         >
-            <SheetContent className="sm:max-w-lg overflow-y-auto">
-                <SheetHeader>
+            <SheetContent className="flex max-h-[100dvh] flex-col overflow-hidden p-0 sm:max-w-xl">
+                <SheetHeader className="shrink-0 border-b border-border px-4 py-3">
                     <SheetTitle>{editId ? 'Редактировать товар' : 'Новый товар'}</SheetTitle>
                     <SheetDescription>
                         {editId ? 'Измените данные товара' : 'Заполните данные нового товара'}
@@ -70,18 +70,20 @@ export function ProductSheet({ open, onOpenChange, editId: propEditId }: Product
                 </SheetHeader>
 
                 {editId && isProductLoading ? (
-                    <div className="space-y-4 px-4 pt-2">
+                    <div className="flex-1 space-y-3 overflow-y-auto p-4">
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
                     </div>
                 ) : (
-                    <ProductForm
-                        key={editId ?? 'new'}
-                        editId={editId}
-                        existing={existing}
-                        onSuccess={() => onOpenChange(false)}
-                    />
+                    <div className="flex-1 overflow-y-auto p-4">
+                        <ProductForm
+                            key={editId ?? 'new'}
+                            editId={editId}
+                            existing={existing}
+                            onSuccess={() => onOpenChange(false)}
+                        />
+                    </div>
                 )}
             </SheetContent>
         </Sheet>

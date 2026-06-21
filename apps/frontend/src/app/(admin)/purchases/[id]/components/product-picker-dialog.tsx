@@ -1,17 +1,31 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Package, Plus, Search } from 'lucide-react';
+import { Loader2, Package, Plus, Search } from 'lucide-react';
+
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+
 import { useAddPurchaseItems } from '../hooks';
 import { useUpdateProduct } from '../../../products/hooks';
-import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '../../../products/lib';
+import {
+    formatProductAttributesLine,
+    getProductPhotoId,
+    type ProductLabelSource,
+} from '../../../products/lib';
 import { ProductSheet } from '../../../products/components';
 import { PurchaseProductEditForm } from './purchase-product-edit-form';
+import { cn } from '@/lib/utils';
 
 interface ProductPickerDialogProps {
     purchaseId: number;
@@ -21,7 +35,11 @@ interface ProductPickerDialogProps {
 
 type PickerProduct = ProductLabelSource & { id: number };
 
-export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductIds }: ProductPickerDialogProps) {
+export function ProductPickerDialog({
+    purchaseId,
+    purchaseTag,
+    existingProductIds,
+}: ProductPickerDialogProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
@@ -64,15 +82,15 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
             }}
         >
             <DialogTrigger asChild>
-                <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4 shrink-0" />
+                <Button variant="brand" size="sm" className="rounded-full">
+                    <Plus className="size-3.5" />
                     <span className="sm:hidden">Добавить</span>
-                    <span className="hidden sm:inline">Добавить товары</span>
+                    <span className="hidden sm:inline">Добавить товар</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Выбрать товары из каталога</DialogTitle>
+                    <DialogTitle>Выбрать товар из каталога</DialogTitle>
                 </DialogHeader>
 
                 {detailProduct !== null ? (
@@ -84,43 +102,60 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
                         isAdding={addItems.isPending}
                     />
                 ) : (
-                    <>
+                    <div className="flex flex-col gap-3">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-tertiary" />
                             <Input
-                                placeholder="Поиск: название, номер, MIYUKI, Delica, 11/0…"
+                                placeholder="Поиск: название, бренд, артикул…"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
+                                className="h-9 rounded-full pl-9 text-13-regular"
                             />
                         </div>
 
                         <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs text-muted-foreground">
-                                Нажмите на товар, чтобы настроить и добавить в закупку.
+                            <p className="text-12-regular text-fg-tertiary">
+                                Нажмите на товар — базовые данные подставятся автоматически
                             </p>
-                            <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-                                <Plus className="mr-2 h-4 w-4" />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full"
+                                onClick={() => setCreateOpen(true)}
+                            >
+                                <Plus className="size-3.5" />
                                 Создать товар
                             </Button>
                         </div>
 
                         <div className="max-h-[400px] space-y-2 overflow-y-auto">
-                            {isLoading && <p className="py-4 text-center text-sm text-muted-foreground">Загрузка…</p>}
-                            {!isLoading && availableProducts.length === 0 && (
-                                <p className="py-4 text-center text-sm text-muted-foreground">
-                                    {search.trim() ? 'Ничего не найдено' : 'Все товары уже добавлены в закупку'}
+                            {isLoading && (
+                                <p className="py-4 text-center text-13-regular text-fg-tertiary">
+                                    Загрузка…
                                 </p>
                             )}
-                            {availableProducts.map((product) => (
-                                <ProductPickerRow
-                                    key={product.id}
-                                    product={product}
-                                    onOpenDetail={() => setDetailProduct(product.id)}
-                                />
-                            ))}
+                            {!isLoading && availableProducts.length === 0 && (
+                                <div className="rounded-2xl border border-border bg-bg-card py-8 text-center">
+                                    <p className="text-13-regular text-fg-tertiary">
+                                        {search.trim()
+                                            ? 'Ничего не найдено'
+                                            : 'Все товары уже добавлены в закупку'}
+                                    </p>
+                                </div>
+                            )}
+                            {availableProducts.map((product) => {
+                                const isExisting = existingProductIds.has(product.id);
+                                return (
+                                    <ProductPickerRow
+                                        key={product.id}
+                                        product={product}
+                                        isExisting={isExisting}
+                                        onOpenDetail={() => setDetailProduct(product.id)}
+                                    />
+                                );
+                            })}
                         </div>
-                    </>
+                    </div>
                 )}
             </DialogContent>
 
@@ -136,34 +171,82 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, existingProductId
     );
 }
 
-function ProductPickerRow({ product, onOpenDetail }: { product: PickerProduct; onOpenDetail: () => void }) {
+function ProductPickerRow({
+    product,
+    isExisting,
+    onOpenDetail,
+}: {
+    product: PickerProduct;
+    isExisting: boolean;
+    onOpenDetail: () => void;
+}) {
     const photoId = getProductPhotoId(product);
     const attributesLine = formatProductAttributesLine(product);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const basePrice = (product as any).pricePerUnit != null ? Number((product as any).pricePerUnit) : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const minPkgAmount = (product as any).minPackageAmount != null
+        ? Number((product as any).minPackageAmount)
+        : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const minPkgUnit = (product as any).minPackageUnit as string | null | undefined;
 
     return (
-        <button
-            type="button"
-            className="flex w-full items-start gap-3 rounded-md border p-3 text-left hover:bg-accent"
+        <Button
+            variant="ghost"
+            size="default"
+            disabled={isExisting}
             onClick={onOpenDetail}
+            className={cn(
+                'h-auto w-full justify-start gap-3 rounded-2xl border border-border bg-bg-card p-3 text-left',
+                !isExisting && 'hover:border-border-strong hover:bg-bg-soft',
+                isExisting && 'cursor-not-allowed opacity-60',
+            )}
         >
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
                 {photoId ? (
-                    <img src={`/api/photos/${photoId}`} alt="" className="h-full w-full object-cover" />
+                    <img
+                        src={`/api/photos/${photoId}`}
+                        alt=""
+                        className="h-full w-full object-cover"
+                    />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                        <Package className="h-6 w-6 text-muted-foreground/40" />
+                        <Package className="h-6 w-6 text-fg-tertiary/40" />
                     </div>
                 )}
             </div>
-            <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="font-medium leading-snug">{product.name}</p>
-                {attributesLine ? (
-                    <p className="text-xs text-muted-foreground leading-relaxed">{attributesLine}</p>
-                ) : (
-                    <p className="text-xs text-muted-foreground">Атрибуты не указаны</p>
+            <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                    <p className="truncate text-14-semibold text-fg-primary">{product.name}</p>
+                    {isExisting && (
+                        <Badge type="subtle" variant="success" size="sm">
+                            Уже в закупке
+                        </Badge>
+                    )}
+                </div>
+                {attributesLine && (
+                    <p className="truncate text-12-regular text-fg-tertiary">{attributesLine}</p>
+                )}
+                {(basePrice != null || minPkgAmount != null) && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-12-medium text-fg-secondary tabular-nums">
+                        {basePrice != null && basePrice > 0 && (
+                            <span>{basePrice.toLocaleString('ru-RU')} ₽/ед</span>
+                        )}
+                        {minPkgAmount != null && minPkgAmount > 0 && (
+                            <>
+                                {basePrice != null && basePrice > 0 && (
+                                    <span className="text-fg-disabled">·</span>
+                                )}
+                                <span>
+                                    мин. {minPkgAmount} {minPkgUnit ?? 'ед'}
+                                </span>
+                            </>
+                        )}
+                    </div>
                 )}
             </div>
-        </button>
+        </Button>
     );
 }
 
@@ -185,24 +268,72 @@ function ProductDetail({
     const updateMutation = useUpdateProduct();
 
     if (isLoading) {
-        return <div className="py-8 text-center text-sm text-muted-foreground">Загрузка...</div>;
+        return (
+            <div className="flex flex-col gap-3">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBack}
+                    className="self-start rounded-full text-fg-secondary"
+                >
+                    ← Назад к списку
+                </Button>
+                <div className="rounded-2xl border border-border bg-bg-card p-6 text-center text-13-regular text-fg-tertiary">
+                    Загрузка…
+                </div>
+            </div>
+        );
     }
 
     if (!product) {
-        return <div className="py-8 text-center text-sm text-muted-foreground">Товар не найден</div>;
+        return (
+            <div className="flex flex-col gap-3">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBack}
+                    className="self-start rounded-full text-fg-secondary"
+                >
+                    ← Назад к списку
+                </Button>
+                <div className="rounded-2xl border border-border bg-bg-card p-6 text-center text-13-regular text-fg-tertiary">
+                    Товар не найден
+                </div>
+            </div>
+        );
     }
 
+    // Базовые значения из Product: цена за 1 шт, мин. фасовка, фасовка поставщика.
+    // Подставляем их в форму, чтобы админу не приходилось вводить заново.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const basePricePerUnit = (product as any).pricePerUnit != null ? Number((product as any).pricePerUnit) : 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const baseUnit = (product as any).unit?.shortName ?? 'ед';
+    const baseInitialTiers =
+        basePricePerUnit > 0
+            ? [{ amount: 1, unit: baseUnit, price: basePricePerUnit }]
+            : [];
+
     return (
-        <div className="space-y-2">
-            <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <div className="flex flex-col gap-3">
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onBack}
+                className="self-start rounded-full text-fg-secondary"
+            >
                 ← Назад к списку
-            </button>
+            </Button>
             <PurchaseProductEditForm
                 key={productId}
                 product={product}
                 purchaseTag={purchaseTag}
-                loadSavedDescription={false}
-                initialTiers={[]}
+                loadSavedDescription={true}
+                initialTiers={baseInitialTiers}
+                onCancel={onBack}
                 onSave={(data) => {
                     updateMutation.mutate(
                         {

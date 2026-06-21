@@ -1,7 +1,10 @@
+import { getActiveBotConfig } from '../config/bot-config';
+
+/** @deprecated Использовать `container.cfg.webapp.url`. */
 export function getWebAppUrl(): string | null {
-    const baseUrl = process.env.WEBAPP_URL?.trim();
+    const baseUrl = getActiveBotConfig().webapp.url;
     if (!baseUrl) return null;
-    return `${baseUrl.replace(/\/$/, '')}/tg/webapp`;
+    return `${baseUrl}/tg/webapp`;
 }
 
 function isHttpsUrl(url: string): boolean {
@@ -30,7 +33,7 @@ export function shopInlineKeyboardForGroup() {
 
 /** Запасной вариант — ссылка t.me, если WEBAPP_URL не задан. */
 export function shopUrlKeyboard() {
-    const link = process.env.TELEGRAM_MINI_APP_URL?.trim() || getWebAppUrl();
+    const link = getActiveBotConfig().webapp.miniAppUrl || getWebAppUrl();
     if (!link) return undefined;
 
     return {

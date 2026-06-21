@@ -17,11 +17,11 @@ type LoadState = 'empty' | 'loading' | 'ready' | 'error';
 function AvatarPlaceholder({ iconClassName }: { iconClassName?: string }) {
     return (
         <div
-            className="flex size-full items-center justify-center rounded-full bg-slate-200 dark:bg-slate-800"
+            className="flex size-full items-center justify-center rounded-full bg-bg-soft"
             aria-hidden
         >
             <Bird
-                className={cn('h-8 w-8 shrink-0 text-slate-500 dark:text-slate-400', iconClassName)}
+                className={cn('h-8 w-8 shrink-0 text-fg-tertiary', iconClassName)}
                 strokeWidth={1.75}
             />
         </div>

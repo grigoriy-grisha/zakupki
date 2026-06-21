@@ -5,6 +5,7 @@ import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 
+import { Button } from '@/components/ui/button';
 import { productPhotoUrl } from '@/lib/product-photo-url';
 
 interface PhotoUploaderProps {
@@ -136,13 +137,16 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
                         className="h-20 w-20 rounded-md object-cover"
                         onLoad={() => handlePhotoLoaded(id)}
                     />
-                    <button
+                    <Button
                         type="button"
+                        variant="destructive"
+                        size="icon-xs"
+                        aria-label="Удалить фото"
                         onClick={() => handleRemovePhoto(id)}
-                        className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-destructive-foreground"
+                        className="absolute -top-1 -right-1 size-5 rounded-full p-0 text-error-foreground hover:bg-error/90"
                     >
-                        <X className="h-3 w-3" />
-                    </button>
+                        <X className="size-3" />
+                    </Button>
                 </div>
             ))}
             {localPreviews.map((p) => (

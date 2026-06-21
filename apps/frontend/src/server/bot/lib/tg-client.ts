@@ -5,6 +5,7 @@ import { createLogger } from '@zakupki/logger';
 
 import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
 import type { ChannelPostPhoto } from '../domain/types';
+import type { BotConfig } from '../config/bot-config';
 
 const log = createLogger('tg-client');
 
@@ -18,7 +19,15 @@ type StoredPhoto = { id: number; objectKey: string; mimeType: string };
  * Никаких fallback-обвязок: renderer гарантирует валидный HTML, BullMQ ретраит.
  */
 export class TgClient {
-    constructor(private readonly api: Api) {}
+    constructor(
+        private readonly _api: Api,
+        private readonly cfg: BotConfig,
+    ) {}
+
+    /** Доступ к grammY Api нужен в нескольких местах (например, ChannelDiscussion.init). */
+    get api(): Api {
+        return this._api;
+    }
 
     // ── Посты в канале ──────────────────────────────────────────
 
@@ -120,10 +129,10 @@ export class TgClient {
             log.warn({ photoId: photo.id, err }, 'loadProductPhoto failed');
         }
 
-        const webappUrl = process.env.WEBAPP_URL?.trim();
+        const webappUrl = this.cfg.webapp.photoBaseUrl;
         if (webappUrl) {
             try {
-                const resp = await fetch(`${webappUrl.replace(/\/$/, '')}/api/photos/${photo.id}`);
+                const resp = await fetch(`${webappUrl}/api/photos/${photo.id}`);
                 if (resp.ok) {
                     const arrayBuf = await resp.arrayBuffer();
                     log.debug({ photoId: photo.id, source: 'webapp' }, 'photo loaded');

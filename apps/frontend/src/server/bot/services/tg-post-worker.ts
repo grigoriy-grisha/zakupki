@@ -5,20 +5,13 @@ import { getTgPostJobsQueue } from '@zakupki/queue';
 import { createLogger } from '@zakupki/logger';
 import type { Api } from 'grammy';
 
-import { renderById } from '../../lib/section-renderers';
-import type {
-    FulfillmentCommentData,
-    ProductHeaderData,
-    PurchaseStatusCommentData,
-    StatusLineData,
-} from '../../lib/section-renderers';
-import { SHOP_COMMENT_TEXT } from '../../lib/section-renderers/shop-comment.renderer';
 import { getOrInitDiscussionChatId } from '../lib/channel-discussion';
 import { getDiscussionMessageStore } from '../lib/discussion-message-store';
 import { getChannelIdFromEnv } from '../lib/telegram-post';
 import { getOrdersChatIdFromEnv } from '../lib/telegram-chat';
 import { TgClient } from '../lib/tg-client';
 import type { ChannelPostPhoto } from '../domain/types';
+import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 import {
     computeRawPool,
     getStageStrategy,
@@ -51,33 +44,29 @@ async function loadPostPhoto(tg: TgClient, item: Item): Promise<ChannelPostPhoto
     return first ? tg.loadPhoto(first) : null;
 }
 
-function buildPostHeader(item: Item): string {
-    return (
-        renderById<ProductHeaderData>('PRODUCT_HEADER', {
-            name: item.product.name,
-            description: item.product.description,
-            pricePerUnit: item.product.pricePerUnit,
-            minPackageAmount: item.product.minPackageAmount,
-            minPackageUnit: item.product.minPackageUnit,
-            unitCode: item.product.unitCode,
-        }) ?? ''
-    );
+function buildPostHeader(renderer: BotProductRenderer, item: Item): string {
+    return renderer.buildPostHeader({
+        name: item.product.name,
+        description: item.product.description,
+        pricePerUnit: item.product.pricePerUnit,
+        minPackageAmount: item.product.minPackageAmount,
+        minPackageUnit: item.product.minPackageUnit,
+        unitCode: item.product.unitCode,
+    });
 }
 
-function buildStatusBlock(item: Item, orderLinesSum: number): string {
-    return (
-        renderById<StatusLineData>('STATUS_LINE', {
-            item: {
-                supplierLimit: item.supplierLimit as unknown as number | null,
-                supplierLimitUnit: item.supplierLimitUnit,
-                targetRemainder: item.targetRemainder as unknown as number | null,
-            },
-            purchase: { fulfillmentStatus: item.purchase.fulfillmentStatus },
-            orderLinesSum,
-            freeToOrder: computeFreeToOrder(item),
-            unit: item.supplierLimitUnit ?? unitShortName(item),
-        }) ?? ''
-    );
+function buildStatusBlock(renderer: BotProductRenderer, item: Item, orderLinesSum: number): string {
+    return renderer.buildStatusLine({
+        item: {
+            supplierLimit: item.supplierLimit as unknown as number | null,
+            supplierLimitUnit: item.supplierLimitUnit,
+            targetRemainder: item.targetRemainder as unknown as number | null,
+        },
+        purchase: { fulfillmentStatus: item.purchase.fulfillmentStatus },
+        orderLinesSum,
+        freeToOrder: computeFreeToOrder(item),
+        unit: item.supplierLimitUnit ?? unitShortName(item),
+    });
 }
 
 /**
@@ -100,9 +89,9 @@ function unitShortName(item: Item): string | null {
     return getUnitByCode(item.product.unitCode)?.shortName ?? null;
 }
 
-function joinPostText(item: Item, orderLinesSum: number): string {
-    const top = buildPostHeader(item);
-    const bottom = buildStatusBlock(item, orderLinesSum);
+function joinPostText(renderer: BotProductRenderer, item: Item, orderLinesSum: number): string {
+    const top = buildPostHeader(renderer, item);
+    const bottom = buildStatusBlock(renderer, item, orderLinesSum);
     return top && bottom ? `${top}\n\n${bottom}` : top || bottom;
 }
 
@@ -117,7 +106,7 @@ function sumOrderLines(item: Item): number {
     );
 }
 
-async function tryEditItemPost(tg: TgClient, item: Item): Promise<void> {
+async function tryEditItemPost(tg: TgClient, renderer: BotProductRenderer, item: Item): Promise<void> {
     if (!item.tgMessageId || !item.tgChannelId) return;
     const hadPhoto = item.product.photos.length > 0;
     const photo = await loadPostPhoto(tg, item);
@@ -127,7 +116,12 @@ async function tryEditItemPost(tg: TgClient, item: Item): Promise<void> {
         log.warn({ itemId: item.id, messageId: item.tgMessageId }, 'photo missing, skipping edit');
         return;
     }
-    await tg.editPost(item.tgChannelId, Number(item.tgMessageId), joinPostText(item, sumOrderLines(item)), photo);
+    await tg.editPost(
+        item.tgChannelId,
+        Number(item.tgMessageId),
+        joinPostText(renderer, item, sumOrderLines(item)),
+        photo,
+    );
 }
 
 /**
@@ -139,6 +133,7 @@ export class TgPostWorker {
     constructor(
         private readonly tg: TgClient,
         private readonly api: Api,
+        private readonly renderer: BotProductRenderer,
         private readonly db: PrismaClient = dbClient,
     ) {}
 
@@ -214,7 +209,7 @@ export class TgPostWorker {
 
         const photo = await loadPostPhoto(this.tg, item);
         const channelId = getChannelIdFromEnv()!;
-        const { messageId } = await this.tg.sendPost(channelId, buildPostHeader(item), photo);
+        const { messageId } = await this.tg.sendPost(channelId, buildPostHeader(this.renderer, item), photo);
 
         await this.db.purchaseItem.update({
             where: { id: itemId },
@@ -234,7 +229,7 @@ export class TgPostWorker {
             'createPost: shop comment attempt',
         );
         await this.tg
-            .sendComment(discussionId, SHOP_COMMENT_TEXT, autoForwardId ?? undefined)
+            .sendComment(discussionId, this.renderer.shopCommentText, autoForwardId ?? undefined)
             .catch((err) => log.error({ itemId, messageId, err }, 'shop comment failed'));
 
         log.info({ itemId, messageId }, 'createPost done');
@@ -285,7 +280,7 @@ export class TgPostWorker {
             log.info({ itemId }, 'editItemPost: no post yet, nothing to edit');
             return;
         }
-        await tryEditItemPost(this.tg, item);
+        await tryEditItemPost(this.tg, this.renderer, item);
         log.info({ itemId, messageId: item.tgMessageId }, 'editItemPost done');
     }
 
@@ -308,7 +303,7 @@ export class TgPostWorker {
         let postsEdited = 0;
         for (const item of purchase.items) {
             if (!item.tgMessageId) continue;
-            await tryEditItemPost(this.tg, item);
+            await tryEditItemPost(this.tg, this.renderer, item);
             postsEdited++;
         }
 
@@ -328,8 +323,8 @@ export class TgPostWorker {
             const data = { status: next, channelPostMessageId: postId };
             const text =
                 kind === 'fulfillment'
-                    ? renderById<FulfillmentCommentData>('FULFILLMENT_COMMENT', data)
-                    : renderById<PurchaseStatusCommentData>('PURCHASE_STATUS_COMMENT', data);
+                    ? this.renderer.buildFulfillmentComment(data)
+                    : this.renderer.buildPurchaseStatusComment(data);
             if (!text) continue;
             await this.tg.sendComment(discussionId, text, autoForwardId ?? undefined);
             commentsSent++;

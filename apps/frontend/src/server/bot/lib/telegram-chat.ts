@@ -1,3 +1,4 @@
+import { getActiveBotConfig } from '../config/bot-config';
 import { getLinkedDiscussionChatId } from './channel-discussion';
 import { getChannelIdFromEnv, normalizeChatId } from './telegram-post';
 import { collectTelegramPostRefs, type ReplyToMessage, walkReplyChain } from './resolve-reply-purchase-item';
@@ -7,9 +8,11 @@ export type OrderCollectionMessage = {
     message_thread_id?: number;
 };
 
+/**
+ * @deprecated Использовать `container.cfg.telegram.ordersChatId` напрямую.
+ */
 export function getOrdersChatIdFromEnv(): string | null {
-    const raw = (process.env.TG_ORDERS_CHAT_ID ?? process.env.TELEGRAM_ORDERS_CHAT_ID)?.trim();
-    return raw ? normalizeChatId(raw) : null;
+    return getActiveBotConfig().telegram.ordersChatId;
 }
 
 /** Ключ для сравнения: -1003537022316 и -3537022316 — один чат. */

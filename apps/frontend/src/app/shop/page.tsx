@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
+import { ShoppingCartIcon } from 'lucide-react';
+
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingCart } from 'lucide-react';
 
 export default function ShopPage() {
     const router = useAppRouter();
@@ -20,11 +22,11 @@ export default function ShopPage() {
 
     if (isLoading) {
         return (
-            <div className="space-y-4">
-                <Skeleton className="h-8 w-64" />
+            <div className="flex flex-col gap-4">
+                <Skeleton className="h-8 w-64 rounded-md" />
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <Skeleton key={i} className="h-64" />
+                        <Skeleton key={i} className="h-64 rounded-2xl" />
                     ))}
                 </div>
             </div>
@@ -33,14 +35,13 @@ export default function ShopPage() {
 
     if (!purchases?.length) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-                <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
-                <h2 className="mt-4 text-lg font-medium">Нет активных закупок</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Сейчас нет открытых закупок для участия</p>
-            </div>
+            <EmptyState
+                icon={ShoppingCartIcon}
+                title="Нет активных закупок"
+                description="Сейчас нет открытых закупок для участия"
+            />
         );
     }
 
-    // Will redirect via useEffect
     return null;
 }

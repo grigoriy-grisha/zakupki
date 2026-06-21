@@ -2,6 +2,7 @@
 
 import { CircleCheck, Clock, CreditCard } from 'lucide-react';
 import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface PaymentStatusBlockProps {
@@ -136,16 +137,18 @@ export function PaymentStatusBlock({
         <div className={wrapCls}>
             <div>
                 <span className="font-medium text-foreground">{total.toLocaleString('ru-RU')} ₽</span>
-                <button
+                <Button
+                    variant="secondary"
+                    size="sm"
                     disabled
                     className={cn(
-                        'mt-1 flex w-full cursor-not-allowed items-center justify-center gap-1 rounded-md bg-muted px-3 text-xs font-medium text-muted-foreground/50',
+                        'mt-1 h-auto w-full cursor-not-allowed gap-1 px-3 text-12-medium',
                         compact ? 'py-1.5' : 'py-1.5',
                     )}
                 >
-                    <CreditCard className="h-3 w-3" />
+                    <CreditCard className="size-3" />
                     Ждём начала оплаты
-                </button>
+                </Button>
             </div>
         </div>
     );

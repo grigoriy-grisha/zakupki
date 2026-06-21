@@ -1,22 +1,22 @@
 'use client';
 
 import { use, useMemo } from 'react';
+import { Package } from 'lucide-react';
+import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus, isSupplementPhase } from '@zakupki/types';
+
 import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Package, ChevronRight, X } from 'lucide-react';
-import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus, isSupplementPhase } from '@zakupki/types';
-import { cn } from '@/lib/utils';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
-import type { ShopPurchaseItem, ShopOrderLine } from '@/app/shop/lib/types';
+
 import { aggregateByItem } from '../../lib/order-aggregation';
-import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
-import { ProductCard } from './components';
-import { FilterTree } from './components/filter-tree';
+import { usePurchasePaymentDetail } from './hooks';
+import { FilterBar, ProductGrid, PurchaseGridSkeleton, PurchaseStepper } from './components';
+import type { ProductGridItem } from './components/product-grid';
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
@@ -26,10 +26,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const paymentDetail = usePurchasePaymentDetail(id);
     const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
 
-    const items = purchase?.items ?? [];
+    const items = (purchase?.items ?? []) as ProductGridItem[];
     const {
         tree,
-        selectedPath,
         selectedId,
         selectedFolderLabel,
         ancestorPath,
@@ -42,178 +41,97 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     } = usePurchaseFilterTree(items);
 
     const aggregatedByItem = useMemo(
-        () => aggregateByItem(paymentDetail.myOrdersInPurchase as never),
+        () => aggregateByItem(paymentDetail.myOrdersInPurchase),
         [paymentDetail.myOrdersInPurchase],
     );
 
     if (isLoading) {
         return (
-            <div className="space-y-4">
-                <Skeleton className="h-8 w-64" />
-                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                        <Skeleton key={i} className="aspect-[4/3] w-full rounded-lg" />
-                    ))}
+            <div className="flex flex-col gap-6">
+                <div className="space-y-3">
+                    <Skeleton className="h-5 w-24 rounded-md" />
+                    <Skeleton className="h-8 w-72 rounded-md" />
+                    <Skeleton className="h-4 w-96 rounded-md" />
                 </div>
+                <PurchaseGridSkeleton />
             </div>
         );
     }
 
     if (!purchase) {
         return (
-            <Card>
-                <CardContent className="flex flex-col items-center py-16">
-                    <h2 className="text-lg font-medium">Закупка не найдена</h2>
-                    <Button variant="outline" className="mt-4" asChild>
-                        <AppLink href="/shop">Назад к закупкам</AppLink>
-                    </Button>
-                </CardContent>
-            </Card>
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-bg-card py-16 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-bg-soft text-fg-secondary">
+                    <Package className="size-5" />
+                </div>
+                <h2 className="text-18-semibold text-fg-primary">Закупка не найдена</h2>
+                <Button variant="outline" className="mt-2 rounded-full" asChild>
+                    <AppLink href="/shop">Назад к закупкам</AppLink>
+                </Button>
+            </div>
         );
     }
 
     const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
     const isSupplement = isSupplementPhase(fulfillmentStatus);
+    const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
+
+    const activityBadge = (
+        <Badge type="subtle" size="default" variant={isSupplement ? 'warning' : 'success'}>
+            {isSupplement ? 'Добор' : 'Активна'}
+        </Badge>
+    );
 
     return (
-        <div className="space-y-6">
-            <div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-3xl font-bold tracking-tight">{purchase.tag}</h1>
-                    <Badge
-                        className={
-                            'text-sm px-2.5 py-0.5 ' +
-                            (isSupplement ? 'bg-warning-50 text-warning' : 'bg-success-50 text-success')
-                        }
-                    >
-                        {isSupplement ? 'Добор' : 'Активна'}
-                    </Badge>
-                    <Badge variant="outline" className="text-sm px-2.5 py-0.5">
-                        <Package className="mr-1 h-3.5 w-3.5" />
-                        {fulfillmentLabel}
-                    </Badge>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-muted-foreground">
-                    <span>{purchase.supplier}</span>
-                    <span>·</span>
-                    <span>
-                        До {new Date(purchase.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
-                    </span>
-                </div>
-            </div>
-
-            {items.length === 0 ? (
-                <Card>
-                    <CardContent className="flex flex-col items-center py-16">
-                        <h2 className="text-lg font-medium">Пока нет товаров</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Администратор ещё не добавил товары в эту закупку
-                        </p>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="flex gap-6">
-                    {tree.length > 0 && (
-                        <div className="hidden w-62 shrink-0 lg:block">
-                            <FilterTree
-                                nodes={tree}
-                                selectedId={selectedId}
-                                onSelect={handleSelectNode}
-                                expandedIds={expandedIds}
-                                onToggle={handleToggle}
-                                totalCount={totalCount}
-                                onClear={clearSelection}
-                            />
-                        </div>
-                    )}
-
-                    <div className="min-w-0 flex-1 space-y-4">
-                        {selectedId != null && (
-                            <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                                {ancestorPath.map((segment, i) => (
-                                    <span
-                                        key={`${segment.typeId}:${segment.name}`}
-                                        className="flex items-center gap-1.5"
-                                    >
-                                        {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                                        <span>
-                                            <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
-                                            {segment.name}
-                                        </span>
-                                    </span>
-                                ))}
-                                {selectedFolderLabel != null && (
-                                    <span className="flex items-center gap-1.5">
-                                        {ancestorPath.length > 0 && (
-                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                        )}
-                                        <span className="font-medium">{selectedFolderLabel}</span>
-                                    </span>
-                                )}
-                                {selectedPath.map((segment, i) => (
-                                    <span
-                                        key={`${segment.typeId}:${segment.name}`}
-                                        className="flex items-center gap-1.5"
-                                    >
-                                        {(ancestorPath.length > 0 || i > 0) && (
-                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                        )}
-                                        <span
-                                            className={cn(
-                                                i === selectedPath.length - 1 &&
-                                                    selectedFolderLabel == null &&
-                                                    'font-medium',
-                                            )}
-                                        >
-                                            <span className="text-muted-foreground">{segment.typeName}:</span>{' '}
-                                            {segment.name}
-                                        </span>
-                                    </span>
-                                ))}
-                                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={clearSelection}>
-                                    <X className="mr-1 h-3.5 w-3.5" />
-                                    Сбросить
-                                </Button>
-                            </div>
-                        )}
-
-                        <p className="text-sm text-muted-foreground">Товаров: {filteredItems.length}</p>
-
-                        <div className="grid grid-cols-2 items-stretch gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredItems.map((item) => {
-                                const agg = aggregatedByItem.get(item.id);
-                                return (
-                                    <ProductCard
-                                        key={item.id}
-                                        item={{
-                                            ...item,
-                                            quantity: agg?.quantity ?? 0,
-                                            packageCount: agg?.packageCount ?? 0,
-                                        }}
-                                        purchaseId={id}
-                                        packDiscountPercent={packDiscountPercent}
-                                        baseQuantity={agg?.baseQuantity ?? undefined}
-                                        isSupplement={isSupplement}
-                                        canAddPackage={
-                                            fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'
-                                        }
-                                        fulfillmentStatus={fulfillmentStatus}
-                                    />
-                                );
+        <div className="flex flex-col gap-5 sm:gap-6">
+            <PageHeader
+                title={purchase.tag}
+                description={
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>{purchase.supplier}</span>
+                        <span className="text-fg-tertiary">·</span>
+                        <span>
+                            До{' '}
+                            {new Date(purchase.deadline).toLocaleDateString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
                             })}
-                        </div>
+                        </span>
+                        <span className="text-fg-tertiary">·</span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <Package className="size-3.5 text-fg-tertiary" />
+                            {fulfillmentLabel}
+                        </span>
+                    </span>
+                }
+                badge={<div className="flex flex-wrap items-center gap-2">{activityBadge}</div>}
+            />
 
-                        {filteredItems.length === 0 && (
-                            <Card>
-                                <CardContent className="flex flex-col items-center py-12">
-                                    <h2 className="text-lg font-medium">Нет товаров в этой категории</h2>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
-                </div>
-            )}
+            <PurchaseStepper currentStatus={fulfillmentStatus} />
+
+            <FilterBar
+                tree={tree}
+                selectedId={selectedId}
+                onSelectNode={handleSelectNode}
+                expandedIds={expandedIds}
+                onToggle={handleToggle}
+                onClear={clearSelection}
+                totalCount={totalCount}
+                filteredCount={filteredItems.length}
+                ancestorPath={ancestorPath}
+                selectedFolderLabel={selectedFolderLabel}
+            />
+
+            <ProductGrid
+                items={filteredItems}
+                aggregatedByItem={aggregatedByItem}
+                purchaseId={id}
+                packDiscountPercent={packDiscountPercent}
+                isSupplement={isSupplement}
+                canAddPackage={canAddPackage}
+                fulfillmentStatus={fulfillmentStatus}
+            />
         </div>
     );
 }

@@ -1,51 +1,56 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { formatMinPackageHint } from '@zakupki/types';
-import { QuantityButtons } from '@/app/shop/components/quantity-buttons';
-import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
-import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
-import { cn } from '@/lib/utils';
-import type { ShopPurchaseItem } from '@/app/shop/lib/types';
+import { memo, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
+import { getPackDiscountPricingInfo } from '@zakupki/types';
 
-/**
- * Данные PurchaseItem из tRPC + кол-во пользователя.
- * Продукт приходит из tRPC как AttrProduct (Prisma Decimal→string).
- * Хук useItemOrderControls внутри делает Number() для всех полей.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ProductCardItem = Record<string, any> & {
-    id: number;
-    purchaseItemId?: number;
-    quantity: number;
-    packageCount?: number;
-};
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
+import { cn } from '@/lib/utils';
+import type { ProductGridItem } from './product-grid';
 
 interface ShopPurchaseItemProductCardProps {
-    item: ProductCardItem;
+    item: ProductGridItem;
     purchaseId: number;
     packDiscountPercent: number;
-    /** baseQuantity — замороженный снимок при входе в SUPPLEMENT */
+    currentQuantity?: number;
+    currentPackageCount?: number;
     baseQuantity?: number | null;
     isSupplement: boolean;
-    /** Можно ли добавлять упаковки (COLLECTION или REORDER) */
     canAddPackage: boolean;
     fulfillmentStatus: string;
     onOrderChange?: () => void;
 }
 
-export function ProductCard({
+function formatRubles(value: number): string {
+    return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
+}
+
+function pluralPacks(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'пачку';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'пачки';
+    return 'пачек';
+}
+
+function ProductCardImpl({
     item,
     purchaseId,
     packDiscountPercent,
+    currentQuantity = 0,
+    currentPackageCount = 0,
     baseQuantity: baseQuantityProp,
     isSupplement,
     canAddPackage,
     fulfillmentStatus,
-    onOrderChange,
 }: ShopPurchaseItemProductCardProps) {
+    const router = useRouter();
     const purchaseItemId = item.purchaseItemId ?? item.id;
     const product = item.product;
 
@@ -53,132 +58,274 @@ export function ProductCard({
         purchaseId,
         purchaseItemId,
         item,
-        currentQuantity: item.quantity ?? 0,
-        currentPackageCount: item.packageCount ?? 0,
+        currentQuantity,
+        currentPackageCount,
         baseQuantity: baseQuantityProp ?? 0,
         fulfillmentStatus,
         packDiscountPercent,
     });
 
     const photo = product.photos?.[0];
+    const detailHref = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
+
+    const goToDetail = useCallback(() => {
+        router.push(detailHref);
+    }, [router, detailHref]);
+
+    const stop = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+    }, []);
+
+    const packInfo = useMemo(
+        () => getPackDiscountPricingInfo(product, packDiscountPercent),
+        [product, packDiscountPercent],
+    );
+
+    // Подсказка: минимальная фасовка (например, «Мин. фасовка: 10 гр»)
     const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
     const minPackageUnit = product.minPackageUnit ?? null;
+    const minHint =
+        minPackageAmount != null && minPackageAmount > 0
+            ? `от ${minPackageAmount % 1 === 0 ? minPackageAmount : minPackageAmount.toFixed(1).replace(/\.?0+$/, '')} ${minPackageUnit ?? ctx.shortName}`
+            : null;
+
+    // Ценовые тиры (priceTiers) зарезервированы на будущее — показываем базовую цену.
+
+    // Состояния
+    const hasOrder = ctx.hasOrder;
+    const isSoldOutNoOrder = ctx.isSoldOut && !hasOrder;
+    const showPackHint = packInfo != null && !hasOrder && !isSoldOutNoOrder;
+    const showInCartDiscount = packInfo != null && hasOrder && ctx.fullPacks > 0;
+    const showMinHint = minHint != null && !hasOrder;
+
+    // Подпись под ценой в in-cart состоянии
+    const orderSubtitle = hasOrder
+        ? `${ctx.currentQuantity > 0 ? `${ctx.currentQuantity} ${ctx.shortName}` : ''}${
+              ctx.currentQuantity > 0 && ctx.currentPackageCount > 0 ? ' + ' : ''
+          }${ctx.currentPackageCount > 0 ? `${ctx.currentPackageCount} упак.` : ''}`
+        : null;
 
     return (
         <Card
+            rounded="2xl"
             className={cn(
-                'group relative flex h-full flex-col gap-0 overflow-hidden rounded-lg border py-0 transition-all',
-                ctx.isSoldOut && !ctx.hasOrder && 'opacity-60 border-transparent',
-                ctx.hasOrder && 'border-primary bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]',
-                !ctx.hasOrder && 'border-transparent',
-                !ctx.isSoldOut && 'hover:shadow-md',
+                'group relative flex h-full flex-col overflow-hidden border py-0 transition-all duration-200 ease-out',
+                'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg',
+                hasOrder && 'border-primary/50 bg-primary/[0.04] shadow-md shadow-primary/5',
+                isSoldOutNoOrder && 'opacity-80',
             )}
-            onClick={() => {
-                window.location.href = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
-            }}
-            role="link"
-            style={{ cursor: 'pointer' }}
         >
-            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-                <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
-                {ctx.hasOrder && !ctx.isSoldOut && (
-                    <>
-                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
+
+            {/* ── Фото ── */}
+            <button
+                type="button"
+                onClick={goToDetail}
+                aria-label={`Открыть карточку товара ${product.name}`}
+                className="block w-full text-left"
+            >
+                <div className="relative aspect-square w-full overflow-hidden bg-bg-soft sm:aspect-[4/3]">
+                    {/* Контейнер с overflow-hidden — оборачиваем, чтобы scale работал корректно */}
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105">
+                            <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
+                        </div>
+                    </div>
+
+                    {/* Скидочный бейдж — только до добавления в корзину */}
+                    {showPackHint && (
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1]">
+                            <Badge type="subtle" variant="success" size="sm" className="shadow-sm">
+                                <Percent className="mr-0.5 size-3" />
+                                −{packInfo.discountPercent}% за пачку
+                            </Badge>
+                        </div>
+                    )}
+
+                    {/* In-cart пилл (сверху-слева) */}
+                    {hasOrder && !ctx.isSoldOut && (
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-12-semibold leading-none text-primary-foreground shadow-sm">
+                            <ShoppingCart className="size-2.5" />
                             В корзине
                         </div>
-                        <div className="pointer-events-none absolute top-1.5 right-1.5 z-[1] flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 text-primary-foreground shadow-sm">
-                            <span className="text-[11px] font-bold leading-none tabular-nums">
-                                {ctx.currentQuantity}
-                            </span>
-                        </div>
-                    </>
-                )}
-            </div>
+                    )}
 
-            <CardContent className="flex flex-1 flex-col p-3">
-                <div className="min-h-0 flex-1">
+                    {/* In-cart qty-чип (сверху-справа) */}
+                    {hasOrder && !ctx.isSoldOut && (
+                        <div className="pointer-events-none absolute top-1.5 right-1.5 z-[1] flex h-6 min-w-6 items-center justify-center rounded-full bg-bg-card px-2 text-12-semibold text-fg-primary shadow-sm tabular-nums">
+                            {ctx.currentQuantity}
+                            {ctx.currentPackageCount > 0 && (
+                                <span className="ml-0.5 text-12-regular text-fg-tertiary">
+                                    +{ctx.currentPackageCount}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Sold-out затемнение + крупный бейдж */}
+                    {isSoldOutNoOrder && (
+                        <>
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+                            <div className="absolute right-1.5 bottom-1.5 left-1.5 z-[1]">
+                                <div className="flex items-center gap-1.5 rounded-lg bg-bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
+                                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-warning/15">
+                                        <Package className="size-3 text-warning" />
+                                    </div>
+                                    <span className="text-12-semibold text-fg-primary">Разобрано</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </button>
+
+            {/* ── Контент ── */}
+            <div className="flex flex-1 flex-col gap-1.5 p-3">
+                {/* Заголовок */}
+                <button
+                    type="button"
+                    onClick={goToDetail}
+                    aria-label={`Открыть карточку товара ${product.name}`}
+                    className="block text-left"
+                >
                     <PurchaseProductLabel
                         product={product}
                         className="min-w-0 overflow-hidden"
-                        primaryClassName="block truncate text-sm font-semibold leading-snug"
-                        secondaryClassName="block truncate text-xs text-muted-foreground"
+                        primaryClassName="block text-13-semibold leading-tight text-fg-primary line-clamp-2 transition-colors group-hover:text-primary"
+                        secondaryClassName="mt-0.5 block truncate text-12-regular text-fg-tertiary"
                     />
-                    {(() => {
-                        const catalogMinHint = formatMinPackageHint({
-                            minPackageAmount,
-                            minPackageUnit,
-                            unitShort: ctx.shortName,
-                        });
-                        if (!catalogMinHint && !ctx.freeRemainderLabel) return null;
-                        return (
-                            <div className="mt-0.5 space-y-0.5">
-                                {catalogMinHint ? (
-                                    <p className="truncate text-xs text-muted-foreground">{catalogMinHint}</p>
-                                ) : null}
-                                {ctx.freeRemainderLabel ? (
-                                    <p className="truncate text-xs font-medium text-warning">
-                                        {ctx.freeRemainderLabel}
-                                    </p>
-                                ) : null}
-                            </div>
-                        );
-                    })()}
-                    <div className="mt-2">
-                        <span className="text-lg font-bold text-primary">{ctx.price.toLocaleString('ru-RU')} ₽</span>
-                        <span className="text-sm text-muted-foreground">/{ctx.shortName}</span>
-                    </div>
+                </button>
+
+                {/* Мин. фасовка (подсказка) — подсказка рядом с ценой в одной строке */}
+                {showMinHint && (
+                    <p className="text-12-regular text-fg-tertiary">{minHint}</p>
+                )}
+
+                {/* Добор */}
+                {ctx.freeRemainderLabel && (
+                    <p className="text-12-medium text-warning">{ctx.freeRemainderLabel}</p>
+                )}
+
+                {/* Цена + скидка в одной строке */}
+                <div className="mt-0.5 flex items-baseline gap-1.5">
+                    {hasOrder ? (
+                        <span className="text-18-semibold text-fg-primary tabular-nums">
+                            {formatRubles(ctx.total)}
+                        </span>
+                    ) : (
+                        <>
+                            <span className="text-18-semibold text-fg-primary tabular-nums">
+                                {formatRubles(ctx.price)}
+                            </span>
+                            <span className="text-12-regular text-fg-tertiary">/ {ctx.shortName}</span>
+                        </>
+                    )}
+                    {showInCartDiscount && (
+                        <span className="inline-flex items-center gap-0.5 rounded bg-success/10 px-1 py-0.5 text-12-semibold text-success tabular-nums">
+                            <Percent className="size-2.5" />
+                            −{packInfo.discountPercent}% · {ctx.fullPacks} {pluralPacks(ctx.fullPacks)}
+                        </span>
+                    )}
                 </div>
 
-                {ctx.isSoldOut && !ctx.hasOrder ? (
-                    <Button className="mt-2.5 h-9 w-full shrink-0 text-xs" variant="secondary" disabled>
-                        Разобрано
-                    </Button>
-                ) : (
-                    <div className="mt-auto shrink-0 space-y-2 pt-2.5">
-                        <div className="flex min-h-[2.75rem] flex-col justify-center text-center">
-                            {ctx.hasOrder && (
-                                <>
-                                    <span className="text-sm text-muted-foreground">
-                                        {ctx.currentQuantity > 0 && `${ctx.currentQuantity} ${ctx.shortName}`}
-                                        {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0 && ' + '}
-                                        {ctx.currentPackageCount > 0 && `${ctx.currentPackageCount} упак.`} ·{' '}
-                                        <span className="font-semibold text-foreground">
-                                            {ctx.total.toLocaleString('ru-RU')} ₽
-                                        </span>
-                                    </span>
-                                    {ctx.fullPacks > 0 ? (
-                                        <p className="text-[10px] text-success">
-                                            Скидка за {ctx.fullPacks} {ctx.fullPacks === 1 ? 'пачку' : 'пачки'}
-                                        </p>
-                                    ) : (
-                                        <span className="block text-[10px] leading-snug opacity-0" aria-hidden>
-                                            —
-                                        </span>
-                                    )}
-                                </>
-                            )}
-                        </div>
-
-                        <div onClick={(e) => e.stopPropagation()}>
-                            <QuantityButtons
-                                activeStep={ctx.activeStep}
-                                shortName={ctx.shortName}
-                                canAdd={ctx.canAdd}
-                                canDecrease={ctx.canDecrease}
-                                onAdd={ctx.handleAdd}
-                                onRemove={ctx.handleRemove}
-                                isPending={ctx.isPending}
-                                showPackage={ctx.showPackageButtons}
-                                packSize={ctx.packSize}
-                                packageCount={ctx.currentPackageCount}
-                                onAddPackage={ctx.handleAddPackage}
-                                onRemovePackage={ctx.handleRemovePackage}
-                                size="sm"
-                            />
-                        </div>
-                    </div>
+                {/* In-cart: подпись под ценой с детализацией */}
+                {hasOrder && orderSubtitle && (
+                    <p className="-mt-1 text-12-regular text-fg-secondary tabular-nums">{orderSubtitle}</p>
                 )}
-            </CardContent>
+
+                {/* Контролы — фиксируются внизу карточки через mt-auto */}
+                <div className="mt-auto pt-2" onClick={stop} onPointerDown={stop}>
+                    {isSoldOutNoOrder ? (
+                        <Button
+                            className="h-9 w-full rounded-lg text-12-medium"
+                            variant="secondary"
+                            size="default"
+                            disabled
+                        >
+                            <Package className="mr-1 size-3.5" />
+                            Разобрано
+                        </Button>
+                    ) : hasOrder ? (
+                        <InCartControls ctx={ctx} />
+                    ) : (
+                        <Button
+                            variant="brand"
+                          size="default"
+                            className="h-9 w-full rounded-lg text-12-semibold"
+                            onClick={(e) => {
+                                stop(e);
+                                ctx.handleAdd();
+                            }}
+                            disabled={!ctx.canAdd || ctx.isPending}
+                        >
+                            <Plus className="mr-1 size-3.5" />
+                            В корзину
+                        </Button>
+                    )}
+                </div>
+            </div>
         </Card>
     );
 }
+
+/** Компактные ± кнопки в in-cart состоянии (как у маркетплейсов). */
+function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <div className="flex items-stretch gap-1">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-9 shrink-0 rounded-lg"
+                    onClick={ctx.handleRemove}
+                    disabled={!ctx.canDecrease}
+                    aria-label="Уменьшить количество"
+                >
+                    <Minus className="size-3.5" />
+                </Button>
+                <div className="flex flex-1 items-center justify-center rounded-lg border border-border bg-bg-base text-12-semibold tabular-nums text-fg-primary">
+                    {ctx.currentQuantity} {ctx.shortName}
+                </div>
+                <Button
+                    variant="brand"
+                    size="icon"
+                    className="size-9 shrink-0 rounded-lg"
+                    onClick={ctx.handleAdd}
+                    disabled={!ctx.canAdd}
+                    aria-label="Увеличить количество"
+                >
+                    <Plus className="size-3.5" />
+                </Button>
+            </div>
+            {ctx.showPackageButtons && ctx.packSize != null && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-full text-12-medium"
+                    onClick={ctx.handleAddPackage}
+                    disabled={!ctx.canAdd}
+                >
+                    <Plus className="mr-1 size-3" />
+                    +1 упаковка ({ctx.packSize} {ctx.shortName})
+                </Button>
+            )}
+        </div>
+    );
+}
+
+function arePropsEqual(prev: ShopPurchaseItemProductCardProps, next: ShopPurchaseItemProductCardProps): boolean {
+    return (
+        prev.purchaseId === next.purchaseId &&
+        prev.packDiscountPercent === next.packDiscountPercent &&
+        prev.fulfillmentStatus === next.fulfillmentStatus &&
+        prev.isSupplement === next.isSupplement &&
+        prev.canAddPackage === next.canAddPackage &&
+        prev.baseQuantity === next.baseQuantity &&
+        prev.currentQuantity === next.currentQuantity &&
+        prev.currentPackageCount === next.currentPackageCount &&
+        prev.item === next.item
+    );
+}
+
+export const ProductCard = memo(ProductCardImpl, arePropsEqual);
+ProductCard.displayName = 'ProductCard';

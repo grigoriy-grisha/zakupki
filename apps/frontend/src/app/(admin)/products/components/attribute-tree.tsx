@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronRight, FolderOpen, Tag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { TreeNode } from '../lib/types';
 
@@ -22,13 +23,14 @@ export function AttributeTree({ nodes, selectedId, onSelect, expandedIds, onTogg
                 const isSelected = selectedId === node.id;
                 return (
                     <div key={node.id}>
-                        <button
-                            type="button"
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => onSelect(node)}
                             className={cn(
-                                'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors',
-                                isSelected && 'bg-accent font-medium',
-                                node.isTypeFolder && 'text-muted-foreground',
+                                'h-auto w-full justify-start gap-1.5 rounded-md px-2 py-1.5 text-14-regular',
+                                isSelected && 'bg-bg-soft text-14-medium',
+                                node.isTypeFolder && 'text-fg-tertiary',
                             )}
                             style={{ paddingLeft: `${depth * 16 + 8}px` }}
                         >
@@ -41,27 +43,27 @@ export function AttributeTree({ nodes, selectedId, onSelect, expandedIds, onTogg
                                     className="cursor-pointer"
                                 >
                                     {isExpanded ? (
-                                        <ChevronDown className="h-3.5 w-3.5" />
+                                        <ChevronDown className="size-3.5" />
                                     ) : (
-                                        <ChevronRight className="h-3.5 w-3.5" />
+                                        <ChevronRight className="size-3.5" />
                                     )}
                                 </span>
                             ) : (
                                 <span className="w-3.5" />
                             )}
                             {node.isBrandFolder ? (
-                                <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <Tag className="size-3.5 shrink-0 text-fg-tertiary" />
                             ) : (
                                 <FolderOpen
                                     className={cn(
-                                        'h-4 w-4 shrink-0',
-                                        node.isTypeFolder ? 'text-muted-foreground/70' : 'text-muted-foreground',
+                                        'size-4 shrink-0',
+                                        node.isTypeFolder ? 'text-fg-tertiary/70' : 'text-fg-tertiary',
                                     )}
                                 />
                             )}
-                            <span className={cn('truncate', node.isTypeFolder && 'font-medium')}>{node.label}</span>
-                            <span className="ml-auto pl-2 text-xs text-muted-foreground">{node.count}</span>
-                        </button>
+                            <span className={cn('truncate', node.isTypeFolder && 'text-14-medium')}>{node.label}</span>
+                            <span className="ml-auto pl-2 text-12-regular text-fg-tertiary">{node.count}</span>
+                        </Button>
                         {hasChildren && isExpanded && (
                             <AttributeTree
                                 nodes={node.children}

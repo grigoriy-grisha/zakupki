@@ -45,7 +45,7 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
 
                     <div className="mt-4 grid grid-cols-3 gap-2">
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Package className="h-3.5 w-3.5 text-blue-500" />
+                            <Package className="h-3.5 w-3.5 text-info" />
                             <span>{purchase.items.length} тов.</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">

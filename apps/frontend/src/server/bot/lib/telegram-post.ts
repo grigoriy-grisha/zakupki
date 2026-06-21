@@ -1,3 +1,5 @@
+import { getActiveBotConfig } from '../config/bot-config';
+
 export function normalizeChatId(raw: string): string {
     const trimmed = raw.trim();
     if (trimmed.startsWith('@') || trimmed.startsWith('-')) return trimmed;
@@ -5,7 +7,13 @@ export function normalizeChatId(raw: string): string {
     return trimmed;
 }
 
+/**
+ * Возвращает channel id из активной BotConfig.
+ *
+ * @deprecated В новом коде используйте `container.cfg.telegram.channelId` напрямую.
+ * Эта функция оставлена для backward-compat с кодом, который ещё не мигрировал
+ * на DI.
+ */
 export function getChannelIdFromEnv(): string | null {
-    const raw = (process.env.TELEGRAM_CHANNEL_ID ?? process.env.TG_CHANNEL_ID)?.trim();
-    return raw ? normalizeChatId(raw) : null;
+    return getActiveBotConfig().telegram.channelId;
 }

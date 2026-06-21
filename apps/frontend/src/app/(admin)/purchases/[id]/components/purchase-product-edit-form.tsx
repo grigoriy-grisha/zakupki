@@ -1,14 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { trpc } from '@/lib/client/trpc';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NovelEditor } from '@/components/ui/novel-editor';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { trpc } from '@/lib/client/trpc';
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import { FormField } from '@/components/ui/form-field';
+import { FormSection } from '@/components/ui/form-section';
+import { FormFooter } from '@/components/ui/form-footer';
+import { Button as UIButton } from '@/components/ui/button';
+
 import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
 import { PackageUnitSelect } from '../../../products/components/package-unit-select';
 import {
@@ -19,7 +32,7 @@ import {
     productToDescriptionFields,
     type ProductLabelSource,
 } from '../../../products/lib';
-import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+
 import {
     buildPurchaseFormState,
     normalizeSupplierTiersForSave,
@@ -27,7 +40,6 @@ import {
     primarySupplierPackageFromTiers,
     resolveDefaultTemplateId,
     validatePurchasePriceTiers,
-    type PurchaseProductFormState,
 } from '../lib/purchase-product-fields';
 
 export type PurchaseProductSaveData = {
@@ -41,10 +53,8 @@ export type PurchaseProductSaveData = {
     supplierPackagePrice: number | null;
     supplierPackageTiers: { amount: number; unit: string; price: number }[];
     supplementStep: number | null;
-    // Глобальный лимит поставщика — per-purchase, сохраняется в PurchaseItem.
     supplierLimit: number | null;
     supplierLimitUnit: string | null;
-    // Fix #8: целевой остаток теперь редактируется и в ItemEditSheet.
     targetRemainder: number | null;
 };
 
@@ -67,39 +77,25 @@ interface PurchaseProductEditFormProps {
     };
     initialTiers: { amount: number; unit: string; price: number }[];
     onSave: (data: PurchaseProductSaveData) => void;
+    onCancel?: () => void;
     isSaving: boolean;
     submitLabel?: string;
+    /** Кастомный footer (опц.). */
     footer?: React.ReactNode;
     purchaseTag?: string;
+    /**
+     * `true` — загрузить сохранённое описание и применить шаблон по дефолту.
+     * Используется при **редактировании** существующего товара в закупке.
+     * `false` — пустая форма. Используется при **создании нового**.
+     */
     loadSavedDescription?: boolean;
 }
 
-function applyPurchaseFields(
-    setters: {
-        setDescription: (v: string) => void;
-        setTiers: (v: PurchaseProductFormState['tiers']) => void;
-        setMinPkgAmount: (v: number | null) => void;
-        setMinPkgUnit: (v: string | null) => void;
-        setSupPkgTiers: (v: PurchaseProductFormState['supPkgTiers']) => void;
-        setSupplementStep: (v: number | null) => void;
-        setSupplierLimit: (v: number | null) => void;
-        setSupplierLimitUnit: (v: string | null) => void;
-        setTargetRemainder: (v: number | null) => void;
-    },
-    next: PurchaseProductFormState,
-) {
-    setters.setDescription(next.description);
-    setters.setTiers(next.tiers);
-    setters.setMinPkgAmount(next.minPkgAmount);
-    setters.setMinPkgUnit(next.minPkgUnit);
-    setters.setSupPkgTiers(next.supPkgTiers);
-    setters.setSupplementStep(next.supplementStep);
-    setters.setSupplierLimit(next.supplierLimit);
-    setters.setSupplierLimitUnit(next.supplierLimitUnit);
-    setters.setTargetRemainder(next.targetRemainder);
-}
-
-function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
+function mergeTemplateIntoDescription(
+    current: string,
+    prevAuto: string | null,
+    nextAuto: string,
+): string {
     if (!prevAuto) return nextAuto;
     const normCurrent = normalizeNovelHtml(current);
     const normPrev = normalizeNovelHtml(prevAuto);
@@ -114,10 +110,24 @@ function mergeTemplateIntoDescription(current: string, prevAuto: string | null, 
     return nextAuto;
 }
 
+/**
+ * Форма редактирования/создания товара в закупке.
+ *
+ * Секции:
+ *  1. Шаблон поста
+ *  2. Мин. фасовка
+ *  3. Цены (тиры)
+ *  4. Фасовка поставщика
+ *  5. Добор и лимиты (supplementStep + supplierLimit + targetRemainder)
+ *  6. Описание (NovelEditor)
+ *
+ * Sticky footer с [Отмена] [Сохранить].
+ */
 export function PurchaseProductEditForm({
     product,
     initialTiers,
     onSave,
+    onCancel,
     isSaving,
     submitLabel = 'Сохранить',
     footer,
@@ -144,37 +154,37 @@ export function PurchaseProductEditForm({
 
     const userPickedTemplateRef = useRef(false);
     const lastAppliedSignatureRef = useRef<string | null>(null);
-    /** Если загружено сохранённое описание — считаем его «последним автотекстом»,
-     *  чтобы mergeTemplateIntoDescription корректно отслеживал изменения полей. */
     const lastAutoDescriptionRef = useRef<string | null>(
-        loadSavedDescription && !!normalizeNovelHtml(initial.description) ? initial.description : null,
+        loadSavedDescription && !!normalizeNovelHtml(initial.description)
+            ? initial.description
+            : null,
     );
-    /** При редактировании: не затирать уже сохранённое описание при автовыборе шаблона. */
-    const preserveSavedDescriptionRef = useRef(loadSavedDescription && !!normalizeNovelHtml(initial.description));
+    const preserveSavedDescriptionRef = useRef(
+        loadSavedDescription && !!normalizeNovelHtml(initial.description),
+    );
 
     useEffect(() => {
         const next = buildPurchaseFormState(product, initialTiers, loadSavedDescription);
-        applyPurchaseFields(
-            {
-                setDescription,
-                setTiers,
-                setMinPkgAmount,
-                setMinPkgUnit,
-                setSupPkgTiers,
-                setSupplementStep,
-                setSupplierLimit,
-                setSupplierLimitUnit,
-                setTargetRemainder,
-            },
-            next,
-        );
+        setDescription(next.description);
+        setTiers(next.tiers);
+        setMinPkgAmount(next.minPkgAmount);
+        setMinPkgUnit(next.minPkgUnit);
+        setSupPkgTiers(next.supPkgTiers);
+        setSupplementStep(next.supplementStep);
+        setSupplierLimit(next.supplierLimit);
+        setSupplierLimitUnit(next.supplierLimitUnit);
+        setTargetRemainder(next.targetRemainder);
+
         userPickedTemplateRef.current = false;
-        preserveSavedDescriptionRef.current = loadSavedDescription && !!normalizeNovelHtml(next.description);
-        lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current ? next.description : null;
+        preserveSavedDescriptionRef.current =
+            loadSavedDescription && !!normalizeNovelHtml(next.description);
+        lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current
+            ? next.description
+            : null;
         setTemplateId('none');
         setDescriptionRevision(0);
         lastAppliedSignatureRef.current = null;
-        // eslint-disable-next-line react-hooks/exhaustive-deps — сброс только при смене товара
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- сброс только при смене товара
     }, [product.id]);
 
     useEffect(() => {
@@ -197,7 +207,10 @@ export function PurchaseProductEditForm({
         return { attributes: allAttributes, characteristics: allCharacteristics };
     }, [allAttributes, allCharacteristics]);
 
-    const primarySupplierPack = useMemo(() => primarySupplierPackageFromTiers(supPkgTiers), [supPkgTiers]);
+    const primarySupplierPack = useMemo(
+        () => primarySupplierPackageFromTiers(supPkgTiers),
+        [supPkgTiers],
+    );
 
     const descriptionFields = useMemo(
         () => ({
@@ -243,7 +256,8 @@ export function PurchaseProductEditForm({
         [postTemplates],
     );
 
-    const selectedTemplateBody = templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
+    const selectedTemplateBody =
+        templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
 
     const catalogReady = characteristicsCatalog != null;
 
@@ -258,8 +272,6 @@ export function PurchaseProductEditForm({
 
             if (preserveSavedDescriptionRef.current) {
                 lastAppliedSignatureRef.current = `${id}:${body}`;
-                // Не затираем lastAutoDescriptionRef — он уже указывает на сохранённое описание,
-                // чтобы mergeTemplateIntoDescription корректно обновлял описание при смене полей.
                 preserveSavedDescriptionRef.current = false;
                 return false;
             }
@@ -347,9 +359,12 @@ export function PurchaseProductEditForm({
     }
 
     return (
-        <div className="space-y-4 px-4">
-            <div className="space-y-1">
-                <Label>Шаблон поста</Label>
+        <div className="flex flex-col gap-4">
+            {/* === 1. Шаблон поста === */}
+            <FormSection
+                title="Шаблон поста"
+                description="Выберите шаблон, чтобы автоматически заполнить описание"
+            >
                 <Select value={templateId} onValueChange={handleTemplateChange}>
                     <SelectTrigger>
                         <SelectValue placeholder="Без шаблона" />
@@ -363,97 +378,132 @@ export function PurchaseProductEditForm({
                         ))}
                     </SelectContent>
                 </Select>
-            </div>
+            </FormSection>
 
-            <div className="space-y-1">
-                <Label>Минимальная фасовка</Label>
-                <div className="flex gap-2">
+            {/* === 2. Мин. фасовка === */}
+            <FormSection card title="Минимальная фасовка">
+                <div className="flex items-center gap-2">
                     <Input
                         type="number"
                         step="1"
                         min={0}
                         inputMode="numeric"
-                        className="flex-1"
+                        className="h-9 w-24 shrink-0 rounded-xl text-13-medium tabular-nums"
                         value={minPkgAmount != null ? String(Math.trunc(minPkgAmount)) : ''}
                         onChange={(e) => {
                             const raw = e.target.value;
                             setMinPkgAmount(raw === '' ? null : Number.parseInt(raw, 10) || 0);
                         }}
+                        aria-label="Минимальная фасовка"
                     />
-                    <PackageUnitSelect value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={setMinPkgUnit} />
+                    <PackageUnitSelect
+                        value={minPkgUnit ?? PACKAGE_UNITS[0]}
+                        onChange={setMinPkgUnit}
+                    />
                 </div>
-            </div>
+                <p className="text-12-regular text-fg-tertiary">
+                    Шаг +/− на этапе сбора. Например: 5 гр — заказ кратен 5.
+                </p>
+            </FormSection>
 
-            <div className="space-y-1">
+            {/* === 3. Цены (тиры) === */}
+            <FormSection
+                card
+                title="Цены"
+                description="Сколько стоит указанное количество единиц"
+            >
                 <PriceTierEditor
                     tiers={tiers}
+                    addTierLabel="Добавить цену"
                     onChange={(next) => {
                         setTiers(next);
                         if (priceError && !validatePurchasePriceTiers(next)) {
                             setPriceError(null);
                         }
                     }}
+                    error={priceError}
                 />
-                {priceError && <p className="text-xs text-destructive">{priceError}</p>}
-            </div>
+            </FormSection>
 
-            <PriceTierEditor
-                label="Фасовка поставщика"
-                required={false}
-                tiers={supPkgTiers}
-                onChange={setSupPkgTiers}
-            />
-
-            <div className="space-y-1">
-                <Label htmlFor="supplementStep">Фасовка для добора</Label>
-                <Input
-                    id="supplementStep"
-                    type="number"
-                    step="0.001"
-                    min={0}
-                    placeholder="По умолчанию (мин. фасовка)"
-                    value={supplementStep != null ? String(supplementStep) : ''}
-                    onChange={(e) => setSupplementStep(e.target.value === '' ? null : Number(e.target.value))}
+            {/* === 4. Фасовка поставщика === */}
+            <FormSection
+                card
+                title="Фасовка поставщика"
+                description="Целая пачка от поставщика — можно заказать +1 упаковку"
+            >
+                <PriceTierEditor
+                    tiers={supPkgTiers}
+                    required={false}
+                    label=""
+                    addTierLabel="Добавить фасовку"
+                    onChange={setSupPkgTiers}
                 />
-                <p className="text-xs text-muted-foreground">
-                    Шаг +/− на этапе добора. Если не задан — используется мин. фасовка.
-                </p>
-            </div>
+            </FormSection>
 
-            <div className="space-y-1">
+            {/* === 5. Добор и лимиты === */}
+            <FormSection card title="Добор и лимиты">
+                <FormField
+                    label="Шаг добора"
+                    hint="Шаг +/− на этапе добора. Если не задан — используется мин. фасовка"
+                >
+                    <div className="flex items-center gap-2">
+                        <Input
+                            id="supplementStep"
+                            type="number"
+                            step="0.001"
+                            min={0}
+                            placeholder="По умолчанию (мин. фасовка)"
+                            className="h-9 w-24 shrink-0 rounded-xl text-13-medium tabular-nums"
+                            value={supplementStep != null ? String(supplementStep) : ''}
+                            onChange={(e) =>
+                                setSupplementStep(e.target.value === '' ? null : Number(e.target.value))
+                            }
+                        />
+                        <PackageUnitSelect
+                            value={minPkgUnit ?? PACKAGE_UNITS[0]}
+                            onChange={setMinPkgUnit}
+                        />
+                    </div>
+                </FormField>
+
                 <PackageEditor
                     label="Лимит у поставщика (на всех покупателей)"
                     amount={supplierLimit}
                     unit={supplierLimitUnit ?? PACKAGE_UNITS[0]}
                     onAmountChange={setSupplierLimit}
                     onUnitChange={setSupplierLimitUnit}
+                    description="Суммарно все покупатели не могут заказать больше этого количества ни на одном этапе. Если не задан — без ограничений."
                 />
-                <p className="text-xs text-muted-foreground">
-                    Глобальный лимит остатка у поставщика: суммарно все покупатели не могут заказать больше этого
-                    количества ни на одном этапе (COLLECTION / REORDER / PAYMENT). Если не задан — без ограничений.
-                </p>
-            </div>
 
-            <div className="space-y-1">
-                <Label htmlFor="targetRemainder">Целевой остаток (добор)</Label>
-                <Input
-                    id="targetRemainder"
-                    type="number"
-                    step="0.001"
-                    min={0}
-                    placeholder="0"
-                    value={targetRemainder != null ? String(targetRemainder) : ''}
-                    onChange={(e) => setTargetRemainder(e.target.value === '' ? null : Number(e.target.value))}
-                />
-                <p className="text-xs text-muted-foreground">
-                    Сколько ещё нужно добрать у поставщика на этапе REORDER. Отображается в посте как «🎯 Целевой
-                    остаток: N ед.» (Fix #8). Оставьте пустым, если добор не нужен.
-                </p>
-            </div>
+                <FormField
+                    label="Целевой остаток (добор)"
+                    hint="Сколько ещё нужно добрать у поставщика на этапе REORDER. Оставьте пустым, если добор не нужен."
+                >
+                    <Input
+                        id="targetRemainder"
+                        type="number"
+                        step="0.001"
+                        min={0}
+                        placeholder="0"
+                        className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
+                        value={targetRemainder != null ? String(targetRemainder) : ''}
+                        onChange={(e) =>
+                            setTargetRemainder(e.target.value === '' ? null : Number(e.target.value))
+                        }
+                    />
+                </FormField>
+            </FormSection>
 
-            <div className="space-y-1">
-                <Label>Описание</Label>
-                <div className="max-h-[35vh] overflow-y-auto rounded-md border">
+            {/* === 6. Описание === */}
+            <FormSection
+                title="Описание"
+                description={
+                    templateId === 'none'
+                        ? 'Текст для поста — можно заполнить вручную'
+                        : 'Сгенерировано из шаблона — можно отредактировать'
+                }
+            >
+                <div className="max-h-[40vh] overflow-y-auto rounded-2xl border border-border bg-bg-base p-2">
                     <NovelEditor
                         key={`purchase-desc-${product.id}-${descriptionRevision}`}
                         value={description}
@@ -465,14 +515,33 @@ export function PurchaseProductEditForm({
                         }
                     />
                 </div>
-            </div>
+            </FormSection>
 
             {footer}
 
-            <Button className="w-full" onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {submitLabel}
-            </Button>
+            {/* Sticky footer */}
+            <FormFooter>
+                {onCancel && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={onCancel}
+                        disabled={isSaving}
+                    >
+                        Отмена
+                    </Button>
+                )}
+                <Button
+                    type="button"
+                    className="rounded-full"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                >
+                    {isSaving && <Loader2 className="size-4 animate-spin" />}
+                    {submitLabel}
+                </Button>
+            </FormFooter>
         </div>
     );
 }

@@ -114,7 +114,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                     {user.telegramCredential ? (
                         <section className="rounded-lg border p-4">
                             <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                                <TelegramIcon className="h-4 w-4 text-[#26A5E4]" />
+                                <TelegramIcon className="h-4 w-4 text-telegram" />
                                 Telegram
                             </div>
                             <div className="flex items-start gap-3">
@@ -131,7 +131,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                             href={tgLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-[#26A5E4] hover:underline"
+                                            className="inline-flex items-center gap-1 text-telegram hover:underline"
                                         >
                                             Открыть в Telegram
                                             <ExternalLink className="h-3 w-3" />
@@ -149,7 +149,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                     {user.vkCredential && (
                         <section className="rounded-lg border p-4">
                             <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                                <VkIcon className="h-4 w-4 text-[#0077FF]" />
+                                <VkIcon className="h-4 w-4 text-vk" />
                                 VK
                             </div>
                             <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                     href={`https://vk.com/id${user.vkCredential.vkId}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-sm text-[#0077FF] hover:underline"
+                                    className="inline-flex items-center gap-1 text-sm text-vk hover:underline"
                                 >
                                     id{user.vkCredential.vkId}
                                     <ExternalLink className="h-3 w-3" />

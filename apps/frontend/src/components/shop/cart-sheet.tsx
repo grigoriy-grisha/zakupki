@@ -92,15 +92,17 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                     <div key={group.id}>
                                         <div className="mb-2">
                                             <div className="flex items-center justify-between">
-                                                <button
+                                                <Button
+                                                    variant="link"
+                                                    size="sm"
                                                     onClick={() => {
                                                         onOpenChange(false);
                                                         router.push(`/shop/purchase/${group.id}`);
                                                     }}
-                                                    className="font-semibold text-sm hover:text-primary transition-colors text-left"
+                                                    className="h-auto p-0 text-14-semibold text-fg-primary hover:text-primary"
                                                 >
                                                     {group.supplier}
-                                                </button>
+                                                </Button>
                                                 <Badge variant="outline" className="text-xs font-normal">
                                                     {group.tag}
                                                 </Badge>

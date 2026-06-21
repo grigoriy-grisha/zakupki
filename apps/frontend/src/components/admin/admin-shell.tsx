@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAppPathname } from '@/lib/hooks/use-app-pathname';
 import { useSession, signOut } from 'next-auth/react';
-import { ShoppingCart, User, LogOut } from 'lucide-react';
+import { LogOutIcon, UserIcon } from 'lucide-react';
 
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     const pageTitle = getCurrentNavLabel(pathname, !!session?.user);
 
     return (
-        <div className="flex h-[100dvh] flex-col">
-            <header className="flex h-14 shrink-0 items-center justify-between bg-card px-4">
+        <div className="flex h-[100dvh] flex-col bg-bg-base">
+            <header className="flex h-14 shrink-0 items-center justify-between gap-3 bg-bg-card px-4 md:hidden">
                 <div className="flex items-center gap-3">
-                    <MobileNavTrigger onClick={() => setMenuOpen(true)} className="md:hidden" />
-                    <AppLink href="/" className="flex items-center gap-2">
+                    <MobileNavTrigger onClick={() => setMenuOpen(true)} />
+                    <AppLink href="/" className="flex items-center">
                         <SidebarBrand />
                     </AppLink>
                 </div>
@@ -34,15 +34,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 {session?.user && (
                     <div className="flex items-center gap-1">
                         <AppLink href="/profile">
-                            <Button variant="ghost" size="default" className="gap-1.5">
-                                <User className="h-5 w-5" />
-                                <span className="hidden sm:inline">Профиль</span>
+                            <Button variant="ghost" size="icon-sm" className="rounded-full">
+                                <UserIcon className="size-4" />
                             </Button>
                         </AppLink>
                         <Button
                             variant="ghost"
                             size="icon-sm"
-                            className="text-muted-foreground"
+                            className="rounded-full text-fg-secondary"
                             onClick={() => {
                                 const base =
                                     process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
@@ -50,25 +49,33 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                                 const loginPath = platform ? withPlatformPrefix('/login', platform) : '/login';
                                 void signOut({ callbackUrl: `${base}${loginPath}` });
                             }}
+                            aria-label="Выйти"
                         >
-                            <LogOut className="h-4 w-4" />
+                            <LogOutIcon className="size-4" />
                         </Button>
                     </div>
                 )}
             </header>
 
-            <div className="flex min-h-0 flex-1">
-                <Sidebar className="hidden shrink-0 md:flex" />
+            <div className="flex min-h-0 flex-1 gap-0 p-0 md:gap-2 md:p-2">
+                <Sidebar className="hidden md:flex" />
 
                 <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                    <SheetContent side="left" className="w-64 gap-0 p-0 sm:max-w-xs" showCloseButton={false}>
+                    <SheetContent
+                        side="left"
+                        className="w-[300px] max-w-[85vw] gap-0 rounded-none border-0 p-0"
+                        showCloseButton={false}
+                    >
                         <SheetTitle className="sr-only">Меню навигации</SheetTitle>
-                        <Sidebar className="h-full w-full border-0" onNavigate={() => setMenuOpen(false)} />
+                        <Sidebar
+                            className="h-full w-full border-0"
+                            onNavigate={() => setMenuOpen(false)}
+                        />
                     </SheetContent>
                 </Sheet>
 
-                <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-                    <div className="container mx-auto p-4 md:p-6">{children}</div>
+                <main className="min-h-0 flex-1 overflow-y-auto bg-bg-base">
+                    {children}
                 </main>
             </div>
         </div>

@@ -38,7 +38,7 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
-                            <VkIcon className="h-5 w-5 text-[#0077FF]" />
+                            <VkIcon className="h-5 w-5 text-vk" />
                             VK
                         </CardTitle>
                     </CardHeader>
@@ -52,7 +52,7 @@ export default function ProfilePage() {
                                         iconClassName="size-4"
                                     />
                                     <div className="flex items-center gap-2">
-                                        <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                                        <div className="h-2.5 w-2.5 rounded-full bg-success" />
                                         <span className="text-sm">Привязан</span>
                                     </div>
                                 </div>
@@ -70,7 +70,7 @@ export default function ProfilePage() {
                             <Button
                                 onClick={vk.linkVk}
                                 disabled={vk.loading}
-                                className="w-full bg-[#0077FF] text-white hover:bg-[#0066DD]"
+                                className="w-full bg-vk text-vk-foreground hover:bg-vk/90"
                             >
                                 <Link2 className="mr-2 h-4 w-4" />
                                 Привязать VK
@@ -82,7 +82,7 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
-                            <TelegramIcon className="h-5 w-5 text-[#26A5E4]" />
+                            <TelegramIcon className="h-5 w-5 text-telegram" />
                             Telegram
                         </CardTitle>
                     </CardHeader>
@@ -97,7 +97,7 @@ export default function ProfilePage() {
                                     />
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-2">
-                                            <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                                            <div className="h-2.5 w-2.5 rounded-full bg-success" />
                                             <span className="text-sm">Привязан</span>
                                         </div>
                                         {(user.telegramCredential.username ?? user.username) && (
