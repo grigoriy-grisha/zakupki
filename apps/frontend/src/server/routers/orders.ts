@@ -57,6 +57,39 @@ export const ordersRouter = router({
         return ctx.services.order.delete(input.id);
     }),
 
+    /**
+     * Admin: изменить количество позиции участника на delta (±).
+     * Идёт в обход stage-правил/пула/лимита поставщика. amountDue пересчитывается.
+     * delta>0 — добавить, delta<0 — убрать. Дробный (кол-ва Decimal(10,3)).
+     */
+    adminAdjust: adminProcedure
+        .input(
+            z.object({
+                purchaseItemId: z.number(),
+                userId: z.number(),
+                delta: z.number().refine((d) => d !== 0),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.adminAdjust(input.purchaseItemId, input.userId, input.delta);
+        }),
+
+    /**
+     * Admin: установить точное количество позиции участника.
+     * qty=0 → удаление строки. В обход всех правил.
+     */
+    adminSetQuantity: adminProcedure
+        .input(
+            z.object({
+                purchaseItemId: z.number(),
+                userId: z.number(),
+                qty: z.number().min(0),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.adminSetQuantity(input.purchaseItemId, input.userId, input.qty);
+        }),
+
     // Удалить все заказы пользователя в закупке (админ)
     removeAllByUserFromPurchase: adminProcedure
         .input(z.object({ purchaseId: z.number(), userId: z.number() }))

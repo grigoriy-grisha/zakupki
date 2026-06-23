@@ -7,6 +7,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { UserProfileSheet } from '@/app/(admin)/users/components';
+import { trpc } from '@/lib/client/trpc';
 import { PaymentDetailDialog } from './payment-detail-dialog';
 import { useParticipantsData } from '../hooks';
 import { AdminParticipantRow } from './admin-participant-row';
@@ -22,6 +23,10 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     const [profileUserId, setProfileUserId] = useState<number | null>(null);
 
     const data = useParticipantsData(purchaseId);
+    // Позиции закупки — для шага ± и пикера «добавить позицию» в карточке.
+    // React Query дедуплицирует с таким же запросом из items-вкладки.
+    const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
+    const purchaseItems = purchase?.items ?? [];
 
     if (data.isLoading) {
         return <div className="h-32 animate-pulse rounded-2xl bg-bg-soft" />;
@@ -102,6 +107,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             onOpenProfile={setProfileUserId}
                             orders={userOrdersList}
                             payments={userPaymentsList}
+                            purchaseItems={purchaseItems}
                             due={due}
                             paid={paid}
                             pending={pending}

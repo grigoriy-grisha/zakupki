@@ -57,6 +57,55 @@ export class OrderService {
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
     }
 
+    // ── Public API: admin-мутации (в обход stage-прав, пула, лимитов) ──
+
+    /**
+     * Admin: добавить amount к заказу пользователя (по purchaseItem).
+     * Идёт в обход правил этапа/пула/лимита поставщика. amountDue пересчитывается.
+     * Если строки нет — создаётся COLLECTION-строка (годится для «добавить позицию»).
+     */
+    async adminAdd(purchaseItemId: number, userId: number, amount: number): Promise<void> {
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        const result = OrderBook.create(item, lines).adminAdd(userId, amount);
+        if (!result.ok) throw new ValidationError(result.error.message);
+        await this.persistEffects(result.changes);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+    }
+
+    /**
+     * Admin: убавить amount (supplement-first). До 0 → удаление строки.
+     * В обход правил этапа.
+     */
+    async adminDecrease(purchaseItemId: number, userId: number, amount: number): Promise<void> {
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        const result = OrderBook.create(item, lines).adminDecrease(userId, amount);
+        if (!result.ok) throw new ValidationError(result.error.message);
+        await this.persistEffects(result.changes);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+    }
+
+    /**
+     * Admin: установить точное суммарное qty (схлопывает в одну COLLECTION-строку;
+     * qty=0 → удаляет все строки пользователя по item). В обход всех правил.
+     */
+    async adminSetQuantity(purchaseItemId: number, userId: number, qty: number): Promise<void> {
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        const result = OrderBook.create(item, lines).adminSetQuantity(userId, qty);
+        if (!result.ok) throw new ValidationError(result.error.message);
+        await this.persistEffects(result.changes);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+    }
+
+    /**
+     * Admin: ± на delta для UI. delta>0 → adminAdd, delta<0 → adminDecrease.
+     * delta=0 — no-op.
+     */
+    async adminAdjust(purchaseItemId: number, userId: number, delta: number): Promise<void> {
+        if (delta === 0) return;
+        if (delta > 0) return this.adminAdd(purchaseItemId, userId, delta);
+        return this.adminDecrease(purchaseItemId, userId, -delta);
+    }
+
     // ── Public API: запросы ────────────────────────────────────────
 
     async getUserOrders(userId: number) {

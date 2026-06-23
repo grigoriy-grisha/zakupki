@@ -19,6 +19,8 @@ import { PurchaseProductLabel } from '@/components/shared/purchase-product-label
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 import { PAYMENT_STATUS } from '../../../lib/constants';
+import { useParticipantOrderActions } from '../hooks';
+import { AddPositionDialog, AdminOrderLineEditor, type PurchaseItemOption } from './admin-order-controls';
 import { paymentTotal } from '../../lib/utils';
 import type { ProductLabelSource } from '../../../products/lib';
 
@@ -47,6 +49,8 @@ interface AdminParticipantRowProps {
         children?: { amount: unknown; promoCode: { code: string } | null }[];
         proofObjectKey?: string | null;
     }[];
+    /** Позиции закупки — для шага ± и пикера «добавить позицию». */
+    purchaseItems: PurchaseItemOption[];
     due: number;
     paid: number;
     pending: number;
@@ -62,6 +66,7 @@ export function AdminParticipantRow({
     purchaseOrderId,
     orders,
     payments,
+    purchaseItems,
     due,
     paid,
     pending,
@@ -80,6 +85,13 @@ export function AdminParticipantRow({
         },
         onError: (err) => toast.error(err.message),
     });
+
+    // Ручное управление позициями (в обход бизнес-логики).
+    const orderActions = useParticipantOrderActions(purchaseId);
+    const actionPending =
+        orderActions.adminAdjust.isPending ||
+        orderActions.adminSetQuantity.isPending ||
+        orderActions.deleteOrderLine.isPending;
 
     const isPaid = paid >= due && due > 0;
     const hasPending = pending > 0 && !isPaid;
@@ -121,7 +133,7 @@ export function AdminParticipantRow({
                 <div className="hidden w-[64px] shrink-0 text-center sm:block">
                     <span className="text-12-regular text-fg-tertiary">№</span>
                     <p className="text-13-medium tabular-nums text-fg-primary">
-                        {purchaseOrderId != null ? purchaseOrderId : '—'}
+                            {purchaseOrderId != null ? purchaseOrderId : '—'}
                     </p>
                 </div>
 
@@ -185,18 +197,31 @@ export function AdminParticipantRow({
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {/* Заказы */}
                         <div className="rounded-2xl border border-border bg-bg-card">
-                            <div className="border-b border-border-soft px-3 py-2 text-12-medium uppercase tracking-wide text-fg-tertiary">
-                                {purchaseOrderId != null
-                                    ? `Заказ №${purchaseOrderId} · ${orders.length} поз.`
-                                    : `Позиции · ${orders.length}`}
+                            <div className="flex items-center justify-between gap-2 border-b border-border-soft px-3 py-2">
+                                <span className="text-12-medium uppercase tracking-wide text-fg-tertiary">
+                                    {purchaseOrderId != null
+                                        ? `Заказ №${purchaseOrderId} · ${orders.length} поз.`
+                                        : `Позиции · ${orders.length}`}
+                                </span>
+                                <AddPositionDialog
+                                    purchaseItems={purchaseItems}
+                                    pending={orderActions.adminAdjust.isPending}
+                                    onAdd={(purchaseItemId, qty) =>
+                                        orderActions.adminAdjust.mutate({ purchaseItemId, userId, delta: qty })
+                                    }
+                                />
                             </div>
                             <div className="divide-y divide-border-soft">
                                 {orders.map((order) => {
                                     const qty = Number(order.quantity);
+                                    const matchedItem = purchaseItems.find(
+                                        (item) => item.id === order.purchaseItemId,
+                                    );
+                                    const step = Number(matchedItem?.product?.minPackageAmount) || 1;
                                     return (
                                         <div
                                             key={order.id}
-                                            className="flex items-center gap-3 px-3 py-2"
+                                            className="flex flex-wrap items-center gap-3 px-3 py-2"
                                         >
                                             <div className="min-w-0 flex-1">
                                                 {order.purchaseItem?.product ? (
@@ -211,10 +236,26 @@ export function AdminParticipantRow({
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="text-right text-12-medium tabular-nums text-fg-secondary">
-                                                {qty.toLocaleString('ru-RU')}{' '}
-                                                {order.purchaseItem?.product?.unit?.shortName ?? ''}
-                                            </div>
+                                            <AdminOrderLineEditor
+                                                orderId={order.id}
+                                                purchaseItemId={order.purchaseItemId}
+                                                quantity={qty}
+                                                step={step}
+                                                pending={actionPending}
+                                                onAdjust={(purchaseItemId, delta) =>
+                                                    orderActions.adminAdjust.mutate({ purchaseItemId, userId, delta })
+                                                }
+                                                onSetQuantity={(purchaseItemId, setQty) =>
+                                                    orderActions.adminSetQuantity.mutate({
+                                                        purchaseItemId,
+                                                        userId,
+                                                        qty: setQty,
+                                                    })
+                                                }
+                                                onDelete={(orderId) =>
+                                                    orderActions.deleteOrderLine.mutate({ id: orderId })
+                                                }
+                                            />
                                             <div className="w-[90px] text-right text-13-semibold tabular-nums text-fg-primary">
                                                 {Number(order.amountDue).toLocaleString('ru-RU')} ₽
                                             </div>
