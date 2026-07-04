@@ -31,16 +31,6 @@ export type ProductFormExisting = {
     characteristicValues?: ProductCharacteristicValueShape[];
     photos: { id: number }[];
     pricePerUnit?: number;
-    priceTiers?: { amount: number; unit: string; price: number }[];
-    minPackageAmount?: number | null;
-    minPackageUnit?: string | null;
-    supplierPackageAmount?: number | null;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: number | null;
-    supplierPackageTiers?: { amount: number; unit: string; price: number }[];
-    supplementStep?: number | null;
-    referenceStock?: number | null;
-    referenceStockUnit?: string | null;
 };
 
 export function useProductFormState(editId: number | null, existing: ProductFormExisting | null | undefined) {
@@ -126,16 +116,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
                 articleNumber: existing.articleNumber ?? '',
                 unitCode: existing.unitCode ?? '',
                 pricePerUnit: existing.pricePerUnit,
-                priceTiers: existing.priceTiers ?? [],
-                minPackageAmount: existing.minPackageAmount ?? null,
-                minPackageUnit: existing.minPackageUnit ?? null,
-                supplierPackageAmount: existing.supplierPackageAmount ?? null,
-                supplierPackageUnit: existing.supplierPackageUnit ?? null,
-                supplierPackagePrice: existing.supplierPackagePrice ?? null,
-                supplierPackageTiers: existing.supplierPackageTiers ?? [],
-                supplementStep: existing.supplementStep ?? null,
-                referenceStock: existing.referenceStock ?? null,
-                referenceStockUnit: existing.referenceStockUnit ?? null,
             });
             setPendingFiles((prev) => {
                 revokePendingFiles(prev);
@@ -186,16 +166,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             articleNumber: '',
             unitCode: 'piece',
             pricePerUnit: undefined,
-            priceTiers: [],
-            minPackageAmount: undefined,
-            minPackageUnit: undefined,
-            supplierPackageAmount: undefined,
-            supplierPackageUnit: undefined,
-            supplierPackagePrice: undefined,
-            supplierPackageTiers: [],
-            supplementStep: undefined,
-            referenceStock: undefined,
-            referenceStockUnit: undefined,
         });
         setSelectedAttrs({});
         setCharValues({});
@@ -213,16 +183,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             attributeIds: selectedAttributeIds(),
             characteristics: characteristicsPayload(),
             pricePerUnit: data.pricePerUnit,
-            priceTiers: data.priceTiers ?? null,
-            minPackageAmount: data.minPackageAmount ?? null,
-            minPackageUnit: data.minPackageUnit ?? null,
-            supplierPackageAmount: data.supplierPackageAmount ?? null,
-            supplierPackageUnit: data.supplierPackageUnit ?? null,
-            supplierPackagePrice: data.supplierPackagePrice ?? null,
-            supplierPackageTiers: data.supplierPackageTiers ?? null,
-            supplementStep: data.supplementStep ?? null,
-            referenceStock: data.referenceStock ?? null,
-            referenceStockUnit: data.referenceStockUnit ?? null,
         };
     }
 

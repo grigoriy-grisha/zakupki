@@ -255,21 +255,3 @@ export function findAttributeDisplayName(
     }
     return undefined;
 }
-
-/** @deprecated Используйте buildAttributesTreeByType */
-export function groupAttributesByType(
-    items: AttributeListItem[] | undefined,
-): Record<number, { id: number; name: string }[]> {
-    const tree = buildAttributesTreeByType(items);
-    const result: Record<number, { id: number; name: string }[]> = {};
-    for (const [typeId, node] of Object.entries(tree)) {
-        result[Number(typeId)] = [
-            ...node.topValues,
-            ...node.brands.flatMap((b) => [
-                { id: b.id, name: b.name },
-                ...b.values.map((v) => ({ id: v.id, name: `${b.name} ${v.name}` })),
-            ]),
-        ];
-    }
-    return result;
-}

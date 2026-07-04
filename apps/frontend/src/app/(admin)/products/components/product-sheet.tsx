@@ -30,16 +30,6 @@ function transformProduct(raw: any): ProductFormExisting {
         characteristicValues: raw.characteristicValues,
         photos: raw.photos,
         pricePerUnit: toNumber(raw.pricePerUnit),
-        priceTiers: raw.priceTiers,
-        minPackageAmount: toNumber(raw.minPackageAmount),
-        minPackageUnit: raw.minPackageUnit,
-        supplierPackageAmount: toNumber(raw.supplierPackageAmount),
-        supplierPackageUnit: raw.supplierPackageUnit,
-        supplierPackagePrice: toNumber(raw.supplierPackagePrice),
-        supplierPackageTiers: raw.supplierPackageTiers,
-        supplementStep: toNumber(raw.supplementStep),
-        referenceStock: toNumber(raw.referenceStock),
-        referenceStockUnit: raw.referenceStockUnit,
     };
 }
 

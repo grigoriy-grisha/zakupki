@@ -22,8 +22,6 @@ import { useProductFormState, useProductFormSubmit, type ProductFormExisting } f
 import { PhotoUploader } from './photo-uploader';
 import { AttributeTreePicker } from './attribute-tree-picker';
 import { ProductCharacteristicsFields } from './product-characteristics-fields';
-import { PriceTierEditor, PackageEditor } from './package-fields';
-import { PACKAGE_UNITS } from '../lib';
 
 interface ProductFormProps {
     editId: number | null;
@@ -123,8 +121,8 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 />
             </FormSection>
 
-            {/* === Цены и фасовка === */}
-            <FormSection card title="Цены и фасовка">
+            {/* === Цена === */}
+            <FormSection card title="Цена">
                 <FormField label="Цена за единицу" hint="Базовая цена за 1 единицу (например, 450 ₽/гр)">
                     <Input
                         id="pricePerUnit"
@@ -136,110 +134,9 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                         {...state.form.register('pricePerUnit', { valueAsNumber: true })}
                     />
                 </FormField>
-
-                <Controller
-                    name="priceTiers"
-                    control={state.form.control}
-                    render={({ field }) => (
-                        <PriceTierEditor
-                            tiers={field.value ?? []}
-                            onChange={field.onChange}
-                            label="Ценовые тиры"
-                            required={false}
-                            addTierLabel="Добавить тир"
-                        />
-                    )}
-                />
-
-                <Controller
-                    name="minPackageAmount"
-                    control={state.form.control}
-                    render={({ field }) => (
-                        <PackageEditor
-                            label="Мин. фасовка"
-                            amount={field.value ?? null}
-                            unit={state.form.watch('minPackageUnit') ?? PACKAGE_UNITS[0]}
-                            onAmountChange={(v) => field.onChange(v)}
-                            onUnitChange={(v) => state.form.setValue('minPackageUnit', v)}
-                            description="Минимальный шаг заказа (например, 5 гр)"
-                        />
-                    )}
-                />
-
-                <Controller
-                    name="supplierPackageAmount"
-                    control={state.form.control}
-                    render={({ field }) => (
-                        <PackageEditor
-                            label="Поставка (упаковка)"
-                            amount={field.value ?? null}
-                            unit={state.form.watch('supplierPackageUnit') ?? PACKAGE_UNITS[0]}
-                            onAmountChange={(v) => field.onChange(v)}
-                            onUnitChange={(v) => state.form.setValue('supplierPackageUnit', v)}
-                            description="Целая пачка от поставщика (например, 100 гр)"
-                        />
-                    )}
-                />
-
-                <FormField label="Цена поставки" hint="Цена за 1 упаковку поставщика">
-                    <Controller
-                        name="supplierPackagePrice"
-                        control={state.form.control}
-                        render={({ field }) => (
-                            <Input
-                                id="supplierPackagePrice"
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                placeholder="0.00"
-                                className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
-                                value={field.value ?? ''}
-                                onChange={(e) =>
-                                    field.onChange(e.target.value === '' ? null : Number(e.target.value))
-                                }
-                            />
-                        )}
-                    />
-                </FormField>
-
-                <FormField
-                    label="Фасовка для добора"
-                    hint="Шаг +/− на этапе добора. Если не задан — используется мин. фасовка"
-                >
-                    <Controller
-                        name="supplementStep"
-                        control={state.form.control}
-                        render={({ field }) => (
-                            <Input
-                                id="supplementStep"
-                                type="number"
-                                step="0.001"
-                                min={0}
-                                placeholder="По умолчанию (мин. фасовка)"
-                                className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
-                                value={field.value ?? ''}
-                                onChange={(e) =>
-                                    field.onChange(e.target.value === '' ? null : Number(e.target.value))
-                                }
-                            />
-                        )}
-                    />
-                </FormField>
-            </FormSection>
-
-            {/* === Остаток === */}
-            <FormSection card title="Остаток">
-                <FormField label="Доступно (справочно)" hint="Справочная информация — не лимит">
-                    <Input
-                        id="referenceStock"
-                        type="number"
-                        step="1"
-                        min={0}
-                        placeholder="0"
-                        className="w-32 rounded-xl text-13-medium tabular-nums"
-                        {...state.form.register('referenceStock', { valueAsNumber: true })}
-                    />
-                </FormField>
+                <p className="text-12-regular text-fg-tertiary">
+                    Ценовые тиры, мин. фасовка и параметры поставки задаются при добавлении товара в закупку.
+                </p>
             </FormSection>
 
             {/* === Фото === */}

@@ -10,6 +10,7 @@ export type ProductFormPayload = {
     name: string;
     articleNumber: string | null;
     unitCode: string;
+    pricePerUnit?: number;
     attributeIds: number[];
     characteristics: { characteristicId: number; value: string }[];
 };

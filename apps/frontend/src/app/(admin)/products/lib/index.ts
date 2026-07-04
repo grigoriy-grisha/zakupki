@@ -5,7 +5,6 @@ export {
     resolveProductCharacteristics,
     buildAttributesTreeByType,
     findAttributeDisplayName,
-    groupAttributesByType,
     revokePendingFiles,
     type AttributeListItem,
     type ProductCharacteristicsSource,
@@ -13,9 +12,8 @@ export {
     type AttributesTreeForType,
     type PendingFile,
 } from './product-form-utils';
-export { productCreateSchema, productSchema, productAttributeSchema, priceTierSchema, PACKAGE_UNITS } from './schema';
-export type { PackageUnit, PriceTierValues, ProductCreateFormValues } from './schema';
-export type { ProductFormValues, ProductAttributeFormValues } from './schema';
+export { productCreateSchema, productAttributeSchema, PACKAGE_UNITS } from './schema';
+export type { PackageUnit, ProductCreateFormValues, ProductAttributeFormValues } from './schema';
 export {
     formatProductAttributesLine,
     getProductCatalogAttributeLabels,
