@@ -13,12 +13,6 @@ interface ProductSheetProps {
     editId: number | null;
 }
 
-function toNumber(v: string | number | null | undefined): number | undefined {
-    if (v == null) return undefined;
-    if (typeof v === 'number') return v;
-    return Number(v);
-}
-
 function transformProduct(raw: any): ProductFormExisting {
     return {
         name: raw.name,
@@ -29,7 +23,6 @@ function transformProduct(raw: any): ProductFormExisting {
         attributeValues: raw.attributeValues,
         characteristicValues: raw.characteristicValues,
         photos: raw.photos,
-        pricePerUnit: toNumber(raw.pricePerUnit),
     };
 }
 

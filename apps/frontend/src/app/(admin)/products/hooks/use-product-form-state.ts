@@ -30,7 +30,6 @@ export type ProductFormExisting = {
     attributeValues?: ProductAttributeValueShape[];
     characteristicValues?: ProductCharacteristicValueShape[];
     photos: { id: number }[];
-    pricePerUnit?: number;
 };
 
 export function useProductFormState(editId: number | null, existing: ProductFormExisting | null | undefined) {
@@ -115,7 +114,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
                 name: existing.name,
                 articleNumber: existing.articleNumber ?? '',
                 unitCode: existing.unitCode ?? '',
-                pricePerUnit: existing.pricePerUnit,
             });
             setPendingFiles((prev) => {
                 revokePendingFiles(prev);
@@ -165,7 +163,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             name: '',
             articleNumber: '',
             unitCode: 'piece',
-            pricePerUnit: undefined,
         });
         setSelectedAttrs({});
         setCharValues({});
@@ -182,7 +179,6 @@ export function useProductFormState(editId: number | null, existing: ProductForm
             unitCode: data.unitCode,
             attributeIds: selectedAttributeIds(),
             characteristics: characteristicsPayload(),
-            pricePerUnit: data.pricePerUnit,
         };
     }
 

@@ -121,24 +121,6 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 />
             </FormSection>
 
-            {/* === Цена === */}
-            <FormSection card title="Цена">
-                <FormField label="Цена за единицу" hint="Базовая цена за 1 единицу (например, 450 ₽/гр)">
-                    <Input
-                        id="pricePerUnit"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        placeholder="0.00"
-                        className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
-                        {...state.form.register('pricePerUnit', { valueAsNumber: true })}
-                    />
-                </FormField>
-                <p className="text-12-regular text-fg-tertiary">
-                    Ценовые тиры, мин. фасовка и параметры поставки задаются при добавлении товара в закупку.
-                </p>
-            </FormSection>
-
             {/* === Фото === */}
             <FormSection card title="Фото">
                 {state.isCreating ? (
