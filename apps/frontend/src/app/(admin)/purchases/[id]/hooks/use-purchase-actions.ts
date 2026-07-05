@@ -59,14 +59,6 @@ export function usePurchaseActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    const publishItem = trpc.purchases.publishItemToTg.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('В очереди на публикацию в Telegram');
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
     const removeItem = trpc.purchases.removeItem.useMutation({
         onSuccess: () => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
@@ -77,22 +69,12 @@ export function usePurchaseActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    const setTargetRemainder = trpc.purchases.setAvailableQuantities.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('Остатки обновлены');
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
     return {
         activate,
         complete,
         deleteDraft,
         publishAll,
         updateFulfillmentStatus,
-        publishItem,
         removeItem,
-        setTargetRemainder,
     };
 }

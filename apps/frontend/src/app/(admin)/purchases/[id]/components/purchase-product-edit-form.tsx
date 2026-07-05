@@ -36,11 +36,10 @@ import {
 import {
     buildPurchaseFormState,
     normalizeSupplierTiersForSave,
-    persistTemplateChoice,
     primarySupplierPackageFromTiers,
-    resolveDefaultTemplateId,
     validatePurchasePriceTiers,
-} from '../lib/purchase-product-fields';
+} from '../lib/purchase-price-tiers';
+import { persistTemplateChoice, resolveDefaultTemplateId } from '../lib/template-storage';
 
 export type PurchaseProductSaveData = {
     description?: string;
