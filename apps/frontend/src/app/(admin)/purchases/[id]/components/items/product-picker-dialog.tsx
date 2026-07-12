@@ -1,45 +1,30 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Loader2, Package, Plus, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Package, Plus, Search } from 'lucide-react';
 
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-import { useAddPurchaseItems } from '../hooks';
-import { useUpdateProduct } from '../../../products/hooks';
-import {
-    formatProductAttributesLine,
-    getProductPhotoId,
-    type ProductLabelSource,
-} from '../../../products/lib';
-import { ProductSheet } from '../../../products/components';
-import { PurchaseProductEditForm } from './purchase-product-edit-form';
+import { useAddPurchaseItems } from '../../hooks';
+import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '../../../../products/lib';
+import { ProductSheet } from '../../../../products/components';
+import { PurchaseProductEditForm, type PurchaseProductSaveData } from './purchase-product-edit-form';
 import { cn } from '@/lib/utils';
 
 interface ProductPickerDialogProps {
     purchaseId: number;
     purchaseTag: string;
-    existingProductIds: Set<number>;
 }
 
-type PickerProduct = ProductLabelSource & { id: number };
+type PickerProduct = ProductLabelSource & {
+    id: number;
+};
 
-export function ProductPickerDialog({
-    purchaseId,
-    purchaseTag,
-    existingProductIds,
-}: ProductPickerDialogProps) {
+export function ProductPickerDialog({ purchaseId, purchaseTag }: ProductPickerDialogProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
@@ -52,15 +37,21 @@ export function ProductPickerDialog({
     );
     const addItems = useAddPurchaseItems(purchaseId);
 
-    const availableProducts = useMemo(
-        () => ((allProducts ?? []) as PickerProduct[]).filter((p) => !existingProductIds.has(p.id)),
-        [allProducts, existingProductIds],
-    );
+    // Без фильтра: один и тот же товар можно добавить в закупку несколько раз
+    // (для разных поставщиков / разных цен).
+    const availableProducts = (allProducts ?? []) as PickerProduct[];
 
-    function handleAdd(productIds: number[]) {
-        if (productIds.length === 0) return;
-        addItems.mutate(
-            { purchaseId, productIds },
+    function handleAdd(items: { productId: number; data: PurchaseProductSaveData }[]) {
+        if (items.length === 0) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- глубокий zod-тип addItems
+        (addItems as any).mutate(
+            {
+                purchaseId,
+                items: items.map((i) => ({
+                    productId: i.productId,
+                    ...i.data,
+                })),
+            },
             {
                 onSuccess: () => {
                     setOpen(false);
@@ -130,30 +121,22 @@ export function ProductPickerDialog({
 
                         <div className="max-h-[400px] space-y-2 overflow-y-auto">
                             {isLoading && (
-                                <p className="py-4 text-center text-13-regular text-fg-tertiary">
-                                    Загрузка…
-                                </p>
+                                <p className="py-4 text-center text-13-regular text-fg-tertiary">Загрузка…</p>
                             )}
                             {!isLoading && availableProducts.length === 0 && (
                                 <div className="rounded-2xl border border-border bg-bg-card py-8 text-center">
                                     <p className="text-13-regular text-fg-tertiary">
-                                        {search.trim()
-                                            ? 'Ничего не найдено'
-                                            : 'Все товары уже добавлены в закупку'}
+                                        {search.trim() ? 'Ничего не найдено' : 'В каталоге пока нет товаров'}
                                     </p>
                                 </div>
                             )}
-                            {availableProducts.map((product) => {
-                                const isExisting = existingProductIds.has(product.id);
-                                return (
-                                    <ProductPickerRow
-                                        key={product.id}
-                                        product={product}
-                                        isExisting={isExisting}
-                                        onOpenDetail={() => setDetailProduct(product.id)}
-                                    />
-                                );
-                            })}
+                            {availableProducts.map((product) => (
+                                <ProductPickerRow
+                                    key={product.id}
+                                    product={product}
+                                    onOpenDetail={() => setDetailProduct(product.id)}
+                                />
+                            ))}
                         </div>
                     </div>
                 )}
@@ -171,45 +154,23 @@ export function ProductPickerDialog({
     );
 }
 
-function ProductPickerRow({
-    product,
-    isExisting,
-    onOpenDetail,
-}: {
-    product: PickerProduct;
-    isExisting: boolean;
-    onOpenDetail: () => void;
-}) {
+function ProductPickerRow({ product, onOpenDetail }: { product: PickerProduct; onOpenDetail: () => void }) {
     const photoId = getProductPhotoId(product);
     const attributesLine = formatProductAttributesLine(product);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const basePrice = (product as any).pricePerUnit != null ? Number((product as any).pricePerUnit) : null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const minPkgAmount = (product as any).minPackageAmount != null
-        ? Number((product as any).minPackageAmount)
-        : null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const minPkgUnit = (product as any).minPackageUnit as string | null | undefined;
 
     return (
         <Button
             variant="ghost"
             size="default"
-            disabled={isExisting}
             onClick={onOpenDetail}
             className={cn(
                 'h-auto w-full justify-start gap-3 rounded-2xl border border-border bg-bg-card p-3 text-left',
-                !isExisting && 'hover:border-border-strong hover:bg-bg-soft',
-                isExisting && 'cursor-not-allowed opacity-60',
+                'hover:border-border-strong hover:bg-bg-soft',
             )}
         >
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
                 {photoId ? (
-                    <img
-                        src={`/api/photos/${photoId}`}
-                        alt=""
-                        className="h-full w-full object-cover"
-                    />
+                    <img src={`/api/photos/${photoId}`} alt="" className="h-full w-full object-cover" />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center">
                         <Package className="h-6 w-6 text-fg-tertiary/40" />
@@ -217,34 +178,8 @@ function ProductPickerRow({
                 )}
             </div>
             <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                    <p className="truncate text-14-semibold text-fg-primary">{product.name}</p>
-                    {isExisting && (
-                        <Badge type="subtle" variant="success" size="sm">
-                            Уже в закупке
-                        </Badge>
-                    )}
-                </div>
-                {attributesLine && (
-                    <p className="truncate text-12-regular text-fg-tertiary">{attributesLine}</p>
-                )}
-                {(basePrice != null || minPkgAmount != null) && (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-12-medium text-fg-secondary tabular-nums">
-                        {basePrice != null && basePrice > 0 && (
-                            <span>{basePrice.toLocaleString('ru-RU')} ₽/ед</span>
-                        )}
-                        {minPkgAmount != null && minPkgAmount > 0 && (
-                            <>
-                                {basePrice != null && basePrice > 0 && (
-                                    <span className="text-fg-disabled">·</span>
-                                )}
-                                <span>
-                                    мин. {minPkgAmount} {minPkgUnit ?? 'ед'}
-                                </span>
-                            </>
-                        )}
-                    </div>
-                )}
+                <p className="truncate text-14-semibold text-fg-primary">{product.name}</p>
+                {attributesLine && <p className="truncate text-12-regular text-fg-tertiary">{attributesLine}</p>}
             </div>
         </Button>
     );
@@ -259,13 +194,11 @@ function ProductDetail({
 }: {
     productId: number;
     purchaseTag: string;
-    onAdd: (productIds: number[]) => void;
+    onAdd: (items: { productId: number; data: PurchaseProductSaveData }[]) => void;
     onBack: () => void;
     isAdding: boolean;
 }) {
     const { data: product, isLoading } = trpc.products.getById.useQuery({ id: productId });
-    const utils = trpc.useUtils();
-    const updateMutation = useUpdateProduct();
 
     if (isLoading) {
         return (
@@ -305,17 +238,6 @@ function ProductDetail({
         );
     }
 
-    // Базовые значения из Product: цена за 1 шт, мин. фасовка, фасовка поставщика.
-    // Подставляем их в форму, чтобы админу не приходилось вводить заново.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const basePricePerUnit = (product as any).pricePerUnit != null ? Number((product as any).pricePerUnit) : 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const baseUnit = (product as any).unit?.shortName ?? 'ед';
-    const baseInitialTiers =
-        basePricePerUnit > 0
-            ? [{ amount: 1, unit: baseUnit, price: basePricePerUnit }]
-            : [];
-
     return (
         <div className="flex flex-col gap-3">
             <Button
@@ -331,37 +253,13 @@ function ProductDetail({
                 key={productId}
                 product={product}
                 purchaseTag={purchaseTag}
-                loadSavedDescription={true}
-                initialTiers={baseInitialTiers}
+                loadSavedDescription={false}
                 onCancel={onBack}
                 onSave={(data) => {
-                    updateMutation.mutate(
-                        {
-                            id: productId,
-                            description: data.description,
-                            pricePerUnit: data.priceOverride ?? undefined,
-                            priceTiers: data.priceTiers,
-                            minPackageAmount: data.minPackageAmount ?? undefined,
-                            minPackageUnit: data.minPackageUnit ?? undefined,
-                            supplierPackageAmount: data.supplierPackageAmount ?? undefined,
-                            supplierPackageUnit: data.supplierPackageUnit ?? undefined,
-                            supplierPackagePrice: data.supplierPackagePrice ?? undefined,
-                            supplierPackageTiers:
-                                data.supplierPackageTiers.length > 0 ? data.supplierPackageTiers : undefined,
-                        },
-                        {
-                            onSuccess: () => {
-                                void utils.products.getById.invalidate({ id: productId });
-                                void utils.products.list.invalidate();
-                                toast.success('Товар обновлён');
-                                onAdd([productId]);
-                            },
-                            onError: (err) => toast.error(err.message),
-                        },
-                    );
+                    onAdd([{ productId, data }]);
                 }}
-                isSaving={updateMutation.isPending || isAdding}
-                submitLabel="Сохранить и добавить в закупку"
+                isSaving={isAdding}
+                submitLabel="Добавить в закупку"
             />
         </div>
     );

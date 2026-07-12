@@ -13,6 +13,7 @@ export type PurchaseProductFieldSource = {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: string | number | null;
     supplierPackageTiers?: unknown;
+    priceTiers?: unknown;
     supplementStep?: string | number | null;
     // Глобальный лимит поставщика (per-purchase). Хранится в PurchaseItem.
     supplierLimit?: string | number | null;

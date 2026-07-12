@@ -20,10 +20,15 @@ const CACHE_TTL = 86400; // 24 ч
 
 const ITEM_INCLUDE = {
     product: {
-        include: {
+        select: {
+            id: true,
+            name: true,
+            unitCode: true,
+            multiplicity: true,
             photos: { orderBy: { sortOrder: 'asc' }, take: 1, select: { id: true, objectKey: true, mimeType: true } },
         },
     },
+    supplier: { select: { id: true, name: true } },
     orderLines: { select: { quantity: true } },
     purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
 } as const;

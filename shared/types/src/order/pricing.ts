@@ -29,7 +29,11 @@ export function computePackagePrice(item: PurchaseItem): number {
     if (item.supplierPackagePrice != null && item.supplierPackagePrice > 0) {
         return item.supplierPackagePrice;
     }
-    return item.pricePerUnit * (item.supplierPackageAmount ?? 0);
+    // Per-unit цена с приоритетом priceOverride — та же, что использует россыпь
+    // (calculateOrderAmount возвращает quantity*priceOverride). Без этого при
+    // ценнике через priceOverride (pricePerUnit=0) упаковки получались бесплатными.
+    const unitPrice = item.priceOverride ?? item.pricePerUnit;
+    return unitPrice * (item.supplierPackageAmount ?? 0);
 }
 
 /**

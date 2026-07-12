@@ -7,11 +7,12 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { UserProfileSheet } from '@/app/(admin)/users/components';
-import { trpc } from '@/lib/client/trpc';
-import { PaymentDetailDialog } from './payment-detail-dialog';
-import { useParticipantsData } from '../hooks';
+import { safeNumber } from '@/lib/utils';
+import { PaymentDetailDialog } from '../payment-detail-dialog';
+import { useParticipantsData } from '../../hooks';
+import { usePurchaseDetail } from '../../hooks/use-purchase-detail';
 import { AdminParticipantRow } from './admin-participant-row';
-import type { PaymentRef } from '../lib/types';
+import type { PaymentRef } from '../../lib/types';
 
 interface AdminParticipantsListProps {
     purchaseId: number;
@@ -25,7 +26,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     const data = useParticipantsData(purchaseId);
     // Позиции закупки — для шага ± и пикера «добавить позицию» в карточке.
     // React Query дедуплицирует с таким же запросом из items-вкладки.
-    const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId });
+    const { detail: purchase } = usePurchaseDetail(purchaseId);
     const purchaseItems = purchase?.items ?? [];
 
     if (data.isLoading) {
@@ -80,21 +81,18 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
 
             <div className="space-y-2">
                 {data.userIds.map((userId) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const userOrdersList: any[] = data.userOrders.get(userId) ?? [];
+                    const userOrdersList = data.userOrders.get(userId) ?? [];
                     const due = userOrdersList.reduce(
-                        (sum: number, o: any) => sum + Number(o.amountDue),
+                        (sum, o) => sum + safeNumber(o.amountDue),
                         0,
                     );
                     const paid = data.paidByUser.get(userId) ?? 0;
                     const pending = data.pendingByUser.get(userId) ?? 0;
                     const info = data.userMap.get(userId);
                     const name = info?.name ?? `Участник #${userId}`;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const userPaymentsList: any[] = data.userPayments.get(userId) ?? [];
-                    const purchaseOrderId =
-                        (userOrdersList[0] as { purchaseOrderId?: number | null } | undefined)
-                            ?.purchaseOrderId ?? null;
+                    const userPaymentsList = data.userPayments.get(userId) ?? [];
+                    const orderComment = data.orderComments.get(userId) ?? null;
+                    const purchaseOrderId = orderComment?.id ?? null;
 
                     return (
                         <AdminParticipantRow
@@ -104,6 +102,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             username={info?.username}
                             purchaseId={purchaseId}
                             purchaseOrderId={purchaseOrderId}
+                            orderComment={orderComment}
                             onOpenProfile={setProfileUserId}
                             orders={userOrdersList}
                             payments={userPaymentsList}

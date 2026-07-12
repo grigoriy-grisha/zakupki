@@ -10,6 +10,7 @@ import { getDiscussionMessageStore } from '../lib/discussion-message-store';
 import { getChannelIdFromEnv } from '../lib/telegram-post';
 import { getOrdersChatIdFromEnv } from '../lib/telegram-chat';
 import { TgClient } from '../lib/tg-client';
+import { shopInlineKeyboardForGroup } from '../lib/webapp-url';
 import type { ChannelPostPhoto } from '../domain/types';
 import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 import {
@@ -24,7 +25,10 @@ const log = createLogger('tg-post-worker');
 
 const ITEM_INCLUDE = {
     product: {
-        include: {
+        select: {
+            id: true,
+            name: true,
+            unitCode: true,
             photos: {
                 orderBy: { sortOrder: 'asc' as const },
                 take: 1,
@@ -32,6 +36,7 @@ const ITEM_INCLUDE = {
             },
         },
     },
+    supplier: { select: { id: true, name: true } },
     orderLines: { where: { status: 'ACTIVE' as const } },
     purchase: { select: { fulfillmentStatus: true } },
 } satisfies Prisma.PurchaseItemInclude;
@@ -47,11 +52,13 @@ async function loadPostPhoto(tg: TgClient, item: Item): Promise<ChannelPostPhoto
 function buildPostHeader(renderer: BotProductRenderer, item: Item): string {
     return renderer.buildPostHeader({
         name: item.product.name,
-        description: item.product.description,
-        pricePerUnit: item.product.pricePerUnit,
-        minPackageAmount: item.product.minPackageAmount,
-        minPackageUnit: item.product.minPackageUnit,
+        // После миграции Supplier описание и цены/фасовка лежат на PurchaseItem, не на Product.
+        description: item.description ?? null,
+        pricePerUnit: item.pricePerUnit,
+        minPackageAmount: item.minPackageAmount,
+        minPackageUnit: item.minPackageUnit,
         unitCode: item.product.unitCode,
+        supplierName: item.supplier?.name ?? null,
     });
 }
 
@@ -79,7 +86,7 @@ function computeFreeToOrder(item: Item): number | null {
     const aggregation = getStageStrategy(stage).aggregateForPool(toOrderLinesVO(item.orderLines));
     return computeRawPool({
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-        packSize: item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null,
+        packSize: item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null,
         aggregation,
     });
 }
@@ -99,7 +106,7 @@ function sumOrderLines(item: Item): number {
     // effectiveQty = qty + packageCount*packSize. Пакеты = qty для целей лимита/пула,
     // иначе "Свободно к заказу" будет завышено (worker не учитывал пакеты, и лимит
     // показывал свободно больше, чем реально).
-    const packSize = item.product.supplierPackageAmount;
+    const packSize = item.supplierPackageAmount;
     return item.orderLines.reduce(
         (s, l) => s + Number(l.quantity) + Number(l.packageCount) * Number(packSize ?? 0),
         0,
@@ -228,8 +235,19 @@ export class TgPostWorker {
             { itemId, messageId, autoForwardId, attached: autoForwardId != null },
             'createPost: shop comment attempt',
         );
+        if (autoForwardId == null) {
+            log.warn(
+                { itemId, messageId },
+                'createPost: autoforward not indexed in time, shop comment sent unattached',
+            );
+        }
         await this.tg
-            .sendComment(discussionId, this.renderer.shopCommentText, autoForwardId ?? undefined)
+            .sendComment(
+                discussionId,
+                this.renderer.shopCommentText,
+                autoForwardId ?? undefined,
+                shopInlineKeyboardForGroup(),
+            )
             .catch((err) => log.error({ itemId, messageId, err }, 'shop comment failed'));
 
         log.info({ itemId, messageId }, 'createPost done');

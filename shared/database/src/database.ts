@@ -16,7 +16,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-for (const envPath of [path.join(__dirname, '../.env'), path.join(process.cwd(), '.env')]) {
+for (const envPath of [path.join(__dirname, '../.env.local'), path.join(process.cwd(), '.env.local')]) {
     if (existsSync(envPath)) config({ path: envPath });
 }
 

@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 
-import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +17,8 @@ import {
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
 import { cn } from '@/lib/utils';
+import { usePurchaseActions } from '../../hooks/use-purchase-actions';
+import { usePurchaseDetail } from '../../hooks/use-purchase-detail';
 
 interface SupplementDialogProps {
     purchaseId: number;
@@ -27,8 +27,8 @@ interface SupplementDialogProps {
 }
 
 export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementDialogProps) {
-    const utils = trpc.useUtils();
-    const { data: purchase } = trpc.purchases.getById.useQuery({ id: purchaseId }, { enabled: open });
+    const { detail: purchase } = usePurchaseDetail(purchaseId, { enabled: open });
+    const { setAvailableQuantities: mutation } = usePurchaseActions(purchaseId);
 
     const [quantities, setQuantities] = useState<Record<number, string>>({});
     const [supplementSteps, setSupplementSteps] = useState<Record<number, string>>({});
@@ -52,15 +52,6 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
         }
     }, [purchase, open, supplementItems]);
 
-    const mutation = trpc.purchases.setAvailableQuantities.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('Остатки сохранены');
-            onOpenChange(false);
-        },
-        onError: (err) => toast.error(err.message),
-    });
-
     function handleSubmit() {
         if (!purchase) return;
         const items = supplementItems.map((item) => ({
@@ -74,7 +65,10 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                     ? null
                     : Number(supplementSteps[item.id]),
         }));
-        mutation.mutate({ purchaseId, items });
+        mutation.mutate(
+            { purchaseId, items },
+            { onSuccess: () => onOpenChange(false) },
+        );
     }
 
     const { dialog: confirmDialog, requestStatusChange } = useStatusChangeConfirm<'save-supplement'>({

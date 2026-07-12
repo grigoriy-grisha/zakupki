@@ -88,13 +88,10 @@ export default function CartPage() {
                             <div className="flex items-center justify-between">
                                 <AppLink href={`/shop/purchase/${group.id}`}>
                                     <CardTitle className="text-lg hover:text-primary transition-colors">
-                                        {group.supplier}
+                                        {group.tag}
                                     </CardTitle>
                                 </AppLink>
                                 <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="font-normal">
-                                        {group.tag}
-                                    </Badge>
                                     <Badge variant="outline" className="font-normal">
                                         {fulfillmentLabel}
                                     </Badge>

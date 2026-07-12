@@ -9,6 +9,7 @@ import { productAttributesRouter } from './product-attributes';
 import { productsRouter } from './products';
 import { purchasesRouter } from './purchases';
 import { settingsRouter } from './settings';
+import { suppliersRouter } from './suppliers';
 import { usersRouter } from './users';
 
 export const appRouter = router({
@@ -18,6 +19,7 @@ export const appRouter = router({
     products: productsRouter,
     purchases: purchasesRouter,
     settings: settingsRouter,
+    suppliers: suppliersRouter,
     orders: ordersRouter,
     payments: paymentsRouter,
     postTemplates: postTemplatesRouter,

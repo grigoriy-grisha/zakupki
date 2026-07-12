@@ -1,4 +1,3 @@
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
@@ -14,6 +13,43 @@ const purchaseFulfillmentStatusSchema = z.enum([
     'PACKAGING',
     'READY_FOR_PICKUP',
 ]);
+
+// Переиспользуемые схемы per-purchase полей. Вынесены на верхний уровень, чтобы
+// tRPC мог корректно вывести типы (вложенные z.object-ы ломают рекурсивный инферент).
+const priceTierSchema = z.object({
+    amount: z.number().positive('Укажите количество'),
+    unit: z.string().min(1, 'Выберите ед.'),
+    price: z.number().positive('Укажите цену больше 0'),
+});
+
+const supplierPackageTierSchema = z.object({
+    amount: z.number().positive(),
+    unit: z.string().min(1),
+    price: z.number().nonnegative(),
+});
+
+const purchaseItemFieldsSchema = z.object({
+    supplierId: z.number().nullable().optional(),
+    description: z.string().nullable().optional(),
+    pricePerUnit: z.number().nullable().optional(),
+    minPackageAmount: z.number().nullable().optional(),
+    minPackageUnit: z.string().nullable().optional(),
+    priceTiers: z.array(priceTierSchema).min(1).optional(),
+    supplierPackageAmount: z.number().nullable().optional(),
+    supplierPackageUnit: z.string().nullable().optional(),
+    supplierPackagePrice: z.number().nullable().optional(),
+    supplierPackageTiers: z.array(supplierPackageTierSchema).optional(),
+    supplementStep: z.number().nullable().optional(),
+    // Лимит поставщика + targetRemainder редактируются через отдельные мутации,
+    // но updateItemProduct тоже их принимает (для удобства из ItemEditSheet).
+    supplierLimit: z.number().nullable().optional(),
+    supplierLimitUnit: z.string().nullable().optional(),
+    targetRemainder: z.number().nullable().optional(),
+});
+
+const addItemInputSchema = z.object({
+    productId: z.number(),
+}).merge(purchaseItemFieldsSchema);
 
 export const purchasesRouter = router({
     list: protectedProcedure
@@ -44,9 +80,6 @@ export const purchasesRouter = router({
         .input(
             z.object({
                 tag: z.string().min(1),
-                supplier: z.string().min(1),
-                minAmount: z.number().positive(),
-                deadline: z.string().transform((v) => new Date(v)),
             }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -115,18 +148,11 @@ export const purchasesRouter = router({
         .input(
             z.object({
                 purchaseId: z.number(),
-                productIds: z.array(z.number()).min(1, 'Выберите хотя бы один товар'),
+                items: z.array(addItemInputSchema).min(1, 'Выберите хотя бы один товар'),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            const { items, skippedCount } = await ctx.services.purchase.addItems(input.purchaseId, input.productIds);
-
-            if (items.length === 0) {
-                throw new TRPCError({
-                    code: 'CONFLICT',
-                    message: 'Выбранные товары уже добавлены в эту закупку',
-                });
-            }
+            const { items, skippedCount } = await ctx.services.purchase.addItems(input.purchaseId, input.items);
 
             const tgPublish = await ctx.services.telegramPublish.enqueueAfterAddItems(
                 false,
@@ -149,41 +175,7 @@ export const purchasesRouter = router({
         .input(
             z.object({
                 purchaseItemId: z.number(),
-                product: z.object({
-                    name: z.string().min(1).optional(),
-                    description: z.string().optional(),
-                    pricePerUnit: z.number().optional(),
-                    minPackageAmount: z.number().nullable().optional(),
-                    minPackageUnit: z.string().nullable().optional(),
-                    priceTiers: z
-                        .array(
-                            z.object({
-                                amount: z.number().positive('Укажите количество'),
-                                unit: z.string().min(1, 'Выберите ед.'),
-                                price: z.number().positive('Укажите цену больше 0'),
-                            }),
-                        )
-                        .min(1, 'Укажите хотя бы одну цену')
-                        .optional(),
-                    supplierPackageAmount: z.number().nullable().optional(),
-                    supplierPackageUnit: z.string().nullable().optional(),
-                    supplierPackagePrice: z.number().nullable().optional(),
-                    supplierPackageTiers: z
-                        .array(
-                            z.object({
-                                amount: z.number().positive(),
-                                unit: z.string().min(1),
-                                price: z.number().nonnegative(),
-                            }),
-                        )
-                        .optional(),
-                    supplementStep: z.number().nullable().optional(),
-                    // Глобальный лимит поставщика (per-purchase). Сохраняется в PurchaseItem.
-                    supplierLimit: z.number().nullable().optional(),
-                    supplierLimitUnit: z.string().nullable().optional(),
-                    // Fix #8: targetRemainder теперь редактируется и через ItemEditSheet.
-                    targetRemainder: z.number().nullable().optional(),
-                }),
+                product: purchaseItemFieldsSchema,
                 priceOverride: z.number().nullable().optional(),
             }),
         )
@@ -202,4 +194,15 @@ export const purchasesRouter = router({
         await ctx.services.purchase.recalculateAmounts(input.purchaseId);
         return { ok: true };
     }),
+
+    /**
+     * Admin: установить/очистить комментарий к участнику закупки (PurchaseOrder).
+     * Пустая строка (или только пробелы) → удаление комментария.
+     * commentAt ставится автоматически на уровне репозитория.
+     */
+    setOrderComment: adminProcedure
+        .input(z.object({ id: z.number(), comment: z.string().max(2000) }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.purchase.setOrderComment(input.id, input.comment, ctx.userId);
+        }),
 });

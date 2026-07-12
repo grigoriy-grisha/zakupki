@@ -1,4 +1,4 @@
-import { calculateOrderAmount, NotFoundError, ValidationError } from '@zakupki/types';
+import { computeAmountDueWithPackages, mapToPurchaseItem, NotFoundError, ValidationError } from '@zakupki/types';
 
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import { OrderRepository } from '../domain/order.repository';
@@ -37,7 +37,7 @@ export class PurchaseService {
         return purchase;
     }
 
-    async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {
+    async create(data: { tag: string }) {
         const tag = formatPurchaseTag(data.tag);
         const existing = await this.repo.findByTag(tag);
         if (existing) {
@@ -45,7 +45,7 @@ export class PurchaseService {
         }
 
         try {
-            return await this.repo.create({ ...data, tag });
+            return await this.repo.create({ tag });
         } catch (err) {
             handleDbConflict(err);
         }
@@ -99,40 +99,42 @@ export class PurchaseService {
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
     }
 
+    /**
+     * Применяет partial-обновление к PurchaseItem. Вся per-purchase конкретика
+     * (описание, цены, фасовка, supplier) теперь редактируется здесь. Product
+     * больше не трогается — он хранит только каталожные данные.
+     */
     async updateItemProduct(
         purchaseItemId: number,
-        productData: Record<string, unknown>,
+        itemData: Record<string, unknown>,
         priceOverride: number | null,
     ) {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
-        // Write price override to PurchaseItem (per-purchase pricing)
-        // Don't write pricePerUnit to the shared product — use priceOverride on the item
-        const { pricePerUnit, supplementStep, supplierLimit, supplierLimitUnit, targetRemainder, ...nonPriceFields } =
-            productData as Record<string, unknown>;
-        void pricePerUnit; // consumed via priceOverride below
-
-        // Update product fields (description, packaging, etc.) but NOT pricePerUnit
-        if (Object.keys(nonPriceFields).length > 0) {
-            await this.productRepo.update(item.productId, nonPriceFields as any);
-        }
-
         // Собираем partial update PurchaseItem за один round-trip.
         // Только поля, которые явно пришли из формы (не undefined).
-        // supplierLimitUnit не сбрасывается в null, если не пришёл — иначе
-        // buildStatusBlock скрывает блок количеств целиком (если unit не указан).
-        const itemUpdate: {
-            priceOverride: number | null;
-            supplementStep?: number | null;
-            supplierLimit?: number | null;
-            supplierLimitUnit?: string | null;
-            targetRemainder?: number | null;
-        } = { priceOverride };
-        if (supplementStep !== undefined) itemUpdate.supplementStep = supplementStep as number | null;
-        if (supplierLimit !== undefined) itemUpdate.supplierLimit = supplierLimit as number | null;
-        if (supplierLimitUnit !== undefined) itemUpdate.supplierLimitUnit = supplierLimitUnit as string | null;
-        if (targetRemainder !== undefined) itemUpdate.targetRemainder = targetRemainder as number | null;
+        const itemUpdate: Record<string, unknown> = { priceOverride };
+        const allowedKeys = [
+            'supplierId',
+            'description',
+            'pricePerUnit',
+            'priceTiers',
+            'minPackageAmount',
+            'minPackageUnit',
+            'supplierPackageAmount',
+            'supplierPackageUnit',
+            'supplierPackagePrice',
+            'supplierPackageTiers',
+            'supplementStep',
+            'supplierLimit',
+            'supplierLimitUnit',
+            'targetRemainder',
+        ] as const;
+        for (const key of allowedKeys) {
+            if (itemData[key] !== undefined) itemUpdate[key] = itemData[key];
+        }
+
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
 
         // Emit в шину доменных событий (попадает в debounce-окно 7s).
@@ -142,28 +144,66 @@ export class PurchaseService {
         return item;
     }
 
-    async addItems(purchaseId: number, productIds: number[]) {
+    /**
+     * Добавляет позиции в закупку. Каждая позиция — это (productId, supplierId)
+     * + per-purchase поля (опционально). Дубликаты по (productId, supplierId)
+     * пропускаются. Один и тот же productId можно добавлять с разными supplierId.
+     */
+    async addItems(
+        purchaseId: number,
+        items: {
+            productId: number;
+            supplierId?: number | null;
+            description?: string | null;
+            pricePerUnit?: number | null;
+            priceTiers?: unknown;
+            minPackageAmount?: number | null;
+            minPackageUnit?: string | null;
+            supplierPackageAmount?: number | null;
+            supplierPackageUnit?: string | null;
+            supplierPackagePrice?: number | null;
+            supplierPackageTiers?: unknown;
+            supplementStep?: number | null;
+        }[],
+    ) {
         const purchase = await this.repo.getById(purchaseId);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status === 'DONE') {
             throw new ValidationError('В завершённую закупку нельзя добавлять товары');
         }
 
-        const uniqueIds = [...new Set(productIds)];
-        const alreadyInPurchase = await this.repo.findProductIdsInPurchase(purchaseId, uniqueIds);
-        const alreadySet = new Set(alreadyInPurchase);
-        const newProductIds = uniqueIds.filter((id) => !alreadySet.has(id));
-
-        if (newProductIds.length === 0) {
-            return { items: [], skippedCount: uniqueIds.length };
+        if (items.length === 0) {
+            return { items: [], skippedCount: 0 };
         }
 
-        const items = [];
-        for (const productId of newProductIds) {
-            const item = await this.repo.addItem(purchaseId, productId);
-            items.push(item);
+        // Дедупликация по (productId, supplierId) внутри одного запроса
+        const seen = new Set<string>();
+        const uniqueConfigs = items.filter((c) => {
+            const key = `${c.productId}::${c.supplierId ?? ''}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        // Проверяем, какие (productId, supplierId) уже есть в закупке
+        const existing = await this.repo.findExistingPurchaseItems(
+            purchaseId,
+            uniqueConfigs.map((c) => ({ productId: c.productId, supplierId: c.supplierId ?? null })),
+        );
+        const existingSet = new Set(existing.map((e) => `${e.productId}::${e.supplierId ?? ''}`));
+
+        const toCreate = uniqueConfigs.filter((c) => !existingSet.has(`${c.productId}::${c.supplierId ?? ''}`));
+
+        const created = [];
+        for (const config of toCreate) {
+            const item = await this.repo.addItem(purchaseId, config);
+            created.push(item);
         }
-        return { items, skippedCount: uniqueIds.length - newProductIds.length };
+
+        return {
+            items: created,
+            skippedCount: items.length - created.length,
+        };
     }
 
     async removeItem(id: number) {
@@ -205,19 +245,20 @@ export class PurchaseService {
         const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
         const touchedItemIds = new Set<number>();
         for (const item of purchase.items) {
+            // Доменный PurchaseItem для canonical-прайсинга. getById не вкладывает
+            // purchase в каждый item — инжектим fulfillmentStatus из родителя.
+            const domainItem = mapToPurchaseItem(
+                { ...item, purchase: { fulfillmentStatus: purchase.fulfillmentStatus } },
+                packDiscountPercent,
+            );
             let touched = false;
             for (const line of item.orderLines) {
                 if (line.status !== 'ACTIVE') continue;
                 const qty = Number(line.quantity);
-                const amountDue = calculateOrderAmount(qty, {
-                    priceTiers: item.product.priceTiers,
-                    pricePerUnit: Number(item.product.pricePerUnit),
-                    priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-                    supplierPackageAmount: item.product.supplierPackageAmount,
-                    supplierPackageUnit: item.product.supplierPackageUnit,
-                    supplierPackagePrice: item.product.supplierPackagePrice,
-                    packDiscountPercent,
-                });
+                const pkgCount = Number(line.packageCount ?? 0);
+                // С учётом упаковок: amountDue(qty) + packageCount * packagePrice.
+                // Раньше упаковки обнулялись (calculateOrderAmount без packageCount).
+                const amountDue = computeAmountDueWithPackages(qty, pkgCount, domainItem);
                 await this.orderRepo.updateAmountDue(line.id, amountDue);
                 touched = true;
             }
@@ -225,5 +266,17 @@ export class PurchaseService {
         }
 
         await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+    }
+
+    /**
+     * Admin: установить/очистить комментарий к участнику закупки
+     * (PurchaseOrder). Права гарантирует adminProcedure в роутере;
+     * здесь — только проверка лимита длины и делегирование в репозиторий.
+     */
+    async setOrderComment(purchaseOrderId: number, comment: string, actorId: number) {
+        if (comment.length > 2000) {
+            throw new ValidationError('Комментарий слишком длинный (макс. 2000 символов)');
+        }
+        return this.repo.setOrderComment(purchaseOrderId, comment, actorId);
     }
 }

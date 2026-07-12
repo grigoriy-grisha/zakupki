@@ -45,5 +45,21 @@ export function useParticipantOrderActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    return { adminAdjust, adminSetQuantity, deleteOrderLine };
+    const removeParticipant = trpc.orders.removeAllByUserFromPurchase.useMutation({
+        onSuccess: (result) => {
+            invalidate();
+            toast.success(`Удалено заказов: ${result.count}`);
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    const setOrderComment = trpc.purchases.setOrderComment.useMutation({
+        onSuccess: () => {
+            invalidate();
+            toast.success('Комментарий сохранён');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    return { adminAdjust, adminSetQuantity, deleteOrderLine, removeParticipant, setOrderComment };
 }

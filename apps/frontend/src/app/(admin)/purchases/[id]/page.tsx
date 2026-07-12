@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useMemo, useState } from 'react';
-import { CheckCircle2, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
+import { CheckCircle2, Loader2, Package, Rocket, Trash2, Users, Boxes } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -12,21 +12,21 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { trpc } from '@/lib/client/trpc';
 import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
 
-import { usePurchaseActions } from './hooks';
+import { usePurchaseActions, usePurchaseDetail } from './hooks';
 import { useParticipantsData } from './hooks/use-participants-data';
 import { STATUS_LABELS } from '../../lib/constants';
-import type { PurchaseDetail, PurchaseItem } from './lib/types';
-import { ItemsTab } from './components/items-tab';
+import type { PurchaseItem } from './lib/types';
+import { ExportPurchaseButtons } from './components/export-purchase-buttons';
+import { ItemsTab } from './components/items/items-tab';
+import { PackingTab } from './components/packing/packing-tab';
+import { AdminParticipantsList } from './components/participants/admin-participants-list';
 import { PurchaseStats } from './components/purchase-stats';
 import { PurchaseStepCard } from './components/purchase-step-card';
 import { PurchaseStepper } from './components/purchase-stepper';
-import { AdminSupplementsList } from './components/admin-supplements-list';
-import { AdminParticipantsList } from './components/admin-participants-list';
-import { SupplementDialog } from './components/supplement-dialog';
-import { ExportPurchaseButtons } from './components/export-purchase-buttons';
+import { SupplementDialog } from './components/supplements/supplement-dialog';
 
 type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'DONE' | 'CLOSED' | 'ARRIVED';
-type TabId = 'items' | 'supplements' | 'participants';
+type TabId = 'items' | 'packing' | 'participants';
 
 type FulfillmentStatus =
     | 'COLLECTION'
@@ -48,14 +48,11 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const [selectedForPublish, setSelectedForPublish] = useState(0);
     const [tab, setTab] = useState<TabId>('items');
 
-    const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
+    const { detail: purchase, isLoading } = usePurchaseDetail(id);
     const actions = usePurchaseActions(id);
     const participantsData = useParticipantsData(id);
 
-    const items = useMemo(
-        () => ((purchase as unknown as PurchaseDetail | null)?.items ?? []) as PurchaseItem[],
-        [purchase],
-    );
+    const items = useMemo(() => purchase?.items ?? [], [purchase]);
 
     // Shared-хуки для безопасной смены статуса (требуют явного подтверждения).
     // ВАЖНО: вызываются ДО early-return, чтобы не нарушить Rules of Hooks.
@@ -86,17 +83,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
         }),
     });
 
-    const remainderItems = useMemo(
-        () =>
-            items.filter((it) => {
-                const hasPack =
-                    it.product.supplierPackageAmount != null && Number(it.product.supplierPackageAmount) > 0;
-                const hasManual = it.targetRemainder != null && Number(it.targetRemainder) > 0;
-                return hasPack || hasManual;
-            }),
-        [items],
-    );
-
     if (isLoading) {
         return (
             <div className="space-y-4">
@@ -115,7 +101,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
         );
     }
 
-    const deadline = new Date(purchase.deadline);
     const isDraft = purchase.status === 'DRAFT';
     const canComplete = purchase.status === 'ACTIVE';
     const fulfillmentStatus = (purchase as { fulfillmentStatus?: string }).fulfillmentStatus as
@@ -126,22 +111,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
         <div className="space-y-5">
             <PageHeader
                 title={purchase.tag}
-                description={
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-medium text-fg-primary">{purchase.supplier}</span>
-                        <span className="text-fg-tertiary">·</span>
-                        <span>Мин. сумма: {Number(purchase.minAmount).toLocaleString('ru-RU')} ₽</span>
-                        <span className="text-fg-tertiary">·</span>
-                        <span>
-                            До{' '}
-                            {deadline.toLocaleDateString('ru-RU', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                            })}
-                        </span>
-                    </span>
-                }
                 badge={
                     <Badge type="subtle" size="default" variant="neutral">
                         {STATUS_LABELS[purchase.status] ?? purchase.status}
@@ -224,10 +193,11 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             {items.length}
                         </span>
                     </TabsTrigger>
-                    <TabsTrigger value="supplements">
-                        Доборы
+                    <TabsTrigger value="packing">
+                        <Boxes className="size-3.5" />
+                        Фасовка
                         <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
-                            {remainderItems.length}
+                            {items.length}
                         </span>
                     </TabsTrigger>
                     <TabsTrigger value="participants">
@@ -247,11 +217,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     <ItemsTab purchaseId={id} onSelectionChange={setSelectedForPublish} />
                 </TabsContent>
 
-                <TabsContent value="supplements" className="mt-3 space-y-3">
-                    <AdminSupplementsList
-                        purchaseId={id}
-                        onOpenRemainderDialog={() => setRemainderOpen(true)}
-                    />
+                <TabsContent value="packing" className="mt-3 space-y-3">
+                    <PackingTab purchaseId={id} items={items} />
                 </TabsContent>
 
                 <TabsContent value="participants" className="mt-3 space-y-3">
@@ -283,7 +250,12 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             variant="brand"
                             className="rounded-full"
                             disabled={actions.activate.isPending}
-                            onClick={() => actions.activate.mutate({ id } as never)}
+                            onClick={() =>
+                                actions.activate.mutate(
+                                    { purchaseId: id },
+                                    { onSuccess: () => setActivateOpen(false) },
+                                )
+                            }
                         >
                             {actions.activate.isPending && <Loader2 className="size-4 animate-spin" />}
                             Активировать

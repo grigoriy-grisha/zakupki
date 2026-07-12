@@ -14,7 +14,7 @@ export class TelegramPublishService {
     private assertChannelConfigured(): void {
         const raw = (process.env.TELEGRAM_CHANNEL_ID ?? process.env.TG_CHANNEL_ID)?.trim();
         if (!raw) {
-            throw new ValidationError('TG_CHANNEL_ID не задан в .env');
+            throw new ValidationError('TG_CHANNEL_ID не задан в .env.local');
         }
     }
 

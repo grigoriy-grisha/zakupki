@@ -1,4 +1,4 @@
-import { dbClient, type PurchaseStatus, type PurchaseFulfillmentStatus } from '@zakupki/database';
+import { Prisma, dbClient, type PurchaseStatus, type PurchaseFulfillmentStatus } from '@zakupki/database';
 
 import { productInclude } from './product-include';
 
@@ -66,6 +66,7 @@ export class PurchaseRepository {
                 items: {
                     include: {
                         product: { include: productInclude },
+                        supplier: { select: { id: true, name: true } },
                         orderLines: { include: { user: true }, omit: { tgChatMessageId: true } },
                     },
                 },
@@ -78,7 +79,7 @@ export class PurchaseRepository {
         return dbClient.purchase.findUnique({ where: { tag }, select: { id: true, tag: true } });
     }
 
-    async create(data: { tag: string; supplier: string; minAmount: number; deadline: Date }) {
+    async create(data: { tag: string }) {
         return dbClient.purchase.create({ data });
     }
 
@@ -124,28 +125,56 @@ export class PurchaseRepository {
         });
     }
 
-    async findProductIdsInPurchase(purchaseId: number, productIds: number[]) {
-        if (productIds.length === 0) return [];
-        const rows = await dbClient.purchaseItem.findMany({
-            where: { purchaseId, productId: { in: productIds } },
-            select: { productId: true },
+    /**
+     * Находит существующие позиции закупки по парам (productId, supplierId).
+     * Используется для дедупликации при batch-добавлении. supplierId=null
+     * матчится с позициями без поставщика.
+     */
+    async findExistingPurchaseItems(purchaseId: number, pairs: { productId: number; supplierId: number | null }[]) {
+        if (pairs.length === 0) return [];
+        const OR = pairs.map((p) => ({ productId: p.productId, supplierId: p.supplierId }));
+        return dbClient.purchaseItem.findMany({
+            where: { purchaseId, OR },
+            select: { productId: true, supplierId: true },
         });
-        return rows.map((row) => row.productId);
     }
 
-    async addItem(purchaseId: number, productId: number) {
-        // Копируем с Product только `supplementStep` (фасовка добора).
-        // `supplierLimit` НЕ копируется — это отдельное поле "Лимит у поставщика",
-        // админ задаёт вручную через ItemEditSheet. По умолчанию null (без лимита).
-        const product = await dbClient.product.findUnique({
-            where: { id: productId },
-            select: { supplementStep: true },
-        });
+    /**
+     * Создаёт PurchaseItem. Вся per-purchase конкретика (supplierId, описание,
+     * цены, фасовка) приходит в config — Product больше не источник.
+     */
+    async addItem(
+        purchaseId: number,
+        config: {
+            productId: number;
+            supplierId?: number | null;
+            description?: string | null;
+            pricePerUnit?: number | null;
+            priceTiers?: unknown;
+            minPackageAmount?: number | null;
+            minPackageUnit?: string | null;
+            supplierPackageAmount?: number | null;
+            supplierPackageUnit?: string | null;
+            supplierPackagePrice?: number | null;
+            supplierPackageTiers?: unknown;
+            supplementStep?: number | null;
+        },
+    ) {
         return dbClient.purchaseItem.create({
             data: {
                 purchaseId,
-                productId,
-                supplementStep: product?.supplementStep ?? undefined,
+                productId: config.productId,
+                supplierId: config.supplierId ?? null,
+                description: config.description ?? null,
+                pricePerUnit: config.pricePerUnit ?? null,
+                priceTiers: (config.priceTiers as never) ?? undefined,
+                minPackageAmount: config.minPackageAmount ?? null,
+                minPackageUnit: config.minPackageUnit ?? null,
+                supplierPackageAmount: config.supplierPackageAmount ?? null,
+                supplierPackageUnit: config.supplierPackageUnit ?? null,
+                supplierPackagePrice: config.supplierPackagePrice ?? null,
+                supplierPackageTiers: (config.supplierPackageTiers as never) ?? undefined,
+                supplementStep: config.supplementStep ?? null,
             },
         });
     }
@@ -294,17 +323,12 @@ export class PurchaseRepository {
 
     /**
      * Универсальный апдейт PurchaseItem. Поддерживает partial update —
-     * любая комбинация полей за один round-trip.
+     * любая комбинация полей за один round-trip. Поля, перенесённые с Product
+     * (описание, цены, фасовка), редактируются здесь, а не в Product.
      */
     async updatePurchaseItem(
         purchaseItemId: number,
-        data: Partial<{
-            priceOverride: number | null;
-            supplementStep: number | null;
-            supplierLimit: number | null;
-            supplierLimitUnit: string | null;
-            targetRemainder: number | null;
-        }>,
+        data: Prisma.PurchaseItemUncheckedUpdateInput,
     ) {
         return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
@@ -312,29 +336,24 @@ export class PurchaseRepository {
         });
     }
 
-    /** @deprecated Используйте updatePurchaseItem({ priceOverride }). */
-    async updatePurchaseItemPriceOverride(purchaseItemId: number, priceOverride: number | null) {
-        return this.updatePurchaseItem(purchaseItemId, { priceOverride });
-    }
-
-    /** @deprecated Используйте updatePurchaseItem({ supplementStep }). */
-    async updatePurchaseItemSupplementStep(purchaseItemId: number, supplementStep: number | null) {
-        return this.updatePurchaseItem(purchaseItemId, { supplementStep });
-    }
-
-    /** @deprecated Используйте updatePurchaseItem({ supplierLimit, supplierLimitUnit }). */
-    async updatePurchaseItemSupplierLimit(
-        purchaseItemId: number,
-        supplierLimit: number | null,
-        supplierLimitUnit: string | null,
-    ) {
-        return this.updatePurchaseItem(purchaseItemId, { supplierLimit, supplierLimitUnit });
-    }
-
-    async updatePurchaseItemProduct(purchaseItemId: number, productData: Record<string, unknown>) {
-        return dbClient.purchaseItem.update({
-            where: { id: purchaseItemId },
-            data: productData,
+    /**
+     * Установить/очистить служебный комментарий админа к участнику закупки
+     * (один на пару user+purchase). Пустая/whitespace-only строка → сброс
+     * (comment=null, commentAt=null, commentAuthor=null). commentAt
+     * ставится в now() только при записи, чтобы не зависеть от общего
+     * PurchaseOrder.updatedAt (обновляется при любой правке).
+     */
+    async setOrderComment(id: number, comment: string, authorId: number) {
+        const trimmed = comment.trim();
+        if (trimmed === '') {
+            return dbClient.purchaseOrder.update({
+                where: { id },
+                data: { comment: null, commentAt: null, commentAuthor: null },
+            });
+        }
+        return dbClient.purchaseOrder.update({
+            where: { id },
+            data: { comment: trimmed, commentAuthor: authorId, commentAt: new Date() },
         });
     }
 }

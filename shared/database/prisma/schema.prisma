@@ -128,27 +128,28 @@ model VkCredential {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Supplier {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  contact   String?
+  notes     String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     PurchaseItem[]
+
+  @@index([position])
+}
+
 model Product {
   id                    Int                          @id @default(autoincrement())
   name                  String
-  description           String?
   unitCode              String                       @default("piece")
   multiplicity          Decimal                      @default(1) @db.Decimal(10, 3)
-  pricePerUnit          Decimal                      @db.Decimal(10, 2)
-  minPackageAmount      Decimal?                     @db.Decimal(10, 3)
-  minPackageUnit        String?
-  priceTiers            Json?
-  supplierPackageAmount Decimal?                     @db.Decimal(10, 3)
-  supplierPackageUnit   String?
-  supplierPackagePrice  Decimal?                     @db.Decimal(10, 2)
-  supplementStep        Decimal?                     @db.Decimal(10, 3)
-  referenceStock        Decimal?                     @db.Decimal(10, 3)
-  referenceStockUnit    String?
   createdAt             DateTime                     @default(now())
   updatedAt             DateTime                     @updatedAt
   articleNumber         String?
   brandId               Int?
-  supplierPackageTiers  Json?
   version               Int                          @default(0)
   brand                 ProductAttribute?            @relation("ProductBrand", fields: [brandId], references: [id])
   attributeValues       ProductAttributeValue[]
@@ -176,10 +177,7 @@ model ProductPhoto {
 model Purchase {
   id                Int                       @id @default(autoincrement())
   tag               String                    @unique
-  supplier          String
   status            PurchaseStatus            @default(DRAFT)
-  minAmount         Decimal                   @db.Decimal(10, 2)
-  deadline          DateTime
   createdAt         DateTime                  @default(now())
   fulfillmentStatus PurchaseFulfillmentStatus @default(COLLECTION)
   payments          Payment[]
@@ -198,8 +196,12 @@ model PurchaseOrder {
   purchaseId Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  comment         String?
+  commentAuthor   Int?      // userId админа, оставившего последнюю запись
+  commentAt       DateTime? // момент последнего редактирования comment
   purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderLines OrderLine[]
 
   @@unique([userId, purchaseId])
   @@index([userId])
@@ -210,10 +212,24 @@ model PurchaseItem {
   id               Int              @id @default(autoincrement())
   purchaseId       Int
   productId        Int
-  priceOverride    Decimal?         @db.Decimal(10, 2)
-  targetRemainder  Decimal?         @db.Decimal(10, 3)
+  // Опциональная привязка к поставщику (справочник Supplier). Один и тот же
+  // товар можно добавить в закупку несколько раз для разных поставщиков.
+  supplierId       Int?
+  // Per-purchase конкретика (перенесена с Product в рамках рефакторинга
+  // «Product = каталог, PurchaseItem = конкретика закупки»):
+  description           String?   // HTML после applyPostTemplate
+  pricePerUnit          Decimal?  @db.Decimal(10, 2)
+  minPackageAmount      Decimal?  @db.Decimal(10, 3)
+  minPackageUnit        String?
+  priceTiers            Json?
+  supplierPackageAmount Decimal?  @db.Decimal(10, 3)
+  supplierPackageUnit   String?
+  supplierPackagePrice  Decimal?  @db.Decimal(10, 2)
+  supplierPackageTiers  Json?
   // Шаг +/− на этапе добора (REORDER+). Если null — используется обычная фасовка.
   supplementStep   Decimal?         @db.Decimal(10, 3)
+  priceOverride    Decimal?         @db.Decimal(10, 2)
+  targetRemainder  Decimal?         @db.Decimal(10, 3)
   // Максимум, который один покупатель может заказать (в ед. supplierLimitUnit).
   // Если null — без ограничений. Действует на всех этапах.
   supplierLimit    Decimal?         @db.Decimal(10, 3)
@@ -226,19 +242,24 @@ model PurchaseItem {
   orderLines       OrderLine[]
   product          Product          @relation(fields: [productId], references: [id])
   purchase         Purchase         @relation(fields: [purchaseId], references: [id])
+  supplier         Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
-  @@unique([purchaseId, productId])
+  @@index([purchaseId, productId])
   @@index([purchaseId])
   @@index([productId])
+  @@index([supplierId])
 }
 
 model OrderLine {
-  id             Int             @id @default(autoincrement())
-  purchaseItemId Int
-  userId         Int
-  quantity       Decimal         @db.Decimal(10, 3)
-  amountDue      Decimal         @db.Decimal(10, 2)
-  status         OrderLineStatus @default(ACTIVE)
+  id              Int             @id @default(autoincrement())
+  purchaseItemId  Int
+  userId          Int
+  // FK на PurchaseOrder (userId+purchaseId). Связь обязательна:
+  // PurchaseOrder создаётся в OrderRepository.upsertOrderLine перед строкой.
+  purchaseOrderId Int
+  quantity        Decimal         @db.Decimal(10, 3)
+  amountDue       Decimal         @db.Decimal(10, 2)
+  status          OrderLineStatus @default(ACTIVE)
 
   // Этап закупки, на котором была создана эта строка.
   // COLLECTION — базовый заказ (замораживается на PAYMENT+).
@@ -264,6 +285,7 @@ model OrderLine {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   purchaseItem    PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   user            User         @relation(fields: [userId], references: [id])
 
   @@unique([purchaseItemId, userId, createdOnStage])

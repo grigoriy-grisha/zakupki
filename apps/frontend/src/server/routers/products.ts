@@ -5,32 +5,14 @@ import { AppError } from '@zakupki/types';
 import { withDbConflict } from '../lib/error-utils';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
-const priceTierSchema = z.object({
-    amount: z.number(),
-    unit: z.string(),
-    price: z.number(),
-});
-
 const productCreateInput = z.object({
     name: z.string().min(1),
     articleNumber: z.string().nullable().optional(),
     brandId: z.number().nullable().optional(),
     unitCode: z.string().optional(),
     multiplicity: z.number().optional(),
-    pricePerUnit: z.number().optional(),
-    description: z.string().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
-    minPackageAmount: z.number().nullable().optional(),
-    minPackageUnit: z.string().nullable().optional(),
-    priceTiers: z.array(priceTierSchema).nullable().optional(),
-    supplierPackageAmount: z.number().nullable().optional(),
-    supplierPackageUnit: z.string().nullable().optional(),
-    supplierPackagePrice: z.number().nullable().optional(),
-    supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
-    supplementStep: z.number().nullable().optional(),
-    referenceStock: z.number().nullable().optional(),
-    referenceStockUnit: z.string().nullable().optional(),
 });
 
 const productUpdateInput = z.object({
@@ -41,20 +23,8 @@ const productUpdateInput = z.object({
     brandId: z.number().nullable().optional(),
     unitCode: z.string().optional(),
     multiplicity: z.number().optional(),
-    pricePerUnit: z.number().optional(),
-    description: z.string().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
-    minPackageAmount: z.number().nullable().optional(),
-    minPackageUnit: z.string().nullable().optional(),
-    priceTiers: z.array(priceTierSchema).nullable().optional(),
-    supplierPackageAmount: z.number().nullable().optional(),
-    supplierPackageUnit: z.string().nullable().optional(),
-    supplierPackagePrice: z.number().nullable().optional(),
-    supplierPackageTiers: z.array(priceTierSchema).nullable().optional(),
-    supplementStep: z.number().nullable().optional(),
-    referenceStock: z.number().nullable().optional(),
-    referenceStockUnit: z.string().nullable().optional(),
 });
 
 export const productsRouter = router({
@@ -74,7 +44,6 @@ export const productsRouter = router({
                 ...input,
                 unitCode: input.unitCode ?? 'piece',
                 multiplicity: input.multiplicity ?? 1,
-                pricePerUnit: input.pricePerUnit ?? 0,
             }),
         );
     }),

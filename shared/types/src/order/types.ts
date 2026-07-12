@@ -41,19 +41,20 @@ export type OrderLineStatus = 'ACTIVE' | 'CANCELLED';
 export interface PurchaseItem {
     purchaseItemId: number;
 
-    // ── Цены ──
+    // ── Цены (per-purchase) ──
     pricePerUnit: number;
     priceOverride: number | null;
     priceTiers: PriceTier[] | null;
     /** Скидка за целые пачки (глобальная настройка). */
     packDiscountPercent: number;
 
-    // ── Упаковка поставщика ──
+    // ── Упаковка поставщика (per-purchase) ──
     supplierPackageAmount: number | null;
     supplierPackageUnit: string | null;
     supplierPackagePrice: number | null;
+    supplierPackageTiers: PriceTier[] | null;
 
-    // ── Параметры фасовки ──
+    // ── Параметры фасовки (per-purchase) ──
     unitCode: string;
     multiplicity: number;
     minPackageAmount: number | null;
@@ -72,6 +73,12 @@ export interface PurchaseItem {
      */
     supplierLimit: number | null;
     supplierLimitUnit: string | null;
+
+    // ── Поставщик (опц.) ──
+    /** null — без поставщика. */
+    supplierId: number | null;
+    /** Денормализованное имя поставщика для UI/логов (не использовать для логики). */
+    supplierName: string | null;
 }
 
 // ── Эффекты (результат операций) ───────────────────────────────────

@@ -101,7 +101,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                                     }}
                                                     className="h-auto p-0 text-14-semibold text-fg-primary hover:text-primary"
                                                 >
-                                                    {group.supplier}
+                                                    {group.tag}
                                                 </Button>
                                                 <Badge variant="outline" className="text-xs font-normal">
                                                     {group.tag}

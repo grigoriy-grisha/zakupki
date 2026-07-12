@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { ProductLabelSource } from '../../../products/lib';
+import type { ProductLabelSource } from '../../../../products/lib';
 
 // ── helpers ──────────────────────────────────────────────────────────
 
@@ -41,6 +41,7 @@ export interface PurchaseItemOption {
         minPackageAmount?: string | number | null;
         unit?: { shortName: string } | null;
     };
+    supplier?: { id: number; name: string } | null;
 }
 
 // ── AdminOrderLineEditor: − / поле / + / корзина для одной позиции ───
@@ -48,12 +49,14 @@ export interface PurchaseItemOption {
 interface AdminOrderLineEditorProps {
     orderId: number;
     purchaseItemId: number;
+    /** Название товара — для диалога подтверждения удаления. */
+    productName: string;
     quantity: number;
     step: number;
     pending: boolean;
     onAdjust: (purchaseItemId: number, delta: number) => void;
     onSetQuantity: (purchaseItemId: number, qty: number) => void;
-    onDelete: (orderId: number) => void;
+    onDelete: (orderId: number, productName: string) => void;
 }
 
 /**
@@ -64,6 +67,7 @@ interface AdminOrderLineEditorProps {
 export function AdminOrderLineEditor({
     orderId,
     purchaseItemId,
+    productName,
     quantity,
     step,
     pending,
@@ -131,7 +135,7 @@ export function AdminOrderLineEditor({
                 size="icon-xs"
                 disabled={pending}
                 aria-label="Удалить позицию"
-                onClick={() => onDelete(orderId)}
+                onClick={() => onDelete(orderId, productName)}
                 className="text-fg-tertiary hover:text-error"
             >
                 <Trash2 />
@@ -149,9 +153,20 @@ interface AddPositionDialogProps {
 }
 
 /** Текстовая подпись товара (для SelectItem). */
-function PositionItemLabel({ product }: { product: ProductLabelSource }) {
+function PositionItemLabel({
+    product,
+    supplier,
+}: {
+    product: ProductLabelSource;
+    supplier?: { name: string } | null;
+}) {
     const text = usePurchaseProductLabelText(product);
-    return <>{text}</>;
+    return (
+        <>
+            {text}
+            {supplier ? <span className="text-fg-tertiary"> · {supplier.name}</span> : null}
+        </>
+    );
 }
 
 /**
@@ -203,7 +218,7 @@ export function AddPositionDialog({ purchaseItems, pending, onAdd }: AddPosition
                         <SelectContent>
                             {purchaseItems.map((item) => (
                                 <SelectItem key={item.id} value={String(item.id)}>
-                                    <PositionItemLabel product={item.product} />
+                                    <PositionItemLabel product={item.product} supplier={item.supplier} />
                                 </SelectItem>
                             ))}
                         </SelectContent>

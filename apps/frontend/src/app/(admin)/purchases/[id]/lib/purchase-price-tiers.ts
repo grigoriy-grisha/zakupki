@@ -88,19 +88,16 @@ export function emptyPurchaseFields(unit?: string): PurchaseProductFormState {
     };
 }
 
-export function savedPurchaseFields(
-    product: PurchaseProductFieldSource,
-    initialTiers: PurchasePriceTier[],
-): PurchaseProductFormState {
+export function savedPurchaseFields(product: PurchaseProductFieldSource): PurchaseProductFormState {
     const catalogUnit = resolveProductPackageUnit(product);
-    const tiers =
-        initialTiers.length > 0
-            ? initialTiers.map((t) => ({
-                  amount: Math.max(1, Math.trunc(t.amount)),
-                  unit: t.unit,
-                  price: Number(t.price),
-              }))
-            : [{ amount: 1, unit: catalogUnit, price: 0 }];
+    const parsedTiers = parsePriceTiers(product.priceTiers);
+    const tiers = parsedTiers.length > 0
+        ? parsedTiers.map((t) => ({
+              amount: Math.max(1, Math.trunc(t.amount)),
+              unit: normalizePackageUnit(t.unit) ?? catalogUnit,
+              price: Number(t.price),
+          }))
+        : [{ amount: 1, unit: catalogUnit, price: 0 }];
     return withCatalogPackageUnits(
         {
             description: product.description ?? '',
@@ -119,12 +116,27 @@ export function savedPurchaseFields(
 
 export function buildPurchaseFormState(
     product: PurchaseProductFieldSource,
-    initialTiers: PurchasePriceTier[],
     loadSavedDescription: boolean,
 ): PurchaseProductFormState {
     const catalogUnit = resolveProductPackageUnit(product);
-    if (loadSavedDescription) return savedPurchaseFields(product, initialTiers);
+    if (loadSavedDescription) return savedPurchaseFields(product);
     return emptyPurchaseFields(catalogUnit);
+}
+
+/**
+ * Сливает «продуктовые» поля (для каталожной части: unitCode) и «per-purchase»
+ * поля (для всего остального) в один плоский объект, который умеет читать
+ * `buildPurchaseFormState`. В PurchaseProductFieldSource все поля опциональны —
+ * любой из двух источников можно передать.
+ */
+export function mergeProductAndPurchaseFields(
+    product: Record<string, unknown>,
+    purchaseFields: Partial<PurchaseProductFieldSource> | undefined,
+): PurchaseProductFieldSource {
+    return {
+        ...product,
+        ...(purchaseFields ?? {}),
+    } as PurchaseProductFieldSource;
 }
 
 export type PurchaseProductFormState = {

@@ -1,5 +1,6 @@
 import {
-    calculateOrderAmount,
+    computeAmountDueWithPackages,
+    computePackagePrice,
     countFullSupplierPacks,
     getPackDiscountPricingInfo,
     getSupplementStep,
@@ -78,11 +79,12 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const unit = getUnitByCode(product.unitCode);
     const shortName = unit?.shortName ?? 'ед.';
     const multiplicity = Number(product.multiplicity) || 1;
-    const price = Number(item.priceOverride ?? product.pricePerUnit);
+    // После миграции Supplier все per-purchase поля (цена, фасовка) лежат на item.
+    const price = Number(item.priceOverride ?? item.pricePerUnit ?? 0);
 
-    const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
-    const minPackageUnit = product.minPackageUnit ?? null;
-    const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
+    const minPackageAmount = item.minPackageAmount != null ? Number(item.minPackageAmount) : null;
+    const minPackageUnit = item.minPackageUnit ?? null;
+    const packSize = item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
 
     const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
@@ -106,21 +108,26 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const purchaseItem: PurchaseItem = mapToPurchaseItem(
         {
             id: item.id,
+            // Per-purchase поля теперь с item напрямую:
+            pricePerUnit: item.pricePerUnit ?? null,
             priceOverride: item.priceOverride,
-            targetRemainder: item.targetRemainder,
+            priceTiers: item.priceTiers,
+            supplierPackageAmount: packSize,
+            supplierPackageUnit: item.supplierPackageUnit ?? null,
+            supplierPackagePrice: item.supplierPackagePrice ?? null,
+            supplierPackageTiers: item.supplierPackageTiers,
+            minPackageAmount,
+            minPackageUnit: item.minPackageUnit ?? null,
             supplementStep: item.supplementStep,
+            targetRemainder: item.targetRemainder,
             supplierLimit: item.supplierLimit,
             supplierLimitUnit: item.supplierLimitUnit ?? null,
+            supplierId: item.supplierId ?? null,
+            supplier: item.supplier ?? null,
+            // Product — только каталожные данные:
             product: {
-                pricePerUnit: product.pricePerUnit,
-                priceTiers: product.priceTiers,
-                supplierPackageAmount: packSize,
-                supplierPackageUnit: product.supplierPackageUnit ?? null,
-                supplierPackagePrice: product.supplierPackagePrice,
                 unitCode: product.unitCode,
                 multiplicity,
-                minPackageAmount,
-                minPackageUnit: product.minPackageUnit ?? null,
             },
             purchase: { fulfillmentStatus },
         },
@@ -138,24 +145,20 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const hasSupplierPackage = packSize != null && packSize > 0;
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
     const showPackageButtons = canAddPackage && hasSupplierPackage;
-    const packagePrice =
-        product.supplierPackagePrice != null && Number(product.supplierPackagePrice) > 0
-            ? Number(product.supplierPackagePrice)
-            : Number(product.pricePerUnit) * (packSize ?? 0);
+    // Единый источник цены с сервером: computePackagePrice/computeAmountDueWithPackages
+    // берут priceOverride (как calculateOrderAmount). Раньше packagePrice считался от
+    // pricePerUnit → для ценника через priceOverride упаковки были бесплатными на клиенте.
+    const packagePrice = computePackagePrice(purchaseItem);
     const packageTotal = currentPackageCount * packagePrice;
-
-    // Цены
-    const pricingOptions = {
-        priceTiers: product.priceTiers,
-        pricePerUnit: Number(product.pricePerUnit),
-        priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-        supplierPackageAmount: product.supplierPackageAmount,
-        supplierPackageUnit: product.supplierPackageUnit,
-        supplierPackagePrice: product.supplierPackagePrice,
+    const total = computeAmountDueWithPackages(currentQuantity, currentPackageCount, purchaseItem);
+    const packDiscountInfo = getPackDiscountPricingInfo(
+        {
+            supplierPackageAmount: packSize,
+            supplierPackageUnit: item.supplierPackageUnit ?? null,
+            supplierPackagePrice: item.supplierPackagePrice ?? null,
+        },
         packDiscountPercent,
-    };
-    const total = calculateOrderAmount(currentQuantity, pricingOptions) + packageTotal;
-    const packDiscountInfo = getPackDiscountPricingInfo(product, packDiscountPercent);
+    );
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
     // Границы — ЕДИНОЕ правило с бэком: maxAllowed = pool + currentQuantity

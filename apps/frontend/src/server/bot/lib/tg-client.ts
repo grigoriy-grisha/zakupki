@@ -1,5 +1,6 @@
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
+import type { InlineKeyboardMarkup } from 'grammy/types';
 import { loadProductPhoto } from '@zakupki/storage';
 import { createLogger } from '@zakupki/logger';
 
@@ -97,10 +98,16 @@ export class TgClient {
 
     // ── Комментарии в обсуждении ────────────────────────────────
 
-    async sendComment(chatId: string, text: string, replyToMessageId?: number): Promise<void> {
+    async sendComment(
+        chatId: string,
+        text: string,
+        replyToMessageId?: number,
+        replyMarkup?: InlineKeyboardMarkup,
+    ): Promise<void> {
         await this.api.sendMessage(chatId, text, {
             ...HTML_OPTS,
             ...(replyToMessageId != null ? { reply_parameters: { message_id: replyToMessageId } } : {}),
+            ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         });
         log.info({ chatId, replyToMessageId, len: text.length }, 'sendComment');
     }

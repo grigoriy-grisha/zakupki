@@ -5,6 +5,7 @@ import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
 import { formatOrderStatValue, getPurchaseItemOrderStats, unitsInPack } from './purchase-item-order-stats';
+import { tierPrice } from './price-format';
 
 type ExportUser = {
     firstName: string;
@@ -20,32 +21,30 @@ type ExportUser = {
     } | null;
 };
 
+/** Каталожные данные товара (после миграции Supplier — без цен/фасовки). */
 type ExportProduct = ProductLabelSource & {
-    pricePerUnit: unknown;
-    priceTiers?: unknown;
-    minPackageAmount?: unknown;
-    minPackageUnit?: string | null;
-    supplierPackageAmount?: unknown;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: unknown;
-    referenceStock?: unknown;
-    referenceStockUnit?: string | null;
     unit?: { shortName: string } | null;
 };
 
 type ExportPurchase = {
     tag: string;
-    supplier: string;
     status: string;
     fulfillmentStatus?: string | null;
-    minAmount: unknown;
-    deadline: string | Date;
     items: {
         id: number;
+        // Per-purchase поля (миграция Supplier):
         priceOverride?: unknown;
+        priceTiers?: unknown;
+        minPackageAmount?: unknown;
+        minPackageUnit?: string | null;
+        supplierPackageAmount?: unknown;
+        supplierPackageUnit?: string | null;
+        supplierPackagePrice?: unknown;
         publicationState: 'DRAFT' | 'PUBLISHED';
         tgMessageId?: string | null;
         targetRemainder?: unknown;
+        supplierId?: number | null;
+        supplier?: { id: number; name: string } | null;
         product: ExportProduct;
         orderLines: {
             userId: number;
@@ -68,6 +67,11 @@ type ExportOrder = {
     purchaseItem?: {
         id?: number;
         priceOverride?: unknown;
+        // Per-purchase поля (миграция Supplier):
+        supplierPackageAmount?: unknown;
+        supplierPackageUnit?: string | null;
+        supplierPackagePrice?: unknown;
+        priceTiers?: unknown;
         product?: ExportProduct;
     };
 };
@@ -137,11 +141,6 @@ function formatMoney(value: unknown) {
     return Number(value);
 }
 
-function tierPrice(tiers: PriceTier[], amount: number): number | null {
-    const tier = tiers.find((entry) => Math.abs(entry.amount - amount) < 1e-6);
-    return tier ? tier.price : null;
-}
-
 function formatPrice510(tiers: PriceTier[]) {
     const price5 = tierPrice(tiers, 5);
     const price10 = tierPrice(tiers, 10);
@@ -151,16 +150,16 @@ function formatPrice510(tiers: PriceTier[]) {
     return '';
 }
 
-function formatPrice1Gr(product: ExportProduct, tiers: PriceTier[]) {
+function formatPrice1Gr(item: { priceOverride?: unknown; priceTiers?: unknown }, tiers: PriceTier[]) {
     const tier1 = tierPrice(tiers, 1);
     if (tier1 != null) return tier1;
-    return formatMoney(product.pricePerUnit) || '';
+    return item.priceOverride != null ? formatMoney(item.priceOverride) : '';
 }
 
-function formatSupplierPackage(product: ExportProduct) {
-    if (product.supplierPackageAmount == null) return '';
-    const amount = Number(product.supplierPackageAmount);
-    const unit = product.supplierPackageUnit?.trim();
+function formatSupplierPackage(item?: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null }) {
+    if (!item || item.supplierPackageAmount == null) return '';
+    const amount = Number(item.supplierPackageAmount);
+    const unit = item.supplierPackageUnit?.trim();
     if (unit === 'гр' || unit === 'г') return amount;
     if (!unit) return amount;
     return `${amount} ${unit}`;
@@ -568,7 +567,8 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
         const product = item.product;
         const { line1 } = excelProductNameLines(product, attributeTypes);
         maxNameLineLength = Math.max(maxNameLineLength, line1.length);
-        const tiers = parsePriceTiers(product.priceTiers);
+        // Per-purchase поля читаются с item (миграция Supplier).
+        const tiers = parsePriceTiers(item.priceTiers);
         const stats = getPurchaseItemOrderStats(item);
         grandCollected += stats.totalQuantity;
         grandPacksToOrder += stats.packsToOrder ?? 0;
@@ -583,7 +583,7 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
         // Пул добора — через доменную стратегию (REORDER: baseQuantity-based, PAYMENT+: createdOnStage-based)
         const strategy = getStageStrategy((purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus);
         const aggregation = strategy.aggregateForPool(toOrderLinesVO(item.orderLines as any[]));
-        const packSize = product.supplierPackageAmount != null ? Number(product.supplierPackageAmount) : null;
+        const packSize = item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
         const displayedRemainder = computeRawPool({
             targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
             packSize,
@@ -592,10 +592,10 @@ export async function exportGeneralPurchaseData({ purchase, orders, payments, at
 
         const row = sheet.addRow([
             '',
-            formatSupplierPackage(product),
-            product.supplierPackagePrice != null ? formatMoney(product.supplierPackagePrice) : '',
+            formatSupplierPackage(item),
+            item.supplierPackagePrice != null ? formatMoney(item.supplierPackagePrice) : '',
             formatPrice510(tiers),
-            formatPrice1Gr(product, tiers),
+            formatPrice1Gr(item, tiers),
             ...participants.map((participant) => quantitiesByUser.get(participant.userId) ?? ''),
             stats.totalQuantity || '',
             stats.packSize ?? '',
@@ -724,33 +724,43 @@ const ORDERS_EXPORT_PRICE_HEADERS = [
 ] as const;
 
 function isGramProduct(product: ExportProduct | undefined): boolean {
-    const pack = product ? unitsInPack(product) : null;
-    if (pack?.unit === 'гр') return true;
+    // unitsInPack теперь ожидает per-purchase поля (supplierPackageAmount/Unit).
+    // Для gram-проверки достаточно посмотреть unit.shortName (каталожное поле).
     const short = product?.unit?.shortName?.trim().toLowerCase().replace(/\./g, '') ?? '';
     return short === 'гр' || short === 'g';
 }
 
-function isFullPackOrder(product: ExportProduct | undefined, quantity: unknown): boolean {
+function isFullPackOrder(
+    item: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null } | undefined,
+    quantity: unknown,
+): boolean {
     const qty = formatMoney(quantity);
-    const pack = product ? unitsInPack(product) : null;
+    const pack = item ? unitsInPack(item) : null;
     return Boolean(pack && qty > 0 && Math.abs(qty - pack.size) < 1e-6);
 }
 
 /** Слева — не целая пачка; справа — ровно одна пачка поставщика (например 50 при фасовке 50 гр). */
-function orderQuantitySplitColumns(product: ExportProduct | undefined, quantity: unknown): [string, string] {
+function orderQuantitySplitColumns(
+    item: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null } | undefined,
+    quantity: unknown,
+): [string, string] {
     const qty = formatMoney(quantity);
     if (!qty) return ['', ''];
 
-    if (isFullPackOrder(product, quantity)) {
+    if (isFullPackOrder(item, quantity)) {
         return ['', String(qty)];
     }
 
     return [String(qty), ''];
 }
 
-function orderAmountSplit(product: ExportProduct | undefined, amountDue: unknown, quantity: unknown) {
+function orderAmountSplit(
+    item: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null } | undefined,
+    amountDue: unknown,
+    quantity: unknown,
+) {
     const amount = formatMoney(amountDue);
-    if (isFullPackOrder(product, quantity)) {
+    if (isFullPackOrder(item, quantity)) {
         return { partial: 0, fullPack: amount };
     }
     return { partial: amount, fullPack: 0 };
@@ -787,15 +797,19 @@ function participantBlockTitle(participant: ExportParticipant): ExcelJS.CellRich
     return { richText };
 }
 
-function productPriceCells(product: ExportProduct | undefined) {
-    if (!product) {
+/**
+ * Возвращает [packPrice, price510, price1] для строки заказа.
+ * Per-purchase поля читаются с purchaseItem (миграция Supplier), а не с product.
+ */
+function purchaseItemPriceCells(purchaseItem: { priceTiers?: unknown; supplierPackagePrice?: unknown; priceOverride?: unknown } | undefined) {
+    if (!purchaseItem) {
         return ['', '', ''] as const;
     }
-    const tiers = parsePriceTiers(product.priceTiers);
+    const tiers = parsePriceTiers(purchaseItem.priceTiers);
     return [
-        product.supplierPackagePrice != null ? formatMoney(product.supplierPackagePrice) : '',
+        purchaseItem.supplierPackagePrice != null ? formatMoney(purchaseItem.supplierPackagePrice) : '',
         formatPrice510(tiers),
-        formatPrice1Gr(product, tiers),
+        formatPrice1Gr(purchaseItem, tiers),
     ] as const;
 }
 
@@ -911,15 +925,15 @@ function addParticipantOrdersTable(
         const product =
             (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
             order.purchaseItem?.product;
-        const [packPrice, price510, price1] = productPriceCells(product);
-        const [partialQty, fullPackQty] = orderQuantitySplitColumns(product, order.quantity);
-        const amounts = orderAmountSplit(product, order.amountDue, order.quantity);
+        const [packPrice, price510, price1] = purchaseItemPriceCells(order.purchaseItem as never);
+        const [partialQty, fullPackQty] = orderQuantitySplitColumns(order.purchaseItem, order.quantity);
+        const amounts = orderAmountSplit(order.purchaseItem, order.amountDue, order.quantity);
         amountTotals.partial += amounts.partial;
         amountTotals.fullPack += amounts.fullPack;
 
         if (isGramProduct(product)) {
             const qty = formatMoney(order.quantity);
-            if (isFullPackOrder(product, order.quantity)) {
+            if (isFullPackOrder(order.purchaseItem, order.quantity)) {
                 gramTotals.fullPackGr += qty;
             } else if (qty > 0) {
                 gramTotals.partialGr += qty;
@@ -928,7 +942,7 @@ function addParticipantOrdersTable(
 
         const row = sheet.addRow([
             '',
-            product ? formatSupplierPackage(product) : '',
+            product ? formatSupplierPackage(order.purchaseItem) : '',
             packPrice,
             price510,
             price1,

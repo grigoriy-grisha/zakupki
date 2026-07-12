@@ -59,12 +59,10 @@ export function usePurchaseActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    const removeItem = trpc.purchases.removeItem.useMutation({
+    const setAvailableQuantities = trpc.purchases.setAvailableQuantities.useMutation({
         onSuccess: () => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
-            void utils.orders.getAllByPurchase.invalidate({ purchaseId });
-            void utils.purchases.list.invalidate();
-            toast.success('Товар удалён из закупки');
+            toast.success('Остатки обновлены');
         },
         onError: (err) => toast.error(err.message),
     });
@@ -75,6 +73,6 @@ export function usePurchaseActions(purchaseId: number) {
         deleteDraft,
         publishAll,
         updateFulfillmentStatus,
-        removeItem,
+        setAvailableQuantities,
     };
 }

@@ -106,8 +106,9 @@ export class OrderService {
         return this.adminDecrease(purchaseItemId, userId, -delta);
     }
 
-    // ── Public API: запросы ────────────────────────────────────────
-
+    /**
+     * Все заказы пользователя (в т.ч. CANCELLED). Используется для админ-карточки.
+     */
     async getUserOrders(userId: number) {
         return this.repo.getByUser(userId);
     }
@@ -192,7 +193,6 @@ export class OrderService {
             purchaseOrderId: null as any,
             tag,
             totalDue,
-            supplier: (first.purchaseItem.purchase as any).supplier ?? null,
             lines: lines.map((l) => ({
                 id: l.id,
                 quantity: Number(l.quantity),

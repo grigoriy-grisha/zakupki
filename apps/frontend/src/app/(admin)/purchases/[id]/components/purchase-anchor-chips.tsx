@@ -6,19 +6,21 @@ import { cn } from '@/lib/utils';
 interface PurchaseAnchorChipsProps {
     itemsCount: number;
     supplementsCount: number;
+    packingCount: number;
     participantsCount: number;
 }
 
-const SECTIONS = ['items', 'supplements', 'participants'] as const;
+const SECTIONS = ['items', 'supplements', 'participants', 'packing'] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 /**
- * Sticky-чипсы для навигации по секциям страницы (Товары / Доборы / Участники).
+ * Sticky-чипсы для навигации по секциям страницы (Товары / Доборы / Фасовка / Участники).
  * Подсвечивает активный якорь, smooth-scroll при клике.
  */
 export function PurchaseAnchorChips({
     itemsCount,
     supplementsCount,
+    packingCount,
     participantsCount,
 }: PurchaseAnchorChipsProps) {
     const [active, setActive] = useState<SectionId>('items');
@@ -48,11 +50,13 @@ export function PurchaseAnchorChips({
         items: itemsCount,
         supplements: supplementsCount,
         participants: participantsCount,
+        packing: packingCount,
     };
     const labels: Record<SectionId, string> = {
         items: 'Товары',
         supplements: 'Доборы',
         participants: 'Участники',
+        packing: 'Фасовка',
     };
 
     return (

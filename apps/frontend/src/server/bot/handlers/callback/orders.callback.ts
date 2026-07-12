@@ -126,7 +126,6 @@ function formatPurchaseDetail(
         detail.purchaseOrderId != null ? `📦 Заказ №${detail.purchaseOrderId}` : null,
         `🛒 <b>${escapeHtml(detail.tag)}</b>`,
         `📋 Статус: ${escapeHtml(fulfillmentLabel)}`,
-        detail.supplier ? `Поставщик: ${escapeHtml(detail.supplier)}` : null,
         '',
         lineTexts.join('\n\n'),
         '',

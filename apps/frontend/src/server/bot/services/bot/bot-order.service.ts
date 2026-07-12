@@ -21,7 +21,6 @@ export type BotPurchaseOrderDetail = {
     purchaseOrderId: number | null;
     tag: string;
     totalDue: number;
-    supplier: string | null;
     lines: Array<{
         id: number;
         quantity: number;

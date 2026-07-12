@@ -16,13 +16,12 @@ export interface DescriptionFields {
     supplierPackageUnit?: string | null;
     supplierPackagePrice?: number | null;
     supplierPackageTiers?: { amount?: number; unit?: string; price?: number }[];
-    /** Глобальный лимит остатка у поставщика (per-purchase). Имеет приоритет
-     *  над referenceStock в шаблоне «{{свободно}}». */
+    /** Глобальный лимит остатка у поставщика (per-purchase). Используется
+     *  в шаблоне «{{свободно}}». */
     supplierLimit?: number | null;
     supplierLimitUnit?: string | null;
-    /** Запасной вариант для «{{свободно}}», если supplierLimit не задан. */
-    referenceStock?: number | null;
-    referenceStockUnit?: string | null;
+    /** Имя поставщика (per-purchase). Используется в шаблоне «{{поставщик}}». */
+    supplierName?: string;
     purchaseTag?: string;
     /** Скидка за целую пачку бисера, % (из настроек). */
     packDiscountPercent?: number | null;

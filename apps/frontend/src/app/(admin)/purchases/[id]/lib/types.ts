@@ -13,20 +13,15 @@ export interface UnitRef {
     shortName: string;
 }
 
-/** Продукт внутри PurchaseItem */
+/** Поставщик, привязанный к позиции закупки (опц.) */
+export interface SupplierRef {
+    id: number;
+    name: string;
+}
+
+/** Продукт внутри PurchaseItem — теперь только каталожные данные. */
 export interface PurchaseItemProduct extends ProductLabelSource {
     id: number;
-    minPackageAmount?: string | number | null;
-    minPackageUnit?: string | null;
-    supplierPackageAmount?: string | number | null;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: string | number | null;
-    supplierPackageTiers?: unknown;
-    priceTiers?: unknown;
-    pricePerUnit?: number | null;
-    referenceStock?: string | number | null;
-    referenceStockUnit?: string | null;
-    description?: string | null;
     unit?: UnitRef | null;
     photos?: PhotoRef[];
 }
@@ -35,8 +30,11 @@ export interface PurchaseItemProduct extends ProductLabelSource {
 export interface OrderLineRef {
     id: number;
     userId: number;
+    purchaseItemId: number;
     quantity: number;
     amountDue: number;
+    /** Целые упаковки поставщика (пачки). */
+    packageCount?: number;
     createdAt: string;
     /** Заказ из фазы COLLECTION, зафиксирован при входе в SUPPLEMENT/REORDER. */
     baseQuantity?: number | string | null;
@@ -46,7 +44,8 @@ export interface OrderLineRef {
     supplementRemainder?: number | string | null;
 }
 
-/** PurchaseItem (позиция товара в закупке) */
+/** PurchaseItem (позиция товара в закупке). Вся per-purchase конкретика —
+ *  описание, цены, фасовка — хранится здесь. */
 export interface PurchaseItem {
     id: number;
     productId: number;
@@ -59,6 +58,19 @@ export interface PurchaseItem {
     /** Глобальный лимит остатка у поставщика (per-purchase). */
     supplierLimit?: string | number | null;
     supplierLimitUnit?: string | null;
+    // Per-purchase конкретика (перенесена с Product):
+    description?: string | null;
+    pricePerUnit?: number | string | null;
+    minPackageAmount?: string | number | null;
+    minPackageUnit?: string | null;
+    priceTiers?: unknown;
+    supplierPackageAmount?: string | number | null;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: string | number | null;
+    supplierPackageTiers?: unknown;
+    // Поставщик:
+    supplierId?: number | null;
+    supplier?: SupplierRef | null;
     product: PurchaseItemProduct;
     orderLines: OrderLineRef[];
 }
@@ -88,9 +100,6 @@ export interface PaymentRef {
 export interface PurchaseDetail {
     id: number;
     tag: string;
-    supplier: string;
-    minAmount: number | string;
-    deadline: string | Date;
     status: string;
     fulfillmentStatus?: string | null;
     items: PurchaseItem[];

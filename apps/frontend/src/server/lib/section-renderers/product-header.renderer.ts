@@ -9,6 +9,8 @@ export interface ProductHeaderData {
     minPackageAmount: unknown;
     minPackageUnit: string | null;
     unitCode: string;
+    /** Имя поставщика (per-purchase). null — без поставщика. */
+    supplierName?: string | null;
 }
 
 /**
@@ -61,6 +63,10 @@ export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData
         }
 
         const lines: string[] = [`<b>${escapeHtmlLocal(data.name)}</b>`];
+
+        if (data.supplierName) {
+            lines.push(`<b>Поставщик: ${escapeHtmlLocal(data.supplierName)}</b>`);
+        }
 
         if (data.minPackageAmount != null && data.minPackageUnit) {
             lines.push(

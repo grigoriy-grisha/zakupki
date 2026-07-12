@@ -10,7 +10,7 @@ import type { MessageHandler } from '../../domain/handler';
  *  - Авто-форвард из канала → обработает ChannelPostShopCommentHandler
  *  - Сообщение в order collection chat → обработает OrderReplyHandler
  *
- * В остальных случаях отвечает «Используйте /start чтобы открыть магазин».
+ * В остальных случаях отвечает «Используйте /start чтобы открыть приложение».
  */
 export class FallbackTextHandler implements MessageHandler {
     readonly filter = 'fallback_text' as const;
@@ -20,6 +20,6 @@ export class FallbackTextHandler implements MessageHandler {
         if (ctx.session.paymentFlow) return;
         if (ctx.message?.is_automatic_forward) return;
         if (ctx.chat && ctx.message && isOrderCollectionMessage(ctx.chat.id, ctx.message)) return;
-        await ctx.reply('Используйте /start чтобы открыть магазин.');
+        await ctx.reply('Используйте /start чтобы открыть приложение.');
     }
 }

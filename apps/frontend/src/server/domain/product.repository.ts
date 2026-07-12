@@ -1,5 +1,4 @@
 import { Prisma, dbClient } from '@zakupki/database';
-import type { PriceTier } from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
 import { productInclude } from './product-include';
@@ -11,28 +10,16 @@ export interface ProductWriteData {
     name?: string;
     articleNumber?: string | null;
     brandId?: number | null;
-    description?: string;
     unitCode?: string;
     multiplicity?: number;
-    pricePerUnit?: number;
     attributeIds?: number[];
     characteristics?: ProductCharacteristicInput[];
-    minPackageAmount?: number | null;
-    minPackageUnit?: string | null;
-    priceTiers?: PriceTier[] | null;
-    supplierPackageAmount?: number | null;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: number | null;
-    supplierPackageTiers?: PriceTier[] | null;
-    supplementStep?: number | null;
-    referenceStock?: number | null;
-    referenceStockUnit?: string | null;
 }
 
 export interface ProductCreateData extends ProductWriteData {
     name: string;
     unitCode: string;
-    pricePerUnit: number;
+    multiplicity?: number;
 }
 
 export class ProductRepository {
@@ -231,11 +218,10 @@ export class ProductRepository {
 }
 
 function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { priceTiers, supplierPackageTiers, attributeIds, characteristics, brandId, ...rest } = data;
+    const { attributeIds, characteristics, brandId, ...rest } = data;
     return {
         ...rest,
-        priceTiers: priceTiers ?? Prisma.JsonNull,
-        supplierPackageTiers: supplierPackageTiers ?? Prisma.JsonNull,
+        multiplicity: data.multiplicity ?? 1,
         ...(brandId != null ? { brand: { connect: { id: brandId } } } : {}),
         ...(attributeIds && attributeIds.length > 0
             ? { attributeValues: { create: attributeIds.map((id) => ({ attribute: { connect: { id } } })) } }
@@ -245,21 +231,8 @@ function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
 }
 
 function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
-    const {
-        priceTiers,
-        supplierPackageTiers,
-        brandId,
-        attributeIds: _attributeIds,
-        characteristics: _characteristics,
-        ...rest
-    } = data;
+    const { brandId, attributeIds: _attributeIds, characteristics: _characteristics, ...rest } = data;
     const update: Prisma.ProductUpdateInput = { ...rest };
-    if (priceTiers !== undefined) {
-        update.priceTiers = priceTiers ?? Prisma.JsonNull;
-    }
-    if (supplierPackageTiers !== undefined) {
-        update.supplierPackageTiers = supplierPackageTiers ?? Prisma.JsonNull;
-    }
     if (brandId !== undefined) {
         update.brand = brandId == null ? { disconnect: true } : { connect: { id: brandId } };
     }

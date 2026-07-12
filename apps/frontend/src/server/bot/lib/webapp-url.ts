@@ -20,7 +20,7 @@ export function shopStartKeyboard() {
     const webAppUrl = getWebAppUrl();
     if (webAppUrl && isHttpsUrl(webAppUrl)) {
         return {
-            inline_keyboard: [[{ text: '🛒 Открыть магазин', web_app: { url: webAppUrl } }]],
+            inline_keyboard: [[{ text: '🛒 Открыть приложение', web_app: { url: webAppUrl } }]],
         };
     }
     return shopUrlKeyboard();
@@ -37,6 +37,6 @@ export function shopUrlKeyboard() {
     if (!link) return undefined;
 
     return {
-        inline_keyboard: [[{ text: '🛒 Открыть магазин', url: link }]],
+        inline_keyboard: [[{ text: '🛒 Открыть приложение', url: link }]],
     };
 }

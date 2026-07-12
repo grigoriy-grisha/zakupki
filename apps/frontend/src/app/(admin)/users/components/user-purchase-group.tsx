@@ -37,7 +37,6 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                         </p>
                     )}
                     <p className="text-14-medium leading-tight text-fg-primary">{group.tag}</p>
-                    {group.supplier && <p className="truncate text-12-regular text-fg-tertiary">{group.supplier}</p>}
                 </div>
                 <Badge variant="outline" className="shrink-0 font-normal">
                     {group.orders.length} поз.

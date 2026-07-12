@@ -10,7 +10,6 @@ export type UserPurchaseGroup = {
     purchaseId: number;
     orderNumber: number | null;
     tag: string;
-    supplier: string | null;
     orders: UserOrderLine[];
     totalDue: number;
 };
@@ -28,7 +27,6 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
             purchaseId,
             orderNumber: purchaseOrderId,
             tag: purchase?.tag ?? `Закупка #${purchaseId}`,
-            supplier: purchase?.supplier ?? null,
             orders: [],
             totalDue: 0,
         };
@@ -39,7 +37,6 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
             existing.orderNumber = purchaseOrderId;
         }
         if (purchase?.tag) existing.tag = purchase.tag;
-        if (purchase?.supplier) existing.supplier = purchase.supplier;
 
         map.set(purchaseId, existing);
     }

@@ -43,7 +43,7 @@ export function PromoCodeRow({ promo, onDelete }: PromoCodeRowProps) {
                     ? `${Number(promo.value)}%`
                     : `${Number(promo.value).toLocaleString('ru-RU')} ₽`}
             </TableCell>
-            <TableCell className="text-sm">{purchase ? `${purchase.tag} — ${purchase.supplier}` : 'Любая'}</TableCell>
+            <TableCell className="text-sm">{purchase ? `${purchase.tag}` : 'Любая'}</TableCell>
             <TableCell className="text-center text-sm">
                 {promo.usedCount}
                 {promo.maxUses ? `/${promo.maxUses}` : ''}

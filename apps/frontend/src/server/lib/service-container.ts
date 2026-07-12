@@ -20,10 +20,12 @@ import { CharacteristicRepository } from '../domain/characteristic.repository';
 import { PostTemplateRepository } from '../domain/post-template.repository';
 import { ProductAttributeRepository } from '../domain/product-attribute.repository';
 import { PromoCodeRepository } from '../domain/promo-code.repository';
+import { SupplierRepository } from '../domain/supplier.repository';
 import { AttributeTypeService } from '../services/attribute-type.service';
 import { CharacteristicService } from '../services/characteristic.service';
 import { ProductAttributeService } from '../services/product-attribute.service';
 import { PostTemplateService } from '../services/post-template.service';
+import { SupplierService } from '../services/supplier.service';
 
 import { EventBus } from '@zakupki/queue';
 
@@ -38,6 +40,7 @@ export class ServiceContainer {
     private readonly characteristicRepo = new CharacteristicRepository();
     private readonly productAttributeRepo = new ProductAttributeRepository();
     private readonly postTemplateRepo = new PostTemplateRepository();
+    private readonly supplierRepo = new SupplierRepository();
 
     public readonly eventBus = new EventBus();
     public readonly telegramPublish = new TelegramPublishService(this.eventBus);
@@ -62,6 +65,7 @@ export class ServiceContainer {
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);
     public readonly postTemplate = new PostTemplateService(this.postTemplateRepo);
+    public readonly supplier = new SupplierService(this.supplierRepo);
 }
 
 export const serviceContainer = new ServiceContainer();

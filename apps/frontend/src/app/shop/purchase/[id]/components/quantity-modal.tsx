@@ -68,6 +68,7 @@ export function QuantityModal({
                     </DialogTitle>
                     <DialogDescription className="text-left">
                         {ctx.price.toLocaleString('ru-RU')} ₽/{ctx.shortName}
+                        {item.supplier ? ` · ${item.supplier.name}` : ''}
                     </DialogDescription>
                 </DialogHeader>
 

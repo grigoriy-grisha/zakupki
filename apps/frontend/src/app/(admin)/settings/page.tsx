@@ -1,13 +1,14 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, ListChecks, Tag, Layers, FileText, Percent } from 'lucide-react';
+import { Settings, ListChecks, Tag, Layers, FileText, Percent, Truck } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
 import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
+import { SuppliersTab } from './suppliers/suppliers-tab';
 
 export default function SettingsPage() {
     return (
@@ -33,6 +34,11 @@ export default function SettingsPage() {
                         <span className="hidden sm:inline">Характеристики</span>
                         <span className="sm:hidden">Хар-ки</span>
                     </TabsTrigger>
+                    <TabsTrigger value="suppliers" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <Truck className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">Поставщики</span>
+                        <span className="sm:hidden">Пост.</span>
+                    </TabsTrigger>
                     <TabsTrigger value="templates" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
                         <FileText className="h-4 w-4 shrink-0" />
                         <span className="hidden sm:inline">Шаблоны постов</span>
@@ -54,6 +60,9 @@ export default function SettingsPage() {
                 </TabsContent>
                 <TabsContent value="characteristics" className="mt-0">
                     <CharacteristicsTab />
+                </TabsContent>
+                <TabsContent value="suppliers" className="mt-0">
+                    <SuppliersTab />
                 </TabsContent>
                 <TabsContent value="templates" className="mt-0">
                     <PostTemplatesTab />

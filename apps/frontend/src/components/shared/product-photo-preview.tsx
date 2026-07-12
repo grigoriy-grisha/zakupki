@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Package, X, ZoomIn } from 'lucide-react';
 
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
 
@@ -101,6 +101,7 @@ export function ProductPhotoPreview({
                 aria-label={alt}
                 className="flex max-h-[100dvh] max-w-[100vw] items-center justify-center border-none bg-transparent p-0 shadow-none data-[state=open]:zoom-in-100"
             >
+                <DialogTitle className="sr-only">{alt}</DialogTitle>
                 <img
                     src={src}
                     alt={alt}

@@ -17,6 +17,7 @@ import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
 import { validateSupplementPool } from '../pool';
 import { validateSupplierLimit } from '../limit';
 import { effectiveQty } from '../order-math';
+import type { OrderLine } from '../order-line';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
     aggregateForPool,
@@ -94,9 +95,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
             updates.push({ old: supp, new: newSupp });
             // Не передаём packageCount в effect — БД сохранит прежнее значение supp-строки
             // (хардкод 0 обнулял пакет при adjust(+qty), что было багом).
-            effects.push(
-                makeUpsertEffect(this.item, userId, 'REORDER', newQty, amountDue, supp?.packageCount ?? 0),
-            );
+            effects.push(makeUpsertEffect(this.item, userId, 'REORDER', newQty, amountDue, supp?.packageCount ?? 0));
         }
         return { updates, effects };
     }
@@ -155,22 +154,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
         }
 
-        // Split: заполняем pkg-gap в base, остаток → supp
-        const baseFrozenPkg = base.basePackageCount ?? 0;
-        const basePkgGap = Math.max(0, baseFrozenPkg - base.packageCount);
-        const currentReorderPkg = supp?.packageCount ?? 0;
-
-        let newBasePkg: number;
-        let newReorderPkg: number;
-        if (delta > 0) {
-            const fillBase = Math.min(delta, basePkgGap);
-            newBasePkg = base.packageCount + fillBase;
-            newReorderPkg = currentReorderPkg + (delta - fillBase);
-        } else {
-            const take = Math.min(-delta, currentReorderPkg);
-            newReorderPkg = currentReorderPkg - take;
-            newBasePkg = base.packageCount - Math.min(-delta - take, base.packageCount);
-        }
+        const { newBasePkg, newReorderPkg } = this.splitPackageDelta(delta, base, supp);
         if (newBasePkg < 0 || newReorderPkg < 0) {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
         }
@@ -195,14 +179,55 @@ export class ReorderStrategy extends BaseMutableStrategy {
             }
         }
 
+        return this.buildPackageUpdates(userId, base, supp, newBasePkg, newReorderPkg);
+    }
+
+    /**
+     * Распределение delta упаковок между base (заполнение pkg-gap до basePackageCount)
+     * и supp-строкой. Возвращает новые значения packageCount для base и supp.
+     */
+    private splitPackageDelta(
+        delta: number,
+        base: OrderLine,
+        supp: OrderLine | null,
+    ): { newBasePkg: number; newReorderPkg: number } {
+        const baseFrozenPkg = base.basePackageCount ?? 0;
+        const basePkgGap = Math.max(0, baseFrozenPkg - base.packageCount);
+        const currentReorderPkg = supp?.packageCount ?? 0;
+
+        if (delta > 0) {
+            const fillBase = Math.min(delta, basePkgGap);
+            return {
+                newBasePkg: base.packageCount + fillBase,
+                newReorderPkg: currentReorderPkg + (delta - fillBase),
+            };
+        }
+        const take = Math.min(-delta, currentReorderPkg);
+        return {
+            newReorderPkg: currentReorderPkg - take,
+            newBasePkg: base.packageCount - Math.min(-delta - take, base.packageCount),
+        };
+    }
+
+    /**
+     * Применяет новые packageCount к base и supp: update / hard-delete (qty=0 && pkg=0) /
+     * create supp. Логика перенесена из adjustPackages без изменений.
+     */
+    private buildPackageUpdates(
+        userId: number,
+        base: OrderLine,
+        supp: OrderLine | null,
+        newBasePkg: number,
+        newReorderPkg: number,
+    ): MultiUpdate {
         const updates: LineUpdate[] = [];
-        const effects = [];
+        const effects: MultiUpdate['effects'] = [];
 
         // 1. base — если qty=0 && pkg=0 → hard-delete
         if (newBasePkg !== base.packageCount) {
             if (newBasePkg === 0 && base.quantity === 0) {
                 updates.push({ old: base, new: null });
-                effects.push({ type: 'delete' as const, lineId: base.id });
+                effects.push({ type: 'delete', lineId: base.id });
             } else {
                 const amountDue = computeAmountDueWithPackages(base.quantity, newBasePkg, this.item);
                 const newBaseLine = base.withQuantity(base.quantity, amountDue).withPackageCount(newBasePkg);
@@ -223,7 +248,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
         } else if (supp) {
             // pkg=0, qty=0 → delete
             updates.push({ old: supp, new: null });
-            effects.push({ type: 'delete' as const, lineId: supp.id });
+            effects.push({ type: 'delete', lineId: supp.id });
         }
         return { updates, effects };
     }

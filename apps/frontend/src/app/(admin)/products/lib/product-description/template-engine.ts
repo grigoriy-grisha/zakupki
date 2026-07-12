@@ -81,6 +81,7 @@ export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'цена со скидкой за пачку' },
     { key: 'свободно' },
     { key: 'тег' },
+    { key: 'поставщик' },
 ];
 
 const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
@@ -114,6 +115,7 @@ const LEGACY_PLACEHOLDER_HINT_FRAGMENTS = [
     'Цена со скидкой за пачку — например: 50 гр - 1229 руб (только бисер в гр)',
     'Свободный остаток — например: СВОБОДНО: 10 гр',
     'Тег закупки — например: #закупка_май',
+    'Имя поставщика — например: Поставщик 1',
 ];
 
 /** Убирает только строки-подсказки из редактора шаблонов (не трогает текст подстановки). */
@@ -131,15 +133,10 @@ function normalizePlaceholderKey(key: string): string {
     return key.trim().toLowerCase().replace(/\s+/g, '_');
 }
 
-/**
- * Значение для метки {{свободно}}: «СВОБОДНО: 45 гр».
- * Приоритет — supplierLimit (per-purchase глобальный лимит), fallback —
- * referenceStock (поле каталога, для обратной совместимости).
- * Возвращает null если ничего не задано.
- */
+/** Значение для метки {{свободно}}: «СВОБОДНО: 45 гр». Возвращает null если supplierLimit не задан. */
 export function formatStockLine(fields: DescriptionFields): string | null {
-    const amount = fields.supplierLimit ?? fields.referenceStock;
-    const unit = fields.supplierLimitUnit ?? fields.referenceStockUnit;
+    const amount = fields.supplierLimit;
+    const unit = fields.supplierLimitUnit;
     if (amount == null || Number(amount) < 0 || !unit) return null;
     return `${formatNumber(amount)} ${unit}`;
 }
@@ -215,5 +212,6 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
         })(),
         свободно: formatStockLine(fields) ? escapeHtml(formatStockLine(fields) as string) : '',
         тег: tag ? escapeHtml(tag) : '',
+        поставщик: fields.supplierName ? escapeHtml(fields.supplierName) : '',
     };
 }

@@ -88,9 +88,6 @@ function PurchaseOrderCard({
                         </AppLink>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                        <Badge variant="outline" className="font-normal">
-                            {group.supplier}
-                        </Badge>
                         {completed ? (
                             <Badge variant="secondary" className="font-normal">
                                 {PURCHASE_STATUS_LABELS.DONE}
@@ -111,6 +108,7 @@ function PurchaseOrderCard({
                     const photo = product?.photos?.[0];
                     const qty = order.quantity;
                     const amount = order.amountDue;
+                    const pkgLabel = order.packageCount > 0 ? ` + ${order.packageCount} упак.` : '';
 
                     return (
                         <div key={order.purchaseItemId}>
@@ -140,7 +138,8 @@ function PurchaseOrderCard({
                                         />
                                     )}
                                     <p className="mt-0.5 text-xs text-muted-foreground">
-                                        {qty} {shortName} · {amount.toLocaleString('ru-RU')} ₽
+                                        {qty} {shortName}
+                                        {pkgLabel} · {amount.toLocaleString('ru-RU')} ₽
                                     </p>
                                 </div>
                             </AppLink>

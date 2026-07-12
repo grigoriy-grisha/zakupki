@@ -4,12 +4,8 @@ import { useState } from 'react';
 import { CircleCheck, Clock, CircleX, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MyPaymentProofDialog } from '@/components/shop/my-payment-proof-dialog';
-import {
-    paymentHasProof,
-    paymentTotalAmount,
-    SHOP_PAYMENT_STATUS,
-    type ShopPaymentView,
-} from '@/components/shop/payment-proof';
+import { paymentHasProof, SHOP_PAYMENT_STATUS, type ShopPaymentView } from '@/components/shop/payment-proof';
+import { paymentTotal } from '@/lib/payment-utils';
 
 type MyPaymentRowProps = {
     payment: ShopPaymentView;
@@ -30,7 +26,7 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
     const child = children[0];
     const childAmount = child ? Number(child.amount) : 0;
     const promoCode = child?.promoCode;
-    const total = paymentTotalAmount(payment);
+    const total = paymentTotal(payment);
     const hasProof = paymentHasProof(payment);
 
     return (

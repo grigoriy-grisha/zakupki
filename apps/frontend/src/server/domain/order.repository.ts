@@ -22,11 +22,13 @@ export class OrderRepository {
         });
         if (!purchaseItem) throw new NotFoundError('Товар закупки', purchaseItemId);
 
-        // Создаём или обновляем PurchaseOrder
-        await dbClient.purchaseOrder.upsert({
+        // Находим/создаём PurchaseOrder (userId, purchaseId) и забираем его id —
+        // он обязателен для OrderLine (FK purchaseOrderId).
+        const purchaseOrder = await dbClient.purchaseOrder.upsert({
             where: { userId_purchaseId: { userId, purchaseId: purchaseItem.purchaseId } },
             create: { userId, purchaseId: purchaseItem.purchaseId },
             update: {},
+            select: { id: true },
         });
 
         const data = { quantity, amountDue, status: 'ACTIVE' as const };
@@ -41,6 +43,7 @@ export class OrderRepository {
             create: {
                 purchaseItemId,
                 userId,
+                purchaseOrderId: purchaseOrder.id,
                 ...data,
                 ...(packageCount != null ? { packageCount } : {}),
                 createdOnStage: createdOnStage as any,
@@ -127,7 +130,7 @@ export class OrderRepository {
                     include: {
                         product: true,
                         purchase: {
-                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                            select: { id: true, tag: true, status: true, fulfillmentStatus: true },
                         },
                     },
                 },
@@ -143,7 +146,7 @@ export class OrderRepository {
                 purchaseItem: {
                     include: {
                         purchase: {
-                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                            select: { id: true, tag: true, status: true, fulfillmentStatus: true },
                         },
                     },
                 },
@@ -159,7 +162,7 @@ export class OrderRepository {
                     include: {
                         product: { include: productInclude },
                         purchase: {
-                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                            select: { id: true, tag: true, status: true, fulfillmentStatus: true },
                         },
                     },
                 },
@@ -174,7 +177,13 @@ export class OrderRepository {
             include: {
                 user: { include: USER_CREDENTIALS_INCLUDE },
                 purchaseItem: {
-                    include: { product: { include: productInclude } },
+                    include: {
+                        product: { include: productInclude },
+                        supplier: { select: { id: true, name: true } },
+                    },
+                },
+                purchaseOrder: {
+                    select: { id: true, comment: true, commentAuthor: true, commentAt: true },
                 },
             },
         });
@@ -192,7 +201,7 @@ export class OrderRepository {
                     include: {
                         product: true,
                         purchase: {
-                            select: { id: true, tag: true, supplier: true, status: true, fulfillmentStatus: true },
+                            select: { id: true, tag: true, status: true, fulfillmentStatus: true },
                         },
                     },
                 },

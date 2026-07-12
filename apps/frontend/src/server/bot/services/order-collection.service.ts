@@ -1,6 +1,7 @@
 import {
     computePackagePrice,
     getOrderQuantityStep,
+    getSupplementStep,
     getUnitByCode,
     mapToPurchaseItem,
     mergeLines,
@@ -31,7 +32,7 @@ export type OrderCollectionResult =
           subtracted?: OrderCollectionAction;
           cancelled?: boolean;
       }
-    | { ok: false; reason: 'invalid_quantity' | 'product_not_found' | 'purchase_inactive' | 'error'; message: string };
+    | { ok: false; reason: 'invalid_quantity' | 'product_not_found' | 'purchase_inactive' | 'error' | 'below_step'; message: string };
 
 type ResolvedItem = NonNullable<Awaited<ReturnType<PurchaseItemResolver['resolvePurchaseItem']>>>;
 
@@ -88,6 +89,9 @@ export class OrderCollectionService {
 
         const user = await this.container.userService.upsertFromTelegramBot(params.telegramId, params.userInfo);
         const pricing = this.getItemPricing(purchaseItem);
+
+        const belowStep = this.belowStepResult(purchaseItem, parsed, pricing.unitShort);
+        if (belowStep) return belowStep;
 
         try {
             await this.applyDelta(purchaseItem, user.id, parsed);
@@ -147,8 +151,8 @@ export class OrderCollectionService {
 
     private getItemPricing(item: ResolvedItem) {
         const unitShort = getUnitByCode(item.product.unitCode)?.shortName ?? 'ед.';
-        const packSize = item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null;
-        const pricePerUnit = Number(item.priceOverride ?? item.product.pricePerUnit);
+        const packSize = item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
+        const pricePerUnit = Number(item.priceOverride ?? item.pricePerUnit ?? 0);
         const packagePrice = computePackagePrice(mapToPurchaseItem(item, 0));
         return { unitShort, packSize, pricePerUnit, packagePrice };
     }
@@ -183,11 +187,35 @@ export class OrderCollectionService {
     ) {
         if (!this.container) return;
         const step = getOrderQuantityStep({
-            minPackageAmount: Number(purchaseItem.product.minPackageAmount) || null,
+            minPackageAmount: Number(purchaseItem.minPackageAmount) || null,
             multiplicity: Number(purchaseItem.product.multiplicity) || null,
         });
         const steps = Math.round(parsed.amount / step);
         const delta = parsed.kind === 'add' ? steps * step : -steps * step;
         return this.container.orderService.adjustQuantity(purchaseItem.id, userId, delta);
+    }
+
+    /** На этапе добора запрещаем добавлять количество меньше шага (supplementStep). */
+    private belowStepResult(
+        item: ResolvedItem,
+        parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
+        unitShort: string,
+    ): OrderCollectionResult | null {
+        if (parsed.kind !== 'add' || parsed.unit !== 'remainder') return null;
+        const regularStep = getOrderQuantityStep({
+            minPackageAmount: Number(item.minPackageAmount) || null,
+            multiplicity: Number(item.product.multiplicity) || null,
+        });
+        const step = getSupplementStep({
+            fulfillmentStatus: item.purchase.fulfillmentStatus ?? 'COLLECTION',
+            supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
+            regularStep,
+        });
+        if (parsed.amount >= step) return null;
+        return {
+            ok: false,
+            reason: 'below_step',
+            message: `Минимальный шаг заказа — ${step} ${unitShort}. Например: ${step}`,
+        };
     }
 }

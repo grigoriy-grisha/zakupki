@@ -5,44 +5,37 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { NovelEditor } from '@/components/ui/novel-editor';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { trpc } from '@/lib/client/trpc';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
-import { FormField } from '@/components/ui/form-field';
-import { FormSection } from '@/components/ui/form-section';
 import { FormFooter } from '@/components/ui/form-footer';
-import { Button as UIButton } from '@/components/ui/button';
 
-import { PriceTierEditor, PackageEditor } from '../../../products/components/package-fields';
-import { PackageUnitSelect } from '../../../products/components/package-unit-select';
 import {
-    PACKAGE_UNITS,
     applyPostTemplate,
     buildShowInTitleByTypeId,
     normalizeNovelHtml,
     productToDescriptionFields,
     type ProductLabelSource,
-} from '../../../products/lib';
+} from '../../../../products/lib';
 
 import {
     buildPurchaseFormState,
+    mergeProductAndPurchaseFields,
     normalizeSupplierTiersForSave,
     primarySupplierPackageFromTiers,
     validatePurchasePriceTiers,
-} from '../lib/purchase-price-tiers';
-import { persistTemplateChoice, resolveDefaultTemplateId } from '../lib/template-storage';
+} from '../../lib/purchase-price-tiers';
+import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
+import { DescriptionSection } from './purchase-product-edit-form/sections/description-section';
+import { MinPackageSection } from './purchase-product-edit-form/sections/min-package-section';
+import { PriceTiersSection } from './purchase-product-edit-form/sections/price-tiers-section';
+import { SupplementLimitsSection } from './purchase-product-edit-form/sections/supplement-limits-section';
+import { SupplierPackageSection } from './purchase-product-edit-form/sections/supplier-package-section';
+import { SupplierSection } from './purchase-product-edit-form/sections/supplier-section';
+import { TemplateSection } from './purchase-product-edit-form/sections/template-section';
 
 export type PurchaseProductSaveData = {
-    description?: string;
+    supplierId?: number | null;
+    description?: string | null;
     priceOverride?: number | null;
     priceTiers: { amount: number; unit: string; price: number }[];
     minPackageAmount: number | null;
@@ -60,6 +53,14 @@ export type PurchaseProductSaveData = {
 interface PurchaseProductEditFormProps {
     product: ProductLabelSource & {
         id: number;
+        unit?: { shortName?: string | null; name?: string | null } | null;
+    };
+    /** Per-purchase поля (если форма используется для редактирования существующего PurchaseItem). */
+    initialPurchaseFields?: {
+        supplierId?: number | null;
+        description?: string | null;
+        pricePerUnit?: string | number | null;
+        priceTiers?: unknown;
         minPackageAmount?: string | number | null;
         minPackageUnit?: string | null;
         supplierPackageAmount?: string | number | null;
@@ -70,11 +71,7 @@ interface PurchaseProductEditFormProps {
         supplierLimit?: string | number | null;
         supplierLimitUnit?: string | null;
         targetRemainder?: string | number | null;
-        description?: string | null;
-        priceTiers?: unknown;
-        unit?: { shortName?: string | null; name?: string | null } | null;
     };
-    initialTiers: { amount: number; unit: string; price: number }[];
     onSave: (data: PurchaseProductSaveData) => void;
     onCancel?: () => void;
     isSaving: boolean;
@@ -114,17 +111,18 @@ function mergeTemplateIntoDescription(
  *
  * Секции:
  *  1. Шаблон поста
- *  2. Мин. фасовка
- *  3. Цены (тиры)
- *  4. Фасовка поставщика
- *  5. Добор и лимиты (supplementStep + supplierLimit + targetRemainder)
- *  6. Описание (NovelEditor)
+ *  2. Поставщик (опц.)
+ *  3. Мин. фасовка
+ *  4. Цены (тиры)
+ *  5. Фасовка поставщика
+ *  6. Добор и лимиты (supplementStep + supplierLimit + targetRemainder)
+ *  7. Описание (NovelEditor)
  *
  * Sticky footer с [Отмена] [Сохранить].
  */
 export function PurchaseProductEditForm({
     product,
-    initialTiers,
+    initialPurchaseFields,
     onSave,
     onCancel,
     isSaving,
@@ -133,7 +131,10 @@ export function PurchaseProductEditForm({
     purchaseTag,
     loadSavedDescription = false,
 }: PurchaseProductEditFormProps) {
-    const initial = buildPurchaseFormState(product, initialTiers, loadSavedDescription);
+    const initial = buildPurchaseFormState(
+        mergeProductAndPurchaseFields(product, initialPurchaseFields),
+        loadSavedDescription,
+    );
 
     const [description, setDescription] = useState(initial.description);
     const [tiers, setTiers] = useState(initial.tiers);
@@ -144,12 +145,19 @@ export function PurchaseProductEditForm({
     const [supplierLimit, setSupplierLimit] = useState<number | null>(initial.supplierLimit);
     const [supplierLimitUnit, setSupplierLimitUnit] = useState<string | null>(initial.supplierLimitUnit);
     const [targetRemainder, setTargetRemainder] = useState<number | null>(initial.targetRemainder);
+    const [supplierId, setSupplierId] = useState<number | null>(initialPurchaseFields?.supplierId ?? null);
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
     const [priceError, setPriceError] = useState<string | null>(null);
 
     const { data: postTemplates } = trpc.postTemplates.list.useQuery();
+    const { data: suppliers } = trpc.suppliers.list.useQuery();
     const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
+
+    const supplierName = useMemo(() => {
+        if (supplierId == null) return null;
+        return (suppliers ?? []).find((s) => s.id === supplierId)?.name ?? null;
+    }, [supplierId, suppliers]);
 
     const userPickedTemplateRef = useRef(false);
     const lastAppliedSignatureRef = useRef<string | null>(null);
@@ -163,7 +171,10 @@ export function PurchaseProductEditForm({
     );
 
     useEffect(() => {
-        const next = buildPurchaseFormState(product, initialTiers, loadSavedDescription);
+        const next = buildPurchaseFormState(
+            mergeProductAndPurchaseFields(product, initialPurchaseFields),
+            loadSavedDescription,
+        );
         setDescription(next.description);
         setTiers(next.tiers);
         setMinPkgAmount(next.minPkgAmount);
@@ -173,6 +184,7 @@ export function PurchaseProductEditForm({
         setSupplierLimit(next.supplierLimit);
         setSupplierLimitUnit(next.supplierLimitUnit);
         setTargetRemainder(next.targetRemainder);
+        setSupplierId(initialPurchaseFields?.supplierId ?? null);
 
         userPickedTemplateRef.current = false;
         preserveSavedDescriptionRef.current =
@@ -184,7 +196,7 @@ export function PurchaseProductEditForm({
         setDescriptionRevision(0);
         lastAppliedSignatureRef.current = null;
         // eslint-disable-next-line react-hooks/exhaustive-deps -- сброс только при смене товара
-    }, [product.id]);
+    }, [product.id, initialPurchaseFields?.supplierId]);
 
     useEffect(() => {
         if (!loadSavedDescription) return;
@@ -224,6 +236,7 @@ export function PurchaseProductEditForm({
             supplierPackagePrice: primarySupplierPack.price,
             supplierLimit,
             supplierLimitUnit,
+            supplierName: supplierName ?? undefined,
             purchaseTag,
             packDiscountPercent,
         }),
@@ -239,6 +252,7 @@ export function PurchaseProductEditForm({
             primarySupplierPack,
             supplierLimit,
             supplierLimitUnit,
+            supplierName,
             purchaseTag,
             packDiscountPercent,
         ],
@@ -321,7 +335,7 @@ export function PurchaseProductEditForm({
         persistTemplateChoice(product.id, value);
 
         if (value === 'none') {
-            setDescription(loadSavedDescription ? (product.description ?? '') : '');
+            setDescription(loadSavedDescription ? (initialPurchaseFields?.description ?? '') : '');
             lastAutoDescriptionRef.current = null;
             return;
         }
@@ -344,7 +358,8 @@ export function PurchaseProductEditForm({
         const supplierPack = normalizeSupplierTiersForSave(supPkgTiers);
 
         onSave({
-            description: description || undefined,
+            supplierId,
+            description: description || null,
             priceOverride,
             priceTiers: validTiers,
             minPackageAmount: minPkgAmount,
@@ -359,162 +374,48 @@ export function PurchaseProductEditForm({
 
     return (
         <div className="flex flex-col gap-4">
-            {/* === 1. Шаблон поста === */}
-            <FormSection
-                title="Шаблон поста"
-                description="Выберите шаблон, чтобы автоматически заполнить описание"
-            >
-                <Select value={templateId} onValueChange={handleTemplateChange}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Без шаблона" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="none">Без шаблона</SelectItem>
-                        {(postTemplates ?? []).map((t: { id: number; name: string }) => (
-                            <SelectItem key={t.id} value={String(t.id)}>
-                                {t.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </FormSection>
-
-            {/* === 2. Мин. фасовка === */}
-            <FormSection card title="Минимальная фасовка">
-                <div className="flex items-center gap-2">
-                    <Input
-                        type="number"
-                        step="1"
-                        min={0}
-                        inputMode="numeric"
-                        className="h-9 w-24 shrink-0 rounded-xl text-13-medium tabular-nums"
-                        value={minPkgAmount != null ? String(Math.trunc(minPkgAmount)) : ''}
-                        onChange={(e) => {
-                            const raw = e.target.value;
-                            setMinPkgAmount(raw === '' ? null : Number.parseInt(raw, 10) || 0);
-                        }}
-                        aria-label="Минимальная фасовка"
-                    />
-                    <PackageUnitSelect
-                        value={minPkgUnit ?? PACKAGE_UNITS[0]}
-                        onChange={setMinPkgUnit}
-                    />
-                </div>
-                <p className="text-12-regular text-fg-tertiary">
-                    Шаг +/− на этапе сбора. Например: 5 гр — заказ кратен 5.
-                </p>
-            </FormSection>
-
-            {/* === 3. Цены (тиры) === */}
-            <FormSection
-                card
-                title="Цены"
-                description="Сколько стоит указанное количество единиц"
-            >
-                <PriceTierEditor
-                    tiers={tiers}
-                    addTierLabel="Добавить цену"
-                    onChange={(next) => {
-                        setTiers(next);
-                        if (priceError && !validatePurchasePriceTiers(next)) {
-                            setPriceError(null);
-                        }
-                    }}
-                    error={priceError}
-                />
-            </FormSection>
-
-            {/* === 4. Фасовка поставщика === */}
-            <FormSection
-                card
-                title="Фасовка поставщика"
-                description="Целая пачка от поставщика — можно заказать +1 упаковку"
-            >
-                <PriceTierEditor
-                    tiers={supPkgTiers}
-                    required={false}
-                    label=""
-                    addTierLabel="Добавить фасовку"
-                    onChange={setSupPkgTiers}
-                />
-            </FormSection>
-
-            {/* === 5. Добор и лимиты === */}
-            <FormSection card title="Добор и лимиты">
-                <FormField
-                    label="Шаг добора"
-                    hint="Шаг +/− на этапе добора. Если не задан — используется мин. фасовка"
-                >
-                    <div className="flex items-center gap-2">
-                        <Input
-                            id="supplementStep"
-                            type="number"
-                            step="0.001"
-                            min={0}
-                            placeholder="По умолчанию (мин. фасовка)"
-                            className="h-9 w-24 shrink-0 rounded-xl text-13-medium tabular-nums"
-                            value={supplementStep != null ? String(supplementStep) : ''}
-                            onChange={(e) =>
-                                setSupplementStep(e.target.value === '' ? null : Number(e.target.value))
-                            }
-                        />
-                        <PackageUnitSelect
-                            value={minPkgUnit ?? PACKAGE_UNITS[0]}
-                            onChange={setMinPkgUnit}
-                        />
-                    </div>
-                </FormField>
-
-                <PackageEditor
-                    label="Лимит у поставщика (на всех покупателей)"
-                    amount={supplierLimit}
-                    unit={supplierLimitUnit ?? PACKAGE_UNITS[0]}
-                    onAmountChange={setSupplierLimit}
-                    onUnitChange={setSupplierLimitUnit}
-                    description="Суммарно все покупатели не могут заказать больше этого количества ни на одном этапе. Если не задан — без ограничений."
-                />
-
-                <FormField
-                    label="Целевой остаток (добор)"
-                    hint="Сколько ещё нужно добрать у поставщика на этапе REORDER. Оставьте пустым, если добор не нужен."
-                >
-                    <Input
-                        id="targetRemainder"
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        placeholder="0"
-                        className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
-                        value={targetRemainder != null ? String(targetRemainder) : ''}
-                        onChange={(e) =>
-                            setTargetRemainder(e.target.value === '' ? null : Number(e.target.value))
-                        }
-                    />
-                </FormField>
-            </FormSection>
-
-            {/* === 6. Описание === */}
-            <FormSection
-                title="Описание"
-                description={
-                    templateId === 'none'
-                        ? 'Текст для поста — можно заполнить вручную'
-                        : 'Сгенерировано из шаблона — можно отредактировать'
-                }
-            >
-                <div className="max-h-[40vh] overflow-y-auto rounded-2xl border border-border bg-bg-base p-2">
-                    <NovelEditor
-                        key={`purchase-desc-${product.id}-${descriptionRevision}`}
-                        value={description}
-                        onChange={setDescription}
-                        placeholder={
-                            templateId === 'none'
-                                ? 'Текст описания для поста…'
-                                : 'Текст из шаблона — можно дописать своё…'
-                        }
-                    />
-                </div>
-            </FormSection>
+            <TemplateSection
+                templateId={templateId}
+                postTemplates={postTemplates as { id: number; name: string }[] | undefined}
+                onChange={handleTemplateChange}
+            />
+            <SupplierSection supplierId={supplierId} onChange={setSupplierId} />
+            <MinPackageSection
+                minPkgAmount={minPkgAmount}
+                minPkgUnit={minPkgUnit}
+                onAmountChange={setMinPkgAmount}
+                onUnitChange={setMinPkgUnit}
+            />
+            <PriceTiersSection
+                tiers={tiers}
+                error={priceError}
+                onChange={(next) => {
+                    setTiers(next);
+                    if (priceError && !validatePurchasePriceTiers(next)) {
+                        setPriceError(null);
+                    }
+                }}
+            />
+            <SupplierPackageSection supPkgTiers={supPkgTiers} onChange={setSupPkgTiers} />
+            <SupplementLimitsSection
+                supplementStep={supplementStep}
+                supplierLimit={supplierLimit}
+                supplierLimitUnit={supplierLimitUnit}
+                targetRemainder={targetRemainder}
+                minPkgUnit={minPkgUnit}
+                onSupplementStepChange={setSupplementStep}
+                onSupplierLimitChange={setSupplierLimit}
+                onSupplierLimitUnitChange={setSupplierLimitUnit}
+                onMinPkgUnitChange={setMinPkgUnit}
+                onTargetRemainderChange={setTargetRemainder}
+            />
+            <DescriptionSection
+                productId={product.id}
+                description={description}
+                descriptionRevision={descriptionRevision}
+                templateId={templateId}
+                onChange={setDescription}
+            />
 
             {footer}
 

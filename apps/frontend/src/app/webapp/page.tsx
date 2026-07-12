@@ -28,12 +28,12 @@ export default function WebAppPage() {
     }
 
     if (!isTelegramWebApp) {
-        return <LoadingScreen message="Откройте магазин из Telegram" />;
+        return <LoadingScreen message="Откройте приложение из Telegram" />;
     }
 
     if (loginFailed) {
         return <LoadingScreen message="Не удалось войти через Telegram" />;
     }
 
-    return <LoadingScreen message="Переход в магазин…" />;
+    return <LoadingScreen message="Переход в приложение…" />;
 }

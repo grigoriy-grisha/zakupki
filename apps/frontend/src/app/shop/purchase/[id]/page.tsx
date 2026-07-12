@@ -88,21 +88,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
             <PageHeader
                 title={purchase.tag}
                 description={
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span>{purchase.supplier}</span>
-                        <span className="text-fg-tertiary">·</span>
-                        <span>
-                            До{' '}
-                            {new Date(purchase.deadline).toLocaleDateString('ru-RU', {
-                                day: 'numeric',
-                                month: 'long',
-                            })}
-                        </span>
-                        <span className="text-fg-tertiary">·</span>
-                        <span className="inline-flex items-center gap-1.5">
-                            <Package className="size-3.5 text-fg-tertiary" />
-                            {fulfillmentLabel}
-                        </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <Package className="size-3.5 text-fg-tertiary" />
+                        {fulfillmentLabel}
                     </span>
                 }
                 badge={<div className="flex flex-wrap items-center gap-2">{activityBadge}</div>}

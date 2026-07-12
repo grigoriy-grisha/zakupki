@@ -64,7 +64,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                                 >
                                     <div className="flex min-w-0 items-center gap-1.5">
                                         <span className="truncate text-14-semibold">
-                                            {purchase.tag || purchase.supplier}
+                                            {purchase.tag}
                                         </span>
                                         {isSupplement && (
                                             <span className="shrink-0 rounded-md bg-warning-50 px-1 py-0.5 text-12-medium text-warning">

@@ -1,3 +1,5 @@
+import { paymentTotal } from '@/lib/payment-utils';
+
 export type ShopPaymentView = {
     id: number;
     amount: unknown;
@@ -17,12 +19,6 @@ export function paymentProofIsImage(payment: { proofObjectKey?: string | null })
     if (!payment.proofObjectKey) return false;
     const ext = payment.proofObjectKey.split('.').pop()?.toLowerCase();
     return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp' || ext === 'gif';
-}
-
-export function paymentTotalAmount(payment: ShopPaymentView): number {
-    const children = payment.children ?? [];
-    const childAmount = children[0] ? Number(children[0].amount) : 0;
-    return Number(payment.amount) + childAmount;
 }
 
 export const SHOP_PAYMENT_STATUS: Record<string, { label: string; className: string }> = {
@@ -51,7 +47,7 @@ export function summarizePurchasePayments(
     let hasPending = false;
 
     for (const p of payments) {
-        const total = paymentTotalAmount(p as ShopPaymentView);
+        const total = paymentTotal(p);
         if (p.status === 'CONFIRMED') {
             confirmedPaid += total;
         } else if (p.status === 'PENDING') {

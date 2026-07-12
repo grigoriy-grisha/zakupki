@@ -21,7 +21,6 @@ export interface GroupableOrderLine {
         purchase?: {
             id: number;
             tag: string;
-            supplier: string;
             fulfillmentStatus: string | null;
             status: string;
         };
@@ -32,7 +31,6 @@ export interface OrderPurchaseGroup {
     id: number;
     orderNumber: number | null;
     tag: string;
-    supplier: string;
     status: string;
     fulfillmentStatus: string | null;
     /** Сгруппированные строки — по одной на purchaseItemId (COLLECTION + supplement объединены) */
@@ -81,7 +79,6 @@ export function groupOrdersByPurchase(orders: GroupableOrderLine[]): OrderPurcha
                     id: pid,
                     orderNumber: order.purchaseOrderId ?? null,
                     tag: purchase.tag,
-                    supplier: purchase.supplier,
                     status: purchase.status,
                     fulfillmentStatus: purchase.fulfillmentStatus ?? null,
                 },

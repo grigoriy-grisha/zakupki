@@ -4,11 +4,9 @@ import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 export interface ShopPurchaseSummary {
     id: number;
-    supplier: string;
     tag: string;
     status: string;
     fulfillmentStatus?: PurchaseFulfillmentStatus | null;
-    deadline: string | Date;
 }
 
 export interface ShopMyPurchaseCardProps {
@@ -18,26 +16,18 @@ export interface ShopMyPurchaseCardProps {
 
 export interface AvailablePurchaseCardProps {
     purchase: ShopPurchaseSummary & {
-        minAmount: string | number;
         items: { orderLines: { amountDue: unknown }[] }[];
     };
 }
 
-// ── Product (внутри PurchaseItem) ─────────────────────────────
+// ── Product (внутри PurchaseItem) — только каталожные данные ──
 
 export interface ShopPurchaseItemProduct {
     id: number;
     name: string;
-    pricePerUnit: string | number;
     unitCode: string;
     multiplicity: string | number;
-    minPackageAmount: string | number | null;
-    minPackageUnit: string | null;
-    supplierPackageAmount?: string | number | null;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: string | number | null;
     photos: { id: number }[];
-    priceTiers?: unknown;
 }
 
 // ── PurchaseItem (для shop) ───────────────────────────────────
@@ -49,15 +39,32 @@ export interface ShopOrderLineInItem {
     status?: string | null;
 }
 
+/** Поставщик, привязанный к позиции (опц.) */
+export interface ShopSupplierRef {
+    id: number;
+    name: string;
+}
+
 export interface ShopPurchaseItem {
     id: number;
     purchaseItemId?: number;
+    // Per-purchase конкретика:
+    pricePerUnit?: string | number | null;
+    priceTiers?: unknown;
+    minPackageAmount?: string | number | null;
+    minPackageUnit?: string | null;
+    supplierPackageAmount?: string | number | null;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: string | number | null;
+    supplierPackageTiers?: unknown;
+    supplementStep?: string | number | null;
     priceOverride: string | null;
     targetRemainder: string | number | null;
-    supplementStep?: string | number | null;
     supplierLimit?: string | number | null;
     supplierLimitUnit?: string | null;
     minQty: string | number | null;
+    supplierId?: number | null;
+    supplier?: ShopSupplierRef | null;
     product: ShopPurchaseItemProduct;
     orderLines: ShopOrderLineInItem[];
 }

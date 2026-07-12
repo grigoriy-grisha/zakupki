@@ -5,10 +5,10 @@ import { FileText } from 'lucide-react';
 import {
     paymentHasProof,
     paymentProofIsImage,
-    paymentTotalAmount,
     SHOP_PAYMENT_STATUS,
     type ShopPaymentView,
 } from '@/components/shop/payment-proof';
+import { paymentTotal } from '@/lib/payment-utils';
 
 type MyPaymentProofDialogProps = {
     payment: ShopPaymentView;
@@ -24,7 +24,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
     };
     const hasProof = paymentHasProof(payment);
     const proofUrl = `/api/payment-proof/${payment.id}`;
-    const total = paymentTotalAmount(payment);
+    const total = paymentTotal(payment);
     const children = payment.children ?? [];
     const child = children[0];
     const childAmount = child ? Number(child.amount) : 0;

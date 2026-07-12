@@ -60,7 +60,7 @@ function MobilePurchaseTabs() {
                                 : 'bg-bg-soft text-fg-secondary',
                         )}
                     >
-                        {purchase.tag || purchase.supplier}
+                        {purchase.tag}
                     </Button>
                 );
             })}

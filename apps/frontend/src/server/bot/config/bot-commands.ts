@@ -3,7 +3,7 @@
  * Используется в ServiceContainer.init() или в start.ts.
  */
 export const BOT_COMMANDS = [
-    { command: 'start', description: 'Открыть магазин' },
+    { command: 'start', description: 'Открыть приложение' },
     { command: 'help', description: 'Справка' },
     { command: 'orders', description: 'Мои заказы' },
     { command: 'pay', description: 'Отправить чек об оплате' },

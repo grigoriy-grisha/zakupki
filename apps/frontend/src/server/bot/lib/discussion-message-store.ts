@@ -52,7 +52,7 @@ export class DiscussionMessageStore {
      * Polling с интервалом 200ms до `timeoutMs`. Возвращает null если не дождались —
      * caller шлёт комментарий без replyToMessageId (fallback в общую ленту).
      */
-    async waitFor(channelId: string, channelPostMessageId: number, timeoutMs = 5_000): Promise<number | null> {
+    async waitFor(channelId: string, channelPostMessageId: number, timeoutMs = 15_000): Promise<number | null> {
         const deadline = Date.now() + timeoutMs;
         while (Date.now() < deadline) {
             const id = await this.get(channelId, channelPostMessageId);

@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CircleCheck, CircleX, CreditCard, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { daysLeftUntil } from '@/lib/utils/date';
 import { PURCHASE_FULFILLMENT_LABELS, isPurchasePaymentOpen, type PurchaseFulfillmentStatus } from '@zakupki/types';
 import type { ShopMyPurchaseCardProps } from '../lib/types';
 import { PaymentActionButton } from './payment-action-button';
@@ -13,7 +12,6 @@ import { PaymentActionButton } from './payment-action-button';
 export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
     const isDone = purchase.status === 'DONE';
     const isPaid = payment.isFullyPaid;
-    const daysLeft = daysLeftUntil(purchase.deadline);
     const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
     const paymentOpen = isPurchasePaymentOpen(fulfillmentStatus);
@@ -44,18 +42,9 @@ export function PurchaseCard({ purchase, payment }: ShopMyPurchaseCardProps) {
                                 </Badge>
                             </div>
                             <h3 className="mt-2 text-lg font-semibold group-hover:text-primary transition-colors">
-                                {purchase.supplier}
+                                {purchase.tag}
                             </h3>
-                            <p className="text-sm text-muted-foreground">{purchase.tag}</p>
                         </div>
-                        {!isDone && (
-                            <div className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-                                <Clock className="h-3.5 w-3.5 text-warning" />
-                                <span className={daysLeft <= 3 ? 'font-medium text-warning' : ''}>
-                                    {daysLeft > 0 ? `${daysLeft} дн.` : 'Скоро'}
-                                </span>
-                            </div>
-                        )}
                     </div>
 
                     <div className="mt-4 rounded-lg border p-3 space-y-2">

@@ -50,21 +50,26 @@ export function toOrderLinesVO(lines: readonly OrderLineRowLike[] | null | undef
 /** Минимальная форма PurchaseItem, которую умеет конвертировать маппер. */
 export interface PurchaseItemRowLike {
     id: number;
+    // Per-purchase поля теперь на самом PurchaseItem (миграция Supplier):
+    pricePerUnit?: unknown;
     priceOverride?: unknown;
-    targetRemainder?: unknown;
+    priceTiers?: unknown;
+    supplierPackageAmount?: unknown;
+    supplierPackageUnit?: string | null;
+    supplierPackagePrice?: unknown;
+    supplierPackageTiers?: unknown;
+    minPackageAmount?: unknown;
+    minPackageUnit?: string | null;
     supplementStep?: unknown;
+    targetRemainder?: unknown;
     supplierLimit?: unknown;
     supplierLimitUnit?: string | null;
+    supplierId?: number | null;
+    supplier?: { id: number; name: string } | null;
+    // Product — только каталожные данные (unit, multiplicity):
     product: {
-        pricePerUnit: unknown;
-        priceTiers?: unknown;
-        supplierPackageAmount?: unknown;
-        supplierPackageUnit?: string | null;
-        supplierPackagePrice?: unknown;
         unitCode?: string;
         multiplicity?: unknown;
-        minPackageAmount?: unknown;
-        minPackageUnit?: string | null;
     };
     purchase: { fulfillmentStatus?: string | null };
 }
@@ -76,23 +81,26 @@ export interface PurchaseItemRowLike {
 export function mapToPurchaseItem(item: PurchaseItemRowLike, packDiscountPercent: number): PurchaseItem {
     return {
         purchaseItemId: item.id,
-        pricePerUnit: Number(item.product.pricePerUnit),
+        pricePerUnit: item.pricePerUnit != null ? Number(item.pricePerUnit) : 0,
         priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-        priceTiers: (parsePriceTiers(item.product.priceTiers) as PriceTier[]) ?? null,
+        priceTiers: (parsePriceTiers(item.priceTiers) as PriceTier[]) ?? null,
         packDiscountPercent,
         supplierPackageAmount:
-            item.product.supplierPackageAmount != null ? Number(item.product.supplierPackageAmount) : null,
-        supplierPackageUnit: item.product.supplierPackageUnit ?? null,
+            item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null,
+        supplierPackageUnit: item.supplierPackageUnit ?? null,
         supplierPackagePrice:
-            item.product.supplierPackagePrice != null ? Number(item.product.supplierPackagePrice) : null,
+            item.supplierPackagePrice != null ? Number(item.supplierPackagePrice) : null,
+        supplierPackageTiers: (parsePriceTiers(item.supplierPackageTiers) as PriceTier[]) ?? null,
         unitCode: item.product.unitCode ?? 'piece',
         multiplicity: Number(item.product.multiplicity ?? 1),
-        minPackageAmount: item.product.minPackageAmount != null ? Number(item.product.minPackageAmount) : null,
-        minPackageUnit: item.product.minPackageUnit ?? null,
+        minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
+        minPackageUnit: item.minPackageUnit ?? null,
         supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
         fulfillmentStatus: (item.purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
         supplierLimit: item.supplierLimit != null ? Number(item.supplierLimit) : null,
         supplierLimitUnit: item.supplierLimitUnit ?? null,
+        supplierId: item.supplierId ?? item.supplier?.id ?? null,
+        supplierName: item.supplier?.name ?? null,
     };
 }
