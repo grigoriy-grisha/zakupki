@@ -28,15 +28,6 @@ export interface CreateBotOptions {
     proxyUrl?: string;
 }
 
-export interface PostProduct {
-    name: string;
-    description: string | null;
-    pricePerUnit: unknown;
-    minPackageAmount: unknown;
-    minPackageUnit: string | null;
-    unitCode: string;
-}
-
 export type ChannelPostPhoto = {
     data: Buffer;
     mimeType: string;

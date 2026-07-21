@@ -112,6 +112,27 @@ export class TgClient {
         log.info({ chatId, replyToMessageId, len: text.length }, 'sendComment');
     }
 
+    // ── Личные сообщения (DM) ──────────────────────────────────────
+
+    /**
+     * Send a direct message to a user by their Telegram id. Used by the
+     * notification worker to push admin-action notifications. Throws on
+     * failure — the caller decides whether to mark the row as permanently
+     * undeliverable (blocked / deactivated) or let BullMQ retry.
+     */
+    async sendDm(
+        telegramId: string,
+        text: string,
+        replyMarkup?: InlineKeyboardMarkup,
+    ): Promise<{ messageId: number }> {
+        const msg = await this.api.sendMessage(telegramId, text.slice(0, TELEGRAM_MESSAGE_MAX), {
+            ...HTML_OPTS,
+            ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+        });
+        log.info({ telegramId, messageId: msg.message_id, len: text.length }, 'sendDm');
+        return { messageId: msg.message_id };
+    }
+
     // ── Реакции ─────────────────────────────────────────────────
 
     async setReaction(chatId: string, messageId: number, emoji: string): Promise<void> {

@@ -24,5 +24,6 @@ export function usePricingSettings() {
         isLoading,
         serverValue: data,
         beadPackPriceDiscountPercent: data?.beadPackPriceDiscountPercent ?? 3,
+        orgFeeDefaultPercent: data?.orgFeeDefaultPercent ?? 0,
     };
 }

@@ -104,6 +104,15 @@ export class UserRepository {
         return credential?.userId ?? null;
     }
 
+    /** Resolve a user's Telegram id for DM delivery. Returns null for VK-only / admin-created users. */
+    async findTelegramIdByUserId(userId: number): Promise<string | null> {
+        const credential = await dbClient.telegramCredential.findUnique({
+            where: { userId },
+            select: { telegramId: true },
+        });
+        return credential?.telegramId ?? null;
+    }
+
     async findUserIdByVkId(vkId: string) {
         const credential = await dbClient.vkCredential.findUnique({
             where: { vkId },

@@ -9,12 +9,10 @@ import {
     buildOrderQtyOptions,
     countFullSupplierPacks,
     effectiveQty,
-    getOrderQuantityStep,
-    getPackDiscountPricingInfo,
-    getSupplementStep,
+    getActiveStep,
     isSupplementPhase,
 } from '../index';
-import { computeAmountDueWithPackages, computePackagePrice } from './pricing';
+import { computeAmountDueWithPackages, computePackagePrice, computeUnitPriceRubNewModel } from './pricing';
 import { getStageConfig } from './stages';
 import { computePoolInfo } from './pool';
 import { computeSupplierLimitInfo } from './limit';
@@ -32,26 +30,24 @@ export function buildDisplayContext(
     const cfg = getStageConfig(item.fulfillmentStatus);
     const shortName = getUnitShortName(item.unitCode);
     const multiplicity = item.multiplicity || 1;
-    const price = item.priceOverride ?? item.pricePerUnit;
-    const packSize = item.supplierPackageAmount;
+    const packSize = item.packAmount;
 
     const total = mergeLines(filterUserLines(lines, userId).map((l) => l.toVO()));
     const currentQuantity = total.quantity;
     const currentPackageCount = total.packageCount;
     const frozenBase = total.baseQuantity;
 
-    const activeStep = getSupplementStep({
+    const activeStep = getActiveStep({
         fulfillmentStatus: item.fulfillmentStatus,
         supplementStep: item.supplementStep,
-        regularStep: getOrderQuantityStep(
-            buildOrderQtyOptions({
-                multiplicity,
-                minPackageAmount: item.minPackageAmount,
-                minPackageUnit: item.minPackageUnit ?? null,
-                purchaseItemMinQty: null,
-                unitShort: shortName,
-            }),
-        ),
+        options: buildOrderQtyOptions({
+            multiplicity,
+            minPackageAmount: item.minPackageAmount,
+            minPackageUnit: item.minPackageUnit ?? null,
+            purchaseItemMinQty: null,
+            unitShort: shortName,
+            unitCode: item.unitCode,
+        }),
     });
 
     const poolInfo = buildPoolInfo(item, lines, userId);
@@ -59,11 +55,12 @@ export function buildDisplayContext(
     const isSupplement = isSupplementPhase(item.fulfillmentStatus);
     const hasSupplierPackage = packSize != null && packSize > 0;
     const showPackageButtons = cfg.canAddPackages && hasSupplierPackage;
+    const unitPriceRub = computeUnitPriceRubNewModel(item);
+    const price = unitPriceRub ?? 0;
     const packagePrice = computePackagePrice(item);
     const packageTotal = currentPackageCount * packagePrice;
     const amountDue = computeAmountDueWithPackages(currentQuantity, currentPackageCount, item);
-    const packDiscountInfo = getPackDiscountPricingInfo(item, item.packDiscountPercent);
-    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
+    const fullPacks = packSize != null ? countFullSupplierPacks(currentQuantity, packSize) : 0;
 
     const maxAllowed =
         availablePool != null && Number.isFinite(availablePool)
@@ -103,7 +100,7 @@ export function buildDisplayContext(
 function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: number) {
     const cfg = getStageConfig(item.fulfillmentStatus);
     const userLines = filterUserLines(lines, userId);
-    const packSize = item.supplierPackageAmount;
+    const packSize = item.packAmount;
     // currentQty юзера: qty + пакеты как qty (effective). Это то, что лимит/пул
     // должны учитывать, иначе юзер с qty=70 + pkg=1 (30г) при limit=100 пускает
     // сверх лимита.

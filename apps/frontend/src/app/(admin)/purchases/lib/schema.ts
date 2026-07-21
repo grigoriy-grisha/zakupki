@@ -5,11 +5,3 @@ export const newPurchaseSchema = z.object({
 });
 
 export type NewPurchaseValues = z.infer<typeof newPurchaseSchema>;
-
-export const addPaymentSchema = z.object({
-    userId: z.coerce.number().positive('Введите ID пользователя'),
-    amount: z.coerce.number().positive('Введите сумму'),
-    note: z.string().optional(),
-});
-
-export type AddPaymentValues = z.infer<typeof addPaymentSchema>;

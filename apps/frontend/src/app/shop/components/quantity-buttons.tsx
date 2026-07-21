@@ -16,6 +16,8 @@ interface QuantityButtonsProps {
 
     // Пакеты
     showPackage: boolean;
+    /** Можно ли добавить упаковку (только supplierLimit, не пул). */
+    canAddPackage?: boolean;
     packSize: number | null;
     packageCount: number;
     onAddPackage: () => void;
@@ -34,6 +36,7 @@ export function QuantityButtons({
     onRemove,
     isPending,
     showPackage,
+    canAddPackage = true,
     packSize,
     packageCount,
     onAddPackage,
@@ -87,7 +90,7 @@ export function QuantityButtons({
                         variant="outline"
                         size={btnSize}
                         className={btnCls}
-                        disabled={isPending}
+                        disabled={isPending || !canAddPackage}
                         onClick={onAddPackage}
                     >
                         <Plus className={iconCls} />

@@ -27,15 +27,15 @@ interface PackingItemCardProps {
 export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
     const product = item.product;
 
-    // isWeight: проверяем и unitCode (через unit.shortName, если есть),
-    // и minPackageUnit — на случай, когда unit не заполнен, но minPackage — граммы.
-    const isWeight = isWeightUnit(product.unit?.shortName) || isWeightUnit(item.minPackageUnit ?? null);
+    // isWeight: проверяем и product.unitCode (плоское поле из Product),
+    // и minPackageUnit — на случай, когда нужно резать по упаковке в граммах.
+    const isWeight = isWeightUnit(product.unitCode) || isWeightUnit(item.minPackageUnit ?? null);
     const unitShort =
-        normalizeUnitShortName(product.unit?.shortName) ?? normalizeUnitShortName(item.minPackageUnit ?? null) ?? '';
+        normalizeUnitShortName(product.unitCode) ?? normalizeUnitShortName(item.minPackageUnit ?? null) ?? '';
 
-    // Размер упаковки поставщика — чтобы развернуть целые пачки в эффективное
+    // Размер упаковки — чтобы развернуть целые пачки в эффективное
     // количество (россыпь): 1 уп. 500 г = +500 г к весу пользователя.
-    const packSize = Number(item.supplierPackageAmount ?? 0);
+    const packSize = Number(item.packAmount ?? 0);
 
     // ACTIVE-строки с заказом (россыпь ИЛИ хотя бы одна упаковка).
     const activeOrders = useMemo(

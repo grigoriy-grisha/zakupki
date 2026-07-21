@@ -12,9 +12,9 @@ import { type PurchaseItemOption } from './admin-order-controls';
 import { ParticipantCommentStrip } from './participant-comment-strip';
 import { ParticipantOrdersPanel } from './participant-orders-panel';
 import { ParticipantPaymentsPanel } from './participant-payments-panel';
-import type { OrderLineRef, PaymentRef } from '../../lib/types';
+import type { PaymentRef } from '../../lib/types';
 import type { OrderComment } from '../../hooks/use-participants-data';
-import type { ProductLabelSource } from '../../../../products/lib';
+import type { ParticipantOrder } from './types';
 
 interface AdminParticipantRowProps {
     userId: number;
@@ -26,15 +26,7 @@ interface AdminParticipantRowProps {
     purchaseOrderId?: number | null;
     /** Комментарий к участнику (PurchaseOrder) — для индикатора и модалки. */
     orderComment: OrderComment | null;
-    orders: (OrderLineRef & {
-        purchaseItem?: {
-            product?: ProductLabelSource & {
-                unit?: { shortName: string };
-                minPackageAmount?: string | number | null;
-            };
-            supplier?: { id: number; name: string } | null;
-        };
-    })[];
+    orders: ParticipantOrder[];
     payments: PaymentRef[];
     /** Позиции закупки — для шага ± и пикера «добавить позицию». */
     purchaseItems: PurchaseItemOption[];
@@ -204,7 +196,13 @@ export function AdminParticipantRow({
                             }}
                             onSetDeleteLineTarget={setDeleteLineTarget}
                         />
-                        <ParticipantPaymentsPanel payments={payments} onPaymentClick={onPaymentClick} />
+                        <ParticipantPaymentsPanel
+                            userId={userId}
+                            purchaseId={purchaseId}
+                            payments={payments}
+                            due={due}
+                            onPaymentClick={onPaymentClick}
+                        />
                     </div>
                 </div>
             )}

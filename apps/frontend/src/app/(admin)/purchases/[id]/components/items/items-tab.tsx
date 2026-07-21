@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Send } from 'lucide-react';
-import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+import { getUnitByCode, resolveOrgFeePercent } from '@zakupki/types';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,15 +21,21 @@ import { cn } from '@/lib/utils';
 
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import {
-    getDiscountedPackPriceRub,
+    getCollectedQty,
     getPackPriceRub,
-    getPurchaseItemPrice1Gr,
-} from '../../lib/purchase-item-prices';
-import { computeFreeRemainder, isOnRemainder } from '../../lib/supplement-items';
-import { usePurchaseActions, useRemovePurchaseItem } from '../../hooks';
+    getPackPriceWithOrgFeeRub,
+    getRemainderQty,
+    getUnitPriceRub,
+} from '../../lib/items-table-pricing';
+import {
+    useInlineUpdateItem,
+    usePurchaseActions,
+    useRemovePurchaseItem,
+} from '../../hooks';
 import { usePurchaseDetail } from '../../hooks/use-purchase-detail';
 import type { PurchaseDetail } from '../../lib/types';
 import type { ProductLabelSource } from '../../../../products/lib';
+import { CurrencyRatesPanel } from './currency-rates-panel';
 import { ItemEditSheet } from './item-edit-sheet';
 import { ItemsTableRow, type ItemsTableRowDerived } from './items-table-row';
 import { ProductPickerDialog } from './product-picker-dialog';
@@ -43,9 +49,10 @@ interface ItemsTabProps {
 
 export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const { detail: purchase, isLoading } = usePurchaseDetail(purchaseId);
-    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
+    const { orgFeeDefaultPercent } = usePricingSettings();
     const removeItem = useRemovePurchaseItem(purchaseId);
     const { publishAll } = usePurchaseActions(purchaseId);
+    const inlineUpdate = useInlineUpdateItem(purchaseId);
 
     const [search, setSearch] = useState('');
     const [publishedFilter, setPublishedFilter] = useState<'all' | 'published' | 'unpublished'>('all');
@@ -65,8 +72,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
 
     const typedPurchase = purchase as PurchaseDetail;
     const items = typedPurchase.items;
-    const isInSupplementPhase = typedPurchase.fulfillmentStatus === 'REORDER';
-    const showRemainder = isInSupplementPhase || items.some(isOnRemainder);
+    const currencyRates = typedPurchase.currencyRates ?? [];
     const canAddItems = typedPurchase.status !== 'DONE';
     const isActive = typedPurchase.status === 'ACTIVE';
 
@@ -91,17 +97,21 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     }
 
     // Сообщаем родителю (PurchaseDetailPage) кол-во выбранных для публикации.
-    // Именно в effect'е, а не внутри updater'а setSelectedIds: React вычисляет
-    // новое состояние во время рендера ItemsTab, и апдейт родителя оттуда роняет
-    // "Cannot update a component while rendering a different component".
     useEffect(() => {
         onSelectionChange?.(selectedIds.size);
     }, [selectedIds, onSelectionChange]);
 
     const publishCount = selectedIds.size;
 
+    /** Тихий inline-коммит полей позиции (без toast на успех). */
+    function handleInlineCommit(purchaseItemId: number, patch: Record<string, unknown>) {
+        inlineUpdate.mutate({ purchaseItemId, product: patch });
+    }
+
     return (
         <div className="space-y-3">
+            <CurrencyRatesPanel purchaseId={purchaseId} rates={currencyRates} />
+
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-1 items-center gap-2">
                     <div className="relative max-w-xs flex-1">
@@ -153,36 +163,39 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                         </Button>
                     )}
                     {canAddItems && (
-                        <ProductPickerDialog
-                            purchaseId={purchaseId}
-                            purchaseTag={typedPurchase.tag}
-                        />
+                        <ProductPickerDialog purchaseId={purchaseId} purchaseTag={typedPurchase.tag} />
                     )}
                 </div>
             </div>
 
             <TooltipProvider delayDuration={150}>
                 <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
-                    <Table className="min-w-[960px]">
+                    <Table className="table-fixed min-w-[2200px]">
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 z-10 w-[300px] bg-bg-card">
+                                <TableHead className="sticky left-0 z-10 w-[200px] bg-bg-card">
                                     Товар
                                 </TableHead>
-                                <TableHead className="hidden w-[120px] lg:table-cell">Фасовка</TableHead>
-                                <TableHead className="w-[140px]">Цена</TableHead>
-                                <TableHead className="w-[64px] text-center">TG</TableHead>
-                                {showRemainder && (
-                                    <TableHead className="w-[120px] text-right">Остаток</TableHead>
-                                )}
-                                <TableHead className="sticky right-0 z-10 w-[64px] bg-bg-card" />
+                                <TableHead className="w-[140px] px-3 text-right">Вес упаковки</TableHead>
+                                <TableHead className="w-[160px] px-3 text-right">Цена за упаковку</TableHead>
+                                <TableHead className="w-[150px] px-3 text-right">Цена за упаковку ₽</TableHead>
+                                <TableHead className="w-[170px] px-3 text-right">Цена за упаковку + орг</TableHead>
+                                <TableHead className="w-[150px] px-3 text-right">Цена за 1 единицу ₽</TableHead>
+                                <TableHead className="w-[130px] px-3 text-right">Собрано</TableHead>
+                                <TableHead className="w-[120px] px-3 text-right">Заказано</TableHead>
+                                <TableHead className="w-[140px] px-3 text-right">Скомплектовано</TableHead>
+                                <TableHead className="w-[130px] px-3 text-right">Дозаказано</TableHead>
+                                <TableHead className="w-[120px] px-3 text-right">Остаток</TableHead>
+                                <TableHead className="w-[120px] px-3">Комментарий</TableHead>
+                                <TableHead className="w-[64px] px-2 text-center">TG</TableHead>
+                                <TableHead className="sticky right-0 z-10 w-[56px] bg-bg-card" />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filtered.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={showRemainder ? 6 : 5}
+                                        colSpan={14}
                                         className="h-24 text-center text-14-regular text-fg-tertiary"
                                     >
                                         {search ? 'Ничего не найдено' : 'Нет товаров в закупке'}
@@ -191,29 +204,42 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                             ) : (
                                 filtered.map((item) => {
                                     const published = !!item.tgMessageId;
-                                    const derived: ItemsTableRowDerived = {
-                                        shortName: item.product.unit?.shortName ?? '',
-                                        published,
-                                        price1: getPurchaseItemPrice1Gr(item),
-                                        pricePack: getPackPriceRub(item),
-                                        pricePackDisc: getDiscountedPackPriceRub(item, packDiscountPercent),
-                                        freeRemainder: typedPurchase.fulfillmentStatus
-                                            ? computeFreeRemainder(
-                                                  item,
-                                                  typedPurchase.fulfillmentStatus as PurchaseFulfillmentStatus,
-                                              )
+                                    const orgFeePercent = resolveOrgFeePercent(
+                                        item.orgFeePercentOverride != null
+                                            ? Number(item.orgFeePercentOverride)
                                             : null,
+                                        orgFeeDefaultPercent,
+                                    );
+                                    const derived: ItemsTableRowDerived = {
+                                        shortName: getUnitByCode(item.product.unitCode)?.shortName ?? '',
+                                        published,
+                                        packPriceRub: getPackPriceRub(item, currencyRates),
+                                        packPriceWithOrgFeeRub: getPackPriceWithOrgFeeRub(
+                                            item,
+                                            currencyRates,
+                                            orgFeeDefaultPercent,
+                                        ),
+                                        unitPriceRub: getUnitPriceRub(
+                                            item,
+                                            currencyRates,
+                                            orgFeeDefaultPercent,
+                                        ),
+                                        collectedQty: getCollectedQty(item),
+                                        remainderQty: getRemainderQty(
+                                            item,
+                                            typedPurchase.fulfillmentStatus,
+                                        ),
+                                        orgFeePercent,
                                         isDone: typedPurchase.status === 'DONE',
-                                        isActive: typedPurchase.status === 'ACTIVE',
-                                        showRemainder,
+                                        isActive,
                                     };
-                                    return (
-                                        <ItemsTableRow
-                                            key={item.id}
-                                            item={item}
-                                            derived={derived}
-                                            packDiscountPercent={packDiscountPercent}
-                                            selected={selectedIds.has(item.id)}
+                                        return (
+                                            <ItemsTableRow
+                                                key={item.id}
+                                                item={item}
+                                                derived={derived}
+                                                currencyRates={currencyRates}
+                                                selected={selectedIds.has(item.id)}
                                             onToggleSelect={toggleSelect}
                                             onEdit={setEditItemId}
                                             onPublish={(id) => {
@@ -225,6 +251,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                                                 setPublishOpen(true);
                                             }}
                                             onDelete={setDeleteTarget}
+                                            onCommit={(patch) => handleInlineCommit(item.id, patch)}
                                         />
                                     );
                                 })

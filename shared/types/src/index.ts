@@ -66,6 +66,7 @@ export {
     computeAmountDue,
     computeAmountDueWithPackages,
     computePackagePrice,
+    computeUnitPriceRubNewModel,
     mergeLines,
     toOrderLineVO,
     toOrderLinesVO,
@@ -80,6 +81,7 @@ export {
     sumEffectiveQty,
     userEffectiveQty,
     totalOrderedQuantity,
+    getUnitShortName,
 } from './order';
 export type {
     StageConfig,
@@ -101,41 +103,36 @@ export type {
     OrderDisplayContext,
     OrderLineRowLike,
     PurchaseItemRowLike,
+    PurchaseItemPricingContext,
     SupplierLimitInfo,
     StageStrategyShim,
 } from './order';
 
 // Pricing
 export {
-    calculateOrderAmount,
-    formatMinPackageHint,
-    formatMinPackageOrderHint,
+    formatActiveStepHint,
     parsePriceTiers,
-    type CalculateOrderAmountOptions,
+    computePackPriceRub,
+    computePackPriceWithOrgFee,
+    computeUnitPriceRub,
+    computeUnitPriceRubFromItem,
+    computeAmountDueNewModel,
+    resolveOrgFeePercent,
+    resolveCurrencyRate,
     type PriceTier,
     type OrderQuantityOptions,
+    type CurrencyRate,
 } from './pricing';
 
-export {
-    buildOrderQtyOptions,
-    getOrderQuantityStep,
-    getMinOrderQuantity,
-    getSupplementStep,
-    snapOrderQuantity,
-    getOrderQuantityValidationError,
-    isValidOrderQuantity,
-} from './pricing';
+export { buildOrderQtyOptions, getOrderQuantityStep, getSupplementStep, getActiveStep } from './pricing';
 
 // Pack discount
 export {
     countFullSupplierPacks,
     getPackDiscountPricingInfo,
-    getSupplierPackSize,
-    isGramSupplierPackProduct,
     formatPackDiscountBanner,
     formatPackDiscountHint,
     type PackDiscountPricingInfo,
-    type SupplierPackProductFields,
 } from './pack-discount';
 
 // Supplement formatting (stub implementations)
@@ -168,7 +165,6 @@ export {
     parseSettingValue,
     serializeSettingValue,
     serializeDefault,
-    computeDiscountedPackPrice,
     type SettingKey,
     type SettingValue,
     type SettingDef,
@@ -209,3 +205,27 @@ export {
     isPaymentPlusFreezePoint,
     isUnfreezePoint,
 } from './purchase-fulfillment';
+
+// Notifications
+export {
+    COALESCABLE_NOTIFICATION_TYPES,
+    COALESCE_DELIVERY_DELAY_MS,
+    COALESCE_WINDOW_MS,
+    NOTIFICATION_TYPES,
+    NOTIFIABLE_FULFILLMENT_STAGES,
+    renderNotificationTitle,
+    renderNotificationBody,
+    renderNotificationTelegramBody,
+    renderNotificationUrl,
+    getNotificationVisual,
+    getNotificationFields,
+    type CoalesceCandidate,
+    type NotificationType,
+    type NotificationPayloads,
+    type NotificationPayload,
+    type NotifyInput,
+    type NotificationIconKind,
+    type NotificationTone,
+    type NotificationVisual,
+    type NotificationField,
+} from './notifications';

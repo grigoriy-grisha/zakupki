@@ -6,9 +6,14 @@ import type { BotConfig } from '../config/bot-config';
 import { TgClient } from '../lib/tg-client';
 import { ChannelDiscussion } from '../lib/channel-discussion';
 import { DiscussionMessageStore } from '../lib/discussion-message-store';
+import { NotificationRepository } from '../../domain/notification.repository';
+import { UserRepository } from '../../domain/user.repository';
+import { SettingsService } from '../../services/settings/settings.service';
+import { PricingSettingsService } from '../../services/settings/pricing-settings';
 import { PurchaseItemResolver } from '../services/purchase-item-resolver';
 import { OrderCollectionService } from '../services/order-collection.service';
 import { TgPostWorker } from '../services/tg-post-worker';
+import { UserDmWorker } from '../services/user-dm-worker';
 import { BotUserService } from '../services/bot/bot-user.service';
 import { BotOrderService } from '../services/bot/bot-order.service';
 import { BotPaymentService } from '../services/bot/bot-payment.service';
@@ -37,10 +42,12 @@ export class ServiceContainer {
     private _tg: TgClient | null = null;
     private _discussion: ChannelDiscussion | null = null;
     private _worker: TgPostWorker | null = null;
+    private _dmWorker: UserDmWorker | null = null;
 
     // Независимые от Api сервисы
     readonly discussionStore: DiscussionMessageStore;
     readonly purchaseItemResolver: PurchaseItemResolver;
+    readonly pricingSettings: PricingSettingsService;
     readonly orderCollection: OrderCollectionService;
     readonly userService: BotUserService;
     readonly orderService: BotOrderService;
@@ -55,6 +62,7 @@ export class ServiceContainer {
 
         this.discussionStore = new DiscussionMessageStore(this.redis);
         this.purchaseItemResolver = new PurchaseItemResolver(this.redis);
+        this.pricingSettings = new PricingSettingsService(new SettingsService());
         this.orderCollection = new OrderCollectionService(this.purchaseItemResolver);
 
         // Bot-internal facades (Phase E). В будущем — копия логики, сейчас — делегаты
@@ -82,6 +90,7 @@ export class ServiceContainer {
         this._tg = new TgClient(api, this.cfg);
         this._discussion = new ChannelDiscussion(this.cfg.telegram.channelId);
         this._worker = new TgPostWorker(this._tg, api, this.productRenderer, this.db);
+        this._dmWorker = new UserDmWorker(this._tg, new UserRepository(), new NotificationRepository());
     }
 
     /**
@@ -94,6 +103,9 @@ export class ServiceContainer {
         }
         await this._discussion.init(this._tg.api);
         this._worker.setupWorker();
+        // The DM worker degrades gracefully when no bot token is configured:
+        // jobs will simply retry until processed. Only skip if initBotApi wasn't called.
+        if (this._dmWorker) this._dmWorker.setupWorker();
     }
 
     get tg(): TgClient {

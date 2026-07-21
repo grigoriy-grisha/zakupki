@@ -1,17 +1,18 @@
 import type { OrderQuantityOptions } from './types';
-export type { PriceTier, CalculateOrderAmountOptions, OrderQuantityOptions } from './types';
+export type { PriceTier, OrderQuantityOptions } from './types';
+export type { CurrencyRate } from './currency-pricing';
 export { parsePriceTiers } from './parsing';
-export { calculateOrderAmount, roundMoney } from './calculation';
 export {
-    getOrderQuantityStep,
-    getMinOrderQuantity,
-    getSupplementStep,
-    snapOrderQuantity,
-    roundUpToStep,
-    isMultipleOf,
-} from './quantity-rules';
-export { getOrderQuantityValidationError, isValidOrderQuantity } from './validation';
-export { formatMinPackageHint, formatMinPackageOrderHint } from './formatting';
+    computePackPriceRub,
+    computePackPriceWithOrgFee,
+    computeUnitPriceRub,
+    computeUnitPriceRubFromItem,
+    computeAmountDueNewModel,
+    resolveOrgFeePercent,
+    resolveCurrencyRate,
+} from './currency-pricing';
+export { getOrderQuantityStep, getSupplementStep, getActiveStep } from './quantity-rules';
+export { formatActiveStepHint } from './formatting';
 
 /**
  * Строит OrderQuantityOptions из полей товара.
@@ -23,6 +24,7 @@ export function buildOrderQtyOptions(input: {
     minPackageUnit: string | null;
     purchaseItemMinQty?: number | null;
     unitShort?: string | null;
+    unitCode?: string | null;
 }): OrderQuantityOptions {
     return {
         multiplicity: input.multiplicity,
@@ -30,5 +32,6 @@ export function buildOrderQtyOptions(input: {
         minPackageUnit: input.minPackageUnit,
         purchaseItemMinQty: input.purchaseItemMinQty ?? null,
         unitShort: input.unitShort ?? null,
+        unitCode: input.unitCode ?? null,
     };
 }

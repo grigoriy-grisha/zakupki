@@ -1,16 +1,14 @@
 'use client';
 
 import { Percent } from 'lucide-react';
-import { formatPackDiscountHint, getPackDiscountPricingInfo, type SupplierPackProductFields } from '@zakupki/types';
+import { formatPackDiscountHint, type PackDiscountPricingInfo } from '@zakupki/types';
 
 type PackDiscountHintProps = {
-    product: SupplierPackProductFields;
-    discountPercent: number;
+    info: PackDiscountPricingInfo | null;
     className?: string;
 };
 
-export function PackDiscountHint({ product, discountPercent, className }: PackDiscountHintProps) {
-    const info = getPackDiscountPricingInfo(product, discountPercent);
+export function PackDiscountHint({ info, className }: PackDiscountHintProps) {
     if (!info) return null;
 
     return (

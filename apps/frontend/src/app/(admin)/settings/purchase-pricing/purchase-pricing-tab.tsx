@@ -12,7 +12,8 @@ import { Loader2 } from 'lucide-react';
 export function PurchasePricingTab() {
     const { isLoading, serverValue } = usePricingSettings();
     const utils = trpc.useUtils();
-    const updateDiscount = trpc.settings.updateBeadPackDiscount.useMutation({
+
+    const updateOrgFee = trpc.settings.updateOrgFee.useMutation({
         onSuccess: async () => {
             await utils.settings.getPricing.invalidate();
             toast.success('Настройки сохранены');
@@ -20,21 +21,21 @@ export function PurchasePricingTab() {
         onError: (error) => toast.error(error.message),
     });
 
-    const [percent, setPercent] = useState('3');
+    const [orgFee, setOrgFee] = useState('0');
 
     useEffect(() => {
-        if (serverValue?.beadPackPriceDiscountPercent != null) {
-            setPercent(String(serverValue.beadPackPriceDiscountPercent));
+        if (serverValue?.orgFeeDefaultPercent != null) {
+            setOrgFee(String(serverValue.orgFeeDefaultPercent));
         }
-    }, [serverValue?.beadPackPriceDiscountPercent]);
+    }, [serverValue?.orgFeeDefaultPercent]);
 
-    const handleSave = () => {
-        const value = Number(percent.replace(',', '.'));
+    const handleSaveOrgFee = () => {
+        const value = Number(orgFee.replace(',', '.'));
         if (!Number.isFinite(value)) {
             toast.error('Введите число');
             return;
         }
-        updateDiscount.mutate({ percent: value });
+        updateOrgFee.mutate({ percent: value });
     };
 
     if (isLoading) {
@@ -52,24 +53,25 @@ export function PurchasePricingTab() {
 
             <div className="space-y-4 rounded-lg border p-4">
                 <div className="space-y-2">
-                    <Label htmlFor="bead-pack-discount">Скидка за цену за пачку бисера, %</Label>
+                    <Label htmlFor="org-fee-percent">Орг. сбор по умолчанию, %</Label>
                     <p className="text-sm text-muted-foreground">
-                        От цены за пачку у поставщика вычитается этот процент. Колонка «Цена за пачку со скидкой» = цена
-                        за пачку − указанный %.
+                        Применяется ко всем товарам закупки, если у товара не задан собственный процент.
+                        У разных поставщиков орг. сбор может отличаться из-за логистики — переопределите
+                        его в колонке «Цена за уп. + орг. сбор» таблицы товаров.
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                         <Input
-                            id="bead-pack-discount"
+                            id="org-fee-percent"
                             type="number"
                             min={0}
                             max={100}
                             step={0.1}
                             className="w-28"
-                            value={percent}
-                            onChange={(event) => setPercent(event.target.value)}
+                            value={orgFee}
+                            onChange={(event) => setOrgFee(event.target.value)}
                         />
-                        <Button onClick={handleSave} disabled={updateDiscount.isPending}>
-                            {updateDiscount.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button onClick={handleSaveOrgFee} disabled={updateOrgFee.isPending}>
+                            {updateOrgFee.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Сохранить
                         </Button>
                     </div>

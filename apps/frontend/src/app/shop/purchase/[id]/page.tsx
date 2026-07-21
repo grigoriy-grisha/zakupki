@@ -2,7 +2,12 @@
 
 import { use, useMemo } from 'react';
 import { Package } from 'lucide-react';
-import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus, isSupplementPhase } from '@zakupki/types';
+import {
+    PURCHASE_FULFILLMENT_LABELS,
+    type CurrencyRate,
+    type PurchaseFulfillmentStatus,
+    isSupplementPhase,
+} from '@zakupki/types';
 
 import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
@@ -24,7 +29,17 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const paymentDetail = usePurchasePaymentDetail(id);
-    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
+    const { beadPackPriceDiscountPercent: packDiscountPercent, orgFeeDefaultPercent } = usePricingSettings();
+
+    // Currency rates for the new pricing model (валюта × курс × оргсбор).
+    const currencyRates = useMemo<CurrencyRate[]>(
+        () =>
+            (purchase?.currencyRates ?? []).map((r) => ({
+                currencyId: r.currencyId,
+                rateToRub: Number(r.rateToRub),
+            })),
+        [purchase?.currencyRates],
+    );
 
     const items = (purchase?.items ?? []) as ProductGridItem[];
     const {
@@ -116,6 +131,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 aggregatedByItem={aggregatedByItem}
                 purchaseId={id}
                 packDiscountPercent={packDiscountPercent}
+                orgFeeDefaultPercent={orgFeeDefaultPercent}
+                currencyRates={currencyRates}
                 isSupplement={isSupplement}
                 canAddPackage={canAddPackage}
                 fulfillmentStatus={fulfillmentStatus}

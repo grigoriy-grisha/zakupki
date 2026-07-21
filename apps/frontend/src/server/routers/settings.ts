@@ -22,6 +22,20 @@ export const settingsRouter = router({
             return { beadPackPriceDiscountPercent: input.percent };
         }),
 
+    updateOrgFee: adminProcedure
+        .input(
+            z.object({
+                percent: z
+                    .number()
+                    .min(0, 'Орг. сбор не может быть отрицательным')
+                    .max(100, 'Орг. сбор не может быть больше 100%'),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            await ctx.services.pricingSettings.setOrgFeeDefaultPercent(input.percent);
+            return { orgFeeDefaultPercent: input.percent };
+        }),
+
     // ── Generic API для будущих настроек ───────────────────────────
     get: protectedProcedure
         .input(z.object({ key: settingKeySchema }))

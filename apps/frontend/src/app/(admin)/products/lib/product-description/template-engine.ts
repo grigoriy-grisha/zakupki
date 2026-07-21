@@ -1,5 +1,3 @@
-import { computeDiscountedPackPrice, isGramSupplierPackProduct } from '@zakupki/types';
-
 import { stripAttributesFromName } from '../product-label';
 import { isPositive, formatNumber, formatRubles } from '@/lib/utils/format';
 import { escapeHtml } from '@/lib/utils/html';
@@ -40,33 +38,6 @@ export function linesInline(lines: string[]): string {
     return lines.map(escapeHtml).join('<br>');
 }
 
-export function formatSupplierPackageLines(fields: DescriptionFields): string[] {
-    const tiers =
-        fields.supplierPackageTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
-    if (tiers.length > 0) {
-        return tiers.map((tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`);
-    }
-    if (
-        isPositive(fields.supplierPackageAmount) &&
-        fields.supplierPackageUnit &&
-        isPositive(fields.supplierPackagePrice)
-    ) {
-        return [
-            `${formatNumber(fields.supplierPackageAmount)} ${fields.supplierPackageUnit} - ${formatRubles(fields.supplierPackagePrice)} руб`,
-        ];
-    }
-    return [];
-}
-
-function formatDiscountedPackLine(fields: DescriptionFields): string {
-    if (!isGramSupplierPackProduct(fields)) return '';
-    const packPrice = Number(fields.supplierPackagePrice);
-    const discount = fields.packDiscountPercent ?? 3;
-    if (!Number.isFinite(discount) || discount < 0 || discount > 100) return '';
-    const discounted = computeDiscountedPackPrice(packPrice, discount);
-    return `${formatNumber(fields.supplierPackageAmount!)} ${fields.supplierPackageUnit} - ${formatRubles(discounted)} руб`;
-}
-
 /** Подсказки для редактора шаблонов постов (вставляйте как {{ключ}}). */
 export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'название' },
@@ -76,9 +47,8 @@ export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'атрибуты' },
     { key: 'характеристики' },
     { key: 'мин фасовка' },
-    { key: 'цены' },
-    { key: 'фасовка поставщика' },
-    { key: 'цена со скидкой за пачку' },
+    { key: 'цена за пачку' },
+    { key: 'вес упаковки' },
     { key: 'свободно' },
     { key: 'тег' },
     { key: 'поставщик' },
@@ -169,9 +139,6 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
 
     const chars = fields.productCharacteristics?.filter((c) => c.name && c.value) ?? [];
 
-    const validTiers =
-        fields.priceTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
-
     const tagRaw = fields.purchaseTag?.trim() ?? '';
     const tag = tagRaw ? (tagRaw.startsWith('#') ? tagRaw : `#${tagRaw}`) : '';
     const brandName = (fields.brandName ?? '').trim();
@@ -194,22 +161,14 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
             isPositive(fields.minPackageAmount) && fields.minPackageUnit
                 ? escapeHtml(`${formatNumber(fields.minPackageAmount)} ${fields.minPackageUnit}`)
                 : '',
-        цены:
-            validTiers.length > 0
-                ? linesInline(
-                      validTiers.map(
-                          (tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatRubles(tier.price!)} руб`,
-                      ),
-                  )
+        цена_за_пачку:
+            isPositive(fields.pricePerPackCurrency) && fields.currencyName
+                ? escapeHtml(`${formatNumber(fields.pricePerPackCurrency!)} ${fields.currencyName}`)
                 : '',
-        фасовка_поставщика: (() => {
-            const lines = formatSupplierPackageLines(fields);
-            return lines.length > 0 ? linesInline(lines) : '';
-        })(),
-        цена_со_скидкой_за_пачку: (() => {
-            const line = formatDiscountedPackLine(fields);
-            return line ? escapeHtml(line) : '';
-        })(),
+        вес_упаковки:
+            isPositive(fields.packAmount) && fields.packUnit
+                ? escapeHtml(`${formatNumber(fields.packAmount!)} ${fields.packUnit}`)
+                : '',
         свободно: formatStockLine(fields) ? escapeHtml(formatStockLine(fields) as string) : '',
         тег: tag ? escapeHtml(tag) : '',
         поставщик: fields.supplierName ? escapeHtml(fields.supplierName) : '',

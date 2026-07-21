@@ -1,62 +1,43 @@
 import type { OrderQuantityOptions } from './types';
-import { isPositive, positiveOrNull } from '../utils';
+import { positiveOrNull } from '../utils';
 
 /**
- * Округление вверх до шага
+ * Дефолтный шаг по единице учёта, когда ни minPackageAmount, ни multiplicity
+ * не заданы. Граммы по умолчанию шагают по 5 (бизнес-конвенция: бисер/фурнитура
+ * в граммах обычно фасуется кратно 5). Для штучных единиц (piece, tube) — 1.
+ *
+ * Добавляйте сюда дефолты для новых единиц по мере необходимости.
  */
-export function roundUpToStep(value: number, step: number): number {
-    if (step <= 0) return value;
-    return Math.ceil((value - 1e-9) / step) * step;
-}
+const DEFAULT_STEP_BY_UNIT: Record<string, number> = {
+    gram: 5,
+};
 
 /**
- * Проверка, кратно ли количество шагу
- */
-export function isMultipleOf(quantity: number, step: number): boolean {
-    const remainder = quantity % step;
-    return remainder < 1e-6 || Math.abs(remainder - step) < 1e-6;
-}
-
-/**
- * Шаг заказа: мин. фасовка товара, иначе кратность единицы измерения.
+ * Шаг заказа: мин. фасовка товара → иначе кратность (если > 1) → иначе дефолт
+ * по единице учёта (gram → 5) → иначе 1.
+ *
+ * multiplicity === 1 трактуется как «не задано»: кратность 1 не накладывает
+ * ограничений (любое число кратно 1), а Product.multiplicity имеет дефолт 1
+ * в схеме — поэтому без этой проверки gram-дефолт никогда бы не срабатывал.
  */
 export function getOrderQuantityStep(options: OrderQuantityOptions): number {
-    return positiveOrNull(options.minPackageAmount) ?? positiveOrNull(options.multiplicity) ?? 1;
+    return (
+        positiveOrNull(options.minPackageAmount) ??
+        multiplicityStepOrNull(options.multiplicity) ??
+        defaultStepForUnit(options.unitCode)
+    );
 }
 
-/**
- * Минимальное количество заказа: мин. фасовка товара, иначе minQty позиции, иначе шаг.
- */
-export function getMinOrderQuantity(options: OrderQuantityOptions): number {
-    const step = getOrderQuantityStep(options);
-    const base = positiveOrNull(options.minPackageAmount) ?? positiveOrNull(options.purchaseItemMinQty) ?? step;
-    return roundUpToStep(base, step);
+/** multiplicity > 1 — реальная кратность шага; 1 или меньше — игнорируем. */
+function multiplicityStepOrNull(value: number | null | undefined): number | null {
+    const n = positiveOrNull(value);
+    return n != null && n > 1 ? n : null;
 }
 
-/**
- * Приводит количество к допустимому: не ниже мин., не выше max, кратно шагу.
- */
-export function snapOrderQuantity(
-    quantity: number,
-    options: OrderQuantityOptions,
-    bounds?: { max?: number | null },
-): number {
-    const step = getOrderQuantityStep(options);
-    const min = getMinOrderQuantity(options);
-    let qty = Math.max(min, quantity);
-
-    if (bounds?.max != null) {
-        qty = Math.min(qty, bounds.max);
-        if (!isMultipleOf(qty, step)) {
-            qty = Math.floor((qty + 1e-9) / step) * step;
-        }
-        return qty < min ? 0 : qty;
-    }
-
-    if (!isMultipleOf(qty, step)) {
-        qty = roundUpToStep(qty, step);
-    }
-    return qty;
+/** Дефолтный шаг для единицы учёта (по unitCode). 1 если единица неизвестна. */
+function defaultStepForUnit(unitCode: string | null | undefined): number {
+    if (!unitCode) return 1;
+    return DEFAULT_STEP_BY_UNIT[unitCode] ?? 1;
 }
 
 /**
@@ -71,4 +52,22 @@ export function getSupplementStep(input: {
 }): number {
     if (input.fulfillmentStatus === 'COLLECTION') return input.regularStep;
     return input.supplementStep ?? input.regularStep;
+}
+
+/**
+ * Полный шаг на текущем этапе: считает regularStep из options через
+ * getOrderQuantityStep и применяет getSupplementStep. Единая точка для UI/бота/
+ * домена — устраняет дублирование паттерна «regularStep → supplementStep».
+ */
+export function getActiveStep(input: {
+    fulfillmentStatus: string;
+    options: OrderQuantityOptions;
+    supplementStep: number | null;
+}): number {
+    const regularStep = getOrderQuantityStep(input.options);
+    return getSupplementStep({
+        fulfillmentStatus: input.fulfillmentStatus,
+        supplementStep: input.supplementStep,
+        regularStep,
+    });
 }

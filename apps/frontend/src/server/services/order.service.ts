@@ -1,11 +1,15 @@
-import { canCancelOrder, NotFoundError, OrderBook, ValidationError } from '@zakupki/types';
+import { canCancelOrder, NotFoundError, OrderBook, userEffectiveQty, ValidationError } from '@zakupki/types';
 import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
+import { EventBus } from '@zakupki/queue';
+import { createLogger } from '@zakupki/logger';
 
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
-import { EventBus } from '@zakupki/queue';
 import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
+import type { NotificationService } from '../services/notification.service';
+
+const log = createLogger('order-service');
 
 /**
  * Сервис заказов — Application-слой.
@@ -20,6 +24,12 @@ import type { PricingSettingsService } from '../services/settings/pricing-settin
  * Каждая мутация, меняющая сумму активных orderLines, эмитит
  * `eventBus.emitPurchaseItemChanged` — это пушит обновление поста в канале
  * (worker пересобирает «Свободно к заказу» из актуальной БД).
+ *
+ * Admin-мутации (adminAdd/adminDecrease/adminSetQuantity/delete/
+ * removeAllByUserFromPurchase) дополнительно пушат перечисленное выше
+ * пользователю через NotificationService. Ошибки notify логируются и не
+ * пробрасываются — статус основной мутации не должен откатываться из-за
+ * сбоя доставки уведомления.
  */
 export class OrderService {
     constructor(
@@ -27,6 +37,7 @@ export class OrderService {
         private purchaseRepo: PurchaseRepository,
         private pricingSettings: PricingSettingsService,
         private eventBus: EventBus,
+        private notification: NotificationService,
     ) {}
 
     // ── Public API: мутации ─────────────────────────────────────────
@@ -66,10 +77,12 @@ export class OrderService {
      */
     async adminAdd(purchaseItemId: number, userId: number, amount: number): Promise<void> {
         const { item, lines } = await this.loadItem(purchaseItemId);
+        const prevQty = userEffectiveQty(lines, userId, item.packAmount);
         const result = OrderBook.create(item, lines).adminAdd(userId, amount);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        await this.notifyOrderQtyChanged(purchaseItemId, userId, item.packAmount, prevQty, result.book.activeLines);
     }
 
     /**
@@ -78,10 +91,24 @@ export class OrderService {
      */
     async adminDecrease(purchaseItemId: number, userId: number, amount: number): Promise<void> {
         const { item, lines } = await this.loadItem(purchaseItemId);
+        const prevQty = userEffectiveQty(lines, userId, item.packAmount);
         const result = OrderBook.create(item, lines).adminDecrease(userId, amount);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        // If all of the user's lines on this item got deleted, treat as line deleted.
+        const remaining = result.book.activeLines.filter((l) => l.userId === userId);
+        if (remaining.length === 0) {
+            await this.notifyOrderLineDeleted(purchaseItemId, userId);
+        } else {
+            await this.notifyOrderQtyChanged(
+                purchaseItemId,
+                userId,
+                item.packAmount,
+                prevQty,
+                result.book.activeLines,
+            );
+        }
     }
 
     /**
@@ -90,10 +117,22 @@ export class OrderService {
      */
     async adminSetQuantity(purchaseItemId: number, userId: number, qty: number): Promise<void> {
         const { item, lines } = await this.loadItem(purchaseItemId);
+        const prevQty = userEffectiveQty(lines, userId, item.packAmount);
         const result = OrderBook.create(item, lines).adminSetQuantity(userId, qty);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        if (qty === 0) {
+            await this.notifyOrderLineDeleted(purchaseItemId, userId);
+        } else {
+            await this.notifyOrderQtyChanged(
+                purchaseItemId,
+                userId,
+                item.packAmount,
+                prevQty,
+                result.book.activeLines,
+            );
+        }
     }
 
     /**
@@ -145,7 +184,10 @@ export class OrderService {
     async delete(id: number) {
         const line = await this.repo.findById(id);
         const result = await this.repo.delete(id);
-        if (line) await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
+        if (line) {
+            await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
+            await this.notifyOrderLineDeleted(line.purchaseItemId, line.userId);
+        }
         return result;
     }
 
@@ -153,6 +195,7 @@ export class OrderService {
         const itemIds = await this.repo.findPurchaseItemIdsByUserAndPurchase(userId, purchaseId);
         const result = await this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
         await Promise.all(itemIds.map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+        await this.notifyOrderCleared(userId, purchaseId);
         return result;
     }
 
@@ -210,6 +253,83 @@ export class OrderService {
         };
     }
 
+    // ── Внутренние: уведомления об админ-мутациях (best-effort) ──────
+
+    /**
+     * Notify that the user's quantity on an item changed. Uses the in-memory
+     * `activeLines` snapshot from the just-applied OrderBook to compute the new
+     * total without an extra DB hit. `packSize` (the item's pack weight in base
+     * units) is required so packages are correctly counted into the total —
+     * passing null would silently drop package grams from the number shown.
+     *
+     * `prevQty` is computed before the mutation, `newQty` after — both are
+     * surfaced so the UI can show Было/Стало instead of only the result.
+     */
+    private async notifyOrderQtyChanged(
+        purchaseItemId: number,
+        userId: number,
+        packSize: number | null,
+        prevQty: number,
+        activeLines: readonly OrderLine[],
+    ): Promise<void> {
+        try {
+            const label = await this.purchaseRepo.findItemLabel(purchaseItemId);
+            if (!label) return;
+            const newQty = userEffectiveQty(activeLines as OrderLine[], userId, packSize);
+            await this.notification.notify({
+                userId,
+                type: 'ORDER_QTY_CHANGED',
+                payload: {
+                    purchaseId: label.purchaseId,
+                    purchaseTag: label.purchaseTag,
+                    // Service-only coalesce key — see NotificationService.tryCoalesce.
+                    purchaseItemId,
+                    productLabel: label.productLabel,
+                    prevQty,
+                    newQty,
+                    unitShort: label.unitShort,
+                },
+            });
+        } catch (err) {
+            log.warn({ purchaseItemId, userId, err }, 'failed to notify about order qty change');
+        }
+    }
+
+    /** Notify that an item line was removed from the user's order. */
+    private async notifyOrderLineDeleted(purchaseItemId: number, userId: number): Promise<void> {
+        try {
+            const label = await this.purchaseRepo.findItemLabel(purchaseItemId);
+            if (!label) return;
+            await this.notification.notify({
+                userId,
+                type: 'ORDER_LINE_DELETED',
+                payload: {
+                    purchaseId: label.purchaseId,
+                    purchaseTag: label.purchaseTag,
+                    purchaseItemId,
+                    productLabel: label.productLabel,
+                },
+            });
+        } catch (err) {
+            log.warn({ purchaseItemId, userId, err }, 'failed to notify about order line deletion');
+        }
+    }
+
+    /** Notify that the user's entire order in a purchase was cleared. */
+    private async notifyOrderCleared(userId: number, purchaseId: number): Promise<void> {
+        try {
+            const purchaseTag = await this.purchaseRepo.findTagById(purchaseId);
+            if (!purchaseTag) return;
+            await this.notification.notify({
+                userId,
+                type: 'ORDER_CLEARED',
+                payload: { purchaseId, purchaseTag },
+            });
+        } catch (err) {
+            log.warn({ purchaseId, userId, err }, 'failed to notify about order cleared');
+        }
+    }
+
     // ── Внутренние: загрузка контекста + persistence ───────────────
 
     /** Загружает PurchaseItem + строки, мапит в доменную модель (PurchaseItem + OrderLine[]). */
@@ -218,8 +338,13 @@ export class OrderService {
         if (!row) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
+        const orgFeeDefaultPercent = await this.pricingSettings.getOrgFeeDefaultPercent();
+        const currencyRates = (row.purchase?.currencyRates ?? []).map((r) => ({
+            currencyId: r.currencyId,
+            rateToRub: Number(r.rateToRub),
+        }));
         return {
-            item: mapToPurchaseItem(row, packDiscountPercent),
+            item: mapToPurchaseItem(row, packDiscountPercent, { orgFeeDefaultPercent, currencyRates }),
             lines: toOrderLines(row.orderLines as any),
         };
     }

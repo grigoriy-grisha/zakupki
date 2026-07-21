@@ -40,7 +40,10 @@ export class PaymentPlusStrategy extends BaseMutableStrategy {
         // delta>0 → проверяем pool (если применим) и supplier limit.
         // Агрегируем один раз — используется обеими проверками.
         if (delta > 0) {
-            const aggregation = aggregateForPool(this.item.fulfillmentStatus, toActiveVOs(this.lines));
+            // packSize обязателен: без него пакеты не учитываются в
+            // totalOrderedWithPackages и supplierLimit пускает сверх лимита
+            // (тот же класс бага, что и в reorder-strategy.ts:62).
+            const aggregation = aggregateForPool(this.item.fulfillmentStatus, toActiveVOs(this.lines), this.item.packAmount);
 
             if (this.cfg.poolApplies) {
                 const poolErr = validateSupplementPool(this.item, newQty, currentQty, aggregation);
@@ -75,7 +78,7 @@ export class PaymentPlusStrategy extends BaseMutableStrategy {
         let supplementClaimed = 0;
         let totalOrderedQuantity = 0;
         let totalOrderedWithPackages = 0;
-        const pack = this.item.supplierPackageAmount ?? 0;
+        const pack = this.item.packAmount ?? 0;
         for (const line of this.lines) {
             if (!line.isActive) continue;
             const qty = Number(line.quantity) + Number(line.packageCount) * pack;

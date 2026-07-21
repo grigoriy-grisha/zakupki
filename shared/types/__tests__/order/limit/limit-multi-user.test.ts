@@ -34,7 +34,7 @@ describe('Limit. Multi-user: глобальный пул делится межд
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [
@@ -58,7 +58,7 @@ describe('Limit. Multi-user: глобальный пул делится межд
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [

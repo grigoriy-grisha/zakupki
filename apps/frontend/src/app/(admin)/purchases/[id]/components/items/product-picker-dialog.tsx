@@ -22,6 +22,8 @@ interface ProductPickerDialogProps {
 
 type PickerProduct = ProductLabelSource & {
     id: number;
+    /** Плоский код единицы из Product.unitCode. */
+    unitCode: string;
 };
 
 export function ProductPickerDialog({ purchaseId, purchaseTag }: ProductPickerDialogProps) {

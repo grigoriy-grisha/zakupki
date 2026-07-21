@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    calculateOrderAmount,
-    formatMinPackageHint,
-    formatMinPackageOrderHint,
-    getOrderQuantityValidationError,
+    computeAmountDue,
+    computeAmountDueWithPackages,
+    computePackagePrice,
+    computeUnitPriceRubFromItem,
+    getOrderQuantityStep,
     parsePriceTiers,
-    snapOrderQuantity,
 } from '../src/pricing';
 
 describe('parsePriceTiers', () => {
@@ -34,133 +34,82 @@ describe('parsePriceTiers', () => {
     });
 });
 
-describe('calculateOrderAmount', () => {
-    it('returns 0 for non-positive quantity', () => {
-        expect(calculateOrderAmount(0, { pricePerUnit: 100 })).toBe(0);
-        expect(calculateOrderAmount(-5, { pricePerUnit: 100 })).toBe(0);
-        expect(calculateOrderAmount(NaN, { pricePerUnit: 100 })).toBe(0);
-    });
+// ── Новая модель цен: валюта × курс × оргсбор → unitPriceRub ──────────
 
-    it('calculates by pricePerUnit when no tiers', () => {
-        expect(calculateOrderAmount(10, { pricePerUnit: 50 })).toBe(500);
-        expect(calculateOrderAmount(0.5, { pricePerUnit: 200 })).toBe(100);
-    });
-
-    it('uses priceOverride when set', () => {
-        expect(calculateOrderAmount(10, { pricePerUnit: 100, priceOverride: 50 })).toBe(500);
-        expect(calculateOrderAmount(10, { pricePerUnit: 100, priceOverride: 0 })).toBe(1000);
-        expect(calculateOrderAmount(10, { pricePerUnit: 100, priceOverride: null })).toBe(1000);
-    });
-
-    it('matches exact tier', () => {
-        const tiers = [
-            { amount: 10, price: 340 },
-            { amount: 50, price: 1500 },
-        ];
-        expect(calculateOrderAmount(10, { pricePerUnit: 50, priceTiers: tiers })).toBe(340);
-        expect(calculateOrderAmount(50, { pricePerUnit: 50, priceTiers: tiers })).toBe(1500);
-    });
-
-    it('uses largest packages first, remainder at smallest tier rate', () => {
-        const tiers = [
-            { amount: 10, price: 340 }, // 34 per unit
-            { amount: 50, price: 1500 }, // 30 per unit
-        ];
-        // 55 = 1x50 (1500) + 5x remaining at 34/unit = 1500 + 170 = 1670
-        expect(calculateOrderAmount(55, { pricePerUnit: 50, priceTiers: tiers })).toBe(1670);
-    });
-
-    it('handles decimal quantities', () => {
-        expect(calculateOrderAmount(1.5, { pricePerUnit: 100 })).toBe(150);
-    });
-
-    it('rounds to 2 decimal places', () => {
-        // 33.333... * 3 = 99.999...
-        expect(calculateOrderAmount(3, { pricePerUnit: 33.333 })).toBe(100);
-    });
-
-    it('applies pack discount for full supplier packs in grams', () => {
-        const tiers = [
-            { amount: 10, price: 133 },
-            { amount: 50, price: 1267 },
-        ];
+describe('computeUnitPriceRubFromItem', () => {
+    it('pricePerPackCurrency × rate / packSize = unitPriceRub', () => {
+        // 100 ₽ × курс 1 / вес 1 = 100 ₽/ед
         expect(
-            calculateOrderAmount(50, {
-                pricePerUnit: 27,
-                priceTiers: tiers,
-                supplierPackageAmount: 50,
-                supplierPackageUnit: 'гр',
-                supplierPackagePrice: 1267,
-                packDiscountPercent: 3,
-            }),
-        ).toBe(1228.99);
-        expect(
-            calculateOrderAmount(100, {
-                pricePerUnit: 27,
-                priceTiers: tiers,
-                supplierPackageAmount: 50,
-                supplierPackageUnit: 'гр',
-                supplierPackagePrice: 1267,
-                packDiscountPercent: 3,
-            }),
-        ).toBe(2457.98);
+            computeUnitPriceRubFromItem({ pricePerPackCurrency: 100, rateToRub: 1, orgFeePercent: 0, packSize: 1 }),
+        ).toBe(100);
     });
 
-    it('uses tiers for gram remainder after full packs', () => {
-        const tiers = [
-            { amount: 10, price: 133 },
-            { amount: 50, price: 1267 },
-        ];
+    it('валюта × курс', () => {
+        // 5 $ × 80 ₽ / 100 гр = 4 ₽/гр
         expect(
-            calculateOrderAmount(60, {
-                pricePerUnit: 27,
-                priceTiers: tiers,
-                supplierPackageAmount: 50,
-                supplierPackageUnit: 'гр',
-                supplierPackagePrice: 1267,
-                packDiscountPercent: 3,
-            }),
-        ).toBe(1361.99);
+            computeUnitPriceRubFromItem({ pricePerPackCurrency: 5, rateToRub: 80, orgFeePercent: 0, packSize: 100 }),
+        ).toBe(4);
     });
 
-    it('ignores pack discount for non-gram products', () => {
+    it('с оргсбором 10%', () => {
+        // 100 × (1 + 0.1) / 10 = 11
         expect(
-            calculateOrderAmount(10, {
-                pricePerUnit: 100,
-                supplierPackageAmount: 10,
-                supplierPackageUnit: 'шт',
-                supplierPackagePrice: 500,
-                packDiscountPercent: 3,
-            }),
-        ).toBe(1000);
+            computeUnitPriceRubFromItem({ pricePerPackCurrency: 100, rateToRub: 1, orgFeePercent: 10, packSize: 10 }),
+        ).toBe(11);
+    });
+
+    it('возвращает null при отсутствии цены', () => {
+        expect(
+            computeUnitPriceRubFromItem({ pricePerPackCurrency: null, rateToRub: 1, orgFeePercent: 0, packSize: 10 }),
+        ).toBeNull();
+    });
+
+    it('возвращает null при packSize ≤ 0', () => {
+        expect(
+            computeUnitPriceRubFromItem({ pricePerPackCurrency: 100, rateToRub: 1, orgFeePercent: 0, packSize: 0 }),
+        ).toBeNull();
+    });
+
+    it('округляет до копеек', () => {
+        // 33.333 × 1 / 1 = 33.33 (round to 2)
+        expect(
+            computeUnitPriceRubFromItem({ pricePerPackCurrency: 33.333, rateToRub: 1, orgFeePercent: 0, packSize: 1 }),
+        ).toBe(33.33);
     });
 });
 
-describe('order quantity validation', () => {
-    const minPack10 = {
-        minPackageAmount: 10,
-        minPackageUnit: 'гр',
-        unitShort: 'г',
-    };
+// ── Default step by unit (gram → 5) ──────────────────────────────────
 
-    it('requires at least min package amount', () => {
-        expect(getOrderQuantityValidationError(5, minPack10)).toBe('Мин. фасовка: 10 гр');
-        expect(getOrderQuantityValidationError(10, minPack10)).toBeNull();
+describe('getOrderQuantityStep: default by unit', () => {
+    it('gram без фасовки/кратности → шаг 5', () => {
+        expect(getOrderQuantityStep({ unitCode: 'gram' })).toBe(5);
     });
 
-    it('requires multiples of min package amount', () => {
-        expect(getOrderQuantityValidationError(15, minPack10)).toBe('Можно заказать только кратно 10 гр: 10, 20, 30…');
-        expect(getOrderQuantityValidationError(20, minPack10)).toBeNull();
+    it('gram с minPackageAmount → шаг из фасовки (не дефолт)', () => {
+        expect(getOrderQuantityStep({ unitCode: 'gram', minPackageAmount: 10 })).toBe(10);
     });
 
-    it('snaps quantity to valid multiples', () => {
-        expect(snapOrderQuantity(15, minPack10)).toBe(20);
-        expect(snapOrderQuantity(15, minPack10, { max: 15 })).toBe(10);
-        expect(snapOrderQuantity(5, minPack10)).toBe(10);
+    it('gram с multiplicity > 1 → шаг из кратности (не дефолт)', () => {
+        expect(getOrderQuantityStep({ unitCode: 'gram', multiplicity: 2 })).toBe(2);
     });
 
-    it('formats min package hint', () => {
-        expect(formatMinPackageHint(minPack10)).toBe('Мин. фасовка: 10 гр');
-        expect(formatMinPackageOrderHint(minPack10)).toBe('Мин. фасовка: 10 гр · заказ кратно 10 гр');
+    it('gram с multiplicity=1 (дефолт Product.multiplicity) → gram-дефолт 5', () => {
+        // Реальный сценарий из БД: Product.multiplicity имеет @default(1).
+        // multiplicity=1 не должна перекрывать gram-дефолт.
+        expect(getOrderQuantityStep({ unitCode: 'gram', multiplicity: 1 })).toBe(5);
+    });
+
+    it('piece/tube без фасовки → шаг 1', () => {
+        expect(getOrderQuantityStep({ unitCode: 'piece' })).toBe(1);
+        expect(getOrderQuantityStep({ unitCode: 'tube' })).toBe(1);
+    });
+
+    it('без unitCode и без фасовки → шаг 1', () => {
+        expect(getOrderQuantityStep({})).toBe(1);
+    });
+
+    it('minPackageAmount приоритетнее gram-дефолта', () => {
+        // Дефолт gram=5, но minPackageAmount=3 → шаг 3.
+        expect(getOrderQuantityStep({ unitCode: 'gram', minPackageAmount: 3 })).toBe(3);
     });
 });

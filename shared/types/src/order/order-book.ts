@@ -92,14 +92,14 @@ export class OrderBook {
         if (!getStageConfig(this.item.fulfillmentStatus).poolApplies) return null;
         return computeRawPool({
             targetRemainder: this.item.targetRemainder,
-            packSize: this.item.supplierPackageAmount,
+            packSize: this.item.packAmount,
             aggregation: this.poolAggregation(),
         });
     }
 
     poolFor(userId: number): PoolInfo {
         const cfg = getStageConfig(this.item.fulfillmentStatus);
-        const packSize = this.item.supplierPackageAmount;
+        const packSize = this.item.packAmount;
         if (!cfg.poolApplies) {
             return {
                 pool: null,
@@ -176,7 +176,7 @@ export class OrderBook {
     /** Изменить количество упаковок. */
     adjustPackages(userId: number, delta: number): AdjustResult {
         if (delta === 0) return ok(this);
-        if (!this.item.supplierPackageAmount) {
+        if (!this.item.packAmount) {
             return {
                 ok: false,
                 error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' },

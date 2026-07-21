@@ -26,29 +26,16 @@ describe('G. Чтение строк', () => {
 // ── H. displayContextFor ────────────────────────────────────────────
 
 describe('H. displayContextFor — контекст для UI', () => {
-    it('packagePrice по умолчанию = pricePerUnit * supplierPackageAmount', () => {
-        const book = OrderBook.create(makeItem('COLLECTION', { pricePerUnit: 100, supplierPackageAmount: 10 }));
+    it('packagePrice = unitPriceRub × packAmount', () => {
+        const book = OrderBook.create(makeItem('COLLECTION', { packAmount: 10 }));
         const ctx = book.displayContextFor(1);
 
         expect(ctx.packagePrice).toBe(1000);
         expect(ctx.showPackageButtons).toBe(true);
     });
 
-    it('явный supplierPackagePrice перебивает расчёт', () => {
-        const book = OrderBook.create(
-            makeItem('COLLECTION', {
-                pricePerUnit: 100,
-                supplierPackageAmount: 10,
-                supplierPackagePrice: 850,
-            }),
-        );
-        const ctx = book.displayContextFor(1);
-
-        expect(ctx.packagePrice).toBe(850);
-    });
-
-    it('без supplierPackageAmount → кнопки упаковок скрыты', () => {
-        const book = OrderBook.create(makeItem('COLLECTION', { supplierPackageAmount: null }));
+    it('без packAmount → кнопки упаковок скрыты, packagePrice=0', () => {
+        const book = OrderBook.create(makeItem('COLLECTION', { packAmount: null }));
         const ctx = book.displayContextFor(1);
 
         expect(ctx.showPackageButtons).toBe(false);

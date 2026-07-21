@@ -19,20 +19,20 @@ export class PurchaseService {
         private pricingSettings: PricingSettingsService,
     ) {}
 
-    async list(status?: string) {
-        return this.repo.list(status);
+    async list(status?: string, includeHidden = false) {
+        return this.repo.list(status, includeHidden);
     }
 
-    async listByStatuses(statuses: string[]) {
-        return this.repo.listByStatuses(statuses);
+    async listByStatuses(statuses: string[], includeHidden = false) {
+        return this.repo.listByStatuses(statuses, includeHidden);
     }
 
-    async listByStatusesForUser(userId: number, statuses: string[]) {
-        return this.repo.listByStatusesForUser(userId, statuses);
+    async listByStatusesForUser(userId: number, statuses: string[], includeHidden = false) {
+        return this.repo.listByStatusesForUser(userId, statuses, includeHidden);
     }
 
-    async getById(id: number) {
-        const purchase = await this.repo.getById(id);
+    async getById(id: number, includeHidden = false) {
+        const purchase = await this.repo.getById(id, includeHidden);
         if (!purchase) throw new NotFoundError('Закупка', id);
         return purchase;
     }
@@ -52,7 +52,7 @@ export class PurchaseService {
     }
 
     async deleteDraft(id: number) {
-        const purchase = await this.repo.getById(id);
+        const purchase = await this.repo.getById(id, true);
         if (!purchase) throw new NotFoundError('Закупка', id);
         if (purchase.status !== 'DRAFT') {
             throw new ValidationError('Удалить можно только черновик');
@@ -63,7 +63,7 @@ export class PurchaseService {
     }
 
     async findItemsToPublish(purchaseId: number) {
-        const purchase = await this.repo.getById(purchaseId);
+        const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status !== 'ACTIVE') {
             throw new ValidationError('Публиковать в Telegram можно только для активной закупки');
@@ -104,32 +104,34 @@ export class PurchaseService {
      * (описание, цены, фасовка, supplier) теперь редактируется здесь. Product
      * больше не трогается — он хранит только каталожные данные.
      */
-    async updateItemProduct(
-        purchaseItemId: number,
-        itemData: Record<string, unknown>,
-        priceOverride: number | null,
-    ) {
+    async updateItemProduct(purchaseItemId: number, itemData: Record<string, unknown>) {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
         // Собираем partial update PurchaseItem за один round-trip.
         // Только поля, которые явно пришли из формы (не undefined).
-        const itemUpdate: Record<string, unknown> = { priceOverride };
+        const itemUpdate: Record<string, unknown> = {};
         const allowedKeys = [
             'supplierId',
             'description',
-            'pricePerUnit',
-            'priceTiers',
             'minPackageAmount',
             'minPackageUnit',
-            'supplierPackageAmount',
-            'supplierPackageUnit',
-            'supplierPackagePrice',
-            'supplierPackageTiers',
             'supplementStep',
             'supplierLimit',
             'supplierLimitUnit',
             'targetRemainder',
+            // Новая модель цен:
+            'packAmount',
+            'packUnit',
+            'currencyId',
+            'pricePerPackCurrency',
+            'orgFeePercentOverride',
+            // Операционные количества + комментарий + скрытие:
+            'orderedQty',
+            'assembledQty',
+            'reorderedQty',
+            'adminComment',
+            'hidden',
         ] as const;
         for (const key of allowedKeys) {
             if (itemData[key] !== undefined) itemUpdate[key] = itemData[key];
@@ -155,18 +157,18 @@ export class PurchaseService {
             productId: number;
             supplierId?: number | null;
             description?: string | null;
-            pricePerUnit?: number | null;
-            priceTiers?: unknown;
             minPackageAmount?: number | null;
             minPackageUnit?: string | null;
-            supplierPackageAmount?: number | null;
-            supplierPackageUnit?: string | null;
-            supplierPackagePrice?: number | null;
-            supplierPackageTiers?: unknown;
             supplementStep?: number | null;
+            // Новая модель цен (валюта + курс + оргсбор):
+            packAmount?: number | null;
+            packUnit?: string | null;
+            currencyId?: number | null;
+            pricePerPackCurrency?: number | null;
+            orgFeePercentOverride?: number | null;
         }[],
     ) {
-        const purchase = await this.repo.getById(purchaseId);
+        const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status === 'DONE') {
             throw new ValidationError('В завершённую закупку нельзя добавлять товары');
@@ -239,10 +241,15 @@ export class PurchaseService {
      * перерендерит пост в канале (включая «Свободно к заказу»).
      */
     async recalculateAmounts(purchaseId: number) {
-        const purchase = await this.repo.getById(purchaseId);
+        const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
 
         const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
+        const orgFeeDefaultPercent = await this.pricingSettings.getOrgFeeDefaultPercent();
+        const currencyRates = (purchase.currencyRates ?? []).map((r) => ({
+            currencyId: r.currencyId,
+            rateToRub: Number(r.rateToRub),
+        }));
         const touchedItemIds = new Set<number>();
         for (const item of purchase.items) {
             // Доменный PurchaseItem для canonical-прайсинга. getById не вкладывает
@@ -250,6 +257,7 @@ export class PurchaseService {
             const domainItem = mapToPurchaseItem(
                 { ...item, purchase: { fulfillmentStatus: purchase.fulfillmentStatus } },
                 packDiscountPercent,
+                { orgFeeDefaultPercent, currencyRates },
             );
             let touched = false;
             for (const line of item.orderLines) {
@@ -266,6 +274,20 @@ export class PurchaseService {
         }
 
         await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+    }
+
+    /**
+     * Admin: установить ставки валют закупки (полная замена).
+     * Курс влияет на unitPriceRub → пересчитываем amountDue всех ACTIVE заказов
+     * и эмитим обновление постов в канале (через recalculateAmounts).
+     */
+    async setCurrencyRates(purchaseId: number, rates: { currencyId: number; rateToRub: number }[]) {
+        const purchase = await this.repo.getById(purchaseId, true);
+        if (!purchase) throw new NotFoundError('Закупка', purchaseId);
+        await this.repo.setCurrencyRates(purchaseId, rates);
+        // Курс изменился → пересчитываем суммы заказов по новой модели цен.
+        await this.recalculateAmounts(purchaseId);
+        return this.repo.getCurrencyRates(purchaseId);
     }
 
     /**

@@ -99,6 +99,7 @@ model User {
   orderLines         OrderLine[]
   payments           Payment[]
   purchaseOrders     PurchaseOrder[]
+  notifications      Notification[]
   telegramCredential TelegramCredential?
   vkCredential       VkCredential?
 
@@ -137,6 +138,20 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   items     PurchaseItem[]
+
+  @@index([position])
+}
+
+model Currency {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  code      String?
+  symbol    String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     PurchaseItem[]
+  rates     PurchaseCurrencyRate[]
 
   @@index([position])
 }
@@ -184,10 +199,25 @@ model Purchase {
   promoCodes        PromoCode[]
   items             PurchaseItem[]
   purchaseOrders    PurchaseOrder[]
+  currencyRates     PurchaseCurrencyRate[]
 
   @@index([status])
   @@index([createdAt])
   @@index([fulfillmentStatus])
+}
+
+model PurchaseCurrencyRate {
+  id         Int      @id @default(autoincrement())
+  purchaseId Int
+  currencyId Int
+  rateToRub  Decimal  @db.Decimal(10, 4)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  currency   Currency @relation(fields: [currencyId], references: [id])
+
+  @@unique([purchaseId, currencyId])
+  @@index([purchaseId])
 }
 
 model PurchaseOrder {
@@ -218,17 +248,10 @@ model PurchaseItem {
   // Per-purchase конкретика (перенесена с Product в рамках рефакторинга
   // «Product = каталог, PurchaseItem = конкретика закупки»):
   description           String?   // HTML после applyPostTemplate
-  pricePerUnit          Decimal?  @db.Decimal(10, 2)
   minPackageAmount      Decimal?  @db.Decimal(10, 3)
   minPackageUnit        String?
-  priceTiers            Json?
-  supplierPackageAmount Decimal?  @db.Decimal(10, 3)
-  supplierPackageUnit   String?
-  supplierPackagePrice  Decimal?  @db.Decimal(10, 2)
-  supplierPackageTiers  Json?
   // Шаг +/− на этапе добора (REORDER+). Если null — используется обычная фасовка.
   supplementStep   Decimal?         @db.Decimal(10, 3)
-  priceOverride    Decimal?         @db.Decimal(10, 2)
   targetRemainder  Decimal?         @db.Decimal(10, 3)
   // Максимум, который один покупатель может заказать (в ед. supplierLimitUnit).
   // Если null — без ограничений. Действует на всех этапах.
@@ -239,15 +262,30 @@ model PurchaseItem {
   publicationState PublicationState @default(DRAFT)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  // --- Новая модель цен (валюта + курс + оргсбор):
+  //     «цена за упаковку в валюте × курс × оргсбор → цена за 1ед». ---
+  packAmount              Decimal?  @db.Decimal(10, 3)
+  packUnit                String?
+  currencyId              Int?
+  pricePerPackCurrency    Decimal?  @db.Decimal(10, 2)
+  orgFeePercentOverride   Decimal?  @db.Decimal(5, 2)
+  // Операционные количества (в базовых единицах, гр/шт). Заполняются организатором.
+  orderedQty              Decimal?  @db.Decimal(10, 3)
+  assembledQty            Decimal?  @db.Decimal(10, 3)
+  reorderedQty            Decimal?  @db.Decimal(10, 3)
+  adminComment            String?
+  hidden                  Boolean   @default(false)
   orderLines       OrderLine[]
   product          Product          @relation(fields: [productId], references: [id])
   purchase         Purchase         @relation(fields: [purchaseId], references: [id])
   supplier         Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  currency         Currency?        @relation(fields: [currencyId], references: [id], onDelete: SetNull)
 
   @@index([purchaseId, productId])
   @@index([purchaseId])
   @@index([productId])
   @@index([supplierId])
+  @@index([currencyId])
 }
 
 model OrderLine {
@@ -349,6 +387,23 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Notification {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  type          String
+  payload       Json
+  title         String
+  body          String
+  url           String?
+  readAt        DateTime?
+  tgDeliveredAt DateTime?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([tgDeliveredAt])
 }
 
 enum PurchaseStatus {

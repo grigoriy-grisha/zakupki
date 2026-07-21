@@ -69,8 +69,8 @@ describe('I. Упаковки на REORDER', () => {
         expect(result.error.code).toBe('negative');
     });
 
-    it('товар без supplierPackageAmount → ошибка no_package', () => {
-        const book = OrderBook.create(makeItem('REORDER', { supplierPackageAmount: null }));
+    it('товар без packAmount → ошибка no_package', () => {
+        const book = OrderBook.create(makeItem('REORDER', { packAmount: null }));
         const result = book.adjustPackages(1, 1);
 
         expect(result.ok).toBe(false);

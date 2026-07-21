@@ -1,23 +1,11 @@
 /**
- * Ценовая ступень
+ * Ценовая ступень — legacy, используется только в Excel export и UI отображении
+ * старых данных. В расчётах цены больше не участвует.
  */
 export type PriceTier = {
     amount: number;
     unit?: string;
     price: number;
-};
-
-/**
- * Опции для расчёта суммы заказа
- */
-export type CalculateOrderAmountOptions = {
-    priceTiers?: unknown;
-    pricePerUnit: number;
-    priceOverride?: number | null;
-    supplierPackageAmount?: unknown;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: unknown;
-    packDiscountPercent?: number | null;
 };
 
 /**
@@ -29,4 +17,10 @@ export type OrderQuantityOptions = {
     minPackageUnit?: string | null;
     purchaseItemMinQty?: number | null;
     unitShort?: string | null;
+    /**
+     * Код единицы учёта товара ('gram', 'piece', 'tube').
+     * Используется для дефолтного шага по единице (напр. gram → 5),
+     * когда minPackageAmount и multiplicity не заданы.
+     */
+    unitCode?: string | null;
 };

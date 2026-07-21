@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Check, Minus, Plus, Trash2 } from 'lucide-react';
 
-import { usePurchaseProductLabelText } from '@/components/shared/purchase-product-label';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -15,7 +16,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import type { ProductLabelSource } from '../../../../products/lib';
 
 // ── helpers ──────────────────────────────────────────────────────────
@@ -37,9 +38,14 @@ function parseQty(raw: string): number | null {
  */
 export interface PurchaseItemOption {
     id: number;
+    // minPackageAmount/minPackageUnit живут на PurchaseItem (не Product —
+    // после миграции 20260705154536 поля на Product удалены).
+    minPackageAmount?: string | number | null;
     product: ProductLabelSource & {
-        minPackageAmount?: string | number | null;
         unit?: { shortName: string } | null;
+        unitCode?: string | null;
+        multiplicity?: string | number | null;
+        photos?: { id: number }[];
     };
     supplier?: { id: number; name: string } | null;
 }
@@ -152,20 +158,47 @@ interface AddPositionDialogProps {
     onAdd: (purchaseItemId: number, qty: number) => void;
 }
 
-/** Текстовая подпись товара (для SelectItem). */
-function PositionItemLabel({
-    product,
-    supplier,
+/** Карточка варианта товара в списке выбора. */
+function PositionOption({
+    item,
+    selected,
+    onSelect,
 }: {
-    product: ProductLabelSource;
-    supplier?: { name: string } | null;
+    item: PurchaseItemOption;
+    selected: boolean;
+    onSelect: () => void;
 }) {
-    const text = usePurchaseProductLabelText(product);
     return (
-        <>
-            {text}
-            {supplier ? <span className="text-fg-tertiary"> · {supplier.name}</span> : null}
-        </>
+        <button
+            type="button"
+            onClick={onSelect}
+            aria-pressed={selected}
+            className={cn(
+                'flex w-full items-center gap-3 rounded-xl border p-2 text-left transition-colors',
+                selected
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-border hover:bg-bg-soft',
+            )}
+        >
+            <ProductPhotoPreview
+                photoId={item.product.photos?.[0]?.id}
+                alt={item.product.name}
+                thumbClassName="h-11 w-11 rounded-md"
+            />
+            <div className="min-w-0 flex-1">
+                <PurchaseProductLabel
+                    product={item.product}
+                    primaryClassName="block truncate text-13-medium text-fg-primary"
+                    secondaryClassName="block truncate text-12-regular text-fg-tertiary"
+                />
+                {item.supplier && (
+                    <p className="mt-0.5 block truncate text-12-regular text-fg-tertiary" title={item.supplier.name}>
+                        {item.supplier.name}
+                    </p>
+                )}
+            </div>
+            {selected && <Check className="size-4 shrink-0 text-primary" />}
+        </button>
     );
 }
 
@@ -211,18 +244,16 @@ export function AddPositionDialog({ purchaseItems, pending, onAdd }: AddPosition
                     <DialogTitle>Добавить позицию участнику</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3">
-                    <Select value={itemId ?? undefined} onValueChange={setItemId}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Выберите товар из закупки" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {purchaseItems.map((item) => (
-                                <SelectItem key={item.id} value={String(item.id)}>
-                                    <PositionItemLabel product={item.product} supplier={item.supplier} />
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <div className="max-h-80 space-y-1 overflow-y-auto">
+                        {purchaseItems.map((item) => (
+                            <PositionOption
+                                key={item.id}
+                                item={item}
+                                selected={itemId === String(item.id)}
+                                onSelect={() => setItemId(String(item.id))}
+                            />
+                        ))}
+                    </div>
                     <Input
                         inputMode="decimal"
                         placeholder="Количество"

@@ -9,7 +9,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { isSupplementPhase } from '@zakupki/types';
+import { isSupplementPhase, type CurrencyRate } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { QuantityButtons } from '@/app/shop/components/quantity-buttons';
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
@@ -19,6 +19,8 @@ interface QuantityModalProps {
     purchaseItemId: number;
     purchaseId: number;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+    currencyRates: CurrencyRate[];
     fulfillmentStatus: string;
     /** Текущее количество этого пользователя (0 если заказа не было). */
     currentQuantity: number;
@@ -35,6 +37,8 @@ export function QuantityModal({
     purchaseItemId,
     purchaseId,
     packDiscountPercent,
+    orgFeeDefaultPercent,
+    currencyRates,
     fulfillmentStatus,
     currentQuantity,
     packageCount = 0,
@@ -51,6 +55,8 @@ export function QuantityModal({
         baseQuantity,
         fulfillmentStatus,
         packDiscountPercent,
+        orgFeeDefaultPercent,
+        currencyRates,
     });
 
     const isSupplement = isSupplementPhase(fulfillmentStatus);
@@ -113,6 +119,7 @@ export function QuantityModal({
                             onRemove={ctx.handleRemove}
                             isPending={ctx.isPending}
                             showPackage={ctx.showPackageButtons}
+                            canAddPackage={ctx.canAddPackage}
                             packSize={ctx.packSize}
                             packageCount={ctx.currentPackageCount}
                             onAddPackage={ctx.handleAddPackage}

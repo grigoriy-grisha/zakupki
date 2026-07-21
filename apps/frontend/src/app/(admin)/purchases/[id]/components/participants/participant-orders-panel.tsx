@@ -1,14 +1,15 @@
 'use client';
 
+import { buildOrderQtyOptions, getOrderQuantityStep } from '@zakupki/types';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { cn, safeNumber } from '@/lib/utils';
 
 import { AddPositionDialog, AdminOrderLineEditor } from './admin-order-controls';
-import type { OrderLineRef, PaymentRef } from '../../lib/types';
+import type { PaymentRef } from '../../lib/types';
 import type { OrderComment } from '../../hooks/use-participants-data';
 import type { PurchaseItemOption } from './admin-order-controls';
-import type { ProductLabelSource } from '../../../../products/lib';
+import type { ParticipantOrder } from './types';
 
 export interface ParticipantOrdersActions {
     adminAdjust: (input: { purchaseItemId: number; delta: number; userId: number }) => void;
@@ -20,15 +21,7 @@ export interface ParticipantOrdersActions {
 interface ParticipantOrdersPanelProps {
     userId: number;
     purchaseOrderId?: number | null;
-    orders: (OrderLineRef & {
-        purchaseItem?: {
-            product?: ProductLabelSource & {
-                unit?: { shortName: string };
-                minPackageAmount?: string | number | null;
-            };
-            supplier?: { id: number; name: string } | null;
-        };
-    })[];
+    orders: ParticipantOrder[];
     payments: PaymentRef[];
     purchaseItems: PurchaseItemOption[];
     due: number;
@@ -64,15 +57,19 @@ export function ParticipantOrdersPanel({
             <div className="divide-y divide-border-soft">
                 {orders.map((order) => {
                     const qty = Number(order.quantity);
-                    // Приоритет: minPackageAmount из вложенного include, иначе fallback на
-                    // purchaseItems (trpc.purchases.getById), иначе 1.
-                    const step =
-                        Number(order.purchaseItem?.product?.minPackageAmount) ||
-                        Number(
-                            purchaseItems.find((it) => it.id === order.purchaseItemId)?.product
-                                ?.minPackageAmount,
-                        ) ||
-                        1;
+                    const fallbackItem = purchaseItems.find((it) => it.id === order.purchaseItemId);
+                    const sourceItem = order.purchaseItem ?? fallbackItem;
+                    const step = getOrderQuantityStep(
+                        buildOrderQtyOptions({
+                            multiplicity: Number(sourceItem?.product?.multiplicity) || 1,
+                            minPackageAmount:
+                                sourceItem?.minPackageAmount != null
+                                    ? Number(sourceItem.minPackageAmount)
+                                    : null,
+                            minPackageUnit: null,
+                            unitCode: sourceItem?.product?.unitCode ?? null,
+                        }),
+                    );
                     return (
                         <div key={order.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
                             {order.purchaseItem?.product && (

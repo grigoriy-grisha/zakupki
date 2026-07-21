@@ -25,7 +25,7 @@ describe('ProductHeaderRenderer', () => {
                 description: null,
                 minPackageAmount: null,
                 minPackageUnit: null,
-                pricePerUnit: 0,
+                unitPriceRub: 0,
             }),
         );
         expect(result).toMatchSnapshot();
@@ -39,7 +39,7 @@ describe('ProductHeaderRenderer', () => {
                 minPackageAmount: null,
                 minPackageUnit: null,
                 unitCode: 'kg',
-                pricePerUnit: 100,
+                unitPriceRub: 100,
             }),
         );
         expect(result).toMatchSnapshot();
@@ -53,7 +53,7 @@ describe('ProductHeaderRenderer', () => {
                 minPackageAmount: null,
                 minPackageUnit: null,
                 unitCode: 'BOGUS',
-                pricePerUnit: 100,
+                unitPriceRub: 100,
             }),
         );
         expect(result).toMatchSnapshot();
@@ -67,7 +67,7 @@ describe('ProductHeaderRenderer', () => {
                 minPackageAmount: null,
                 minPackageUnit: null,
                 name: '<script>alert(1)</script>',
-                pricePerUnit: 0,
+                unitPriceRub: 0,
             }),
         );
         expect(result).toMatchSnapshot();
@@ -80,7 +80,7 @@ describe('ProductHeaderRenderer', () => {
                 description: null,
                 minPackageAmount: null,
                 minPackageUnit: null,
-                pricePerUnit: 1234567.89,
+                unitPriceRub: 1234567.89,
             }),
         );
         expect(result).toMatchSnapshot();

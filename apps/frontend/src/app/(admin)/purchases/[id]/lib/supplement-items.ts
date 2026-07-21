@@ -9,7 +9,7 @@ import type { PurchaseItem } from './types';
  * ИЛИ админ явно выставил targetRemainder > 0.
  */
 export function isOnRemainder(item: PurchaseItem): boolean {
-    const hasPack = item.supplierPackageAmount != null && Number(item.supplierPackageAmount) > 0;
+    const hasPack = item.packAmount != null && Number(item.packAmount) > 0;
     const hasManual = item.targetRemainder != null && Number(item.targetRemainder) > 0;
     return hasPack || hasManual;
 }
@@ -22,8 +22,7 @@ export function computeFreeRemainder(
     item: PurchaseItem,
     fulfillmentStatus: PurchaseFulfillmentStatus,
 ): number | null {
-    const packSize =
-        item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
+    const packSize = item.packAmount != null ? Number(item.packAmount) : null;
     const strategy = getStageStrategy(fulfillmentStatus);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const aggregation = strategy.aggregateForPool(toOrderLinesVO((item.orderLines ?? []) as any));

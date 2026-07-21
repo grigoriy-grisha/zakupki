@@ -48,7 +48,9 @@ export class ReorderStrategy extends BaseMutableStrategy {
     /** REORDER adjust(+N): split fillBase/spillover. */
     private adjustIncrease(userId: number, delta: number): MultiUpdate {
         const base = this.findBaseLine(userId);
-        const supp = this.findSupplementLine(userId);
+        // Stage-scoped: только REORDER-созданная supp-строка. Generic findSupplementLine
+        // зацепил бы supp-строку с другого этапа (PAYMENT+), если бы она существовала.
+        const supp = this.findSupplementLineForStage(userId);
 
         // Permission: нужен supp (или право создать)
         if (!supp && !this.cfg.canAddNew) {
@@ -58,7 +60,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
         // Агрегируем один раз — используется и для pool, и для supplier limit.
         // packSize обязателен: без него пакеты не учитываются в totalOrderedQuantity
         // и supplierLimit пускает сверх лимита (баг "Доступно: 70 гр" при qty+pkg = limit).
-        const packSize = this.item.supplierPackageAmount;
+        const packSize = this.item.packAmount;
         const aggregation = aggregateForPool('REORDER', toActiveVOs(this.lines), packSize);
 
         // Pool: на суммарный user total. Пакеты = qty (effective).
@@ -103,7 +105,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
     /** REORDER adjust(-N): supp-first, потом base. */
     private adjustDecrease(userId: number, delta: number): MultiUpdate {
         // delta<0
-        const supp = this.findSupplementLine(userId);
+        const supp = this.findSupplementLineForStage(userId);
         if (supp && supp.quantity > 0) {
             const newQty = supp.quantity + delta;
             if (newQty > 0) {
@@ -135,7 +137,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
     override adjustPackages(userId: number, delta: number): MultiUpdate {
         if (delta === 0) return ok();
         const base = this.findBaseLine(userId);
-        const supp = this.findSupplementLine(userId);
+        const supp = this.findSupplementLineForStage(userId);
         if (!base && !supp && !this.cfg.canAddNew) {
             return err(forbidden('На этом этапе нельзя добавить новый товар'));
         }
@@ -159,10 +161,10 @@ export class ReorderStrategy extends BaseMutableStrategy {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
         }
 
-        // Supplier limit check: пакеты дают qty (pkg * supplierPackageAmount).
+        // Supplier limit check: пакеты дают qty (pkg * packAmount).
         // Если delta>0 и пакеты увеличивают qty — проверяем глобальный пул.
-        if (delta > 0 && this.item.supplierPackageAmount != null) {
-            const packSize = this.item.supplierPackageAmount;
+        if (delta > 0 && this.item.packAmount != null) {
+            const packSize = this.item.packAmount;
             const pkgDeltaQty = delta * packSize;
             // userCurrent должен учитывать и текущие пакеты, иначе лимит считается
             // только от qty и разрешает превысить supplierLimit.
@@ -260,7 +262,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
         let supplementClaimed = 0;
         let totalOrderedQuantity = 0;
         let totalOrderedWithPackages = 0;
-        const pack = this.item.supplierPackageAmount ?? 0;
+        const pack = this.item.packAmount ?? 0;
         for (const line of this.lines) {
             if (!line.isActive) continue;
             const bq = line.baseQuantity ?? 0;

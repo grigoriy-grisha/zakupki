@@ -12,71 +12,45 @@ interface ExportPurchaseButtonsProps {
 }
 
 export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps) {
-    const [loading, setLoading] = useState<'general' | 'orders' | null>(null);
+    const [loading, setLoading] = useState(false);
     const utils = trpc.useUtils();
 
-    async function fetchExportData() {
-        const [purchase, orders, payments, attributeTypes] = await Promise.all([
-            utils.purchases.getById.fetch({ id: purchaseId }),
-            utils.orders.getAllByPurchase.fetch({ purchaseId }),
-            utils.payments.getByPurchase.fetch({ purchaseId }),
-            utils.attributeTypes.list.fetch(),
-        ]);
-
-        if (!purchase) {
-            throw new Error('Закупка не найдена');
-        }
-
-        return {
-            purchase: purchase as any,
-            orders: orders ?? [],
-            payments: payments ?? [],
-            attributeTypes: attributeTypes ?? [],
-        };
-    }
-
-    async function handleExport(type: 'general' | 'orders') {
-        setLoading(type);
+    async function handleExportOrders() {
+        setLoading(true);
         try {
-            const data = await fetchExportData();
-            const { exportGeneralPurchaseData, exportOrdersPurchaseData } =
-                await import('../lib/export-purchase-excel');
+            const [purchase, orders, payments, attributeTypes] = await Promise.all([
+                utils.purchases.getById.fetch({ id: purchaseId }),
+                utils.orders.getAllByPurchase.fetch({ purchaseId }),
+                utils.payments.getByPurchase.fetch({ purchaseId }),
+                utils.attributeTypes.list.fetch(),
+            ]);
 
-            if (type === 'general') {
-                await exportGeneralPurchaseData(data);
-            } else {
-                await exportOrdersPurchaseData(data);
+            if (!purchase) {
+                throw new Error('Закупка не найдена');
             }
+
+            const { exportOrdersPurchaseData } = await import('../lib/export-purchase-excel');
+            await exportOrdersPurchaseData({
+                purchase: purchase as never,
+                orders: orders ?? [],
+                payments: payments ?? [],
+                attributeTypes: attributeTypes ?? [],
+            });
         } catch {
             toast.error('Не удалось выгрузить файл');
         } finally {
-            setLoading(null);
+            setLoading(false);
         }
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-2">
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={loading !== null}
-                onClick={() => void handleExport('general')}
-            >
-                {loading === 'general' ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                )}
-                Выгрузить общие данные
-            </Button>
-            <Button variant="outline" size="sm" disabled={loading !== null} onClick={() => void handleExport('orders')}>
-                {loading === 'orders' ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                )}
-                Выгрузить данные заказов
-            </Button>
-        </div>
+        <Button variant="outline" size="sm" disabled={loading} onClick={() => void handleExportOrders()}>
+            {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <Download className="mr-2 h-4 w-4" />
+            )}
+            Выгрузить данные заказов
+        </Button>
     );
 }

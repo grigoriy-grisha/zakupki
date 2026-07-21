@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { getUnitByCode } from '@zakupki/types';
 
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/client/trpc';
@@ -17,33 +17,30 @@ import {
     type ProductLabelSource,
 } from '../../../../products/lib';
 
-import {
-    buildPurchaseFormState,
-    mergeProductAndPurchaseFields,
-    normalizeSupplierTiersForSave,
-    primarySupplierPackageFromTiers,
-    validatePurchasePriceTiers,
-} from '../../lib/purchase-price-tiers';
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
+import { defaultUnitField } from '../../lib/unit-defaults';
 import { DescriptionSection } from './purchase-product-edit-form/sections/description-section';
-import { MinPackageSection } from './purchase-product-edit-form/sections/min-package-section';
-import { PriceTiersSection } from './purchase-product-edit-form/sections/price-tiers-section';
+import { PackPricingSection } from './purchase-product-edit-form/sections/pack-pricing-section';
 import { SupplementLimitsSection } from './purchase-product-edit-form/sections/supplement-limits-section';
-import { SupplierPackageSection } from './purchase-product-edit-form/sections/supplier-package-section';
 import { SupplierSection } from './purchase-product-edit-form/sections/supplier-section';
 import { TemplateSection } from './purchase-product-edit-form/sections/template-section';
 
+/**
+ * Данные формы при сохранении — новая модель цен + добор/лимиты + описание.
+ * Старая tier-модель (priceTiers, supplierPackage*, priceOverride) убрана.
+ */
 export type PurchaseProductSaveData = {
     supplierId?: number | null;
     description?: string | null;
-    priceOverride?: number | null;
-    priceTiers: { amount: number; unit: string; price: number }[];
+    // Новая модель цен:
+    pricePerPackCurrency: number | null;
+    currencyId: number | null;
+    packAmount: number | null;
+    packUnit: string | null;
+    orgFeePercentOverride: number | null;
+    // Добор и лимиты (+ minPackage используется внутри секции):
     minPackageAmount: number | null;
     minPackageUnit: string | null;
-    supplierPackageAmount: number | null;
-    supplierPackageUnit: string | null;
-    supplierPackagePrice: number | null;
-    supplierPackageTiers: { amount: number; unit: string; price: number }[];
     supplementStep: number | null;
     supplierLimit: number | null;
     supplierLimitUnit: string | null;
@@ -53,20 +50,22 @@ export type PurchaseProductSaveData = {
 interface PurchaseProductEditFormProps {
     product: ProductLabelSource & {
         id: number;
-        unit?: { shortName?: string | null; name?: string | null } | null;
+        /** Плоский код единицы (gram | piece | tube), как в Product.unitCode. */
+        unitCode: string;
     };
     /** Per-purchase поля (если форма используется для редактирования существующего PurchaseItem). */
     initialPurchaseFields?: {
         supplierId?: number | null;
         description?: string | null;
-        pricePerUnit?: string | number | null;
-        priceTiers?: unknown;
+        // Новая модель цен:
+        pricePerPackCurrency?: string | number | null;
+        currencyId?: number | null;
+        packAmount?: string | number | null;
+        packUnit?: string | null;
+        orgFeePercentOverride?: string | number | null;
+        // Добор и лимиты:
         minPackageAmount?: string | number | null;
         minPackageUnit?: string | null;
-        supplierPackageAmount?: string | number | null;
-        supplierPackageUnit?: string | null;
-        supplierPackagePrice?: string | number | null;
-        supplierPackageTiers?: unknown;
         supplementStep?: string | number | null;
         supplierLimit?: string | number | null;
         supplierLimitUnit?: string | null;
@@ -85,6 +84,13 @@ interface PurchaseProductEditFormProps {
      * `false` — пустая форма. Используется при **создании нового**.
      */
     loadSavedDescription?: boolean;
+}
+
+/** Нормализация Decimal/строки в number | null. */
+function toNum(v: string | number | null | undefined): number | null {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
 }
 
 function mergeTemplateIntoDescription(
@@ -107,16 +113,14 @@ function mergeTemplateIntoDescription(
 }
 
 /**
- * Форма редактирования/создания товара в закупке.
+ * Форма редактирования/создания товара в закупке — упрощённая модель цен.
  *
  * Секции:
  *  1. Шаблон поста
  *  2. Поставщик (опц.)
- *  3. Мин. фасовка
- *  4. Цены (тиры)
- *  5. Фасовка поставщика
- *  6. Добор и лимиты (supplementStep + supplierLimit + targetRemainder)
- *  7. Описание (NovelEditor)
+ *  3. Цена за упаковку (валюта + вес + оргсбор) — новая модель
+ *  4. Добор и лимиты
+ *  5. Описание (NovelEditor)
  *
  * Sticky footer с [Отмена] [Сохранить].
  */
@@ -131,66 +135,99 @@ export function PurchaseProductEditForm({
     purchaseTag,
     loadSavedDescription = false,
 }: PurchaseProductEditFormProps) {
-    const initial = buildPurchaseFormState(
-        mergeProductAndPurchaseFields(product, initialPurchaseFields),
-        loadSavedDescription,
-    );
+    const f = initialPurchaseFields ?? {};
 
-    const [description, setDescription] = useState(initial.description);
-    const [tiers, setTiers] = useState(initial.tiers);
-    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(initial.minPkgAmount);
-    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(initial.minPkgUnit);
-    const [supPkgTiers, setSupPkgTiers] = useState(initial.supPkgTiers);
-    const [supplementStep, setSupplementStep] = useState<number | null>(initial.supplementStep);
-    const [supplierLimit, setSupplierLimit] = useState<number | null>(initial.supplierLimit);
-    const [supplierLimitUnit, setSupplierLimitUnit] = useState<string | null>(initial.supplierLimitUnit);
-    const [targetRemainder, setTargetRemainder] = useState<number | null>(initial.targetRemainder);
-    const [supplierId, setSupplierId] = useState<number | null>(initialPurchaseFields?.supplierId ?? null);
+    // Новая модель цен:
+    const [pricePerPackCurrency, setPricePerPackCurrency] = useState<number | null>(
+        toNum(f.pricePerPackCurrency),
+    );
+    const [currencyId, setCurrencyId] = useState<number | null>(f.currencyId ?? null);
+    const [packAmount, setPackAmount] = useState<number | null>(toNum(f.packAmount));
+    // Дефолт единицы для всех трёх unit-полей: сохранённое значение → unit товара → null.
+    const [packUnit, setPackUnit] = useState<string | null>(
+        defaultUnitField(f.packUnit, getUnitByCode(product.unitCode)?.shortName),
+    );
+    const [orgFeePercentOverride, setOrgFeePercentOverride] = useState<number | null>(
+        toNum(f.orgFeePercentOverride),
+    );
+    // Добор и лимиты:
+    const [minPkgAmount, setMinPkgAmount] = useState<number | null>(toNum(f.minPackageAmount));
+    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(
+        defaultUnitField(f.minPackageUnit, getUnitByCode(product.unitCode)?.shortName),
+    );
+    const [supplementStep, setSupplementStep] = useState<number | null>(toNum(f.supplementStep));
+    const [supplierLimit, setSupplierLimit] = useState<number | null>(toNum(f.supplierLimit));
+    const [supplierLimitUnit, setSupplierLimitUnit] = useState<string | null>(
+        defaultUnitField(f.supplierLimitUnit, getUnitByCode(product.unitCode)?.shortName),
+    );
+    const [targetRemainder, setTargetRemainder] = useState<number | null>(toNum(f.targetRemainder));
+    // Прочее:
+    const [supplierId, setSupplierId] = useState<number | null>(f.supplierId ?? null);
+    const [description, setDescription] = useState(f.description ?? '');
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
-    const [priceError, setPriceError] = useState<string | null>(null);
 
     const { data: postTemplates } = trpc.postTemplates.list.useQuery();
     const { data: suppliers } = trpc.suppliers.list.useQuery();
-    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
+    const { data: currencies } = trpc.currencies.list.useQuery();
+    const { orgFeeDefaultPercent } = usePricingSettings();
 
     const supplierName = useMemo(() => {
         if (supplierId == null) return null;
         return (suppliers ?? []).find((s) => s.id === supplierId)?.name ?? null;
     }, [supplierId, suppliers]);
 
+    const currencyName = useMemo(() => {
+        if (currencyId == null) return null;
+        return (currencies ?? []).find((c) => c.id === currencyId)?.name ?? null;
+    }, [currencyId, currencies]);
+
+    // По умолчанию выбираем валюту поставщика (EUR), а не рубль.
+    // Срабатывает только если валюта не задана и список валют загружен.
+    // Приоритет: EUR → первая не-RUB → первая в списке.
+    useEffect(() => {
+        if (currencyId != null) return;
+        if (!currencies?.length) return;
+        const eur = currencies.find((c) => c.code?.toUpperCase() === 'EUR');
+        const nonRub = currencies.find((c) => c.code?.toUpperCase() !== 'RUB');
+        const target = eur ?? nonRub ?? currencies[0];
+        if (target) setCurrencyId(target.id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- авто-дефолт по загрузке списка
+    }, [currencies]);
+
     const userPickedTemplateRef = useRef(false);
     const lastAppliedSignatureRef = useRef<string | null>(null);
     const lastAutoDescriptionRef = useRef<string | null>(
-        loadSavedDescription && !!normalizeNovelHtml(initial.description)
-            ? initial.description
+        loadSavedDescription && !!normalizeNovelHtml(f.description ?? '')
+            ? f.description ?? ''
             : null,
     );
     const preserveSavedDescriptionRef = useRef(
-        loadSavedDescription && !!normalizeNovelHtml(initial.description),
+        loadSavedDescription && !!normalizeNovelHtml(f.description ?? ''),
     );
 
+    // Сброс при смене товара.
     useEffect(() => {
-        const next = buildPurchaseFormState(
-            mergeProductAndPurchaseFields(product, initialPurchaseFields),
-            loadSavedDescription,
-        );
-        setDescription(next.description);
-        setTiers(next.tiers);
-        setMinPkgAmount(next.minPkgAmount);
-        setMinPkgUnit(next.minPkgUnit);
-        setSupPkgTiers(next.supPkgTiers);
-        setSupplementStep(next.supplementStep);
-        setSupplierLimit(next.supplierLimit);
-        setSupplierLimitUnit(next.supplierLimitUnit);
-        setTargetRemainder(next.targetRemainder);
-        setSupplierId(initialPurchaseFields?.supplierId ?? null);
+        const nextF = initialPurchaseFields ?? {};
+        setPricePerPackCurrency(toNum(nextF.pricePerPackCurrency));
+        setCurrencyId(nextF.currencyId ?? null);
+        setPackAmount(toNum(nextF.packAmount));
+        setPackUnit(defaultUnitField(nextF.packUnit, getUnitByCode(product.unitCode)?.shortName));
+        setOrgFeePercentOverride(toNum(nextF.orgFeePercentOverride));
+        setMinPkgAmount(toNum(nextF.minPackageAmount));
+        setMinPkgUnit(defaultUnitField(nextF.minPackageUnit, getUnitByCode(product.unitCode)?.shortName));
+        setSupplementStep(toNum(nextF.supplementStep));
+        setSupplierLimit(toNum(nextF.supplierLimit));
+        setSupplierLimitUnit(defaultUnitField(nextF.supplierLimitUnit, getUnitByCode(product.unitCode)?.shortName));
+        setTargetRemainder(toNum(nextF.targetRemainder));
+        setSupplierId(nextF.supplierId ?? null);
+        setDescription(nextF.description ?? '');
 
         userPickedTemplateRef.current = false;
         preserveSavedDescriptionRef.current =
-            loadSavedDescription && !!normalizeNovelHtml(next.description);
+            loadSavedDescription && !!normalizeNovelHtml(nextF.description ?? '');
         lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current
-            ? next.description
+            ? nextF.description ?? ''
             : null;
         setTemplateId('none');
         setDescriptionRevision(0);
@@ -218,43 +255,29 @@ export function PurchaseProductEditForm({
         return { attributes: allAttributes, characteristics: allCharacteristics };
     }, [allAttributes, allCharacteristics]);
 
-    const primarySupplierPack = useMemo(
-        () => primarySupplierPackageFromTiers(supPkgTiers),
-        [supPkgTiers],
-    );
-
     const descriptionFields = useMemo(
         () => ({
             ...productToDescriptionFields(product, showInTitleByTypeId, attributeTypes, characteristicsCatalog),
             name: product.name,
-            minPackageAmount: minPkgAmount,
-            minPackageUnit: minPkgUnit,
-            priceTiers: tiers,
-            supplierPackageTiers: supPkgTiers,
-            supplierPackageAmount: primarySupplierPack.amount,
-            supplierPackageUnit: primarySupplierPack.unit,
-            supplierPackagePrice: primarySupplierPack.price,
-            supplierLimit,
-            supplierLimitUnit,
+            // Новая модель цен для шаблона:
+            pricePerPackCurrency,
+            currencyName: currencyName ?? undefined,
+            packAmount,
+            packUnit,
             supplierName: supplierName ?? undefined,
             purchaseTag,
-            packDiscountPercent,
         }),
         [
             product,
             showInTitleByTypeId,
             attributeTypes,
             characteristicsCatalog,
-            minPkgAmount,
-            minPkgUnit,
-            tiers,
-            supPkgTiers,
-            primarySupplierPack,
-            supplierLimit,
-            supplierLimitUnit,
+            pricePerPackCurrency,
+            currencyName,
+            packAmount,
+            packUnit,
             supplierName,
             purchaseTag,
-            packDiscountPercent,
         ],
     );
 
@@ -344,27 +367,16 @@ export function PurchaseProductEditForm({
     }
 
     function handleSave() {
-        const tierError = validatePurchasePriceTiers(tiers);
-        if (tierError) {
-            setPriceError(tierError);
-            toast.error(tierError);
-            return;
-        }
-        setPriceError(null);
-
-        const validTiers = tiers.filter((t) => t.amount > 0 && t.price > 0 && t.unit.trim());
-        const firstTier = validTiers[0]!;
-        const priceOverride = firstTier.price / firstTier.amount;
-        const supplierPack = normalizeSupplierTiersForSave(supPkgTiers);
-
         onSave({
             supplierId,
             description: description || null,
-            priceOverride,
-            priceTiers: validTiers,
+            pricePerPackCurrency,
+            currencyId,
+            packAmount,
+            packUnit,
+            orgFeePercentOverride,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
-            ...supplierPack,
             supplementStep,
             supplierLimit,
             supplierLimitUnit,
@@ -380,29 +392,33 @@ export function PurchaseProductEditForm({
                 onChange={handleTemplateChange}
             />
             <SupplierSection supplierId={supplierId} onChange={setSupplierId} />
-            <MinPackageSection
-                minPkgAmount={minPkgAmount}
-                minPkgUnit={minPkgUnit}
-                onAmountChange={setMinPkgAmount}
-                onUnitChange={setMinPkgUnit}
+            <PackPricingSection
+                pricePerPackCurrency={pricePerPackCurrency}
+                currencyId={currencyId}
+                packAmount={packAmount}
+                packUnit={packUnit}
+                orgFeePercentOverride={orgFeePercentOverride}
+                orgFeeDefaultPercent={orgFeeDefaultPercent}
+                currencies={(currencies ?? []).map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    code: c.code,
+                    symbol: c.symbol,
+                }))}
+                onPriceChange={setPricePerPackCurrency}
+                onCurrencyChange={setCurrencyId}
+                onPackAmountChange={setPackAmount}
+                onPackUnitChange={setPackUnit}
+                onOrgFeeChange={setOrgFeePercentOverride}
             />
-            <PriceTiersSection
-                tiers={tiers}
-                error={priceError}
-                onChange={(next) => {
-                    setTiers(next);
-                    if (priceError && !validatePurchasePriceTiers(next)) {
-                        setPriceError(null);
-                    }
-                }}
-            />
-            <SupplierPackageSection supPkgTiers={supPkgTiers} onChange={setSupPkgTiers} />
             <SupplementLimitsSection
+                minPackageAmount={minPkgAmount}
                 supplementStep={supplementStep}
                 supplierLimit={supplierLimit}
                 supplierLimitUnit={supplierLimitUnit}
                 targetRemainder={targetRemainder}
                 minPkgUnit={minPkgUnit}
+                onMinPackageAmountChange={setMinPkgAmount}
                 onSupplementStepChange={setSupplementStep}
                 onSupplierLimitChange={setSupplierLimit}
                 onSupplierLimitUnitChange={setSupplierLimitUnit}

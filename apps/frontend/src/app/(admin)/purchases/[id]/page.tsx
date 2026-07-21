@@ -195,7 +195,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     </TabsTrigger>
                     <TabsTrigger value="packing">
                         <Boxes className="size-3.5" />
-                        Фасовка
+                        Этикетки
                         <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
                             {items.length}
                         </span>

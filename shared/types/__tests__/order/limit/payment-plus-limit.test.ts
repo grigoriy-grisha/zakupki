@@ -14,7 +14,7 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [
@@ -44,7 +44,7 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [
@@ -72,7 +72,7 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [
@@ -103,8 +103,8 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: 100,
-                supplierPackageUnit: 'гр',
+                packAmount: 100,
+                packUnit: 'гр',
                 supplierLimit: 150,
                 supplierLimitUnit: 'гр',
             }),
@@ -140,7 +140,7 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: 100,
-                supplierPackageAmount: null, // supplierLimit=null
+                packAmount: null, // supplierLimit=null
             }),
             [
                 OrderLine.create(
@@ -164,7 +164,7 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 100,
             }),
             [
@@ -194,7 +194,7 @@ describe('Limit. PAYMENT+: глобальный лимит поставщика'
         const book1 = OrderBook.create(
             makeItem('PAYMENT', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [

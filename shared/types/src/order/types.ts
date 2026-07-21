@@ -5,7 +5,7 @@
  * только plain TypeScript interfaces/types. Все числовые поля — number
  * (преобразование Decimal→number делается на границе приложения).
  */
-import type { PriceTier } from '../pricing/types';
+import type { CurrencyRate } from '../pricing/currency-pricing';
 import type { PurchaseFulfillmentStatus } from '../index';
 
 // ── Value Objects ──────────────────────────────────────────────────
@@ -41,18 +41,14 @@ export type OrderLineStatus = 'ACTIVE' | 'CANCELLED';
 export interface PurchaseItem {
     purchaseItemId: number;
 
-    // ── Цены (per-purchase) ──
-    pricePerUnit: number;
-    priceOverride: number | null;
-    priceTiers: PriceTier[] | null;
-    /** Скидка за целые пачки (глобальная настройка). */
+    // ── Скидка за целые пачки (глобальная настройка) ──
     packDiscountPercent: number;
 
-    // ── Упаковка поставщика (per-purchase) ──
-    supplierPackageAmount: number | null;
-    supplierPackageUnit: string | null;
-    supplierPackagePrice: number | null;
-    supplierPackageTiers: PriceTier[] | null;
+    // ── Параметры упаковки (per-purchase) ──
+    /** Вес пачки (гр/шт). */
+    packAmount: number | null;
+    /** Единица веса пачки. */
+    packUnit: string | null;
 
     // ── Параметры фасовки (per-purchase) ──
     unitCode: string;
@@ -79,6 +75,18 @@ export interface PurchaseItem {
     supplierId: number | null;
     /** Денормализованное имя поставщика для UI/логов (не использовать для логики). */
     supplierName: string | null;
+
+    // ── Новая модель цен (валюта + курс + оргсбор) ──
+    /** id валюты цены товара. null — валюта не задана. */
+    currencyId: number | null;
+    /** Цена за упаковку в валюте (кол. 3). */
+    pricePerPackCurrency: number | null;
+    /** Override % оргсбора для этого товара (приоритет над глобальным). null — глобальный. */
+    orgFeePercentOverride: number | null;
+    /** Глобальный % оргсбора (из настроек). */
+    orgFeeDefaultPercent: number;
+    /** Ставки валют закупки (currencyId → rateToRub). */
+    currencyRates: CurrencyRate[];
 }
 
 // ── Эффекты (результат операций) ───────────────────────────────────

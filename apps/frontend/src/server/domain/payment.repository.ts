@@ -2,8 +2,24 @@ import { dbClient } from '@zakupki/database';
 import { NotFoundError, ValidationError } from '@zakupki/types';
 
 export class PaymentRepository {
+    /**
+     * Create a payment record directly (admin-side). The admin note is stored
+     * in `adminNote` (the only note-style field on Payment besides `userComment`,
+     * which is reserved for the paying user's own text). Status defaults to
+     * CONFIRMED: when an admin records an offline / cash / SBP-out-of-band
+     * payment they have already seen the money — a PENDING row would just sit
+     * in their own "awaiting review" queue forever.
+     */
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
-        return dbClient.payment.create({ data });
+        return dbClient.payment.create({
+            data: {
+                userId: data.userId,
+                purchaseId: data.purchaseId,
+                amount: data.amount,
+                adminNote: data.note,
+                status: 'CONFIRMED',
+            },
+        });
     }
 
     async submitPayment(data: {
@@ -95,6 +111,21 @@ export class PaymentRepository {
 
     async getById(id: number) {
         return dbClient.payment.findUnique({ where: { id } });
+    }
+
+    /** Fetch a payment with the purchase tag included (for notification payloads). */
+    async findWithPurchase(id: number) {
+        return dbClient.payment.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                userId: true,
+                purchaseId: true,
+                amount: true,
+                status: true,
+                purchase: { select: { tag: true } },
+            },
+        });
     }
 
     async findPendingByUserAndPurchase(userId: number, purchaseId: number) {

@@ -30,7 +30,15 @@ const ITEM_INCLUDE = {
     },
     supplier: { select: { id: true, name: true } },
     orderLines: { select: { quantity: true } },
-    purchase: { select: { id: true, tag: true, status: true, fulfillmentStatus: true } },
+    purchase: {
+        select: {
+            id: true,
+            tag: true,
+            status: true,
+            fulfillmentStatus: true,
+            currencyRates: { select: { currencyId: true, rateToRub: true } },
+        },
+    },
 } as const;
 
 // Prisma по умолчанию возвращает все scalar-поля (supplierLimit, supplierLimitUnit и др.)
@@ -73,8 +81,12 @@ export class PurchaseItemResolver {
     private async tryResolve(candidate: LookupCandidate) {
         const cachedId = await this.cacheGet(candidate.cacheKey);
         if (cachedId) {
-            const item = await dbClient.purchaseItem.findUnique({ where: { id: cachedId }, include: ITEM_INCLUDE });
-            if (item) return item;
+            const item = await dbClient.purchaseItem.findUnique({
+                where: { id: cachedId },
+                include: ITEM_INCLUDE,
+            });
+            // Hidden items are excluded from ordering — treat as not found.
+            if (item && !item.hidden) return item;
         }
 
         const item = await dbClient.purchaseItem.findFirst({
@@ -82,6 +94,7 @@ export class PurchaseItemResolver {
                 tgMessageId: candidate.messageId,
                 ...(candidate.channelId ? { tgChannelId: candidate.channelId } : {}),
                 publicationState: 'PUBLISHED',
+                hidden: false,
             },
             include: ITEM_INCLUDE,
         });

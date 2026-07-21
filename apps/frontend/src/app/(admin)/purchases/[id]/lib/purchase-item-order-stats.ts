@@ -1,8 +1,7 @@
 export type PurchaseItemOrderStatsSource = {
     orderLines: { quantity: unknown }[];
-    // После миграции Supplier: per-purchase поля читаются с item, не с product.
-    supplierPackageAmount?: unknown;
-    supplierPackageUnit?: string | null;
+    packAmount?: unknown;
+    packUnit?: string | null;
 };
 
 export type PackOrderUnit = 'гр' | 'шт';
@@ -16,13 +15,13 @@ function normalizePackUnit(unit: string | null | undefined): PackOrderUnit | nul
 }
 
 export function unitsInPack(item: {
-    supplierPackageAmount?: unknown;
-    supplierPackageUnit?: string | null;
+    packAmount?: unknown;
+    packUnit?: string | null;
 }): { size: number; unit: PackOrderUnit } | null {
-    if (item.supplierPackageAmount == null) return null;
-    const unit = normalizePackUnit(item.supplierPackageUnit);
+    if (item.packAmount == null) return null;
+    const unit = normalizePackUnit(item.packUnit);
     if (!unit) return null;
-    const size = Number(item.supplierPackageAmount);
+    const size = Number(item.packAmount);
     return Number.isFinite(size) && size > 0 ? { size, unit } : null;
 }
 

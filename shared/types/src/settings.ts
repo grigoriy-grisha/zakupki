@@ -43,7 +43,7 @@ export type JsonSettingDef = {
 export type SettingDef = NumberSettingDef | StringSettingDef | BooleanSettingDef | JsonSettingDef;
 
 /** Кортеж всех ключей настроек — единый источник истины. */
-const SETTING_KEYS = ['bead_pack_price_discount_percent'] as const;
+const SETTING_KEYS = ['bead_pack_price_discount_percent', 'org_fee_default_percent'] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 /** Декларативная схема. При добавлении ключа — добавить и в SETTING_KEYS. */
@@ -54,6 +54,13 @@ export const SETTINGS_SCHEMA = {
         min: 0,
         max: 100,
         description: 'Скидка от цены за пачку бисера, %',
+    },
+    org_fee_default_percent: {
+        type: 'number' as const,
+        default: 0,
+        min: 0,
+        max: 100,
+        description: 'Орг. сбор по умолчанию, %',
     },
 } satisfies Record<SettingKey, SettingDef>;
 
@@ -138,14 +145,4 @@ export function parseSettingValue<K extends SettingKey>(key: K, raw: string | nu
             throw new ValidationError(`${key}: неизвестный тип: ${String(_exhaustive)}`);
         }
     }
-}
-
-/**
- * Цена пачки со скидкой.
- * Зависит от значения настройки `bead_pack_price_discount_percent`,
- * потому вынесено рядом со схемой.
- */
-export function computeDiscountedPackPrice(packPrice: number, discountPercent: number): number {
-    const discounted = packPrice * (1 - discountPercent / 100);
-    return Math.round(discounted * 100) / 100;
 }

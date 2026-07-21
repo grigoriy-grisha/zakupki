@@ -6,7 +6,7 @@ import { makeFrozenCollectionLine, makeItem } from '../__helpers__';
 // ── REORDER: adjustPackages + supplierLimit ─────────────────────────
 //
 // Сценарий из бага: юзер на доборе имеет 70 гр + 1 пачка (30 гр) = 100 гр фактически.
-// supplierLimit = 100 гр, supplierPackageAmount = 30 гр. Берёт +1 пачку →
+// supplierLimit = 100 гр, packAmount = 30 гр. Берёт +1 пачку →
 // userNew = 100 + 30 = 130. Лимит превышен, но это корректное поведение.
 //
 // Реальный баг — наоборот: сценарий, когда лимит НЕ должен срабатывать.
@@ -21,8 +21,8 @@ describe('Limit. REORDER: adjustPackages + supplierLimit', () => {
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: 30,
-                supplierPackageUnit: 'гр',
+                packAmount: 30,
+                packUnit: 'гр',
                 supplierLimit: 100,
                 supplierLimitUnit: 'гр',
             }),
@@ -51,8 +51,8 @@ describe('Limit. REORDER: adjustPackages + supplierLimit', () => {
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: 30,
-                supplierPackageUnit: 'гр',
+                packAmount: 30,
+                packUnit: 'гр',
                 supplierLimit: 100,
                 supplierLimitUnit: 'гр',
             }),
@@ -84,8 +84,8 @@ describe('Limit. REORDER: adjustPackages + supplierLimit', () => {
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: 30,
-                supplierPackageUnit: 'гр',
+                packAmount: 30,
+                packUnit: 'гр',
                 supplierLimit: 100,
                 supplierLimitUnit: 'гр',
             }),

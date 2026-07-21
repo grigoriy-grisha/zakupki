@@ -5,7 +5,8 @@ import { escapeHtmlLocal, formatNumberRu, BaseSectionRenderer, type SectionProps
 export interface ProductHeaderData {
     name: string;
     description: string | null;
-    pricePerUnit: unknown;
+    /** Цена за единицу в ₽ (новая модель: валюта × курс × оргсбор). */
+    unitPriceRub: number | null;
     minPackageAmount: unknown;
     minPackageUnit: string | null;
     unitCode: string;
@@ -74,9 +75,9 @@ export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData
             );
         }
 
-        const price = Number(data.pricePerUnit);
+        const price = data.unitPriceRub;
         const shortName = data.unitCode ? (getUnitByCode(data.unitCode)?.shortName ?? 'ед.') : 'ед.';
-        if (Number.isFinite(price) && price > 0) {
+        if (price != null && Number.isFinite(price) && price > 0) {
             lines.push(`${formatNumberRu(price)} ₽/${escapeHtmlLocal(shortName)}`);
         }
 

@@ -1,24 +1,30 @@
-import type { OrderQuantityOptions } from './types';
 import { formatQtyLabel, positiveOrNull } from '../utils';
+import { isSupplementPhase } from '../order-strategies';
 
 /**
- * Только «Мин. фасовка: …» — фасовка из карточки товара (minPackageAmount).
- * Не использовать минимум добора (SUPPLEMENT_MIN_ORDER_QTY) и не getMinOrderQuantity.
+ * Stage-aware подсказка шага для UI: учитывает текущий этап закупки.
+ *
+ * На COLLECTION показывает «Мин. фасовка: N ед» (regular step = minPackageAmount).
+ * На REORDER/PAYMENT+ показывает «Шаг добора: N ед», где N = supplementStep,
+ * если задан, иначе fallback на minPackageAmount (та же логика, что в getSupplementStep).
+ *
+ * Признак этапа добора берётся из общего isSupplementPhase (используется и в
+ * getSupplementStep-окружении, и в order-strategies) — единый source of truth.
+ *
+ * Возвращает null если шаг нельзя показать (например, оба значения null).
  */
-export function formatMinPackageHint(options: OrderQuantityOptions): string | null {
-    const step = positiveOrNull(options.minPackageAmount);
+export function formatActiveStepHint(input: {
+    fulfillmentStatus: string;
+    minPackageAmount: number | null;
+    minPackageUnit: string | null;
+    supplementStep: number | null;
+    unitShort: string;
+}): string | null {
+    const isSupplement = isSupplementPhase(input.fulfillmentStatus);
+    const regularStep = positiveOrNull(input.minPackageAmount);
+    const step = isSupplement ? positiveOrNull(input.supplementStep) ?? regularStep : regularStep;
     if (step == null) return null;
-    const unit = options.minPackageUnit ?? options.unitShort ?? 'ед.';
-    return `Мин. фасовка: ${formatQtyLabel(step)} ${unit}`;
-}
-
-/**
- * Подсказка о минимальной фасовке и кратности заказа
- */
-export function formatMinPackageOrderHint(options: OrderQuantityOptions): string | null {
-    const hint = formatMinPackageHint(options);
-    if (!hint) return null;
-    const step = positiveOrNull(options.minPackageAmount)!;
-    const unit = options.minPackageUnit ?? options.unitShort ?? 'ед.';
-    return `${hint} · заказ кратно ${formatQtyLabel(step)} ${unit}`;
+    const unit = input.minPackageUnit ?? input.unitShort ?? 'ед.';
+    const label = isSupplement ? 'Шаг добора' : 'Мин. фасовка';
+    return `${label}: ${formatQtyLabel(step)} ${unit}`;
 }

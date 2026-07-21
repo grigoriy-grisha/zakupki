@@ -13,7 +13,7 @@ describe('Limit. REORDER: глобальный лимит поставщика',
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [makeFrozenCollectionLine({ id: 1, userId: 1, quantity: 80, baseQuantity: 80, amountDue: 8000 })],
@@ -27,7 +27,7 @@ describe('Limit. REORDER: глобальный лимит поставщика',
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [makeFrozenCollectionLine({ id: 1, userId: 1, quantity: 80, baseQuantity: 80, amountDue: 8000 })],
@@ -45,8 +45,8 @@ describe('Limit. REORDER: глобальный лимит поставщика',
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: 100,
-                supplierPackageUnit: 'гр',
+                packAmount: 100,
+                packUnit: 'гр',
                 supplierLimit: 150,
                 supplierLimitUnit: 'гр',
             }),
@@ -96,7 +96,7 @@ describe('Limit. REORDER: глобальный лимит поставщика',
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [OrderLine.create(makeLineProps({ id: 1, userId: 1, quantity: 120, baseQuantity: 100, amountDue: 12000 }))],
@@ -110,7 +110,7 @@ describe('Limit. REORDER: глобальный лимит поставщика',
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 150,
             }),
             [
@@ -131,7 +131,7 @@ describe('Limit. REORDER: глобальный лимит поставщика',
         const book1 = OrderBook.create(
             makeItem('REORDER', {
                 targetRemainder: null,
-                supplierPackageAmount: null,
+                packAmount: null,
                 supplierLimit: 100,
             }),
             [makeFrozenCollectionLine({ id: 1, userId: 1, quantity: 80, baseQuantity: 80, amountDue: 8000 })],

@@ -35,11 +35,12 @@ export { computeRawPool, computePoolInfo, validateSupplementPool } from './pool'
 export { computeRawSupplierLimit, computeSupplierLimitInfo, validateSupplierLimit } from './limit';
 export type { SupplierLimitInfo } from './limit';
 export { aggregateForPool } from './strategies/atomic';
-export { computeAmountDue, computeAmountDueWithPackages, computePackagePrice } from './pricing';
+export { computeAmountDue, computeAmountDueWithPackages, computePackagePrice, computeUnitPriceRubNewModel } from './pricing';
 export { mergeLines } from './aggregation';
 export { effectiveQty, sumEffectiveQty, userEffectiveQty, totalOrderedQuantity } from './order-math';
+export { getUnitShortName } from './utils';
 export { toOrderLineVO, toOrderLinesVO, mapToPurchaseItem } from './mapping';
-export type { OrderLineRowLike, PurchaseItemRowLike } from './mapping';
+export type { OrderLineRowLike, PurchaseItemRowLike, PurchaseItemPricingContext } from './mapping';
 
 export type {
     OrderLineVO,

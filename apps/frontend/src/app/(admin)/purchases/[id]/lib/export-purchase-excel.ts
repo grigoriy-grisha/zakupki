@@ -1,11 +1,8 @@
 import ExcelJS from 'exceljs';
-import { computeRawPool, getStageStrategy, parsePriceTiers, toOrderLinesVO, type PriceTier } from '@zakupki/types';
-import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '../../../products/lib';
 import { paymentTotal } from '../../lib/utils';
-import { formatOrderStatValue, getPurchaseItemOrderStats, unitsInPack } from './purchase-item-order-stats';
-import { tierPrice } from './price-format';
+import { unitsInPack } from './purchase-item-order-stats';
 
 type ExportUser = {
     firstName: string;
@@ -23,7 +20,8 @@ type ExportUser = {
 
 /** Каталожные данные товара (после миграции Supplier — без цен/фасовки). */
 type ExportProduct = ProductLabelSource & {
-    unit?: { shortName: string } | null;
+    /** Плоский код единицы из Product.unitCode (gram | piece | tube). */
+    unitCode: string;
 };
 
 type ExportPurchase = {
@@ -32,14 +30,11 @@ type ExportPurchase = {
     fulfillmentStatus?: string | null;
     items: {
         id: number;
-        // Per-purchase поля (миграция Supplier):
-        priceOverride?: unknown;
-        priceTiers?: unknown;
+        // Per-purchase поля:
         minPackageAmount?: unknown;
         minPackageUnit?: string | null;
-        supplierPackageAmount?: unknown;
-        supplierPackageUnit?: string | null;
-        supplierPackagePrice?: unknown;
+        packAmount?: unknown;
+        packUnit?: string | null;
         publicationState: 'DRAFT' | 'PUBLISHED';
         tgMessageId?: string | null;
         targetRemainder?: unknown;
@@ -66,12 +61,9 @@ type ExportOrder = {
     user?: ExportUser;
     purchaseItem?: {
         id?: number;
-        priceOverride?: unknown;
-        // Per-purchase поля (миграция Supplier):
-        supplierPackageAmount?: unknown;
-        supplierPackageUnit?: string | null;
-        supplierPackagePrice?: unknown;
-        priceTiers?: unknown;
+        // Per-purchase поля:
+        packAmount?: unknown;
+        packUnit?: string | null;
         product?: ExportProduct;
     };
 };
@@ -141,25 +133,10 @@ function formatMoney(value: unknown) {
     return Number(value);
 }
 
-function formatPrice510(tiers: PriceTier[]) {
-    const price5 = tierPrice(tiers, 5);
-    const price10 = tierPrice(tiers, 10);
-    if (price5 != null && price10 != null) return `${price5} / ${price10}`;
-    if (price5 != null) return String(price5);
-    if (price10 != null) return String(price10);
-    return '';
-}
-
-function formatPrice1Gr(item: { priceOverride?: unknown; priceTiers?: unknown }, tiers: PriceTier[]) {
-    const tier1 = tierPrice(tiers, 1);
-    if (tier1 != null) return tier1;
-    return item.priceOverride != null ? formatMoney(item.priceOverride) : '';
-}
-
-function formatSupplierPackage(item?: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null }) {
-    if (!item || item.supplierPackageAmount == null) return '';
-    const amount = Number(item.supplierPackageAmount);
-    const unit = item.supplierPackageUnit?.trim();
+function formatSupplierPackage(item?: { packAmount?: unknown; packUnit?: string | null }) {
+    if (!item || item.packAmount == null) return '';
+    const amount = Number(item.packAmount);
+    const unit = item.packUnit?.trim();
     if (unit === 'гр' || unit === 'г') return amount;
     if (!unit) return amount;
     return `${amount} ${unit}`;
@@ -299,133 +276,6 @@ function autoFitColumns(sheet: ExcelJS.Worksheet) {
     });
 }
 
-const GENERAL_EXPORT_FIXED_COLUMNS = 5;
-const GENERAL_EXPORT_SUMMARY_COLUMNS = 6;
-const GENERAL_EXPORT_LABEL_START = 3;
-const GENERAL_EXPORT_LABEL_END = 5;
-
-const GENERAL_EXPORT_FILL = {
-    purchaseTag: 'FFFFC9CD',
-    participantNumber: 'FF92D050',
-    priceHeader: 'FF00B0F0',
-    productRow: 'FF00FF00',
-    sumBeads: 'FFFFE0B2',
-    balance: 'FFFFCDD2',
-    paid: 'FF92D050',
-} as const;
-
-const GENERAL_EXPORT_PARTICIPANT_FILLS = ['FFFFFF00', 'FF92D050', 'FFFFC9CD'] as const;
-
-const GENERAL_EXPORT_PRICE_HEADERS = [
-    'цена за пачку в рублях',
-    'цена за 5/10 гр. в рублях',
-    'цена за 1 гр. в рублях',
-] as const;
-
-const GENERAL_EXPORT_SUMMARY_HEADERS = [
-    'НАБРАНО, гр',
-    'грамм в пачке',
-    'кол-во пачек к заказу',
-    'заказано пачек',
-    'заказано грамм',
-    'Свободный остаток',
-] as const;
-
-function applyGeneralSheetColumnWidths(
-    sheet: ExcelJS.Worksheet,
-    options: {
-        participantCount: number;
-        maxNameLineLength: number;
-        headerRowNumber: number;
-    },
-) {
-    const { participantCount, maxNameLineLength, headerRowNumber } = options;
-    const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
-    const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
-    const summaryStart = fixedColumns + participantCount + 1;
-    const narrowWidth = 11;
-    const fixedWidths: Record<number, number> = {
-        2: 12,
-        3: 14,
-        4: 16,
-        5: 14,
-    };
-
-    sheet.getColumn(1).width = Math.min(Math.max(maxNameLineLength + 2, 28), 55);
-
-    for (let col = 2; col <= fixedColumns; col++) {
-        sheet.getColumn(col).width = fixedWidths[col] ?? narrowWidth;
-    }
-
-    const headerRow = sheet.getRow(headerRowNumber);
-    for (let col = fixedColumns + 1; col <= fixedColumns + participantCount; col++) {
-        sheet.getColumn(col).width = 18;
-        headerRow.getCell(col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    }
-
-    for (let col = summaryStart; col < summaryStart + summaryColumns; col++) {
-        sheet.getColumn(col).width = narrowWidth;
-        headerRow.getCell(col).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    }
-}
-
-function participantGramTotals(
-    orders: ExportOrder[],
-    participants: ExportParticipant[],
-    productByItemId: Map<number, ExportProduct>,
-) {
-    const totals = new Map<number, number>();
-    participants.forEach((participant) => totals.set(participant.userId, 0));
-
-    orders.forEach((order) => {
-        const product =
-            (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
-            order.purchaseItem?.product;
-        if (!isGramProduct(product)) return;
-
-        const qty = formatMoney(order.quantity);
-        if (qty <= 0) return;
-        totals.set(order.userId, (totals.get(order.userId) ?? 0) + qty);
-    });
-
-    return participants.map((participant) => totals.get(participant.userId) ?? 0);
-}
-
-function addGeneralFooterRow(
-    sheet: ExcelJS.Worksheet,
-    label: string,
-    participantValues: (number | string)[],
-    participantCount: number,
-    fillArgb?: string,
-) {
-    const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
-    const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
-    const row = sheet.addRow(['', '', label, '', '', ...participantValues, ...Array(summaryColumns).fill('')]);
-
-    sheet.mergeCells(row.number, GENERAL_EXPORT_LABEL_START, row.number, GENERAL_EXPORT_LABEL_END);
-
-    const fill = fillArgb
-        ? {
-              type: 'pattern' as const,
-              pattern: 'solid' as const,
-              fgColor: { argb: fillArgb },
-          }
-        : undefined;
-
-    const totalColumns = fixedColumns + participantCount + summaryColumns;
-    for (let col = GENERAL_EXPORT_LABEL_START; col <= totalColumns; col++) {
-        const cell = row.getCell(col);
-        if (fill) cell.fill = fill;
-        if (col <= GENERAL_EXPORT_LABEL_END) {
-            cell.font = { bold: true };
-            cell.alignment = { vertical: 'middle', wrapText: true };
-        } else if (col <= fixedColumns + participantCount) {
-            styleNumericCell(cell);
-            if (fill) cell.fill = fill;
-        }
-    }
-}
-
 async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string) {
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
@@ -439,21 +289,6 @@ async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string) {
     URL.revokeObjectURL(url);
 }
 
-function participantPaymentTotals(orders: ExportOrder[], payments: ExportPayment[], participants: ExportParticipant[]) {
-    const summary = new Map(buildParticipantSummary(orders, payments).map((entry) => [entry.userId, entry]));
-
-    return participants.map((participant) => {
-        const entry = summary.get(participant.userId);
-        const due = entry?.due ?? 0;
-        const paid = entry?.paid ?? 0;
-
-        return {
-            due: due || '',
-            balance: due > 0 || paid > 0 ? Math.max(0, due - paid) : '',
-            paid: paid || '',
-        };
-    });
-}
 function buildParticipantSummary(orders: ExportOrder[], payments: ExportPayment[]) {
     const userOrders = new Map<number, ExportOrder[]>();
     orders.forEach((order) => {
@@ -493,210 +328,6 @@ function buildParticipantSummary(orders: ExportOrder[], payments: ExportPayment[
     });
 }
 
-export async function exportGeneralPurchaseData({ purchase, orders, payments, attributeTypes }: PurchaseExportData) {
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Zakupki';
-    workbook.created = new Date();
-
-    const sheet = workbook.addWorksheet('Общие данные');
-    const participants = buildParticipants(orders);
-    const productByItemId = buildProductByItemId(purchase);
-    const fixedColumns = GENERAL_EXPORT_FIXED_COLUMNS;
-    const summaryColumns = GENERAL_EXPORT_SUMMARY_COLUMNS;
-    const participantCount = participants.length;
-    const summaryStartCol = fixedColumns + participantCount + 1;
-    const totalColumns = fixedColumns + participantCount + summaryColumns;
-
-    const metaRow = sheet.addRow([
-        '',
-        purchase.tag,
-        'НОМЕР УЧАСТНИКА',
-        '',
-        '',
-        ...participants.map((_, index) => index + 1),
-        ...Array(summaryColumns).fill(''),
-    ]);
-    sheet.mergeCells(metaRow.number, GENERAL_EXPORT_LABEL_START, metaRow.number, GENERAL_EXPORT_LABEL_END);
-    applyOrdersCellFill(metaRow.getCell(2), GENERAL_EXPORT_FILL.purchaseTag);
-    metaRow.getCell(2).font = { bold: true };
-    metaRow.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-    const participantLabelCell = metaRow.getCell(GENERAL_EXPORT_LABEL_START);
-    participantLabelCell.font = { bold: true };
-    participantLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    for (let col = fixedColumns + 1; col <= fixedColumns + participantCount; col++) {
-        const cell = metaRow.getCell(col);
-        applyOrdersCellFill(cell, GENERAL_EXPORT_FILL.participantNumber);
-        cell.font = { bold: true };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        styleNumericCell(cell);
-    }
-
-    const headerRow = sheet.addRow([
-        '',
-        'Фасовка поставщика, гр',
-        ...GENERAL_EXPORT_PRICE_HEADERS,
-        ...participants.map(() => ''),
-        ...GENERAL_EXPORT_SUMMARY_HEADERS,
-    ]);
-    participants.forEach((participant, index) => {
-        const cell = headerRow.getCell(fixedColumns + 1 + index);
-        cell.value = participantBlockTitle(participant);
-        applyOrdersCellFill(cell, GENERAL_EXPORT_PARTICIPANT_FILLS[index % GENERAL_EXPORT_PARTICIPANT_FILLS.length]);
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    });
-    for (let col = GENERAL_EXPORT_LABEL_START; col <= GENERAL_EXPORT_LABEL_END; col++) {
-        const cell = headerRow.getCell(col);
-        styleHeaderCell(cell);
-        applyOrdersCellFill(cell, GENERAL_EXPORT_FILL.priceHeader);
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    }
-    const packHeaderCell = headerRow.getCell(2);
-    styleHeaderCell(packHeaderCell);
-    packHeaderCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    for (let col = summaryStartCol; col <= totalColumns; col++) {
-        styleHeaderCell(headerRow.getCell(col));
-    }
-
-    let maxNameLineLength = 0;
-    let grandCollected = 0;
-    let grandPacksToOrder = 0;
-    let grandOrderedPacks = 0;
-    let grandOrderedGrams = 0;
-
-    purchase.items.forEach((item) => {
-        const product = item.product;
-        const { line1 } = excelProductNameLines(product, attributeTypes);
-        maxNameLineLength = Math.max(maxNameLineLength, line1.length);
-        // Per-purchase поля читаются с item (миграция Supplier).
-        const tiers = parsePriceTiers(item.priceTiers);
-        const stats = getPurchaseItemOrderStats(item);
-        grandCollected += stats.totalQuantity;
-        grandPacksToOrder += stats.packsToOrder ?? 0;
-        grandOrderedPacks += stats.orderedPacks ?? 0;
-        grandOrderedGrams += stats.orderedQuantity ?? 0;
-
-        const quantitiesByUser = new Map<number, number>();
-        item.orderLines.forEach((line) => {
-            quantitiesByUser.set(line.userId, formatMoney(line.quantity));
-        });
-
-        // Пул добора — через доменную стратегию (REORDER: baseQuantity-based, PAYMENT+: createdOnStage-based)
-        const strategy = getStageStrategy((purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus);
-        const aggregation = strategy.aggregateForPool(toOrderLinesVO(item.orderLines as any[]));
-        const packSize = item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
-        const displayedRemainder = computeRawPool({
-            targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-            packSize,
-            aggregation,
-        });
-
-        const row = sheet.addRow([
-            '',
-            formatSupplierPackage(item),
-            item.supplierPackagePrice != null ? formatMoney(item.supplierPackagePrice) : '',
-            formatPrice510(tiers),
-            formatPrice1Gr(item, tiers),
-            ...participants.map((participant) => quantitiesByUser.get(participant.userId) ?? ''),
-            stats.totalQuantity || '',
-            stats.packSize ?? '',
-            stats.packsToOrder ?? '',
-            stats.orderedPacks ?? '',
-            stats.orderedQuantity ?? '',
-            // «Свободный остаток» — 6-я колонка summary:
-            // null = без лимита (нет ни targetRemainder, ни packSize), выводим пусто.
-            displayedRemainder != null ? formatOrderStatValue(displayedRemainder) : '',
-        ]);
-        for (let col = 1; col <= totalColumns; col++) {
-            applyOrdersCellFill(row.getCell(col), GENERAL_EXPORT_FILL.productRow);
-        }
-        for (let col = 1; col <= fixedColumns; col++) {
-            styleFixedColumnCell(row.getCell(col), col);
-        }
-        for (let col = fixedColumns + 1; col <= totalColumns; col++) {
-            styleNumericCell(row.getCell(col));
-        }
-        setExcelProductNameCell(row.getCell(1), product, attributeTypes);
-    });
-
-    const summaryCollectedCol = summaryStartCol;
-
-    const totalsRow = sheet.addRow([
-        '',
-        '',
-        '',
-        '',
-        '',
-        ...Array(participantCount).fill(''),
-        grandCollected || '',
-        '',
-        '',
-        '',
-        '',
-    ]);
-    const collectedTotalCell = totalsRow.getCell(summaryCollectedCol);
-    collectedTotalCell.font = { bold: true };
-    styleNumericCell(collectedTotalCell);
-
-    const gramTotals = participantGramTotals(orders, participants, productByItemId);
-    const paymentTotals = participantPaymentTotals(orders, payments, participants);
-
-    addGeneralFooterRow(
-        sheet,
-        'грамм всего',
-        gramTotals.map((value) => value || ''),
-        participantCount,
-    );
-    addGeneralFooterRow(
-        sheet,
-        'Сумма за бисер, руб',
-        paymentTotals.map((entry) => entry.due),
-        participantCount,
-        GENERAL_EXPORT_FILL.sumBeads,
-    );
-    addGeneralFooterRow(
-        sheet,
-        'ОСТАТОК К ОПЛАТЕ, руб',
-        paymentTotals.map((entry) => entry.balance),
-        participantCount,
-        GENERAL_EXPORT_FILL.balance,
-    );
-    addGeneralFooterRow(
-        sheet,
-        'ОПЛАЧЕНО',
-        paymentTotals.map((entry) => entry.paid),
-        participantCount,
-        GENERAL_EXPORT_FILL.paid,
-    );
-
-    const verifyRow = sheet.addRow([
-        'Проверка:',
-        '',
-        '',
-        '',
-        '',
-        ...Array(participantCount).fill(''),
-        grandCollected || '',
-        '',
-        grandPacksToOrder || '',
-        grandOrderedPacks || '',
-        grandOrderedGrams || '',
-        '',
-    ]);
-    verifyRow.getCell(1).font = { bold: true };
-
-    const footerEndRow = sheet.rowCount;
-    applySheetBorders(sheet, metaRow.number, footerEndRow, 1, totalColumns);
-
-    sheet.views = [{ state: 'frozen', xSplit: fixedColumns, ySplit: 2 }];
-    applyGeneralSheetColumnWidths(sheet, {
-        participantCount,
-        maxNameLineLength,
-        headerRowNumber: headerRow.number,
-    });
-
-    await downloadWorkbook(workbook, safeFilename(purchase.tag, 'общие_данные'));
-}
-
 const ORDERS_EXPORT_COLUMN_COUNT = 7;
 const ORDERS_EXPORT_COL_PACK = 2;
 const ORDERS_EXPORT_COL_PRICE_PACK = 3;
@@ -724,14 +355,13 @@ const ORDERS_EXPORT_PRICE_HEADERS = [
 ] as const;
 
 function isGramProduct(product: ExportProduct | undefined): boolean {
-    // unitsInPack теперь ожидает per-purchase поля (supplierPackageAmount/Unit).
-    // Для gram-проверки достаточно посмотреть unit.shortName (каталожное поле).
-    const short = product?.unit?.shortName?.trim().toLowerCase().replace(/\./g, '') ?? '';
-    return short === 'гр' || short === 'g';
+    // unitsInPack теперь ожидает per-purchase поля (packAmount/Unit).
+    // Для gram-проверки достаточно посмотреть product.unitCode (плоское каталожное поле).
+    return product?.unitCode?.toLowerCase() === 'gram';
 }
 
 function isFullPackOrder(
-    item: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null } | undefined,
+    item: { packAmount?: unknown; packUnit?: string | null } | undefined,
     quantity: unknown,
 ): boolean {
     const qty = formatMoney(quantity);
@@ -741,7 +371,7 @@ function isFullPackOrder(
 
 /** Слева — не целая пачка; справа — ровно одна пачка поставщика (например 50 при фасовке 50 гр). */
 function orderQuantitySplitColumns(
-    item: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null } | undefined,
+    item: { packAmount?: unknown; packUnit?: string | null } | undefined,
     quantity: unknown,
 ): [string, string] {
     const qty = formatMoney(quantity);
@@ -755,7 +385,7 @@ function orderQuantitySplitColumns(
 }
 
 function orderAmountSplit(
-    item: { supplierPackageAmount?: unknown; supplierPackageUnit?: string | null } | undefined,
+    item: { packAmount?: unknown; packUnit?: string | null } | undefined,
     amountDue: unknown,
     quantity: unknown,
 ) {
@@ -799,18 +429,10 @@ function participantBlockTitle(participant: ExportParticipant): ExcelJS.CellRich
 
 /**
  * Возвращает [packPrice, price510, price1] для строки заказа.
- * Per-purchase поля читаются с purchaseItem (миграция Supplier), а не с product.
+ * Старая ценовая модель удалена — колонки возвращаются пустыми.
  */
-function purchaseItemPriceCells(purchaseItem: { priceTiers?: unknown; supplierPackagePrice?: unknown; priceOverride?: unknown } | undefined) {
-    if (!purchaseItem) {
-        return ['', '', ''] as const;
-    }
-    const tiers = parsePriceTiers(purchaseItem.priceTiers);
-    return [
-        purchaseItem.supplierPackagePrice != null ? formatMoney(purchaseItem.supplierPackagePrice) : '',
-        formatPrice510(tiers),
-        formatPrice1Gr(purchaseItem, tiers),
-    ] as const;
+function purchaseItemPriceCells(_purchaseItem: unknown) {
+    return ['', '', ''] as const;
 }
 
 function groupOrdersByUser(orders: ExportOrder[]) {

@@ -3,16 +3,7 @@ import { isPositive, formatNumber } from '@/lib/utils/format';
 
 import type { DescriptionFields } from './types';
 import { normalizeNovelHtml } from './normalize-html';
-import {
-    blankParagraph,
-    paragraph,
-    boldParagraph,
-    boldLinesParagraph,
-    linesParagraph,
-    mixedParagraph,
-    formatStockLine,
-    formatSupplierPackageLines,
-} from './template-engine';
+import { blankParagraph, paragraph, boldParagraph, boldLinesParagraph, linesParagraph, formatStockLine } from './template-engine';
 
 /** HTML для NovelEditor (смежные строки — через <br>, без лишних <p>) */
 export function buildDescriptionHtml(input: DescriptionFields): string {
@@ -43,31 +34,6 @@ export function buildDescriptionHtml(input: DescriptionFields): string {
         blocks.push(
             boldParagraph(`Минимальная фасовка  - ${formatNumber(input.minPackageAmount)} ${input.minPackageUnit}`),
         );
-    }
-
-    const validTiers =
-        input.priceTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
-
-    if (validTiers.length > 0) {
-        blocks.push(blankParagraph());
-        blocks.push(
-            linesParagraph(
-                validTiers.map(
-                    (tier) => `${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб`,
-                ),
-            ),
-        );
-    }
-
-    const supplierLines = formatSupplierPackageLines(input);
-    if (supplierLines.length > 0) {
-        blocks.push(blankParagraph());
-        if (supplierLines.length === 1) {
-            blocks.push(mixedParagraph('Фасовка поставщика:', supplierLines[0]!));
-        } else {
-            blocks.push(boldParagraph('Фасовка поставщика:'));
-            blocks.push(linesParagraph(supplierLines));
-        }
     }
 
     const stockLine = formatStockLine(input);

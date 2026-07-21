@@ -7,13 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
-import { formatMinPackageHint, isSupplementPhase } from '@zakupki/types';
+import { isSupplementPhase, type CurrencyRate } from '@zakupki/types';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { ProductPricePanel } from '@/app/shop/components/product-price-panel';
 import { QuantityButtons } from '@/app/shop/components/quantity-buttons';
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import { aggregateUserLines } from '../../../../lib/order-aggregation';
 import {
     buildShopItemDescriptionRows,
@@ -28,7 +29,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     const purchaseItemId = Number(itemIdStr);
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id: purchaseId });
-    const { beadPackPriceDiscountPercent: packDiscountPercent } = usePricingSettings();
+    const { beadPackPriceDiscountPercent: packDiscountPercent, orgFeeDefaultPercent } = usePricingSettings();
 
     if (isLoading || !purchase) {
         return (
@@ -52,6 +53,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
             purchaseId={purchaseId}
             purchaseItemId={purchaseItemId}
             packDiscountPercent={packDiscountPercent}
+            orgFeeDefaultPercent={orgFeeDefaultPercent}
         />
     );
 }
@@ -61,21 +63,40 @@ function ItemDetailContent({
     purchaseId,
     purchaseItemId,
     packDiscountPercent,
+    orgFeeDefaultPercent,
 }: {
     purchase: any;
     purchaseId: number;
     purchaseItemId: number;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
 }) {
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
     const { data: myOrders } = trpc.orders.getMyOrders.useQuery();
 
+    // Currency rates for the new pricing model (валюта × курс × оргсбор).
+    const currencyRates = useMemo<CurrencyRate[]>(
+        () =>
+            (purchase?.currencyRates ?? []).map((r: any) => ({
+                currencyId: r.currencyId,
+                rateToRub: Number(r.rateToRub),
+            })),
+        [purchase?.currencyRates],
+    );
+
     const item = purchase.items.find((i: any) => i.id === purchaseItemId) as ShopPurchaseItem | undefined;
+    // Фильтруем по purchaseId — .filter() даёт новую ссылку массива каждый раз,
+    // чтобы useMemo пересчитывался после мутации (tRPC structural sharing может
+    // держать ссылку myOrders стабильной при deepEqual-данных).
+    const myOrdersForItem = useMemo(
+        () => (myOrders ?? []).filter((o: any) => o.purchaseItem?.purchaseId === purchase.id),
+        [myOrders, purchase.id],
+    );
     // С createdOnStage у пользователя может быть две строки на один товар: COLLECTION + REORDER.
     // Агрегируем через mergeLines (shared) — единая логика с ботом и админкой.
     const aggregated = useMemo(
-        () => aggregateUserLines((myOrders ?? []) as never, purchaseItemId),
-        [myOrders, purchaseItemId],
+        () => aggregateUserLines(myOrdersForItem as never, purchaseItemId),
+        [myOrdersForItem, purchaseItemId],
     );
     const currentQuantity = aggregated.quantity;
     const currentPackageCount = aggregated.packageCount;
@@ -85,15 +106,8 @@ function ItemDetailContent({
 
     const product = item?.product as
         | (ProductLabelSource & {
-              pricePerUnit: string | number;
-              priceTiers?: unknown;
               description?: string | null;
-              supplierPackageAmount?: string | number | null;
-              supplierPackageUnit?: string | null;
-              supplierPackagePrice?: string | number | null;
               unit: { shortName: string; multiplicity: string | number } | null;
-              minPackageAmount: string | number | null;
-              minPackageUnit: string | null;
               photos: { id: number }[];
           })
         | undefined;
@@ -124,6 +138,8 @@ function ItemDetailContent({
             baseQuantity={baseQuantity}
             fulfillmentStatus={fulfillmentStatus}
             packDiscountPercent={packDiscountPercent}
+            orgFeeDefaultPercent={orgFeeDefaultPercent}
+            currencyRates={currencyRates}
         />
     );
 }
@@ -140,21 +156,16 @@ function ItemDetailLoaded({
     baseQuantity,
     fulfillmentStatus,
     packDiscountPercent,
+    orgFeeDefaultPercent,
+    currencyRates,
 }: {
     purchase: any;
     purchaseId: number;
     purchaseItemId: number;
     item: ShopPurchaseItem;
     product: ProductLabelSource & {
-        pricePerUnit: string | number;
-        priceTiers?: unknown;
         description?: string | null;
-        supplierPackageAmount?: string | number | null;
-        supplierPackageUnit?: string | null;
-        supplierPackagePrice?: string | number | null;
         unit: { shortName: string; multiplicity: string | number } | null;
-        minPackageAmount: string | number | null;
-        minPackageUnit: string | null;
         photos: { id: number }[];
     };
     attributeTypes: any;
@@ -163,6 +174,8 @@ function ItemDetailLoaded({
     baseQuantity: number;
     fulfillmentStatus: string;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+    currencyRates: CurrencyRate[];
 }) {
     const ctx = useItemOrderControls({
         purchaseId,
@@ -173,10 +186,14 @@ function ItemDetailLoaded({
         baseQuantity,
         fulfillmentStatus,
         packDiscountPercent,
+        orgFeeDefaultPercent,
+        currencyRates,
     });
 
-    const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
-    const minPackageUnit = product.minPackageUnit ?? null;
+    // minPackageAmount/minPackageUnit/supplementStep живут на PurchaseItem (не Product),
+    // поэтому берём из item. Раньше читались с product — но после миграции
+    // 20260705154536 этих полей на Product нет → всегда undefined → хинт пропадал.
+    // Number-приведение и форму аргумента инкапсулированы в buildStepHint.
     const isSupplement = isSupplementPhase(fulfillmentStatus);
 
     return (
@@ -193,11 +210,7 @@ function ItemDetailLoaded({
             <div>
                 <PurchaseProductLabel product={product} primaryClassName="text-2xl font-semibold" />
                 {(() => {
-                    const catalogMinHint = formatMinPackageHint({
-                        minPackageAmount,
-                        minPackageUnit,
-                        unitShort: ctx.shortName,
-                    });
+                    const catalogMinHint = buildStepHint(item, fulfillmentStatus, ctx.shortName);
                     const freeRemainderLabel =
                         isSupplement && ctx.availablePool != null && ctx.availablePool < Number.POSITIVE_INFINITY
                             ? `Доступно ещё: ${ctx.availablePool} ${ctx.shortName}`
@@ -255,9 +268,8 @@ function ItemDetailLoaded({
                     <div className="w-full shrink-0 space-y-4 md:min-w-[22rem] md:w-96 md:pr-8 lg:min-w-[26rem] lg:w-[28rem] lg:pr-10 xl:w-[32rem] xl:pr-12">
                         <ProductPricePanel
                             product={product}
-                            priceOverride={item.priceOverride}
                             unitShort={ctx.shortName}
-                            packDiscountPercent={packDiscountPercent}
+                            unitPriceRub={ctx.unitPriceRub}
                         />
 
                         <Card>
@@ -295,6 +307,7 @@ function ItemDetailLoaded({
                                     onRemove={ctx.handleRemove}
                                     isPending={ctx.isPending}
                                     showPackage={ctx.showPackageButtons}
+                                    canAddPackage={ctx.canAddPackage}
                                     packSize={ctx.packSize}
                                     packageCount={ctx.currentPackageCount}
                                     onAddPackage={ctx.handleAddPackage}

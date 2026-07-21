@@ -15,8 +15,10 @@ import type { ChannelPostPhoto } from '../domain/types';
 import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 import {
     computeRawPool,
+    computeUnitPriceRubNewModel,
     getStageStrategy,
     getUnitByCode,
+    mapToPurchaseItem,
     toOrderLinesVO,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
@@ -38,7 +40,12 @@ const ITEM_INCLUDE = {
     },
     supplier: { select: { id: true, name: true } },
     orderLines: { where: { status: 'ACTIVE' as const } },
-    purchase: { select: { fulfillmentStatus: true } },
+    purchase: {
+        select: {
+            fulfillmentStatus: true,
+            currencyRates: { select: { currencyId: true, rateToRub: true } },
+        },
+    },
 } satisfies Prisma.PurchaseItemInclude;
 
 type Item = Prisma.PurchaseItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
@@ -49,16 +56,15 @@ async function loadPostPhoto(tg: TgClient, item: Item): Promise<ChannelPostPhoto
     return first ? tg.loadPhoto(first) : null;
 }
 
-function buildPostHeader(renderer: BotProductRenderer, item: Item): string {
+function buildPostHeader(renderer: BotProductRenderer, item: Item, unitPriceRub: number | null): string {
     return renderer.buildPostHeader({
         name: item.product.name,
         // После миграции Supplier описание и цены/фасовка лежат на PurchaseItem, не на Product.
         description: item.description ?? null,
-        pricePerUnit: item.pricePerUnit,
+        unitPriceRub,
         minPackageAmount: item.minPackageAmount,
         minPackageUnit: item.minPackageUnit,
         unitCode: item.product.unitCode,
-        supplierName: item.supplier?.name ?? null,
     });
 }
 
@@ -86,7 +92,7 @@ function computeFreeToOrder(item: Item): number | null {
     const aggregation = getStageStrategy(stage).aggregateForPool(toOrderLinesVO(item.orderLines));
     return computeRawPool({
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-        packSize: item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null,
+        packSize: item.packAmount != null ? Number(item.packAmount) : null,
         aggregation,
     });
 }
@@ -96,8 +102,8 @@ function unitShortName(item: Item): string | null {
     return getUnitByCode(item.product.unitCode)?.shortName ?? null;
 }
 
-function joinPostText(renderer: BotProductRenderer, item: Item, orderLinesSum: number): string {
-    const top = buildPostHeader(renderer, item);
+function joinPostText(renderer: BotProductRenderer, item: Item, orderLinesSum: number, unitPriceRub: number | null): string {
+    const top = buildPostHeader(renderer, item, unitPriceRub);
     const bottom = buildStatusBlock(renderer, item, orderLinesSum);
     return top && bottom ? `${top}\n\n${bottom}` : top || bottom;
 }
@@ -106,10 +112,25 @@ function sumOrderLines(item: Item): number {
     // effectiveQty = qty + packageCount*packSize. Пакеты = qty для целей лимита/пула,
     // иначе "Свободно к заказу" будет завышено (worker не учитывал пакеты, и лимит
     // показывал свободно больше, чем реально).
-    const packSize = item.supplierPackageAmount;
+    const packSize = item.packAmount;
     return item.orderLines.reduce(
         (s, l) => s + Number(l.quantity) + Number(l.packageCount) * Number(packSize ?? 0),
         0,
+    );
+}
+
+/** Вычисляет цену за единицу по новой модели (без глобального оргсбора —
+ * используется override или 0). Для поста в канале этого достаточно: цена
+ * с оргсбором видна в самой цене за упаковку. */
+function computeItemUnitPriceRub(item: Item): number | null {
+    return computeUnitPriceRubNewModel(
+        mapToPurchaseItem(item, 0, {
+            orgFeeDefaultPercent: 0,
+            currencyRates: (item.purchase?.currencyRates ?? []).map((r) => ({
+                currencyId: r.currencyId,
+                rateToRub: Number(r.rateToRub),
+            })),
+        }),
     );
 }
 
@@ -126,7 +147,7 @@ async function tryEditItemPost(tg: TgClient, renderer: BotProductRenderer, item:
     await tg.editPost(
         item.tgChannelId,
         Number(item.tgMessageId),
-        joinPostText(renderer, item, sumOrderLines(item)),
+        joinPostText(renderer, item, sumOrderLines(item), computeItemUnitPriceRub(item)),
         photo,
     );
 }
@@ -213,10 +234,18 @@ export class TgPostWorker {
             log.info({ itemId, messageId: item.tgMessageId }, 'createPost: already published');
             return;
         }
+        if (item.hidden) {
+            log.info({ itemId }, 'createPost: item is hidden, skipping publish');
+            return;
+        }
 
         const photo = await loadPostPhoto(this.tg, item);
         const channelId = getChannelIdFromEnv()!;
-        const { messageId } = await this.tg.sendPost(channelId, buildPostHeader(this.renderer, item), photo);
+        const { messageId } = await this.tg.sendPost(
+            channelId,
+            buildPostHeader(this.renderer, item, computeItemUnitPriceRub(item)),
+            photo,
+        );
 
         await this.db.purchaseItem.update({
             where: { id: itemId },
@@ -298,6 +327,16 @@ export class TgPostWorker {
             log.info({ itemId }, 'editItemPost: no post yet, nothing to edit');
             return;
         }
+        // Item was hidden after publishing — remove its channel post instead of editing.
+        if (item.hidden) {
+            log.info({ itemId, messageId: item.tgMessageId }, 'editItemPost: item hidden, deleting channel post');
+            await this.tg.deletePost(item.tgChannelId!, Number(item.tgMessageId));
+            await this.db.purchaseItem.update({
+                where: { id: itemId },
+                data: { tgMessageId: null, tgChannelId: null },
+            });
+            return;
+        }
         await tryEditItemPost(this.tg, this.renderer, item);
         log.info({ itemId, messageId: item.tgMessageId }, 'editItemPost done');
     }
@@ -321,6 +360,7 @@ export class TgPostWorker {
         let postsEdited = 0;
         for (const item of purchase.items) {
             if (!item.tgMessageId) continue;
+            if (item.hidden) continue;
             await tryEditItemPost(this.tg, this.renderer, item);
             postsEdited++;
         }
@@ -336,6 +376,7 @@ export class TgPostWorker {
         let commentsSent = 0;
         for (const item of purchase.items) {
             if (!item.tgMessageId) continue;
+            if (item.hidden) continue;
             const postId = Number(item.tgMessageId);
             const autoForwardId = await store.get(channelId, postId);
             const data = { status: next, channelPostMessageId: postId };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import type { CurrencyRate } from '@zakupki/types';
 import { useOrderMutations } from './use-order-mutations';
 import { buildItemOrderContext } from '../lib/order-context';
 import type { ShopPurchaseItem } from '../lib/types';
@@ -16,6 +17,8 @@ interface UseItemOrderControlsInput {
     baseQuantity: number;
     fulfillmentStatus: string;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+    currencyRates: CurrencyRate[];
 }
 
 export function useItemOrderControls(input: UseItemOrderControlsInput) {
@@ -30,6 +33,8 @@ export function useItemOrderControls(input: UseItemOrderControlsInput) {
                 baseQuantity: input.baseQuantity,
                 fulfillmentStatus: input.fulfillmentStatus,
                 packDiscountPercent: input.packDiscountPercent,
+                orgFeeDefaultPercent: input.orgFeeDefaultPercent,
+                currencyRates: input.currencyRates,
             }),
         // eslint-disable-next-line react-hooks/exhaustive-deps — item объект стабильный из tRPC
         [
@@ -39,6 +44,8 @@ export function useItemOrderControls(input: UseItemOrderControlsInput) {
             input.baseQuantity,
             input.fulfillmentStatus,
             input.packDiscountPercent,
+            input.orgFeeDefaultPercent,
+            input.currencyRates,
         ],
     );
 

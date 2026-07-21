@@ -5,8 +5,7 @@
  * Живёт в shared, чтобы и frontend (order-domain-mapper), и бот могли
  * переиспользовать одну конвертацию.
  */
-import { parsePriceTiers } from '../pricing/parsing';
-import type { PriceTier } from '../pricing/types';
+import type { CurrencyRate } from '../pricing/currency-pricing';
 import type { PurchaseFulfillmentStatus } from '../index';
 import type { OrderLineVO, PurchaseItem } from './types';
 
@@ -50,14 +49,7 @@ export function toOrderLinesVO(lines: readonly OrderLineRowLike[] | null | undef
 /** Минимальная форма PurchaseItem, которую умеет конвертировать маппер. */
 export interface PurchaseItemRowLike {
     id: number;
-    // Per-purchase поля теперь на самом PurchaseItem (миграция Supplier):
-    pricePerUnit?: unknown;
-    priceOverride?: unknown;
-    priceTiers?: unknown;
-    supplierPackageAmount?: unknown;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: unknown;
-    supplierPackageTiers?: unknown;
+    // Per-purchase поля (новая модель цен + фасовка):
     minPackageAmount?: unknown;
     minPackageUnit?: string | null;
     supplementStep?: unknown;
@@ -66,6 +58,11 @@ export interface PurchaseItemRowLike {
     supplierLimitUnit?: string | null;
     supplierId?: number | null;
     supplier?: { id: number; name: string } | null;
+    packAmount?: unknown;
+    packUnit?: string | null;
+    currencyId?: number | null;
+    pricePerPackCurrency?: unknown;
+    orgFeePercentOverride?: unknown;
     // Product — только каталожные данные (unit, multiplicity):
     product: {
         unitCode?: string;
@@ -75,22 +72,33 @@ export interface PurchaseItemRowLike {
 }
 
 /**
+ * Контекст новой модели цен, резолвимый на уровне сервиса (глобальный оргсбор +
+ * ставки валют закупки). Передаётся третьим аргументом в mapToPurchaseItem.
+ * Опционален — при отсутствии новая модель не активируется (значения null/пусто).
+ */
+export interface PurchaseItemPricingContext {
+    orgFeeDefaultPercent?: number;
+    currencyRates?: CurrencyRate[];
+}
+
+/**
  * Конвертация Prisma/tRPC PurchaseItem → чистый доменный PurchaseItem (number).
  * Decimal/string → number, с дефолтами для null/undefined.
+ *
+ * `pricingContext` (опц.) активирует новую модель цен: глобальный оргсбор и
+ * ставки валют закупки. При отсутствии — поля новой модели остаются null/пусто,
+ * расчёт идёт по старому движку (priceTiers/supplierPackagePrice).
  */
-export function mapToPurchaseItem(item: PurchaseItemRowLike, packDiscountPercent: number): PurchaseItem {
+export function mapToPurchaseItem(
+    item: PurchaseItemRowLike,
+    packDiscountPercent: number,
+    pricingContext?: PurchaseItemPricingContext,
+): PurchaseItem {
     return {
         purchaseItemId: item.id,
-        pricePerUnit: item.pricePerUnit != null ? Number(item.pricePerUnit) : 0,
-        priceOverride: item.priceOverride != null ? Number(item.priceOverride) : null,
-        priceTiers: (parsePriceTiers(item.priceTiers) as PriceTier[]) ?? null,
         packDiscountPercent,
-        supplierPackageAmount:
-            item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null,
-        supplierPackageUnit: item.supplierPackageUnit ?? null,
-        supplierPackagePrice:
-            item.supplierPackagePrice != null ? Number(item.supplierPackagePrice) : null,
-        supplierPackageTiers: (parsePriceTiers(item.supplierPackageTiers) as PriceTier[]) ?? null,
+        packAmount: item.packAmount != null ? Number(item.packAmount) : null,
+        packUnit: item.packUnit ?? null,
         unitCode: item.product.unitCode ?? 'piece',
         multiplicity: Number(item.product.multiplicity ?? 1),
         minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
@@ -102,5 +110,12 @@ export function mapToPurchaseItem(item: PurchaseItemRowLike, packDiscountPercent
         supplierLimitUnit: item.supplierLimitUnit ?? null,
         supplierId: item.supplierId ?? item.supplier?.id ?? null,
         supplierName: item.supplier?.name ?? null,
+        currencyId: item.currencyId ?? null,
+        pricePerPackCurrency:
+            item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
+        orgFeePercentOverride:
+            item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
+        orgFeeDefaultPercent: pricingContext?.orgFeeDefaultPercent ?? 0,
+        currencyRates: pricingContext?.currencyRates ?? [],
     };
 }

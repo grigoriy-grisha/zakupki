@@ -1,9 +1,18 @@
 'use client';
 
-import { MoreHorizontal, Send, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { EyeOff, MoreHorizontal, Pencil, Send, Trash2 } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -11,137 +20,379 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { Textarea } from '@/components/ui/textarea';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { PackageUnitSelect } from '@/components/shared/package-unit-select';
+import { TruncatedText } from '@/components/shared/truncated-text';
+import { trpc } from '@/lib/client/trpc';
 import type { ProductLabelSource } from '../../../../products/lib';
-import { formatPrice510Cell, getProductPriceTiers } from '../../lib/purchase-item-prices';
-import { formatRubPrice } from '../../lib/price-format';
-import { formatOrderStatValue, getPurchaseItemOrderStats } from '../../lib/purchase-item-order-stats';
-import type { PurchaseItem } from '../../lib/types';
+import type { PurchaseCurrencyRateRef, PurchaseItem } from '../../lib/types';
+import { InlineCell } from './inline-cell';
 
+/** Форматирует число как рубли: `1 234,56 ₽`. Пусто/NaN → `—`. */
+function formatRubPrice(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
+    return `${value.toLocaleString('ru-RU')} ₽`;
+}
+
+/** Вычисленные значения колонок новой модели цен (считаются в items-tab). */
 export interface ItemsTableRowDerived {
+    /** Короткое имя единицы (гр/шт). */
     shortName: string;
     published: boolean;
-    price1: number | null;
-    pricePack: number | null;
-    pricePackDisc: number | null;
-    freeRemainder: number | null;
+    /** Кол. 4: цена упаковки в ₽. */
+    packPriceRub: number | null;
+    /** Кол. 5: цена упаковки с оргсбором в ₽. */
+    packPriceWithOrgFeeRub: number | null;
+    /** Кол. 6: цена за 1ед в ₽. */
+    unitPriceRub: number | null;
+    /** Кол. 7: собрано (сумма quantity ACTIVE orderLines). */
+    collectedQty: number;
+    /** Кол. 11: остаток на пристрой. */
+    remainderQty: number | null;
+    /** Применённый % оргсбора (override или глобальный). */
+    orgFeePercent: number;
     isDone: boolean;
     isActive: boolean;
-    /** Показывать колонку «Остаток» (фаза добора или есть позиции с supplier-pack). */
-    showRemainder: boolean;
 }
+
+/** Частичный payload для updateItemProduct — только изменившиеся поля. */
+type ItemPatch = Partial<{
+    packAmount: number | null;
+    packUnit: string | null;
+    currencyId: number | null;
+    pricePerPackCurrency: number | null;
+    orderedQty: number | null;
+    assembledQty: number | null;
+    reorderedQty: number | null;
+    adminComment: string | null;
+    hidden: boolean;
+}>;
 
 interface ItemsTableRowProps {
     item: PurchaseItem;
     derived: ItemsTableRowDerived;
-    packDiscountPercent: number;
+    /** Курс валют закупки (для расчёта производных колонок 4/5/6). */
+    currencyRates: PurchaseCurrencyRateRef[];
     selected: boolean;
     onToggleSelect: (id: number, v: boolean) => void;
     onEdit: (id: number) => void;
     onPublish: (id: number) => void;
-    onDelete: (target: { id: number; product: ProductLabelSource; orderCount: number; published: boolean }) => void;
+    onDelete: (target: {
+        id: number;
+        product: ProductLabelSource;
+        orderCount: number;
+        published: boolean;
+    }) => void;
+    /** Тихий inline-коммит одного/нескольких полей позиции. */
+    onCommit: (patch: ItemPatch) => void;
+}
+
+function numOrDash(value: string | number | null | undefined): string {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    // Целые — без дробной части, иначе 3 знака с обрезкой нулей.
+    return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(3)));
+}
+
+/**
+ * Ячейка комментария: показывает текст (или «—») с иконкой карандаша.
+ * Клик открывает широкий диалог с Textarea для редактирования.
+ */
+function CommentCell({
+    value,
+    onCommit,
+}: {
+    value: string | null | undefined;
+    onCommit: (next: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState(value ?? '');
+
+    useEffect(() => {
+        if (open) setDraft(value ?? '');
+    }, [open, value]);
+
+    function handleSave() {
+        const trimmed = draft.trim();
+        if (trimmed !== (value ?? '')) onCommit(trimmed);
+        setOpen(false);
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-left text-12-regular text-fg-secondary hover:bg-bg-soft"
+                aria-label="Редактировать комментарий"
+            >
+                <Pencil className="size-3 shrink-0 text-fg-tertiary" />
+                <span className="truncate">{value || '—'}</span>
+            </button>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Комментарий</DialogTitle>
+                </DialogHeader>
+                <Textarea
+                    autoFocus
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Введите комментарий…"
+                    className="min-h-[160px] resize-y"
+                />
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpen(false)}>
+                        Отмена
+                    </Button>
+                    <Button onClick={handleSave}>Сохранить</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 export function ItemsTableRow({
     item,
     derived,
-    packDiscountPercent,
     selected,
     onToggleSelect,
     onEdit,
     onPublish,
     onDelete,
+    onCommit,
 }: ItemsTableRowProps) {
     const {
         shortName,
         published,
-        price1,
-        pricePack,
-        pricePackDisc,
-        freeRemainder,
+        packPriceRub,
+        packPriceWithOrgFeeRub,
+        unitPriceRub,
+        collectedQty,
+        remainderQty,
+        orgFeePercent,
         isDone,
         isActive,
-        showRemainder,
     } = derived;
-    const stats = getPurchaseItemOrderStats(item);
-    const tiers = getProductPriceTiers(item.priceTiers);
-    const isManualLimit = item.targetRemainder != null && Number(item.targetRemainder) > 0;
+
+    const unit = item.packUnit ?? item.minPackageUnit ?? shortName;
+
+    // Все валюты из справочника — Select всегда активен. Если у выбранной
+    // валюты нет курса, производные колонки ₽ (4/5/6) покажут «—».
+    const { data: allCurrencies } = trpc.currencies.list.useQuery();
+    const currencies = allCurrencies ?? [];
 
     return (
         <TableRow
-            className="group cursor-pointer hover:bg-bg-soft"
-            onClick={() => onEdit(item.id)}
+            className="group hover:bg-bg-soft"
             data-published={published || undefined}
+            data-hidden={item.hidden || undefined}
         >
-            {/* Фото + Название (sticky left) */}
-            <TableCell className="sticky left-0 z-10 bg-bg-card group-hover:bg-bg-soft transition-colors">
-                <div className="flex items-center gap-3">
+            {/* 1. Товар (sticky left) — opaque bg, без group-hover, чтобы не
+                просвечивал контент при горизонтальном скролле. */}
+            <TableCell className="sticky left-0 z-10 overflow-hidden bg-bg-card">
+                <div className="flex items-center gap-2">
                     <ProductPhotoPreview
                         photoId={item.product.photos?.[0]?.id}
                         alt={item.product.name}
-                        thumbClassName="h-9 w-9 rounded-md"
+                        thumbClassName="size-7 shrink-0 rounded-md"
                     />
-                    <div className="min-w-0">
-                        <PurchaseProductLabel
-                            product={item.product}
-                            primaryClassName="block truncate text-14-semibold text-fg-primary"
-                            secondaryClassName="block truncate text-12-regular text-fg-tertiary"
-                        />
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                            <TruncatedText
+                                fullText={item.product.name ?? ''}
+                                className="text-13-medium text-fg-primary"
+                            >
+                                {item.product.name}
+                            </TruncatedText>
+                            {item.hidden && (
+                                <EyeOff className="size-3 shrink-0 text-fg-tertiary" />
+                            )}
+                        </div>
                         {item.supplier && (
-                            <p className="block truncate text-12-regular text-fg-tertiary" title={item.supplier.name}>
+                            <TruncatedText
+                                fullText={item.supplier.name}
+                                className="text-11-regular text-fg-tertiary"
+                            >
                                 {item.supplier.name}
-                            </p>
+                            </TruncatedText>
                         )}
                     </div>
                 </div>
             </TableCell>
 
-            {/* Фасовка */}
-            <TableCell className="hidden text-12-regular text-fg-tertiary lg:table-cell">
-                {item.minPackageAmount != null && item.minPackageUnit
-                    ? `${Number(item.minPackageAmount)} ${item.minPackageUnit}`
-                    : '—'}
+            {/* 2. В упаковке (вес пачки) — packAmount (число) + packUnit (Select из registry) */}
+            <TableCell className="px-2 py-1 text-right">
+                <div className="flex items-center justify-end gap-1">
+                    <InlineCell
+                        value={item.packAmount}
+                        onCommit={(v) => onCommit({ packAmount: v })}
+                        onClear={() => onCommit({ packAmount: 0 })}
+                        min={0}
+                        ariaLabel="Вес упаковки"
+                        align="right"
+                        className="w-14"
+                    />
+                    <PackageUnitSelect
+                        value={item.packUnit ?? unit ?? 'гр'}
+                        onChange={(v) => onCommit({ packUnit: v })}
+                        className="h-7"
+                    />
+                </div>
             </TableCell>
 
-            {/* Цена (с tooltip по ховеру) */}
-            <TableCell className="text-right">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <span tabIndex={0} className="text-14-semibold tabular-nums text-fg-primary">
-                            {formatRubPrice(price1)}
-                            {price1 != null && (
-                                <span className="ml-1 text-12-regular text-fg-tertiary">
-                                    /{shortName || 'ед'}
-                                </span>
-                            )}
+            {/* 3. Цена за упаковку в валюте + Select валюты (все валюты справочника) */}
+            <TableCell className="px-2 py-1 text-right">
+                <div className="flex items-center justify-end gap-1">
+                    <InlineCell
+                        value={item.pricePerPackCurrency}
+                        onCommit={(v) => onCommit({ pricePerPackCurrency: v })}
+                        onClear={() => onCommit({ pricePerPackCurrency: 0 })}
+                        min={0}
+                        ariaLabel="Цена за упаковку в валюте"
+                        align="right"
+                        className="w-16 shrink-0"
+                    />
+                    <Select
+                        value={item.currencyId != null ? String(item.currencyId) : 'none'}
+                        onValueChange={(v) => {
+                            if (v === 'none') {
+                                onCommit({ currencyId: null });
+                            } else {
+                                onCommit({ currencyId: Number(v) });
+                            }
+                        }}
+                    >
+                        <SelectTrigger
+                            size="sm"
+                            aria-label="Валюта цены"
+                            className="h-7 w-[76px] shrink-0 rounded-md border-border bg-bg-card px-1.5 text-11-medium text-fg-primary shadow-xs hover:border-ring"
+                        >
+                            <span className="truncate">
+                                {item.currency?.name ?? '—'}
+                            </span>
+                        </SelectTrigger>
+                        <SelectContent align="end" position="popper" className="min-w-[8rem]">
+                            <SelectItem value="none">—</SelectItem>
+                            {currencies.map((c) => (
+                                <SelectItem key={c.id} value={String(c.id)}>
+                                    {c.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </TableCell>
+
+            {/* 4. Цена за упаковку в ₽ (derived) */}
+            <TableCell className="px-3 text-right text-13-medium tabular-nums">
+                {formatRubPrice(packPriceRub)}
+            </TableCell>
+
+            {/* 5. Цена за уп. в ₽ + оргсбор (read-only, оргсбор правится в модалке) */}
+            <TableCell className="px-3 text-right">
+                <div className="flex flex-col items-end">
+                    <span className="text-13-medium tabular-nums">
+                        {formatRubPrice(packPriceWithOrgFeeRub)}
+                    </span>
+                    <span className="text-11-regular text-fg-tertiary">+{orgFeePercent}%</span>
+                </div>
+            </TableCell>
+
+            {/* 6. Цена за 1ед в ₽ (derived) */}
+            <TableCell className="px-3 text-right">
+                <span className="text-14-semibold tabular-nums text-fg-primary">
+                    {formatRubPrice(unitPriceRub)}
+                    {unitPriceRub != null && (
+                        <span className="ml-1 text-11-regular text-fg-tertiary">
+                            /{unit || 'ед'}
                         </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-left">
-                        <div className="space-y-1">
-                            <div>
-                                <span className="text-fg-tertiary">5/10 гр: </span>
-                                {formatPrice510Cell(tiers)}
-                            </div>
-                            <div>
-                                <span className="text-fg-tertiary">Пачка: </span>
-                                {formatRubPrice(pricePack)}
-                            </div>
-                            <div>
-                                <span className="text-fg-tertiary">
-                                    Со скидкой {packDiscountPercent}%:{' '}
-                                </span>
-                                {formatRubPrice(pricePackDisc)}
-                            </div>
-                        </div>
-                    </TooltipContent>
-                </Tooltip>
+                    )}
+                </span>
+            </TableCell>
+
+            {/* 7. Собрано (авто из заказов, derived) */}
+            <TableCell className="px-3 text-right text-13-medium tabular-nums text-fg-secondary">
+                {numOrDash(collectedQty)}
+                <span className="ml-1 text-11-regular text-fg-tertiary">{unit || 'ед'}</span>
+            </TableCell>
+
+            {/* 8. Заказано (inline) */}
+            <TableCell className="px-2 py-1 text-right">
+                <InlineCell
+                    value={item.orderedQty ?? 0}
+                    onCommit={(v) => onCommit({ orderedQty: v })}
+                    onClear={() => onCommit({ orderedQty: null })}
+                    allowNegative
+                    ariaLabel="Заказано"
+                    align="right"
+                    className="w-full"
+                />
+            </TableCell>
+
+            {/* 9. Скомплектовано (inline) */}
+            <TableCell className="px-2 py-1 text-right">
+                <InlineCell
+                    value={item.assembledQty ?? 0}
+                    onCommit={(v) => onCommit({ assembledQty: v })}
+                    onClear={() => onCommit({ assembledQty: null })}
+                    allowNegative
+                    ariaLabel="Скомплектовано"
+                    align="right"
+                    className="w-full"
+                />
+            </TableCell>
+
+            {/* 10. Дозаказано у др. поставщика (inline) */}
+            <TableCell className="px-2 py-1 text-right">
+                <InlineCell
+                    value={item.reorderedQty ?? 0}
+                    onCommit={(v) => onCommit({ reorderedQty: v })}
+                    onClear={() => onCommit({ reorderedQty: null })}
+                    allowNegative
+                    ariaLabel="Дозаказано"
+                    align="right"
+                    className="w-full"
+                />
+            </TableCell>
+
+            {/* 11. Остаток на пристрой (derived) */}
+            <TableCell className="px-3 text-right">
+                {remainderQty == null ? (
+                    <span className="text-13-medium text-fg-tertiary">—</span>
+                ) : (
+                    <span
+                        className={
+                            remainderQty > 0
+                                ? 'text-13-medium tabular-nums text-warning'
+                                : remainderQty < 0
+                                  ? 'text-13-medium tabular-nums text-error'
+                                  : 'text-13-medium tabular-nums text-fg-tertiary'
+                        }
+                    >
+                        {numOrDash(remainderQty)}
+                    </span>
+                )}
+            </TableCell>
+
+            {/* 12. Комментарий — кнопка с иконкой, открывает диалог с Textarea */}
+            <TableCell className="px-3 py-1">
+                <CommentCell
+                    value={item.adminComment}
+                    onCommit={(v) => onCommit({ adminComment: v })}
+                />
             </TableCell>
 
             {/* TG-чекбокс */}
-            <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+            <TableCell className="px-2 text-center">
                 {published ? (
                     <Checkbox checked disabled aria-label="Опубликовано в Telegram" />
                 ) : (
@@ -156,35 +407,8 @@ export function ItemsTableRow({
                 )}
             </TableCell>
 
-            {/* Остаток (фаза добора или позиции с supplier-pack) */}
-            {showRemainder && (
-                <TableCell className="text-right">
-                    <div className="flex flex-col items-end gap-0.5">
-                        <span className="text-12-regular text-fg-tertiary">
-                            В пачке:{' '}
-                            {stats.packSize != null ? `${stats.packSize} ${shortName}` : '—'}
-                        </span>
-                        {freeRemainder == null ? (
-                            <span className="text-13-medium text-fg-tertiary">—</span>
-                        ) : freeRemainder > 0 ? (
-                            <span className="text-14-semibold tabular-nums text-fg-primary">
-                                {formatOrderStatValue(freeRemainder)} {shortName}
-                                {isManualLimit && (
-                                    <span className="ml-1 text-10-medium text-fg-tertiary">вручную</span>
-                                )}
-                            </span>
-                        ) : (
-                            <span className="text-13-medium text-fg-tertiary">разобрано</span>
-                        )}
-                    </div>
-                </TableCell>
-            )}
-
-            {/* Действия (sticky right) */}
-            <TableCell
-                className="sticky right-0 z-10 bg-bg-card group-hover:bg-bg-soft transition-colors"
-                onClick={(e) => e.stopPropagation()}
-            >
+            {/* Действия (sticky right) — opaque bg, без group-hover */}
+            <TableCell className="sticky right-0 z-10 bg-bg-card">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -200,6 +424,12 @@ export function ItemsTableRow({
                         <DropdownMenuItem onClick={() => onEdit(item.id)}>
                             Редактировать
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={() => onCommit({ hidden: !item.hidden })}
+                        >
+                            <EyeOff className="size-3.5" />
+                            {item.hidden ? 'Показать' : 'Скрыть'}
+                        </DropdownMenuItem>
                         {!published && isActive && (
                             <DropdownMenuItem onClick={() => onPublish(item.id)}>
                                 <Send className="size-3.5" /> Опубликовать в TG
@@ -211,7 +441,9 @@ export function ItemsTableRow({
                                 onDelete({
                                     id: item.id,
                                     product: item.product,
-                                    orderCount: item.orderLines.length,
+                                    orderCount: item.orderLines.filter(
+                                        (l) => l.status !== 'CANCELLED',
+                                    ).length,
                                     published,
                                 })
                             }

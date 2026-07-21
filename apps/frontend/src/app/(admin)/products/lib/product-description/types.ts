@@ -11,11 +11,6 @@ export interface DescriptionFields {
     productCharacteristics?: { name: string; value: string }[];
     minPackageAmount?: number | null;
     minPackageUnit?: string | null;
-    priceTiers?: { amount?: number; unit?: string; price?: number }[];
-    supplierPackageAmount?: number | null;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: number | null;
-    supplierPackageTiers?: { amount?: number; unit?: string; price?: number }[];
     /** Глобальный лимит остатка у поставщика (per-purchase). Используется
      *  в шаблоне «{{свободно}}». */
     supplierLimit?: number | null;
@@ -23,6 +18,17 @@ export interface DescriptionFields {
     /** Имя поставщика (per-purchase). Используется в шаблоне «{{поставщик}}». */
     supplierName?: string;
     purchaseTag?: string;
-    /** Скидка за целую пачку бисера, % (из настроек). */
+    /** Скидка за целую пачку, % (из настроек). */
     packDiscountPercent?: number | null;
+    // Новая модель цен (валюта + курс + оргсбор):
+    /** Цена за упаковку в выбранной валюте. */
+    pricePerPackCurrency?: number | null;
+    /** Имя валюты (для отображения в шаблоне «{{цена за пачку}}»). */
+    currencyName?: string;
+    /** Вес упаковки (packAmount). */
+    packAmount?: number | null;
+    /** Единица веса упаковки (гр/шт/туба). */
+    packUnit?: string | null;
+    /** Применённый % оргсбора. */
+    orgFeePercent?: number | null;
 }

@@ -1,8 +1,8 @@
 import { stripAttributesFromName } from '../product-label';
-import { isPositive, formatNumber, formatRubles } from '@/lib/utils/format';
+import { isPositive, formatNumber } from '@/lib/utils/format';
 
 import type { DescriptionFields } from './types';
-import { formatStockLine, formatSupplierPackageLines } from './template-engine';
+import { formatStockLine } from './template-engine';
 
 /** Текст описания для закупки / Telegram */
 export function buildProductDescriptionText(input: DescriptionFields): string {
@@ -32,25 +32,6 @@ export function buildProductDescriptionText(input: DescriptionFields): string {
     if (isPositive(input.minPackageAmount) && input.minPackageUnit) {
         lines.push('');
         lines.push(`Минимальная фасовка  - ${formatNumber(input.minPackageAmount)} ${input.minPackageUnit}`);
-    }
-
-    const validTiers =
-        input.priceTiers?.filter((t) => t && isPositive(t.amount) && t.unit && isPositive(t.price)) ?? [];
-
-    if (validTiers.length > 0) {
-        lines.push('');
-        for (const tier of validTiers) {
-            lines.push(`${formatNumber(tier.amount!)} ${tier.unit!} - ${formatNumber(tier.price!)} руб`);
-        }
-    }
-
-    const supplierLines = formatSupplierPackageLines(input);
-    if (supplierLines.length > 0) {
-        lines.push('');
-        lines.push('Фасовка поставщика:');
-        for (const line of supplierLines) {
-            lines.push(line);
-        }
     }
 
     const stockLine = formatStockLine(input);

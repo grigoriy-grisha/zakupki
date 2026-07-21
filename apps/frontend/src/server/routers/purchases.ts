@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { RoleKind } from '@zakupki/database';
+
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 const purchaseFulfillmentStatusSchema = z.enum([
@@ -14,37 +16,32 @@ const purchaseFulfillmentStatusSchema = z.enum([
     'READY_FOR_PICKUP',
 ]);
 
-// Переиспользуемые схемы per-purchase полей. Вынесены на верхний уровень, чтобы
+// Переиспользуемая схема per-purchase полей. Вынесена на верхний уровень, чтобы
 // tRPC мог корректно вывести типы (вложенные z.object-ы ломают рекурсивный инферент).
-const priceTierSchema = z.object({
-    amount: z.number().positive('Укажите количество'),
-    unit: z.string().min(1, 'Выберите ед.'),
-    price: z.number().positive('Укажите цену больше 0'),
-});
-
-const supplierPackageTierSchema = z.object({
-    amount: z.number().positive(),
-    unit: z.string().min(1),
-    price: z.number().nonnegative(),
-});
-
 const purchaseItemFieldsSchema = z.object({
     supplierId: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
-    pricePerUnit: z.number().nullable().optional(),
     minPackageAmount: z.number().nullable().optional(),
     minPackageUnit: z.string().nullable().optional(),
-    priceTiers: z.array(priceTierSchema).min(1).optional(),
-    supplierPackageAmount: z.number().nullable().optional(),
-    supplierPackageUnit: z.string().nullable().optional(),
-    supplierPackagePrice: z.number().nullable().optional(),
-    supplierPackageTiers: z.array(supplierPackageTierSchema).optional(),
     supplementStep: z.number().nullable().optional(),
     // Лимит поставщика + targetRemainder редактируются через отдельные мутации,
     // но updateItemProduct тоже их принимает (для удобства из ItemEditSheet).
     supplierLimit: z.number().nullable().optional(),
     supplierLimitUnit: z.string().nullable().optional(),
     targetRemainder: z.number().nullable().optional(),
+    // Новая модель цен (валюта + курс + оргсбор):
+    packAmount: z.number().nullable().optional(),
+    packUnit: z.string().nullable().optional(),
+    currencyId: z.number().nullable().optional(),
+    pricePerPackCurrency: z.number().nullable().optional(),
+    orgFeePercentOverride: z.number().min(0).max(100).nullable().optional(),
+    // Операционные количества (заполняет организатор):
+    orderedQty: z.number().nullable().optional(),
+    assembledQty: z.number().nullable().optional(),
+    reorderedQty: z.number().nullable().optional(),
+    // Комментарий организатора + скрытие товара:
+    adminComment: z.string().max(2000).nullable().optional(),
+    hidden: z.boolean().optional(),
 });
 
 const addItemInputSchema = z.object({
@@ -62,18 +59,20 @@ export const purchasesRouter = router({
                 .optional(),
         )
         .query(async ({ ctx, input }) => {
+            const includeHidden = ctx.role === RoleKind.ADMIN;
             if (input?.statuses?.length) {
-                return ctx.services.purchase.listByStatuses(input.statuses);
+                return ctx.services.purchase.listByStatuses(input.statuses, includeHidden);
             }
-            return ctx.services.purchase.list(input?.status);
+            return ctx.services.purchase.list(input?.status, includeHidden);
         }),
 
     listMyCompleted: protectedProcedure.query(async ({ ctx }) => {
-        return ctx.services.purchase.listByStatusesForUser(ctx.userId, ['DONE']);
+        return ctx.services.purchase.listByStatusesForUser(ctx.userId, ['DONE'], false);
     }),
 
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
-        return ctx.services.purchase.getById(input.id);
+        const includeHidden = ctx.role === RoleKind.ADMIN;
+        return ctx.services.purchase.getById(input.id, includeHidden);
     }),
 
     create: adminProcedure
@@ -176,24 +175,14 @@ export const purchasesRouter = router({
             z.object({
                 purchaseItemId: z.number(),
                 product: purchaseItemFieldsSchema,
-                priceOverride: z.number().nullable().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            await ctx.services.purchase.updateItemProduct(
-                input.purchaseItemId,
-                input.product,
-                input.priceOverride ?? null,
-            );
+            await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product);
             // Edit поста в канале обрабатывается шиной channel-post-events —
             // PurchaseService.updateItemProduct уже вызывает eventBus.emitPurchaseItemChanged.
             return { ok: true };
         }),
-
-    recalculateAmounts: adminProcedure.input(z.object({ purchaseId: z.number() })).mutation(async ({ ctx, input }) => {
-        await ctx.services.purchase.recalculateAmounts(input.purchaseId);
-        return { ok: true };
-    }),
 
     /**
      * Admin: установить/очистить комментарий к участнику закупки (PurchaseOrder).
@@ -204,5 +193,27 @@ export const purchasesRouter = router({
         .input(z.object({ id: z.number(), comment: z.string().max(2000) }))
         .mutation(async ({ ctx, input }) => {
             return ctx.services.purchase.setOrderComment(input.id, input.comment, ctx.userId);
+        }),
+
+    /**
+     * Admin: установить ставки валют закупки (до 3 валют).
+     * Полная замена: переданный массив перезаписывает существующие ставки.
+     */
+    updateCurrencyRates: adminProcedure
+        .input(
+            z.object({
+                purchaseId: z.number(),
+                rates: z
+                    .array(
+                        z.object({
+                            currencyId: z.number(),
+                            rateToRub: z.number().positive('Курс должен быть больше 0'),
+                        }),
+                    )
+                    .max(3, 'Не более 3 валют на закупку'),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.purchase.setCurrencyRates(input.purchaseId, input.rates);
         }),
 });

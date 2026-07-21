@@ -30,7 +30,7 @@ export class CollectionStrategy extends BaseMutableStrategy {
     override adjust(userId: number, delta: number): MultiUpdate {
         if (delta === 0) return ok();
         const line = resolveTargetLine(this.item, this.lines, userId, true);
-        const packSize = this.item.supplierPackageAmount;
+        const packSize = this.item.packAmount;
         // currentQty (effective) — qty + пакеты как qty. Используется только для
         // supplierLimit. На строке сохраняем сырой line.quantity + delta.
         const currentQtyEffective = effectiveQty(line, packSize);
@@ -55,9 +55,9 @@ export class CollectionStrategy extends BaseMutableStrategy {
 
     override adjustPackages(userId: number, delta: number): MultiUpdate {
         if (delta === 0) return ok();
-        // Pre-check `supplierPackageAmount` уже сделан в OrderBook.adjustPackages.
+        // Pre-check `packAmount` уже сделан в OrderBook.adjustPackages.
         const line = this.findBaseLine(userId);
-        const packSize = this.item.supplierPackageAmount;
+        const packSize = this.item.packAmount;
         const currentQty = effectiveQty(line, packSize);
         const newPkgCount = (line?.packageCount ?? 0) + delta;
         if (newPkgCount < 0) {
@@ -79,7 +79,7 @@ export class CollectionStrategy extends BaseMutableStrategy {
     override aggregateForPool() {
         let totalOrderedQuantity = 0;
         let totalOrderedWithPackages = 0;
-        const pack = this.item.supplierPackageAmount ?? 0;
+        const pack = this.item.packAmount ?? 0;
         for (const line of this.lines) {
             if (!line.isActive) continue;
             totalOrderedQuantity += Number(line.quantity);

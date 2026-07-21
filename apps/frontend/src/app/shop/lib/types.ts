@@ -49,16 +49,15 @@ export interface ShopPurchaseItem {
     id: number;
     purchaseItemId?: number;
     // Per-purchase конкретика:
-    pricePerUnit?: string | number | null;
-    priceTiers?: unknown;
     minPackageAmount?: string | number | null;
     minPackageUnit?: string | null;
-    supplierPackageAmount?: string | number | null;
-    supplierPackageUnit?: string | null;
-    supplierPackagePrice?: string | number | null;
-    supplierPackageTiers?: unknown;
     supplementStep?: string | number | null;
-    priceOverride: string | null;
+    // Новая модель цен (валюта + курс + оргсбор):
+    pricePerPackCurrency?: string | number | null;
+    currencyId?: number | null;
+    packAmount?: string | number | null;
+    packUnit?: string | null;
+    orgFeePercentOverride?: string | number | null;
     targetRemainder: string | number | null;
     supplierLimit?: string | number | null;
     supplierLimitUnit?: string | null;

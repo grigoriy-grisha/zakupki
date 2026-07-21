@@ -1,16 +1,13 @@
 'use client';
 
 import { Percent } from 'lucide-react';
-import { getPackDiscountPricingInfo } from '@zakupki/types';
-import type { SupplierPackProductFields } from '@zakupki/types';
+import type { PackDiscountPricingInfo } from '@zakupki/types';
 
 type PackDiscountBannerProps = {
-    product: SupplierPackProductFields;
-    discountPercent: number;
+    info: PackDiscountPricingInfo | null;
 };
 
-export function PackDiscountBanner({ product, discountPercent }: PackDiscountBannerProps) {
-    const info = getPackDiscountPricingInfo(product, discountPercent);
+export function PackDiscountBanner({ info }: PackDiscountBannerProps) {
     if (!info) return null;
 
     return (

@@ -89,3 +89,21 @@ export function useUpdateItemProduct(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 }
+
+/**
+ * Тихая (silent) версия `useUpdateItemProduct` для inline-правок в таблице.
+ * Не показывает toast на успех (чтобы не спамить при каждом blur), только на
+ * ошибку. Инвалидирует только getById — позиция закупки, а не каталог товаров.
+ * Серверный partial-update (поля `!== undefined`) позволяет править по одному
+ * полю за раз.
+ */
+export function useInlineUpdateItem(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.updateItemProduct.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}

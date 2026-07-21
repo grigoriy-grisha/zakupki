@@ -52,14 +52,15 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                             initialPurchaseFields={{
                                 supplierId: item.supplierId ?? null,
                                 description: item.description ?? null,
-                                pricePerUnit: item.pricePerUnit ?? null,
-                                priceTiers: item.priceTiers,
+                                // Новая модель цен:
+                                pricePerPackCurrency: item.pricePerPackCurrency ?? null,
+                                currencyId: item.currencyId ?? null,
+                                packAmount: item.packAmount ?? null,
+                                packUnit: item.packUnit ?? null,
+                                orgFeePercentOverride: item.orgFeePercentOverride ?? null,
+                                // Добор и лимиты:
                                 minPackageAmount: item.minPackageAmount ?? null,
                                 minPackageUnit: item.minPackageUnit ?? null,
-                                supplierPackageAmount: item.supplierPackageAmount ?? null,
-                                supplierPackageUnit: item.supplierPackageUnit ?? null,
-                                supplierPackagePrice: item.supplierPackagePrice ?? null,
-                                supplierPackageTiers: item.supplierPackageTiers,
                                 supplementStep: item.supplementStep ?? null,
                                 supplierLimit: item.supplierLimit ?? null,
                                 supplierLimitUnit: item.supplierLimitUnit ?? null,
@@ -72,7 +73,6 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                                     {
                                         purchaseItemId: purchaseItemId!,
                                         product: data,
-                                        priceOverride: data.priceOverride ?? null,
                                     },
                                     { onSuccess: () => onClose() },
                                 )

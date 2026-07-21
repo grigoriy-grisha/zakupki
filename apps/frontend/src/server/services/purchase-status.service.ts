@@ -4,14 +4,20 @@ import {
     isFreezePoint,
     isPaymentPlusFreezePoint,
     isUnfreezePoint,
+    NOTIFIABLE_FULFILLMENT_STAGES,
     NotFoundError,
     ValidationError,
     type PurchaseFulfillmentStatus,
+    type PurchaseStatus,
 } from '@zakupki/types';
 import type { EventBus } from '@zakupki/queue';
+import { createLogger } from '@zakupki/logger';
 
 import { OrderRepository } from '../domain/order.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
+import type { NotificationService } from './notification.service';
+
+const log = createLogger('purchase-status-service');
 
 /**
  * Управление жизненным циклом закупки: переходы статусов (DRAFT/ACTIVE/DONE) и
@@ -19,16 +25,30 @@ import { PurchaseRepository } from '../domain/purchase.repository';
  * количеств заказов и эмиссию доменных событий для воркера постов.
  *
  * Работа с товарами закупки живёт в `PurchaseService`.
+ *
+ * Ключевые переходы статуса/этапа дополнительно пушат каждому участнику
+ * уведомление через NotificationService (fan-out по всем OrderLine.userId).
+ * Ошибки notify логируются и не пробрасываются — переход уже закоммичен.
  */
 export class PurchaseStatusService {
     constructor(
         private repo: PurchaseRepository,
         private orderRepo: OrderRepository,
         private eventBus: EventBus,
+        private notification: NotificationService,
     ) {}
 
     async updateStatus(id: number, status: string) {
-        return this.repo.updateStatus(id, status);
+        // Compare against the current value first so no-op calls (same status)
+        // don't spam participants with duplicate notifications. `getById` is the
+        // same lookup `updateFulfillmentStatus` does; cheap relative to fan-out.
+        const before = await this.repo.getById(id);
+        const result = await this.repo.updateStatus(id, status);
+        const next = status as PurchaseStatus;
+        if (next !== 'DRAFT' && before?.status !== next) {
+            await this.notifyStatusChanged(id, next);
+        }
+        return result;
     }
 
     async updateFulfillmentStatus(id: number, fulfillmentStatus: string) {
@@ -61,6 +81,10 @@ export class PurchaseStatusService {
         // Emit только если статус реально изменился (защита от no-op вызовов).
         if (current !== next) {
             await this.eventBus.emitPurchaseFulfillmentChanged(id, current, next);
+            // Notify only on the 3 key stages (REORDER, PAYMENT, READY_FOR_PICKUP).
+            if (NOTIFIABLE_FULFILLMENT_STAGES.has(next)) {
+                await this.notifyFulfillmentStage(id, next);
+            }
         }
 
         return result;
@@ -74,6 +98,7 @@ export class PurchaseStatusService {
         }
         const result = await this.repo.updateStatus(purchaseId, 'ACTIVE');
         await this.eventBus.emitPurchaseStatusChanged(purchaseId, 'DRAFT', 'ACTIVE');
+        await this.notifyStatusChanged(purchaseId, 'ACTIVE');
         return result;
     }
 
@@ -85,6 +110,56 @@ export class PurchaseStatusService {
         }
         const result = await this.repo.updateStatus(id, 'DONE');
         await this.eventBus.emitPurchaseStatusChanged(id, 'ACTIVE', 'DONE');
+        await this.notifyStatusChanged(id, 'DONE');
         return result;
+    }
+
+    // ── Внутренние: fan-out уведомлений (best-effort) ───────────────
+
+    /**
+     * Fan-out a fulfillment-stage notification to every participant of the
+     * purchase (anyone with at least one order line). Failures are logged per
+     * user but never abort the loop — every user gets an independent chance.
+     */
+    private async notifyFulfillmentStage(
+        purchaseId: number,
+        stage: PurchaseFulfillmentStatus,
+    ): Promise<void> {
+        const purchaseTag = await this.repo.findTagById(purchaseId);
+        if (!purchaseTag) return;
+        const userIds = await this.orderRepo.findParticipantUserIds(purchaseId);
+        await Promise.all(
+            userIds.map((userId) =>
+                this.notification
+                    .notify({
+                        userId,
+                        type: 'PURCHASE_FULFILLMENT_STAGE',
+                        payload: { purchaseId, purchaseTag, stage },
+                    })
+                    .catch((err) =>
+                        log.warn({ purchaseId, userId, stage, err }, 'failed to notify fulfillment stage'),
+                    ),
+            ),
+        );
+    }
+
+    /** Fan-out a purchase-status-change notification to every participant. */
+    private async notifyStatusChanged(purchaseId: number, status: PurchaseStatus): Promise<void> {
+        const purchaseTag = await this.repo.findTagById(purchaseId);
+        if (!purchaseTag) return;
+        const userIds = await this.orderRepo.findParticipantUserIds(purchaseId);
+        await Promise.all(
+            userIds.map((userId) =>
+                this.notification
+                    .notify({
+                        userId,
+                        type: 'PURCHASE_STATUS_CHANGED',
+                        payload: { purchaseId, purchaseTag, status },
+                    })
+                    .catch((err) =>
+                        log.warn({ purchaseId, userId, status, err }, 'failed to notify status change'),
+                    ),
+            ),
+        );
     }
 }

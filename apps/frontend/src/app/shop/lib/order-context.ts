@@ -1,18 +1,18 @@
 import {
+    buildOrderQtyOptions,
     computeAmountDueWithPackages,
     computePackagePrice,
+    computeUnitPriceRubNewModel,
     countFullSupplierPacks,
+    getActiveStep,
     getPackDiscountPricingInfo,
-    getSupplementStep,
     getUnitByCode,
     isSupplementPhase,
-    buildOrderQtyOptions,
-    getOrderQuantityStep,
     mapToPurchaseItem,
     OrderBook,
     toOrderLinesVO,
 } from '@zakupki/types';
-import type { PurchaseFulfillmentStatus, PurchaseItem } from '@zakupki/types';
+import type { CurrencyRate, PackDiscountPricingInfo, PurchaseFulfillmentStatus, PurchaseItem } from '@zakupki/types';
 import type { ShopPurchaseItem } from './types';
 
 export interface ItemOrderContextInput {
@@ -22,13 +22,19 @@ export interface ItemOrderContextInput {
     baseQuantity: number;
     fulfillmentStatus: string;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+    currencyRates: CurrencyRate[];
 }
 
 export interface ItemOrderContext {
     /** Короткое название единицы (гр, шт, ...) */
     shortName: string;
-    /** Цена за единицу (с учётом priceOverride) */
+    /** Цена за единицу: новая модель (валюта × курс × оргсбор) приоритетнее старой
+     * (priceOverride/pricePerUnit). 0 если обе модели не заданы. */
     price: number;
+    /** Цена за единицу по новой модели, либо null если новая модель не активна.
+     * Используется ProductPricePanel для выбора способа отображения цены. */
+    unitPriceRub: number | null;
 
     // Текущее состояние (пробрасывается из input для удобства)
     currentQuantity: number;
@@ -47,12 +53,17 @@ export interface ItemOrderContext {
     // Упаковка
     packSize: number | null;
     showPackageButtons: boolean;
+    /** Можно ли добавить упаковку. Ограничено только supplierLimit, НЕ пулом/остатком
+     *  (упаковки — базовая фасовка, а не добор). Совпадает с бэком (validateSupplierLimit). */
+    canAddPackage: boolean;
     packagePrice: number;
     packageTotal: number;
 
     // Цены
     total: number;
     fullPacks: number;
+    /** Скидка за целую пачку (null — нет скидки/нет данных). */
+    packDiscountInfo: PackDiscountPricingInfo | null;
 
     // Разрешения
     canAdd: boolean;
@@ -74,17 +85,24 @@ export interface ItemOrderContext {
  * пользователь может иметь текущее + остаток пула. Совпадает с бэком.
  */
 export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderContext {
-    const { item, currentQuantity, currentPackageCount, baseQuantity, fulfillmentStatus, packDiscountPercent } = input;
+    const {
+        item,
+        currentQuantity,
+        currentPackageCount,
+        baseQuantity,
+        fulfillmentStatus,
+        packDiscountPercent,
+        orgFeeDefaultPercent,
+        currencyRates,
+    } = input;
     const product = item.product;
     const unit = getUnitByCode(product.unitCode);
     const shortName = unit?.shortName ?? 'ед.';
     const multiplicity = Number(product.multiplicity) || 1;
-    // После миграции Supplier все per-purchase поля (цена, фасовка) лежат на item.
-    const price = Number(item.priceOverride ?? item.pricePerUnit ?? 0);
 
     const minPackageAmount = item.minPackageAmount != null ? Number(item.minPackageAmount) : null;
     const minPackageUnit = item.minPackageUnit ?? null;
-    const packSize = item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
+    const packSize = item.packAmount != null ? Number(item.packAmount) : null;
 
     const orderQtyOptions = buildOrderQtyOptions({
         multiplicity,
@@ -92,13 +110,13 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         minPackageUnit,
         purchaseItemMinQty: item.minQty != null ? Number(item.minQty) : null,
         unitShort: shortName,
+        unitCode: product.unitCode,
     });
 
-    const regularStep = getOrderQuantityStep(orderQtyOptions);
-    const activeStep = getSupplementStep({
+    const activeStep = getActiveStep({
         fulfillmentStatus,
         supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
-        regularStep,
+        options: orderQtyOptions,
     });
 
     // Пул добора — через доменный aggregate OrderBook.remainder (сырой пул, без userId).
@@ -108,14 +126,14 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const purchaseItem: PurchaseItem = mapToPurchaseItem(
         {
             id: item.id,
-            // Per-purchase поля теперь с item напрямую:
-            pricePerUnit: item.pricePerUnit ?? null,
-            priceOverride: item.priceOverride,
-            priceTiers: item.priceTiers,
-            supplierPackageAmount: packSize,
-            supplierPackageUnit: item.supplierPackageUnit ?? null,
-            supplierPackagePrice: item.supplierPackagePrice ?? null,
-            supplierPackageTiers: item.supplierPackageTiers,
+            // Новая модель цен (валюта + курс + оргсбор):
+            pricePerPackCurrency:
+                item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
+            currencyId: item.currencyId ?? null,
+            packAmount: item.packAmount != null ? Number(item.packAmount) : null,
+            packUnit: item.packUnit ?? null,
+            orgFeePercentOverride:
+                item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
             minPackageAmount,
             minPackageUnit: item.minPackageUnit ?? null,
             supplementStep: item.supplementStep,
@@ -132,9 +150,14 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             purchase: { fulfillmentStatus },
         },
         packDiscountPercent,
+        { orgFeeDefaultPercent, currencyRates },
     );
     const book = OrderBook.create(purchaseItem, toOrderLinesVO((item.orderLines ?? []) as any[]));
     const availablePool = book.remainder;
+
+    // Цена за единицу по новой модели (валюта × курс × оргсбор). null если не активна.
+    const unitPriceRub = computeUnitPriceRubNewModel(purchaseItem);
+    const price = unitPriceRub ?? 0;
 
     const freeRemainderLabel =
         isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
@@ -145,20 +168,42 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const hasSupplierPackage = packSize != null && packSize > 0;
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
     const showPackageButtons = canAddPackage && hasSupplierPackage;
+
+    // Лимит на упаковки — только по supplierLimit (жёсткий лимит товара).
+    // Остаток/пул добора НЕ ограничивает упаковки: упаковка = базовая фасовка,
+    // а не добор. Бэкенд (ReorderStrategy.adjustPackages) проверяет только
+    // validateSupplierLimit, не validateSupplementPool — здесь та же логика.
+    // supplierMaxAllowed = supplierLimit − totalOrderedWithPackages + effectiveUserQty
+    // (totalOrderedWithPackages уже включает effectiveUserQty, поэтому компенсируем).
+    const supplierLimitNum = item.supplierLimit != null ? Number(item.supplierLimit) : null;
+    let canAddMorePackages: boolean;
+    if (!showPackageButtons || packSize == null) {
+        canAddMorePackages = false;
+    } else if (supplierLimitNum == null) {
+        // Нет жёсткого лимита → упаковки без ограничений.
+        canAddMorePackages = true;
+    } else {
+        const effectiveUserQty = currentQuantity + currentPackageCount * packSize;
+        const totalOrderedWithPackages = (item.orderLines ?? [])
+            .filter((l) => (l as { status?: string }).status !== 'CANCELLED')
+            .reduce(
+                (sum, l) =>
+                    sum +
+                    Number((l as { quantity?: unknown }).quantity ?? 0) +
+                    Number((l as { packageCount?: unknown }).packageCount ?? 0) * packSize,
+                0,
+            );
+        const supplierMaxAllowed = supplierLimitNum - totalOrderedWithPackages + effectiveUserQty;
+        canAddMorePackages = effectiveUserQty + packSize <= supplierMaxAllowed + 1e-9;
+    }
     // Единый источник цены с сервером: computePackagePrice/computeAmountDueWithPackages
     // берут priceOverride (как calculateOrderAmount). Раньше packagePrice считался от
     // pricePerUnit → для ценника через priceOverride упаковки были бесплатными на клиенте.
     const packagePrice = computePackagePrice(purchaseItem);
     const packageTotal = currentPackageCount * packagePrice;
     const total = computeAmountDueWithPackages(currentQuantity, currentPackageCount, purchaseItem);
-    const packDiscountInfo = getPackDiscountPricingInfo(
-        {
-            supplierPackageAmount: packSize,
-            supplierPackageUnit: item.supplierPackageUnit ?? null,
-            supplierPackagePrice: item.supplierPackagePrice ?? null,
-        },
-        packDiscountPercent,
-    );
+    // Скидка за целую пачку: packPriceRub = packAmount × unitPriceRub (цена упаковки в ₽).
+    const packDiscountInfo = getPackDiscountPricingInfo(packSize, packagePrice, packDiscountPercent);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
 
     // Границы — ЕДИНОЕ правило с бэком: maxAllowed = pool + currentQuantity
@@ -180,6 +225,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     return {
         shortName,
         price,
+        unitPriceRub,
         currentQuantity,
         currentPackageCount,
         activeStep,
@@ -189,10 +235,12 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         freeRemainderLabel,
         packSize,
         showPackageButtons,
+        canAddPackage: canAddMorePackages,
         packagePrice,
         packageTotal,
         total,
         fullPacks,
+        packDiscountInfo,
         canAdd,
         canDecrease,
         hasOrder,

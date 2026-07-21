@@ -97,7 +97,7 @@ export function validateSupplementPool(
 ): OrderError | null {
     const pool = computeRawPool({
         targetRemainder: item.targetRemainder,
-        packSize: item.supplierPackageAmount,
+        packSize: item.packAmount,
         aggregation,
     });
     if (pool == null) return null;

@@ -1,9 +1,9 @@
 'use client';
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
-import { getPackDiscountPricingInfo } from '@zakupki/types';
+import { type CurrencyRate } from '@zakupki/types';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
+import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import { cn } from '@/lib/utils';
 import type { ProductGridItem } from './product-grid';
 
@@ -18,6 +19,8 @@ interface ShopPurchaseItemProductCardProps {
     item: ProductGridItem;
     purchaseId: number;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+    currencyRates: CurrencyRate[];
     currentQuantity?: number;
     currentPackageCount?: number;
     baseQuantity?: number | null;
@@ -43,6 +46,8 @@ function ProductCardImpl({
     item,
     purchaseId,
     packDiscountPercent,
+    orgFeeDefaultPercent,
+    currencyRates,
     currentQuantity = 0,
     currentPackageCount = 0,
     baseQuantity: baseQuantityProp,
@@ -63,6 +68,8 @@ function ProductCardImpl({
         baseQuantity: baseQuantityProp ?? 0,
         fulfillmentStatus,
         packDiscountPercent,
+        orgFeeDefaultPercent,
+        currencyRates,
     });
 
     const photo = product.photos?.[0];
@@ -81,18 +88,22 @@ function ProductCardImpl({
         e.preventDefault();
     }, []);
 
-    const packInfo = useMemo(
-        () => getPackDiscountPricingInfo(product, packDiscountPercent),
-        [product, packDiscountPercent],
-    );
+    // Скидка за целую пачку: packInfo уже посчитан в ctx через новую модель цен.
+    const packInfo = ctx.packDiscountInfo;
 
-    // Подсказка: минимальная фасовка (например, «Мин. фасовка: 10 гр»)
-    const minPackageAmount = product.minPackageAmount != null ? Number(product.minPackageAmount) : null;
-    const minPackageUnit = product.minPackageUnit ?? null;
-    const minHint =
-        minPackageAmount != null && minPackageAmount > 0
-            ? `от ${minPackageAmount % 1 === 0 ? minPackageAmount : minPackageAmount.toFixed(1).replace(/\.?0+$/, '')} ${minPackageUnit ?? ctx.shortName}`
-            : null;
+    // Подсказка шага с учётом этапа: на сборе — «Мин. фасовка: N ед»,
+    // на доборе — «Шаг добора: N ед» (supplementStep ?? minPackageAmount).
+    // ProductGridItem — пермиссивный ([key: string]: any), поэтому выбираем
+    // только нужные поля явно, чтобы TS принимал их без cast.
+    const minHint = buildStepHint(
+        {
+            minPackageAmount: item.minPackageAmount,
+            minPackageUnit: item.minPackageUnit,
+            supplementStep: item.supplementStep,
+        },
+        fulfillmentStatus,
+        ctx.shortName,
+    );
 
     // Ценовые тиры (priceTiers) зарезервированы на будущее — показываем базовую цену.
 
@@ -278,7 +289,7 @@ function ProductCardImpl({
                                         stop(e);
                                         ctx.handleAddPackage();
                                     }}
-                                    disabled={!ctx.canAdd || ctx.isPending}
+                                    disabled={!ctx.canAddPackage || ctx.isPending}
                                 >
                                     <Plus className="mr-1 size-3" />
                                     +1 упаковка ({ctx.packSize} {ctx.shortName})
@@ -339,7 +350,7 @@ function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> 
                         size="sm"
                         className="h-8 min-w-0 flex-1 text-12-medium"
                         onClick={ctx.handleAddPackage}
-                        disabled={!ctx.canAdd || ctx.isPending}
+                        disabled={!ctx.canAddPackage || ctx.isPending}
                     >
                         <Plus className="mr-1 size-3" />
                         +1 упак. ({ctx.packSize} {ctx.shortName})

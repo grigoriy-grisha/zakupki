@@ -1,11 +1,17 @@
 import { ForbiddenError, ValidationError } from '@zakupki/types';
+import { createLogger } from '@zakupki/logger';
 
 import { storage } from '@/lib/server/storage';
-
 import { PaymentRepository } from '../domain/payment.repository';
+import type { NotificationService } from './notification.service';
+
+const log = createLogger('payment-service');
 
 export class PaymentService {
-    constructor(private repo: PaymentRepository) {}
+    constructor(
+        private repo: PaymentRepository,
+        private notification: NotificationService,
+    ) {}
 
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
         return this.repo.create(data);
@@ -62,12 +68,44 @@ export class PaymentService {
 
     /** Admin: confirm payment */
     async confirm(id: number, adminNote?: string) {
-        return this.repo.updateStatus(id, 'CONFIRMED', adminNote);
+        const result = await this.repo.updateStatus(id, 'CONFIRMED', adminNote);
+        await this.notifyPayment(id, 'PAYMENT_CONFIRMED', adminNote);
+        return result;
     }
 
     /** Admin: reject payment */
     async reject(id: number, adminNote?: string) {
-        return this.repo.updateStatus(id, 'REJECTED', adminNote);
+        const result = await this.repo.updateStatus(id, 'REJECTED', adminNote);
+        await this.notifyPayment(id, 'PAYMENT_REJECTED', adminNote);
+        return result;
+    }
+
+    /**
+     * Push a payment notification to the owning user. Best-effort — a failure
+     * here is logged but never rethrown, since the status transition already
+     * succeeded and the admin flow must not break on notification delivery.
+     */
+    private async notifyPayment(
+        id: number,
+        type: 'PAYMENT_CONFIRMED' | 'PAYMENT_REJECTED',
+        adminNote?: string,
+    ): Promise<void> {
+        try {
+            const payment = await this.repo.findWithPurchase(id);
+            if (!payment) return;
+            await this.notification.notify({
+                userId: payment.userId,
+                type,
+                payload: {
+                    purchaseId: payment.purchaseId,
+                    purchaseTag: payment.purchase.tag,
+                    amount: Number(payment.amount),
+                    adminNote: adminNote ?? null,
+                },
+            });
+        } catch (err) {
+            log.warn({ paymentId: id, type, err }, 'failed to notify about payment');
+        }
     }
 
     /** User cancels own payment — verifies ownership */

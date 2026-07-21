@@ -1,44 +1,80 @@
 /**
- * Расчёт суммы заказа — обёртка над calculateOrderAmount,
- * адаптированная под PurchaseItem (number, не Decimal).
+ * Расчёт суммы заказа — чистая новая модель цен (валюта × курс × оргсбор).
+ *
+ * Старая модель (priceTiers + supplierPackagePrice + priceOverride + packDiscount)
+ * полностью удалена. Все цены считаются через unitPriceRub.
  */
-import { calculateOrderAmount } from '../pricing/calculation';
+import {
+    computeAmountDueNewModel,
+    computeUnitPriceRubFromItem,
+    resolveCurrencyRate,
+    resolveOrgFeePercent,
+} from '../pricing/currency-pricing';
 import type { PurchaseItem } from './types';
 
 /**
- * Сумма заказа по количеству и ценовым ступеням товара.
- * Чистая функция: берёт прайсинг из PurchaseItem.
+ * Цена за 1ед по новой модели (валюта × курс × оргсбор / вес), либо null,
+ * если новая модель не активна для этого товара (нет валюты/курса/веса).
  */
-export function computeAmountDue(quantity: number, item: PurchaseItem): number {
-    return calculateOrderAmount(quantity, {
-        priceTiers: item.priceTiers,
-        pricePerUnit: item.pricePerUnit,
-        priceOverride: item.priceOverride,
-        supplierPackageAmount: item.supplierPackageAmount,
-        supplierPackageUnit: item.supplierPackageUnit,
-        supplierPackagePrice: item.supplierPackagePrice,
-        packDiscountPercent: item.packDiscountPercent,
+export function computeUnitPriceRubNewModel(item: PurchaseItem): number | null {
+    if (item.pricePerPackCurrency == null || item.currencyId == null || item.packAmount == null) {
+        return null;
+    }
+    const rateToRub = resolveCurrencyRate(item.currencyRates, item.currencyId);
+    if (rateToRub == null) return null;
+    const orgFeePercent = resolveOrgFeePercent(item.orgFeePercentOverride, item.orgFeeDefaultPercent);
+    return computeUnitPriceRubFromItem({
+        pricePerPackCurrency: item.pricePerPackCurrency,
+        rateToRub,
+        orgFeePercent,
+        packSize: item.packAmount,
     });
 }
 
 /**
- * Цена одной упаковки поставщика: явная supplierPackagePrice,
- * иначе pricePerUnit * supplierPackageAmount.
+ * Сумма заказа по количеству. Новая модель: quantity × unitPriceRub.
+ * Возвращает 0, если новая модель не активна (нет данных для расчёта цены).
  */
-export function computePackagePrice(item: PurchaseItem): number {
-    if (item.supplierPackagePrice != null && item.supplierPackagePrice > 0) {
-        return item.supplierPackagePrice;
+export function computeAmountDue(quantity: number, item: PurchaseItem): number {
+    const unitPriceRub = computeUnitPriceRubNewModel(item);
+    if (unitPriceRub != null) {
+        return (
+            computeAmountDueNewModel({
+                quantity,
+                packageCount: 0,
+                packSize: item.packAmount,
+                unitPriceRub,
+            }) ?? 0
+        );
     }
-    // Per-unit цена с приоритетом priceOverride — та же, что использует россыпь
-    // (calculateOrderAmount возвращает quantity*priceOverride). Без этого при
-    // ценнике через priceOverride (pricePerUnit=0) упаковки получались бесплатными.
-    const unitPrice = item.priceOverride ?? item.pricePerUnit;
-    return unitPrice * (item.supplierPackageAmount ?? 0);
+    return 0;
 }
 
 /**
- * Сумма заказа с учётом упаковок: amountDue(qty) + packageCount * packagePrice.
+ * Цена одной упаковки в ₽: packAmount × unitPriceRub.
+ * Возвращает 0, если новая модель не активна.
+ */
+export function computePackagePrice(item: PurchaseItem): number {
+    const unitPriceRub = computeUnitPriceRubNewModel(item);
+    if (unitPriceRub == null || item.packAmount == null) return 0;
+    return unitPriceRub * item.packAmount;
+}
+
+/**
+ * Сумма заказа с учётом упаковок: (quantity + packageCount × packAmount) × unitPriceRub.
+ * Возвращает 0, если новая модель не активна.
  */
 export function computeAmountDueWithPackages(quantity: number, packageCount: number, item: PurchaseItem): number {
-    return computeAmountDue(quantity, item) + packageCount * computePackagePrice(item);
+    const unitPriceRub = computeUnitPriceRubNewModel(item);
+    if (unitPriceRub != null) {
+        return (
+            computeAmountDueNewModel({
+                quantity,
+                packageCount,
+                packSize: item.packAmount,
+                unitPriceRub,
+            }) ?? 0
+        );
+    }
+    return 0;
 }

@@ -174,6 +174,16 @@ export class OrderRepository {
     async getByPurchase(purchaseId: number) {
         return dbClient.orderLine.findMany({
             where: { purchaseItem: { purchaseId }, status: 'ACTIVE' },
+            // Stable order keyed on values that DON'T change when an admin edits
+            // a line. The previous `id: 'asc'` made items jump around: adminSetQuantity
+            // collapses all of a user's lines on an item into a fresh COLLECTION row
+            // (new id = max), which silently re-sorted that item to the end of the
+            // participant's card on every edit. Sorting by `purchaseItemId` (stable —
+            // reflects the order items were added to the purchase) keeps each
+            // participant's items in a fixed position regardless of line recreation.
+            // Tiebreak with id only to keep multi-line items (COLLECTION + supplement)
+            // deterministic between otherwise identical rows.
+            orderBy: [{ userId: 'asc' }, { purchaseItemId: 'asc' }, { id: 'asc' }],
             include: {
                 user: { include: USER_CREDENTIALS_INCLUDE },
                 purchaseItem: {
@@ -236,6 +246,16 @@ export class OrderRepository {
             distinct: ['purchaseItemId'],
         });
         return rows.map((r) => r.purchaseItemId);
+    }
+
+    /** All distinct user ids who have at least one order line in a purchase. */
+    async findParticipantUserIds(purchaseId: number): Promise<number[]> {
+        const rows = await dbClient.orderLine.findMany({
+            where: { purchaseItem: { purchaseId } },
+            select: { userId: true },
+            distinct: ['userId'],
+        });
+        return rows.map((r) => r.userId);
     }
 
     /**

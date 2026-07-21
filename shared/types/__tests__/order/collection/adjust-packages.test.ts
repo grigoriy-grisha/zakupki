@@ -7,7 +7,7 @@ import { applyAdjustPackages, makeItem } from '../__helpers__';
 
 describe('E. adjustPackages(±1) — упаковки', () => {
     it('юзер без строки добавил +1 упаковку → строка qty=0, packageCount=1', () => {
-        const book = makeItem('COLLECTION', { pricePerUnit: 100, supplierPackageAmount: 10 });
+        const book = makeItem('COLLECTION', { packAmount: 10 });
         const result = OrderBook.create(book).adjustPackages(1, 1);
 
         expect(result.ok).toBe(true);
@@ -23,7 +23,7 @@ describe('E. adjustPackages(±1) — упаковки', () => {
 
     it('юзер с +1 упаковкой добавил ещё +1 → packageCount=2, qty не меняется', () => {
         const book1 = applyAdjustPackages(
-            OrderBook.create(makeItem('COLLECTION', { pricePerUnit: 100, supplierPackageAmount: 10 })),
+            OrderBook.create(makeItem('COLLECTION', { packAmount: 10 })),
             1,
             1,
         );
@@ -38,7 +38,7 @@ describe('E. adjustPackages(±1) — упаковки', () => {
 
     it('юзер с 1 упаковкой убавил -1 → qty=0 и pkg=0 → строка удаляется', () => {
         const book1 = applyAdjustPackages(
-            OrderBook.create(makeItem('COLLECTION', { pricePerUnit: 100, supplierPackageAmount: 10 })),
+            OrderBook.create(makeItem('COLLECTION', { packAmount: 10 })),
             1,
             1,
         );
@@ -53,7 +53,7 @@ describe('E. adjustPackages(±1) — упаковки', () => {
     });
 
     it('убавка ниже нуля (было 0, -1) → ошибка negative', () => {
-        const book = OrderBook.create(makeItem('COLLECTION', { supplierPackageAmount: 10 }));
+        const book = OrderBook.create(makeItem('COLLECTION', { packAmount: 10 }));
         const result = book.adjustPackages(1, -1);
 
         expect(result.ok).toBe(false);
@@ -61,8 +61,8 @@ describe('E. adjustPackages(±1) — упаковки', () => {
         expect(result.error.code).toBe('negative');
     });
 
-    it('товар без supplierPackageAmount → ошибка no_package', () => {
-        const book = OrderBook.create(makeItem('COLLECTION', { supplierPackageAmount: null }));
+    it('товар без packAmount → ошибка no_package', () => {
+        const book = OrderBook.create(makeItem('COLLECTION', { packAmount: null }));
         const result = book.adjustPackages(1, 1);
 
         expect(result.ok).toBe(false);

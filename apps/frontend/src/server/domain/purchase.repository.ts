@@ -1,15 +1,26 @@
 import { Prisma, dbClient, type PurchaseStatus, type PurchaseFulfillmentStatus } from '@zakupki/database';
+import { getUnitShortName } from '@zakupki/types';
 
 import { productInclude } from './product-include';
 
 export class PurchaseRepository {
     constructor() {}
 
-    async list(status?: string) {
+    /**
+     * Shared where-clause for nested items include.
+     * When includeHidden is false (clients), hidden items are excluded.
+     */
+    private static itemsWhere(includeHidden: boolean) {
+        return includeHidden ? undefined : { hidden: false };
+    }
+
+    async list(status?: string, includeHidden = false) {
         return dbClient.purchase.findMany({
             where: status ? { status: status as PurchaseStatus } : undefined,
             include: {
                 items: {
+                    where: PurchaseRepository.itemsWhere(includeHidden),
+                    orderBy: { id: 'asc' },
                     include: {
                         product: { include: productInclude },
                         orderLines: {
@@ -22,11 +33,13 @@ export class PurchaseRepository {
         });
     }
 
-    async listByStatuses(statuses: string[]) {
+    async listByStatuses(statuses: string[], includeHidden = false) {
         return dbClient.purchase.findMany({
             where: { status: { in: statuses as PurchaseStatus[] } },
             include: {
                 items: {
+                    where: PurchaseRepository.itemsWhere(includeHidden),
+                    orderBy: { id: 'asc' },
                     include: {
                         product: { include: productInclude },
                         orderLines: {
@@ -39,7 +52,7 @@ export class PurchaseRepository {
         });
     }
 
-    async listByStatusesForUser(userId: number, statuses: string[]) {
+    async listByStatusesForUser(userId: number, statuses: string[], includeHidden = false) {
         return dbClient.purchase.findMany({
             where: {
                 status: { in: statuses as PurchaseStatus[] },
@@ -47,6 +60,8 @@ export class PurchaseRepository {
             },
             include: {
                 items: {
+                    where: PurchaseRepository.itemsWhere(includeHidden),
+                    orderBy: { id: 'asc' },
                     include: {
                         product: { include: productInclude },
                         orderLines: {
@@ -59,17 +74,21 @@ export class PurchaseRepository {
         });
     }
 
-    async getById(id: number) {
+    async getById(id: number, includeHidden = false) {
         return dbClient.purchase.findUnique({
             where: { id },
             include: {
                 items: {
+                    where: PurchaseRepository.itemsWhere(includeHidden),
+                    orderBy: { id: 'asc' },
                     include: {
                         product: { include: productInclude },
                         supplier: { select: { id: true, name: true } },
+                        currency: { select: { id: true, name: true, code: true, symbol: true } },
                         orderLines: { include: { user: true }, omit: { tgChatMessageId: true } },
                     },
                 },
+                currencyRates: { include: { currency: { select: { id: true, name: true, symbol: true } } } },
                 payments: { include: { user: true } },
             },
         });
@@ -77,6 +96,53 @@ export class PurchaseRepository {
 
     findByTag(tag: string) {
         return dbClient.purchase.findUnique({ where: { tag }, select: { id: true, tag: true } });
+    }
+
+    /** Lightweight tag lookup for notification payloads. */
+    async findTagById(id: number): Promise<string | null> {
+        const purchase = await dbClient.purchase.findUnique({ where: { id }, select: { tag: true } });
+        return purchase?.tag ?? null;
+    }
+
+    /**
+     * Fetch the display label of a PurchaseItem (product name + unit short name),
+     * its purchase id + tag, for notification payloads. Returns null if the item
+     * no longer exists. `purchaseId` is the numeric route key needed to build a
+     * deep link into the purchase page.
+     */
+    async findItemLabel(id: number): Promise<{
+        purchaseId: number;
+        purchaseTag: string;
+        productLabel: string;
+        unitShort: string;
+    } | null> {
+        const row = await dbClient.purchaseItem.findUnique({
+            where: { id },
+            select: {
+                product: { select: { name: true, unitCode: true } },
+                purchase: { select: { id: true, tag: true } },
+            },
+        });
+        if (!row) return null;
+        return {
+            purchaseId: row.purchase.id,
+            purchaseTag: row.purchase.tag,
+            productLabel: row.product.name,
+            unitShort: getUnitShortName(row.product.unitCode),
+        };
+    }
+
+    /**
+     * Fetch just the purchase id for a PurchaseItem. Used by the order service
+     * when deleting a single line — the line is gone after the delete, so the
+     * purchase id must be loaded first to build the notification deep link.
+     */
+    async findPurchaseIdByItem(purchaseItemId: number): Promise<number | null> {
+        const row = await dbClient.purchaseItem.findUnique({
+            where: { id: purchaseItemId },
+            select: { purchaseId: true },
+        });
+        return row?.purchaseId ?? null;
     }
 
     async create(data: { tag: string }) {
@@ -149,15 +215,14 @@ export class PurchaseRepository {
             productId: number;
             supplierId?: number | null;
             description?: string | null;
-            pricePerUnit?: number | null;
-            priceTiers?: unknown;
             minPackageAmount?: number | null;
             minPackageUnit?: string | null;
-            supplierPackageAmount?: number | null;
-            supplierPackageUnit?: string | null;
-            supplierPackagePrice?: number | null;
-            supplierPackageTiers?: unknown;
             supplementStep?: number | null;
+            packAmount?: number | null;
+            packUnit?: string | null;
+            currencyId?: number | null;
+            pricePerPackCurrency?: number | null;
+            orgFeePercentOverride?: number | null;
         },
     ) {
         return dbClient.purchaseItem.create({
@@ -166,15 +231,14 @@ export class PurchaseRepository {
                 productId: config.productId,
                 supplierId: config.supplierId ?? null,
                 description: config.description ?? null,
-                pricePerUnit: config.pricePerUnit ?? null,
-                priceTiers: (config.priceTiers as never) ?? undefined,
                 minPackageAmount: config.minPackageAmount ?? null,
                 minPackageUnit: config.minPackageUnit ?? null,
-                supplierPackageAmount: config.supplierPackageAmount ?? null,
-                supplierPackageUnit: config.supplierPackageUnit ?? null,
-                supplierPackagePrice: config.supplierPackagePrice ?? null,
-                supplierPackageTiers: (config.supplierPackageTiers as never) ?? undefined,
                 supplementStep: config.supplementStep ?? null,
+                packAmount: config.packAmount ?? null,
+                packUnit: config.packUnit ?? null,
+                currencyId: config.currencyId ?? null,
+                pricePerPackCurrency: config.pricePerPackCurrency ?? null,
+                orgFeePercentOverride: config.orgFeePercentOverride ?? null,
             },
         });
     }
@@ -225,6 +289,30 @@ export class PurchaseRepository {
                 results.push(result);
             }
             return results;
+        });
+    }
+
+    /**
+     * Полная замена ставок валют закупки. Удаляет старые и создаёт новые
+     * одной транзакцией. rates = [{ currencyId, rateToRub }, …] (до 3 валют).
+     */
+    async setCurrencyRates(
+        purchaseId: number,
+        rates: { currencyId: number; rateToRub: number }[],
+    ) {
+        return dbClient.$transaction(async (tx) => {
+            await tx.purchaseCurrencyRate.deleteMany({ where: { purchaseId } });
+            if (rates.length === 0) return [];
+            return tx.purchaseCurrencyRate.createMany({
+                data: rates.map((r) => ({ purchaseId, currencyId: r.currencyId, rateToRub: r.rateToRub })),
+            });
+        });
+    }
+
+    async getCurrencyRates(purchaseId: number) {
+        return dbClient.purchaseCurrencyRate.findMany({
+            where: { purchaseId },
+            include: { currency: { select: { id: true, name: true, code: true, symbol: true } } },
         });
     }
 
@@ -311,12 +399,13 @@ export class PurchaseRepository {
                         quantity: true,
                         amountDue: true,
                         baseQuantity: true,
+                        basePackageCount: true,
                         packageCount: true,
                         status: true,
                         createdOnStage: true,
                     },
                 },
-                purchase: true,
+                purchase: { include: { currencyRates: true } },
             },
         });
     }

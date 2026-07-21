@@ -1,7 +1,8 @@
 import {
-    computePackagePrice,
+    buildOrderQtyOptions,
+    computeUnitPriceRubNewModel,
+    getActiveStep,
     getOrderQuantityStep,
-    getSupplementStep,
     getUnitByCode,
     mapToPurchaseItem,
     mergeLines,
@@ -25,7 +26,7 @@ export type OrderCollectionResult =
           unitShort: string;
           amountDue: number;
           purchaseTag: string;
-          pricePerUnit: number;
+          unitPriceRub: number;
           packSize: number | null;
           packagePrice: number | null;
           added?: OrderCollectionAction;
@@ -83,12 +84,22 @@ export class OrderCollectionService {
             };
         }
 
+        // Hidden items are not orderable — resolver already filters them out,
+        // but guard here as well (defense in depth for cached resolutions).
+        if (purchaseItem.hidden) {
+            return {
+                ok: false,
+                reason: 'product_not_found',
+                message: 'Этот товар больше недоступен для заказа',
+            };
+        }
+
         if (!this.container) {
             return { ok: false, reason: 'error', message: 'ServiceContainer not wired' };
         }
 
         const user = await this.container.userService.upsertFromTelegramBot(params.telegramId, params.userInfo);
-        const pricing = this.getItemPricing(purchaseItem);
+        const pricing = await this.getItemPricing(purchaseItem);
 
         const belowStep = this.belowStepResult(purchaseItem, parsed, pricing.unitShort);
         if (belowStep) return belowStep;
@@ -125,7 +136,7 @@ export class OrderCollectionService {
     private buildResult(
         item: ResolvedItem,
         userId: number,
-        pricing: ReturnType<typeof this.getItemPricing>,
+        pricing: Awaited<ReturnType<typeof this.getItemPricing>>,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
         line: { quantity: number; packageCount: number; amountDue: number; cancelled?: true },
     ): Extract<OrderCollectionResult, { ok: true }> {
@@ -140,7 +151,7 @@ export class OrderCollectionService {
             unitShort: pricing.unitShort,
             amountDue: line.amountDue,
             purchaseTag: item.purchase.tag,
-            pricePerUnit: pricing.pricePerUnit,
+            unitPriceRub: pricing.unitPriceRub,
             packSize: pricing.packSize,
             packagePrice: pricing.packagePrice,
             added: parsed.kind === 'add' ? action : undefined,
@@ -149,12 +160,24 @@ export class OrderCollectionService {
         };
     }
 
-    private getItemPricing(item: ResolvedItem) {
+    private async getItemPricing(item: ResolvedItem) {
         const unitShort = getUnitByCode(item.product.unitCode)?.shortName ?? 'ед.';
-        const packSize = item.supplierPackageAmount != null ? Number(item.supplierPackageAmount) : null;
-        const pricePerUnit = Number(item.priceOverride ?? item.pricePerUnit ?? 0);
-        const packagePrice = computePackagePrice(mapToPurchaseItem(item, 0));
-        return { unitShort, packSize, pricePerUnit, packagePrice };
+        const orgFeeDefaultPercent = this.container
+            ? await this.container.pricingSettings.getOrgFeeDefaultPercent()
+            : 0;
+        const currencyRates = (item.purchase?.currencyRates ?? []).map((r) => ({
+            currencyId: r.currencyId,
+            rateToRub: Number(r.rateToRub),
+        }));
+        const packDiscountPercent = this.container
+            ? await this.container.pricingSettings.getBeadPackPriceDiscountPercent()
+            : 0;
+        const domainItem = mapToPurchaseItem(item, packDiscountPercent, { orgFeeDefaultPercent, currencyRates });
+
+        const unitPriceRub = computeUnitPriceRubNewModel(domainItem) ?? 0;
+        const packSize = item.packAmount != null ? Number(item.packAmount) : null;
+        const packagePrice = packSize != null ? packSize * unitPriceRub : 0;
+        return { unitShort, packSize, unitPriceRub, packagePrice };
     }
 
     private async applyDelta(
@@ -186,10 +209,15 @@ export class OrderCollectionService {
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
         if (!this.container) return;
-        const step = getOrderQuantityStep({
-            minPackageAmount: Number(purchaseItem.minPackageAmount) || null,
-            multiplicity: Number(purchaseItem.product.multiplicity) || null,
-        });
+        const step = getOrderQuantityStep(
+            buildOrderQtyOptions({
+                multiplicity: Number(purchaseItem.product.multiplicity) || 1,
+                minPackageAmount:
+                    purchaseItem.minPackageAmount != null ? Number(purchaseItem.minPackageAmount) : null,
+                minPackageUnit: null,
+                unitCode: purchaseItem.product.unitCode ?? null,
+            }),
+        );
         const steps = Math.round(parsed.amount / step);
         const delta = parsed.kind === 'add' ? steps * step : -steps * step;
         return this.container.orderService.adjustQuantity(purchaseItem.id, userId, delta);
@@ -202,14 +230,15 @@ export class OrderCollectionService {
         unitShort: string,
     ): OrderCollectionResult | null {
         if (parsed.kind !== 'add' || parsed.unit !== 'remainder') return null;
-        const regularStep = getOrderQuantityStep({
-            minPackageAmount: Number(item.minPackageAmount) || null,
-            multiplicity: Number(item.product.multiplicity) || null,
-        });
-        const step = getSupplementStep({
+        const step = getActiveStep({
             fulfillmentStatus: item.purchase.fulfillmentStatus ?? 'COLLECTION',
             supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
-            regularStep,
+            options: buildOrderQtyOptions({
+                multiplicity: Number(item.product.multiplicity) || 1,
+                minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
+                minPackageUnit: null,
+                unitCode: item.product.unitCode ?? null,
+            }),
         });
         if (parsed.amount >= step) return null;
         return {

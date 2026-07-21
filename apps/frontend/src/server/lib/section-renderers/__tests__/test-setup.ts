@@ -25,7 +25,7 @@ export function createMockProductHeader(overrides: Partial<ProductHeaderData> = 
     return {
         name: 'Болгарский перец',
         description: null,
-        pricePerUnit: 250,
+        unitPriceRub: 250,
         minPackageAmount: 1,
         minPackageUnit: 'кг',
         unitCode: 'kg',

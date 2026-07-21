@@ -1,6 +1,7 @@
 'use client';
 
 import { Package } from 'lucide-react';
+import type { CurrencyRate } from '@zakupki/types';
 
 import { ProductCard } from './product-card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -21,6 +22,8 @@ interface ProductGridProps {
     aggregatedByItem: Map<number, AggregatedForUser>;
     purchaseId: number;
     packDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+    currencyRates: CurrencyRate[];
     isSupplement: boolean;
     canAddPackage: boolean;
     fulfillmentStatus: string;
@@ -34,6 +37,8 @@ export function ProductGrid({
     aggregatedByItem,
     purchaseId,
     packDiscountPercent,
+    orgFeeDefaultPercent,
+    currencyRates,
     isSupplement,
     canAddPackage,
     fulfillmentStatus,
@@ -68,6 +73,8 @@ export function ProductGrid({
                             item={item}
                             purchaseId={purchaseId}
                             packDiscountPercent={packDiscountPercent}
+                            orgFeeDefaultPercent={orgFeeDefaultPercent}
+                            currencyRates={currencyRates}
                             currentQuantity={aggregated?.quantity ?? 0}
                             currentPackageCount={aggregated?.packageCount ?? 0}
                             baseQuantity={aggregated?.baseQuantity ?? null}

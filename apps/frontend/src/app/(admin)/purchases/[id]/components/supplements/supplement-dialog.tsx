@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { getUnitByCode } from '@zakupki/types';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,7 +105,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                 (sum: number, ol: { quantity: unknown }) => sum + Number(ol.quantity),
                                 0,
                             );
-                            const shortName = item.product.unit?.shortName ?? '';
+                            const shortName = getUnitByCode(item.product.unitCode)?.shortName ?? '';
                             const val = quantities[item.id] ?? '';
                             const stepVal = supplementSteps[item.id] ?? '';
                             return (
