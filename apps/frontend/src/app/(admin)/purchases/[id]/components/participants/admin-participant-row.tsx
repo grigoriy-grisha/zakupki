@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { cn } from '@/lib/utils';
+import { getPaymentStatus } from '../../../lib/payment-status';
 import { useParticipantOrderActions } from '../../hooks';
 import { type PurchaseItemOption } from './admin-order-controls';
 import { ParticipantCommentStrip } from './participant-comment-strip';
@@ -34,6 +35,8 @@ interface AdminParticipantRowProps {
     paid: number;
     pending: number;
     onPaymentClick: (id: number) => void;
+    /** Раскрыть карточку по умолчанию (например, для списка всех участников). */
+    defaultOpen?: boolean;
 }
 
 export function AdminParticipantRow({
@@ -51,11 +54,12 @@ export function AdminParticipantRow({
     paid,
     pending,
     onPaymentClick,
+    defaultOpen = false,
 }: AdminParticipantRowProps) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen);
     const [deleteOpen, setDeleteOpen] = useState(false);
-    // Подтверждение удаления одной позиции (OrderLine). null = диалог закрыт.
-    const [deleteLineTarget, setDeleteLineTarget] = useState<{ id: number; name: string } | null>(null);
+    // Подтверждение удаления товара целиком (все строки участника на purchaseItem). null = диалог закрыт.
+    const [deleteLineTarget, setDeleteLineTarget] = useState<{ purchaseItemId: number; name: string } | null>(null);
 
     // Ручное управление позициями (в обход бизнес-логики) + удаление
     // участника и комментарий.
@@ -63,9 +67,12 @@ export function AdminParticipantRow({
     const actionPending =
         orderActions.adminAdjust.isPending ||
         orderActions.adminSetQuantity.isPending ||
-        orderActions.deleteOrderLine.isPending;
+        orderActions.adminAdjustPackage.isPending ||
+        orderActions.deleteAllByUserItem.isPending;
 
-    const isPaid = paid >= due && due > 0;
+    // Статус оплаты по суммам (общий helper для бейджа и фильтра списка).
+    const paymentStatus = getPaymentStatus(due, paid);
+    const isPaid = paymentStatus === 'paid';
     const hasPending = pending > 0 && !isPaid;
     // Полоса комментария показывается только если PurchaseOrder создан (нужен id
     // для мутации). Если purchaseOrderId == null — у пользователя ещё нет
@@ -134,6 +141,10 @@ export function AdminParticipantRow({
                         <Badge type="subtle" variant="success" size="sm">
                             <CircleCheck className="mr-1 size-3" /> Оплачено
                         </Badge>
+                    ) : paymentStatus === 'partial' ? (
+                        <Badge type="subtle" variant="warning" size="sm">
+                            <Clock className="mr-1 size-3" /> Частично
+                        </Badge>
                     ) : hasPending ? (
                         <Badge type="subtle" variant="warning" size="sm">
                             <Clock className="mr-1 size-3" /> Ждёт
@@ -179,7 +190,6 @@ export function AdminParticipantRow({
                             userId={userId}
                             purchaseOrderId={purchaseOrderId}
                             orders={orders}
-                            payments={payments}
                             purchaseItems={purchaseItems}
                             due={due}
                             orderActions={{
@@ -191,7 +201,13 @@ export function AdminParticipantRow({
                                         userId: uid,
                                         qty,
                                     }),
-                                deleteOrderLine: orderActions.deleteOrderLine,
+                                adminAdjustPackage: ({ purchaseItemId, delta, userId: uid }) =>
+                                    orderActions.adminAdjustPackage.mutate({
+                                        purchaseItemId,
+                                        userId: uid,
+                                        delta,
+                                    }),
+                                deleteAllByUserItem: orderActions.deleteAllByUserItem,
                                 adminAdjustIsPending: actionPending,
                             }}
                             onSetDeleteLineTarget={setDeleteLineTarget}
@@ -231,24 +247,25 @@ export function AdminParticipantRow({
             <ConfirmDialog
                 open={deleteLineTarget != null}
                 onOpenChange={(o) => {
-                    if (!o && !orderActions.deleteOrderLine.isPending) {
+                    if (!o && !orderActions.deleteAllByUserItem.isPending) {
                         setDeleteLineTarget(null);
                     }
                 }}
-                title="Удалить позицию?"
+                title="Удалить товар из заказа?"
                 description={
                     deleteLineTarget ? (
                         <>
-                            «{deleteLineTarget.name}» будет удалена из заказа {name}. Действие нельзя отменить.
+                            «{deleteLineTarget.name}» будет удалён из заказа {name} целиком (сбор, добор и
+                            упаковки). Действие нельзя отменить.
                         </>
                     ) : null
                 }
                 confirmLabel="Удалить"
-                loading={orderActions.deleteOrderLine.isPending}
+                loading={orderActions.deleteAllByUserItem.isPending}
                 onConfirm={() => {
                     if (!deleteLineTarget) return;
-                    orderActions.deleteOrderLine.mutate(
-                        { id: deleteLineTarget.id },
+                    orderActions.deleteAllByUserItem.mutate(
+                        { purchaseItemId: deleteLineTarget.purchaseItemId, userId },
                         { onSuccess: () => setDeleteLineTarget(null) },
                     );
                 }}

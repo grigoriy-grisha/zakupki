@@ -23,7 +23,7 @@ export default function SettingsPage() {
             />
 
             <Tabs defaultValue="attributes" className="gap-4">
-                <TabsList className="h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto overflow-y-hidden p-1 sm:w-fit">
+                <TabsList className="!h-fit w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto overflow-y-hidden p-1 sm:w-fit">
                     <TabsTrigger value="attributes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
                         <Layers className="h-4 w-4 shrink-0" />
                         <span className="hidden lg:inline">Справочники товаров</span>

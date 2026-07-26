@@ -57,7 +57,18 @@ export class BotPaymentService {
         userComment?: string;
         proofData: Buffer;
         proofMimeType: string;
+        promoCodeId?: number;
+        discountAmount?: number;
     }): Promise<unknown> {
         return serviceContainer.botPayment.submitPaymentWithProof(data);
+    }
+
+    /** Validates a promo code against an order amount. */
+    async validatePromoCode(
+        code: string,
+        purchaseId: number,
+        orderAmount: number,
+    ): Promise<{ id: number; code: string; label: string | null; discount: number; finalAmount: number }> {
+        return serviceContainer.botPayment.validatePromoCode(code, purchaseId, orderAmount);
     }
 }

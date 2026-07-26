@@ -1,13 +1,18 @@
 import { InlineKeyboard } from 'grammy';
 
 import type { CustomContext } from '../../domain/types';
-import { PaymentFlowStateMachine } from '../../services/payment-flow-state-machine';
 import type { CallbackHandler } from '../../domain/handler';
 import type { CallbackAction } from '../../domain/callback-data';
 import type { ServiceContainer } from '../../container/service-container';
 
 /**
  * Обрабатывает callback'и с префиксом `pay:`.
+ *
+ * Шаги flow: pick → amount → promo → proof.
+ *   • `pay:pick:{id}` — старт с шага amount (пользователь вводит сумму).
+ *   • `pay:all:{id}`  — сумма = remaining, старт сразу с шага promo.
+ *   • `pay:promo`     — открыть ввод промокода (переход amount → promo).
+ *   • `pay:skip`      — продолжить без промокода (promo/amount → proof).
  */
 export class PayCallbackQueryHandler implements CallbackHandler {
     readonly prefix = 'pay:';
@@ -25,6 +30,16 @@ export class PayCallbackQueryHandler implements CallbackHandler {
 
         if (action.kind === 'pay:all') {
             await this.handleAll(ctx, userId, action.purchaseId);
+            return;
+        }
+
+        if (action.kind === 'pay:promo') {
+            await this.handlePromo(ctx);
+            return;
+        }
+
+        if (action.kind === 'pay:skip') {
+            await this.handleSkip(ctx);
             return;
         }
 
@@ -76,14 +91,56 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         }
 
         const flow = this.container.flowFor(ctx);
-        flow.startProofStep(purchaseId, info.tag, info.remaining, info.remaining);
+        flow.startPromoStep(purchaseId, info.tag, info.remaining, info.remaining);
 
         await ctx.answerCallbackQuery();
         await ctx.reply(
             `Сумма: ${info.remaining.toLocaleString('ru-RU')} ₽\n\n` +
+                `Есть промокод? Введите его текстом, либо продолжите без него.\n\n` +
+                `/cancel — отменить`,
+            { reply_markup: this.promoKeyboard() },
+        );
+    }
+
+    /** `pay:promo` — переход amount → promo, запрос кода текстом. */
+    private async handlePromo(ctx: CustomContext): Promise<void> {
+        const flow = this.container.flowFor(ctx);
+        const current = flow.current;
+
+        if (!current || flow.currentStep !== 'amount' || current.amount == null) {
+            await ctx.answerCallbackQuery({ text: 'Сначала укажите сумму', show_alert: true });
+            return;
+        }
+
+        flow.advanceToPromo(current.amount);
+        await ctx.answerCallbackQuery();
+        await ctx.reply(
+            'Введите промокод текстом.\n\n' + 'Если промокода нет — нажмите «Продолжить без промокода».',
+            { reply_markup: this.promoKeyboard() },
+        );
+    }
+
+    /** `pay:skip` — продолжить без промокода (promo/amount → proof). */
+    private async handleSkip(ctx: CustomContext): Promise<void> {
+        const flow = this.container.flowFor(ctx);
+        const current = flow.current;
+
+        if (!current || current.amount == null) {
+            await ctx.answerCallbackQuery({ text: 'Сначала укажите сумму', show_alert: true });
+            return;
+        }
+
+        flow.advanceToProof();
+        await ctx.answerCallbackQuery();
+        await ctx.reply(
+            `Сумма: ${current.amount.toLocaleString('ru-RU')} ₽\n\n` +
                 `Пришлите фото или PDF чека об оплате.\n` +
                 `Комментарий можно добавить в подписи к файлу.\n\n` +
                 `/cancel — отменить`,
         );
+    }
+
+    private promoKeyboard(): InlineKeyboard {
+        return new InlineKeyboard().text('Продолжить без промокода', 'pay:skip');
     }
 }

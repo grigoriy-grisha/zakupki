@@ -9,6 +9,11 @@ export class PostTemplateRepository {
         });
     }
 
+    /** Single-template lookup by id. Used by server-side description regeneration. */
+    async findById(id: number) {
+        return dbClient.postTemplate.findUnique({ where: { id } });
+    }
+
     async create(data: { name: string; body?: string }) {
         const last = await dbClient.postTemplate.findFirst({ orderBy: { position: 'desc' } });
         const position = (last?.position ?? -1) + 1;

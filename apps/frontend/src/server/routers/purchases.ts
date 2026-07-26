@@ -185,6 +185,27 @@ export const purchasesRouter = router({
         }),
 
     /**
+     * Перегенерировать описание товара из шаблона поста на сервере и обновить
+     * пост в канале. Используется когда тело шаблона изменилось в Settings,
+     * а пост уже опубликован (или когда хочется применить актуальный шаблон
+     * без открытия формы товара). `templateId: null` = «Без шаблона» (очистить).
+     */
+    regenerateItemDescription: adminProcedure
+        .input(
+            z.object({
+                purchaseItemId: z.number(),
+                templateId: z.number().nullable(),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            await ctx.services.purchaseItemDescription.regenerateDescription(
+                input.purchaseItemId,
+                input.templateId,
+            );
+            return { ok: true };
+        }),
+
+    /**
      * Admin: установить/очистить комментарий к участнику закупки (PurchaseOrder).
      * Пустая строка (или только пробелы) → удаление комментария.
      * commentAt ставится автоматически на уровне репозитория.

@@ -164,7 +164,12 @@ export function PromoCodeDialog() {
                                     <Input
                                         type="number"
                                         placeholder="Безлимит"
-                                        {...register('maxUses', { valueAsNumber: true })}
+                                        {...register('maxUses', {
+                                            setValueAs: (v) =>
+                                                v === '' || v === null || Number.isNaN(v)
+                                                    ? undefined
+                                                    : Number(v),
+                                        })}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -173,7 +178,12 @@ export function PromoCodeDialog() {
                                         type="number"
                                         step="0.01"
                                         placeholder="Без минимума"
-                                        {...register('minAmount', { valueAsNumber: true })}
+                                        {...register('minAmount', {
+                                            setValueAs: (v) =>
+                                                v === '' || v === null || Number.isNaN(v)
+                                                    ? undefined
+                                                    : Number(v),
+                                        })}
                                     />
                                 </div>
                             </div>

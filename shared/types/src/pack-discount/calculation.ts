@@ -34,6 +34,26 @@ export function countFullSupplierPacks(quantity: number, packSize: number): numb
 }
 
 /**
+ * Раскладывает общее количество на целые упаковки и остаток-россыпь.
+ *
+ * total=120, packSize=50 → { packs: 2, remainder: 20 }.
+ * total=0 / packSize=null/<=0 → { packs: 0, remainder: max(0, total) }.
+ *
+ * Используется для отображения «2 уп + 20 гр» в карточке участника закупки,
+ * где total = effective qty (россыпь + явные упаковки × packSize).
+ */
+export function splitQtyIntoPackages(
+    total: number,
+    packSize: number | null,
+): { packs: number; remainder: number } {
+    if (!Number.isFinite(total) || total <= 0 || packSize == null || packSize <= 0) {
+        return { packs: 0, remainder: Number.isFinite(total) ? Math.max(0, total) : 0 };
+    }
+    const packs = Math.floor((total + 1e-9) / packSize);
+    return { packs, remainder: +(total - packs * packSize).toFixed(3) };
+}
+
+/**
  * Цена упаковки со скидкой: packPrice × (1 − discount/100).
  */
 function computeDiscountedPackPrice(packPrice: number, discountPercent: number): number {

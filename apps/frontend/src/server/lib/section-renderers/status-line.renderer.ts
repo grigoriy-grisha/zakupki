@@ -21,11 +21,12 @@ export interface StatusLineData {
 }
 
 /**
- * Секция "🔄/📦/🎯/✅" — нижняя часть поста в канале.
- * 📦/🎯 гейтятся на supplierLimitUnit: если ед. не задана — скрываются, но 🔄
- * остаётся (админ видит «нет единицы, иди в ItemEditSheet»).
- * ✅ «Свободно к заказу» — это пул (как в UI), с собственной ед. (unit), поэтому
- * показывается даже без supplierLimit — пока есть packSize/targetRemainder.
+ * Нижняя часть поста в канале: статус закупки + лимит/остаток поставщика + пул
+ * добора. Лимит/целевой остаток гейтятся на supplierLimitUnit: если ед. не задана
+ * — скрываются, но строка статуса остаётся (админ видит «нет единицы, иди в
+ * ItemEditSheet»). «Свободно к заказу» — это пул (как в UI), с собственной ед.
+ * (unit), поэтому показывается даже без supplierLimit — пока есть
+ * packSize/targetRemainder.
  */
 export class StatusLineRenderer extends BaseSectionRenderer<StatusLineData> {
     readonly id = 'STATUS_LINE' as const;
@@ -38,20 +39,21 @@ export class StatusLineRenderer extends BaseSectionRenderer<StatusLineData> {
         const supplierLimit = item.supplierLimit;
         const targetRemainder = item.targetRemainder;
 
-        const lines: string[] = [`🔄 <b>${escapeHtmlLocal(statusLabel)}</b>`];
+        const lines: string[] = [`<b>${escapeHtmlLocal(statusLabel)}</b>`];
 
         if (supplierLimit != null && unit) {
-            lines.push(`📦 Лимит поставщика: <b>${formatNumberRu(supplierLimit)} ${escapeHtmlLocal(unit)}</b>`);
+            lines.push(`Лимит поставщика: <b>${formatNumberRu(supplierLimit)} ${escapeHtmlLocal(unit)}</b>`);
         }
         if (targetRemainder != null && unit) {
-            lines.push(`🎯 Целевой остаток: <b>${formatNumberRu(targetRemainder)} ${escapeHtmlLocal(unit)}</b>`);
+            lines.push(`Целевой остаток: <b>${formatNumberRu(targetRemainder)} ${escapeHtmlLocal(unit)}</b>`);
         }
 
-        // ✅ Пул из UI (freeToOrder); fallback на supplierLimit − ordered для старых конфигов.
+        // «Свободно к заказу» — это пул добора, он имеет смысл только начиная с
+        // REORDER. На этапе COLLECTION (Сбор заказов) строка не показывается.
         const free = data.freeToOrder ?? (supplierLimit != null ? Math.max(0, supplierLimit - orderLinesSum) : null);
         const freeUnit = data.unit ?? unit;
-        if (free != null && freeUnit) {
-            lines.push(`✅ Свободно к заказу: <b>${formatNumberRu(free)} ${escapeHtmlLocal(freeUnit)}</b>`);
+        if (status !== 'COLLECTION' && free != null && freeUnit) {
+            lines.push(`Свободно к заказу: <b>${formatNumberRu(free)} ${escapeHtmlLocal(freeUnit)}</b>`);
         }
 
         return lines.join('\n');

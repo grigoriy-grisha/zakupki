@@ -1,50 +1,50 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=COLLECTION → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Сбор заказов</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=COLLECTION → renders status label with correct Russian label 1`] = `"<b>Сбор заказов</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=IN_TRANSIT_RF → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Едет в РФ</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=IN_TRANSIT_RF → renders status label with correct Russian label 1`] = `"<b>Едет в РФ</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=IN_TRANSIT_TO_ORGANIZER → renders 🔄 with correct Russian label 1`] = `"🔄 <b>До организатора</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=IN_TRANSIT_TO_ORGANIZER → renders status label with correct Russian label 1`] = `"<b>До организатора</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=PACKAGING → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Фасовка</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=PACKAGING → renders status label with correct Russian label 1`] = `"<b>Фасовка</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=PAYMENT → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Оплата заказов</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=PAYMENT → renders status label with correct Russian label 1`] = `"<b>Оплата заказов</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=PREPARING_SHIPMENT_RF → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Отправка в РФ</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=PREPARING_SHIPMENT_RF → renders status label with correct Russian label 1`] = `"<b>Отправка в РФ</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=READY_FOR_PICKUP → renders 🔄 with correct Russian label 1`] = `"🔄 <b>К выдаче</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=READY_FOR_PICKUP → renders status label with correct Russian label 1`] = `"<b>К выдаче</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=REORDER → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Доборы</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=REORDER → renders status label with correct Russian label 1`] = `"<b>Доборы</b>"`;
 
-exports[`StatusLineRenderer > all fulfillment statuses > status=SUPPLIER_ASSEMBLY → renders 🔄 with correct Russian label 1`] = `"🔄 <b>Комплектация</b>"`;
+exports[`StatusLineRenderer > all fulfillment statuses > status=SUPPLIER_ASSEMBLY → renders status label with correct Russian label 1`] = `"<b>Комплектация</b>"`;
 
 exports[`StatusLineRenderer > escapes HTML in unit name (safety) 1`] = `
-"🔄 <b>Доборы</b>
-📦 Лимит поставщика: <b>10 &lt;script&gt;</b>
-✅ Свободно к заказу: <b>10 &lt;script&gt;</b>"
+"<b>Доборы</b>
+Лимит поставщика: <b>10 &lt;script&gt;</b>
+Свободно к заказу: <b>10 &lt;script&gt;</b>"
 `;
 
 exports[`StatusLineRenderer > formats large numbers with ru-RU separators (1 234 567) 1`] = `
-"🔄 <b>Доборы</b>
-📦 Лимит поставщика: <b>1 234 567 кг</b>
-🎯 Целевой остаток: <b>0 кг</b>
-✅ Свободно к заказу: <b>1 234 567 кг</b>"
+"<b>Доборы</b>
+Лимит поставщика: <b>1 234 567 кг</b>
+Целевой остаток: <b>0 кг</b>
+Свободно к заказу: <b>1 234 567 кг</b>"
 `;
 
 exports[`StatusLineRenderer > free-to-order clamps negative result to 0 (oversubscribed) 1`] = `
-"🔄 <b>Доборы</b>
-📦 Лимит поставщика: <b>100 кг</b>
-🎯 Целевой остаток: <b>50 кг</b>
-✅ Свободно к заказу: <b>0 кг</b>"
+"<b>Доборы</b>
+Лимит поставщика: <b>100 кг</b>
+Целевой остаток: <b>50 кг</b>
+Свободно к заказу: <b>0 кг</b>"
 `;
 
 exports[`StatusLineRenderer > renders full block: status + supplier limit + target remainder + free 1`] = `
-"🔄 <b>Доборы</b>
-📦 Лимит поставщика: <b>500 кг</b>
-🎯 Целевой остаток: <b>50 кг</b>
-✅ Свободно к заказу: <b>400 кг</b>"
+"<b>Доборы</b>
+Лимит поставщика: <b>500 кг</b>
+Целевой остаток: <b>50 кг</b>
+Свободно к заказу: <b>400 кг</b>"
 `;
 
-exports[`StatusLineRenderer > renders status-only when all item fields are null 1`] = `"🔄 <b>Доборы</b>"`;
+exports[`StatusLineRenderer > renders status-only when all item fields are null 1`] = `"<b>Доборы</b>"`;
 
-exports[`StatusLineRenderer > renders status-only when unit is missing (supplierLimit set, unit null) 1`] = `"🔄 <b>Доборы</b>"`;
+exports[`StatusLineRenderer > renders status-only when unit is missing (supplierLimit set, unit null) 1`] = `"<b>Доборы</b>"`;

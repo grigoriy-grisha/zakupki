@@ -37,6 +37,14 @@ export function useParticipantOrderActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
+    const adminAdjustPackage = trpc.orders.adminAdjustPackageCount.useMutation({
+        onSuccess: () => {
+            invalidate();
+            toast.success('Упаковки обновлены');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
     const deleteOrderLine = trpc.orders.deleteOrder.useMutation({
         onSuccess: () => {
             invalidate();
@@ -53,6 +61,14 @@ export function useParticipantOrderActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
+    const deleteAllByUserItem = trpc.orders.deleteAllByUserItem.useMutation({
+        onSuccess: () => {
+            invalidate();
+            toast.success('Товар удалён');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
     const setOrderComment = trpc.purchases.setOrderComment.useMutation({
         onSuccess: () => {
             invalidate();
@@ -61,5 +77,22 @@ export function useParticipantOrderActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    return { adminAdjust, adminSetQuantity, deleteOrderLine, removeParticipant, setOrderComment };
+    const addParticipant = trpc.orders.addParticipant.useMutation({
+        onSuccess: () => {
+            invalidate();
+            toast.success('Участник добавлен');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
+    return {
+        adminAdjust,
+        adminSetQuantity,
+        adminAdjustPackage,
+        deleteOrderLine,
+        removeParticipant,
+        deleteAllByUserItem,
+        setOrderComment,
+        addParticipant,
+    };
 }

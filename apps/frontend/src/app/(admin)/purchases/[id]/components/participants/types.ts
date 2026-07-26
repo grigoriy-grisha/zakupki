@@ -10,8 +10,11 @@ import type { ProductLabelSource } from '../../../../products/lib';
  */
 export interface ParticipantOrderItem {
     minPackageAmount?: string | number | null;
+    /** Вес упаковки поставщика в базовых единицах (гр/шт). */
+    packAmount?: string | number | null;
+    /** Единица веса упаковки. */
+    packUnit?: string | null;
     product?: ProductLabelSource & {
-        unit?: { shortName: string } | null;
         unitCode?: string | null;
         multiplicity?: string | number | null;
     };

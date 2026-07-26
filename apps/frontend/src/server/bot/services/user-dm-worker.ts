@@ -144,10 +144,10 @@ function buildOpenPurchaseKeyboard(payload: unknown): InlineKeyboardMarkup | nul
 
     if (isHttps) {
         return {
-            inline_keyboard: [[{ text: '🛒 Открыть закупку', web_app: { url: targetUrl } }]],
+            inline_keyboard: [[{ text: 'Открыть закупку', web_app: { url: targetUrl } }]],
         };
     }
     return {
-        inline_keyboard: [[{ text: '🛒 Открыть закупку', url: targetUrl }]],
+        inline_keyboard: [[{ text: 'Открыть закупку', url: targetUrl }]],
     };
 }

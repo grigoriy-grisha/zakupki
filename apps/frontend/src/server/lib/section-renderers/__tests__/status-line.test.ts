@@ -63,9 +63,27 @@ describe('StatusLineRenderer', () => {
         expect(result).toMatchSnapshot();
     });
 
+    it('hides "Свободно к заказу" on COLLECTION even when supplierLimit + unit are set', () => {
+        // Пул добора имеет смысл только с REORDER. На этапе «Сбор заказов»
+        // строка не должна появляться, даже если данных для неё достаточно.
+        const result = renderById(
+            'STATUS_LINE',
+            createMockStatusLineData({
+                purchase: { fulfillmentStatus: 'COLLECTION' },
+                item: { supplierLimit: 100, supplierLimitUnit: 'гр', targetRemainder: 20 },
+                orderLinesSum: 30,
+                freeToOrder: 35,
+                unit: 'гр',
+            }),
+        );
+        expect(result).not.toContain('Свободно к заказу');
+        // Лимит поставщика при этом показывается — это не пул добора.
+        expect(result).toContain('Лимит поставщика: <b>100 гр</b>');
+    });
+
     describe('all fulfillment statuses', () => {
         for (const status of ALL_FULFILLMENT_STATUSES) {
-            it(`status=${status} → renders 🔄 with correct Russian label`, () => {
+            it(`status=${status} → renders status label with correct Russian label`, () => {
                 const result = renderById(
                     'STATUS_LINE',
                     createMockStatusLineData({

@@ -206,6 +206,15 @@ export class OrderBook {
         return this.runStrategy((s) => s.adminSetQuantity(userId, qty));
     }
 
+    /** Admin: изменить кол-во упаковок на delta (в обход stage-правил/пула/лимита). */
+    adminAdjustPackages(userId: number, delta: number): AdjustResult {
+        if (delta === 0) return ok(this);
+        if (!this.item.packAmount) {
+            return { ok: false, error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' } };
+        }
+        return this.runStrategy((s) => s.adminAdjustPackages(userId, delta));
+    }
+
     // ── Internal: единый pipeline мутации ─────────────────────────
 
     /** Создаёт strategy и вызывает closure с ней. Pipeline: strategy → MultiUpdate → commit. */

@@ -129,6 +129,7 @@ export { buildOrderQtyOptions, getOrderQuantityStep, getSupplementStep, getActiv
 // Pack discount
 export {
     countFullSupplierPacks,
+    splitQtyIntoPackages,
     getPackDiscountPricingInfo,
     formatPackDiscountBanner,
     formatPackDiscountHint,

@@ -47,6 +47,17 @@ export const ordersRouter = router({
         return ctx.services.order.getByPurchase(input.purchaseId);
     }),
 
+    /**
+     * Получить все PurchaseOrder-заголовки по закупке (админ).
+     * Источник правды для списка участников: покрывает и «голых» участников
+     * (PurchaseOrder без строк), и тех, у кого есть заказы.
+     */
+    getPurchaseOrdersByPurchase: adminProcedure
+        .input(z.object({ purchaseId: z.number() }))
+        .query(async ({ ctx, input }) => {
+            return ctx.services.order.getPurchaseOrdersByPurchase(input.purchaseId);
+        }),
+
     // Отменить свой заказ
     cancelOrder: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.order.cancelOrder(input.id, ctx.userId);
@@ -90,10 +101,52 @@ export const ordersRouter = router({
             return ctx.services.order.adminSetQuantity(input.purchaseItemId, input.userId, input.qty);
         }),
 
+    /**
+     * Admin: изменить количество упаковок позиции участника на delta (±1уп).
+     * Идёт в обход stage-правил/пула/лимита поставщика. amountDue пересчитывается.
+     * delta>0 — добавить упаковку, delta<0 — убрать.
+     */
+    adminAdjustPackageCount: adminProcedure
+        .input(
+            z.object({
+                purchaseItemId: z.number(),
+                userId: z.number(),
+                delta: z.number().int().refine((d) => d !== 0),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.adminAdjustPackageCount(
+                input.purchaseItemId,
+                input.userId,
+                input.delta,
+            );
+        }),
+
     // Удалить все заказы пользователя в закупке (админ)
     removeAllByUserFromPurchase: adminProcedure
         .input(z.object({ purchaseId: z.number(), userId: z.number() }))
         .mutation(async ({ ctx, input }) => {
             return ctx.services.order.removeAllByUserFromPurchase(input.userId, input.purchaseId);
+        }),
+
+    /**
+     * Admin: удалить ВСЕ строки участника на конкретный товар
+     * (сбор + добор + упаковки). Для объединённой карточки участника,
+     * где несколько OrderLine одного товара показываются как одна позиция.
+     */
+    deleteAllByUserItem: adminProcedure
+        .input(z.object({ purchaseItemId: z.number(), userId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.deleteAllByUserAndItem(input.purchaseItemId, input.userId);
+        }),
+
+    /**
+     * Admin: добавить участника в закупку (без позиций). Создаёт PurchaseOrder
+     * (идемпотентно). Позиции добавляются позже через adminAdjust.
+     */
+    addParticipant: adminProcedure
+        .input(z.object({ purchaseId: z.number(), userId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.addParticipant(input.userId, input.purchaseId);
         }),
 });

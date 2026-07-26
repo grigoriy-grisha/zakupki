@@ -1,6 +1,6 @@
 import { BaseSectionRenderer, type SectionProps } from './base-section-renderer';
 
-export const SHOP_COMMENT_TEXT = '👇 Оформить заказ в приложении:';
+export const SHOP_COMMENT_TEXT = 'Оформить заказ в приложении:';
 
 export interface ShopCommentData {
     /** Опциональный subtext — например, "Только для авторизованных" (сейчас не используется). */

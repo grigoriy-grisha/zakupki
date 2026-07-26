@@ -122,20 +122,6 @@ export function PurchaseStepCard({
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {desc.actions.includes('publish-tg') && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full"
-                            onClick={() => setPublishOpen(true)}
-                        >
-                            <SendIcon className="size-3.5" />
-                            Опубликовать в TG
-                            {selectedForPublishCount > 0 && (
-                                <span className="ml-1 text-12-medium text-primary">· {selectedForPublishCount}</span>
-                            )}
-                        </Button>
-                    )}
                     {desc.actions.includes('remainder') && (
                         <Button
                             variant="outline"

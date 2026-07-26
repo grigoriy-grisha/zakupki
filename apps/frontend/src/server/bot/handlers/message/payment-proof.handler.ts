@@ -86,6 +86,7 @@ export class PaymentProofHandler implements MessageHandler {
 
         try {
             const proofData = await downloadTelegramFile(ctx.api, fileId, this.container.cfg.telegram.token);
+            const promo = flow.promo;
             await this.container.paymentService.submitPaymentWithProof({
                 userId: ctx.session.userId!,
                 purchaseId: current.purchaseId,
@@ -93,17 +94,23 @@ export class PaymentProofHandler implements MessageHandler {
                 userComment,
                 proofData,
                 proofMimeType: mimeType,
+                promoCodeId: promo?.id,
+                discountAmount: promo?.discount,
             });
 
             flow.clear();
 
+            const discountLine = promo
+                ? `Скидка по промокоду: ${promo.discount.toLocaleString('ru-RU')} ₽\n`
+                : '';
             await ctx.reply(
-                `✅ Оплата ${current.amount.toLocaleString('ru-RU')} ₽ по закупке «${current.purchaseTag}» отправлена на проверку.\n` +
+                `Оплата ${current.amount.toLocaleString('ru-RU')} ₽ по закупке «${current.purchaseTag}» отправлена на проверку.\n` +
+                    discountLine +
                     `Статус: /payments`,
             );
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Не удалось отправить оплату';
-            await ctx.reply(`❌ ${msg}`);
+            await ctx.reply(msg);
         }
     }
 }

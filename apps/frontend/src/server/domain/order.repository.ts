@@ -232,6 +232,18 @@ export class OrderRepository {
     }
 
     /**
+     * Удалить ВСЕ ACTIVE-строки пользователя на конкретный PurchaseItem
+     * (COLLECTION + supplement схлопываются — для удаления товара целиком
+     * из объединённой карточки участника). Возвращает количество удалённых строк.
+     */
+    async deleteAllByUserAndItem(purchaseItemId: number, userId: number): Promise<number> {
+        const result = await dbClient.orderLine.deleteMany({
+            where: { purchaseItemId, userId, status: 'ACTIVE' },
+        });
+        return result.count;
+    }
+
+    /**
      * Вернуть список PurchaseItem.id, на которые у пользователя есть ACTIVE-строки
      * в данной закупке. Используется OrderService, чтобы эмитить обновление поста
      * после `deleteAllByUserAndPurchase`.
@@ -256,6 +268,51 @@ export class OrderRepository {
             distinct: ['userId'],
         });
         return rows.map((r) => r.userId);
+    }
+
+    /**
+     * Create-or-get the per-(user, purchase) PurchaseOrder header. Idempotent —
+     * used by addParticipant to register a "bare" participant (no order lines yet).
+     * Mirrors the upsert inside upsertOrderLine.
+     */
+    async ensurePurchaseOrder(userId: number, purchaseId: number): Promise<{ id: number; createdAt: Date }> {
+        return dbClient.purchaseOrder.upsert({
+            where: { userId_purchaseId: { userId, purchaseId } },
+            create: { userId, purchaseId },
+            update: {},
+            select: { id: true, createdAt: true },
+        });
+    }
+
+    /**
+     * Delete the per-(user, purchase) PurchaseOrder header. Used when removing a
+     * participant entirely — a bare participant (PurchaseOrder with no lines)
+     * would otherwise survive removeAllByUserAndPurchase and linger in the list.
+     */
+    async deletePurchaseOrder(userId: number, purchaseId: number): Promise<void> {
+        await dbClient.purchaseOrder.deleteMany({
+            where: { userId, purchaseId },
+        });
+    }
+
+    /**
+     * All PurchaseOrder headers for a purchase — the source of truth for
+     * "who is a participant", including bare participants with zero order lines.
+     * Carries user info for display + comment fields for the comment strip.
+     */
+    async findPurchaseOrdersByPurchase(purchaseId: number) {
+        return dbClient.purchaseOrder.findMany({
+            where: { purchaseId },
+            select: {
+                id: true,
+                userId: true,
+                comment: true,
+                commentAuthor: true,
+                commentAt: true,
+                user: { include: USER_CREDENTIALS_INCLUDE },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
     }
 
     /**

@@ -166,7 +166,22 @@ function AddPaymentDialog({ userId, purchaseId, due }: AddPaymentDialogProps) {
                 </DialogHeader>
                 <div className="space-y-3">
                     <div className="space-y-2">
-                        <Label htmlFor="payment-amount">Сумма, ₽</Label>
+                        <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="payment-amount" className="text-14-semibold">
+                                Сумма, ₽
+                            </Label>
+                            {due > 0 && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-2 py-0.5 text-12-medium text-fg-secondary"
+                                    onClick={() => setAmountStr(String(due))}
+                                >
+                                    Оплатить всё: {due.toLocaleString('ru-RU')} ₽
+                                </Button>
+                            )}
+                        </div>
                         <Input
                             id="payment-amount"
                             inputMode="decimal"
@@ -178,11 +193,6 @@ function AddPaymentDialog({ userId, purchaseId, due }: AddPaymentDialogProps) {
                                 if (e.key === 'Enter') submit();
                             }}
                         />
-                        {due > 0 && (
-                            <p className="text-12-regular text-fg-tertiary">
-                                К оплате: {due.toLocaleString('ru-RU')} ₽
-                            </p>
-                        )}
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="payment-note">Комментарий (необязательно)</Label>

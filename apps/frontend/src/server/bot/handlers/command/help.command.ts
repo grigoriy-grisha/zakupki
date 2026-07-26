@@ -10,7 +10,7 @@ export class HelpCommand implements CommandHandler {
 
     async handle(ctx: CustomContext): Promise<void> {
         await ctx.reply(
-            '📋 Доступные команды:\n\n' +
+            'Доступные команды:\n\n' +
                 '/start — открыть приложение\n' +
                 '/help — эта справка\n' +
                 '/orders — мои заказы\n' +

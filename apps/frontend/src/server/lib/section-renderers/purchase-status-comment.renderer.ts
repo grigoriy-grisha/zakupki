@@ -24,6 +24,6 @@ export class PurchaseStatusCommentRenderer extends BaseSectionRenderer<PurchaseS
         const hint = STATUS_HINTS[status] ?? '';
         const prefix = data.channelPostMessageId != null ? `Пост #${data.channelPostMessageId}` : null;
 
-        return joinNonEmpty(['🔔 <b>Закупка</b>', prefix, `<b>${escapeHtmlLocal(label)}</b>`, hint || null]);
+        return joinNonEmpty(['<b>Закупка</b>', prefix, `<b>${escapeHtmlLocal(label)}</b>`, hint || null]);
     }
 }

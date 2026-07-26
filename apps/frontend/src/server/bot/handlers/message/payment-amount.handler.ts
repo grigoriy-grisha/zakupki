@@ -1,15 +1,18 @@
 import type { NextFunction } from 'grammy';
+import { InlineKeyboard } from 'grammy';
 
 import type { CustomContext } from '../../domain/types';
 import { isPrivateChat } from '../shared/is-private-chat';
 import { parseCurrencyAmount } from '../shared/parse-currency-amount';
 import type { MessageHandler } from '../../domain/handler';
 import type { ServiceContainer } from '../../container/service-container';
-import { PaymentFlowStateMachine } from '../../services/payment-flow-state-machine';
 import { PAYMENT_NOT_OPEN_MESSAGE } from '../../lib/purchase-payment-guard';
 
 /**
  * PaymentAmountHandler — обрабатывает текстовый ввод суммы в payment flow.
+ *
+ * На других шагах (promo/proof) вызывает `next()`, передавая управление
+ * дальше по цепочке (PaymentPromoHandler / FallbackTextHandler).
  */
 export class PaymentAmountHandler implements MessageHandler {
     readonly filter = 'text_with_payment_flow' as const;
@@ -64,13 +67,17 @@ export class PaymentAmountHandler implements MessageHandler {
             return;
         }
 
-        flow.advanceToProof(amount);
+        // amount → promo: offer promo code entry before requesting the receipt.
+        flow.advanceToPromo(amount);
+
+        const keyboard = new InlineKeyboard()
+            .text('✂️ Ввести промокод', 'pay:promo')
+            .text('Продолжить »', 'pay:skip');
 
         await ctx.reply(
             `Сумма: ${amount.toLocaleString('ru-RU')} ₽\n\n` +
-                `Пришлите фото или PDF чека об оплате.\n` +
-                `Комментарий можно добавить в подписи к файлу.\n\n` +
-                `/cancel — отменить`,
+                `Есть промокод? Введите его текстом или выберите вариант ниже.`,
+            { reply_markup: keyboard },
         );
     }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { EyeOff, MoreHorizontal, Pencil, Send, Trash2 } from 'lucide-react';
+import { EyeOff, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { TruncatedText } from '@/components/shared/truncated-text';
 import { trpc } from '@/lib/client/trpc';
+import { cn } from '@/lib/utils';
 import type { ProductLabelSource } from '../../../../products/lib';
 import type { PurchaseCurrencyRateRef, PurchaseItem } from '../../lib/types';
 import { InlineCell } from './inline-cell';
@@ -93,6 +94,11 @@ interface ItemsTableRowProps {
     }) => void;
     /** Тихий inline-коммит одного/нескольких полей позиции. */
     onCommit: (patch: ItemPatch) => void;
+    /**
+     * Перегенерировать описание из шаблона поста (для опубликованных товаров).
+     * Открывает диалог выбора шаблона; сервер пересоберёт description и обновит пост.
+     */
+    onRegenerate?: (target: { itemId: number }) => void;
 }
 
 function numOrDash(value: string | number | null | undefined): string {
@@ -169,6 +175,7 @@ export function ItemsTableRow({
     onPublish,
     onDelete,
     onCommit,
+    onRegenerate,
 }: ItemsTableRowProps) {
     const {
         shortName,
@@ -197,9 +204,10 @@ export function ItemsTableRow({
             data-hidden={item.hidden || undefined}
         >
             {/* 1. Товар (sticky left) — opaque bg, без group-hover, чтобы не
-                просвечивал контент при горизонтальном скролле. */}
+                просвечивал контент при горизонтальном скролле. У скрытых приглушаем
+                только содержимое, а не фон — иначе при скролле просвечивают соседние колонки. */}
             <TableCell className="sticky left-0 z-10 overflow-hidden bg-bg-card">
-                <div className="flex items-center gap-2">
+                <div className={cn('flex items-center gap-2', item.hidden && 'opacity-50')}>
                     <ProductPhotoPreview
                         photoId={item.product.photos?.[0]?.id}
                         alt={item.product.name}
@@ -398,7 +406,7 @@ export function ItemsTableRow({
                 ) : (
                     <Checkbox
                         checked={selected}
-                        disabled={isDone}
+                        disabled={isDone || item.hidden}
                         aria-label="Выбрать для публикации в Telegram"
                         onCheckedChange={(v) => {
                             if (typeof v === 'boolean') onToggleSelect(item.id, v);
@@ -430,9 +438,14 @@ export function ItemsTableRow({
                             <EyeOff className="size-3.5" />
                             {item.hidden ? 'Показать' : 'Скрыть'}
                         </DropdownMenuItem>
-                        {!published && isActive && (
+                        {!published && isActive && !item.hidden && (
                             <DropdownMenuItem onClick={() => onPublish(item.id)}>
                                 <Send className="size-3.5" /> Опубликовать в TG
+                            </DropdownMenuItem>
+                        )}
+                        {published && onRegenerate && (
+                            <DropdownMenuItem onClick={() => onRegenerate({ itemId: item.id })}>
+                                <RefreshCw className="size-3.5" /> Обновить пост в TG
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />

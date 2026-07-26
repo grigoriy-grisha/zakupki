@@ -1,82 +1,82 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=COLLECTION → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Сбор заказов</b>
 Сбор заказов открыт."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=IN_TRANSIT_RF → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Едет в РФ</b>
 Товар едет в РФ."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=IN_TRANSIT_TO_ORGANIZER → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>До организатора</b>
 Товар едет до организатора."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=PACKAGING → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Фасовка</b>
 Фасовка."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=PAYMENT → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Оплата заказов</b>
 Теперь можно только добавлять остатки."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=PREPARING_SHIPMENT_RF → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Отправка в РФ</b>
 Подготовка к отправке в РФ."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=READY_FOR_PICKUP → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>К выдаче</b>
 Заказы готовы к выдаче."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=REORDER → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Доборы</b>
 Теперь можно добавлять только остатки и пачки."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=SUPPLIER_ASSEMBLY → renders with correct label and hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Комплектация</b>
 Заказ комплектуется поставщиком."
 `;
 
 exports[`FulfillmentCommentRenderer > handles unknown status with raw label and no hint 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>BOGUS_STATUS</b>"
 `;
 
 exports[`FulfillmentCommentRenderer > renders comment without channelPostMessageId prefix (omits "Пост #N" line) 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 <b>Оплата заказов</b>
 Теперь можно только добавлять остатки."
 `;
 
 exports[`FulfillmentCommentRenderer > renders full comment with channelPostMessageId prefix 1`] = `
-"🔄 <b>Статус закупки изменён</b>
+"<b>Статус закупки изменён</b>
 Пост #123
 <b>Оплата заказов</b>
 Теперь можно только добавлять остатки."

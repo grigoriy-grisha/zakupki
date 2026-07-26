@@ -26,9 +26,9 @@ interface StepDescription {
 export const STEP_DESCRIPTIONS: Record<PurchaseFulfillmentStatus, StepDescription> = {
     COLLECTION: {
         title: 'Сбор заказов',
-        description: 'Участники выбирают товары. Публикуйте позиции в Telegram, чтобы увеличить охват.',
+        description: 'Участники выбирают товары.',
         icon: ClipboardListIcon,
-        actions: ['publish-tg', 'advance'],
+        actions: ['advance'],
     },
     REORDER: {
         title: 'Доборы',

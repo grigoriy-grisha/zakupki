@@ -41,8 +41,11 @@ export interface PurchaseItemOption {
     // minPackageAmount/minPackageUnit живут на PurchaseItem (не Product —
     // после миграции 20260705154536 поля на Product удалены).
     minPackageAmount?: string | number | null;
+    /** Вес упаковки поставщика в базовых единицах (гр/шт). */
+    packAmount?: string | number | null;
+    /** Единица веса упаковки. */
+    packUnit?: string | null;
     product: ProductLabelSource & {
-        unit?: { shortName: string } | null;
         unitCode?: string | null;
         multiplicity?: string | number | null;
         photos?: { id: number }[];
@@ -53,7 +56,6 @@ export interface PurchaseItemOption {
 // ── AdminOrderLineEditor: − / поле / + / корзина для одной позиции ───
 
 interface AdminOrderLineEditorProps {
-    orderId: number;
     purchaseItemId: number;
     /** Название товара — для диалога подтверждения удаления. */
     productName: string;
@@ -62,16 +64,25 @@ interface AdminOrderLineEditorProps {
     pending: boolean;
     onAdjust: (purchaseItemId: number, delta: number) => void;
     onSetQuantity: (purchaseItemId: number, qty: number) => void;
-    onDelete: (orderId: number, productName: string) => void;
+    /** Удаление товара целиком (все строки участника на этот purchaseItem). */
+    onDelete: (purchaseItemId: number, productName: string) => void;
+    /** Кол-во целых упаковок (для опц. блока ±уп). */
+    packageCount?: number;
+    /** Вес упаковки в базовых единицах. null — упаковок нет, блок скрыт. */
+    packAmount?: string | number | null;
+    /** ± на кол-во упаковок (admin-override). */
+    onAdjustPackage?: (purchaseItemId: number, delta: number) => void;
 }
 
 /**
  * Inline-редактор количества позиции участника. Действия идут в обход
  * бизнес-логики (серверный OrderService.admin*). amountDue пересчитывается
  * на сервере; локальное поле хранит только qty, коммитится по blur/Enter.
+ *
+ * Опциональный блок ±уп показывается только для товаров с packAmount —
+ * упаковки живут на COLLECTION-строке и меняются отдельным admin-override.
  */
 export function AdminOrderLineEditor({
-    orderId,
     purchaseItemId,
     productName,
     quantity,
@@ -80,6 +91,9 @@ export function AdminOrderLineEditor({
     onAdjust,
     onSetQuantity,
     onDelete,
+    packageCount = 0,
+    packAmount,
+    onAdjustPackage,
 }: AdminOrderLineEditorProps) {
     const [value, setValue] = useState(String(quantity));
     const focused = useRef(false);
@@ -98,50 +112,90 @@ export function AdminOrderLineEditor({
         if (parsed !== quantity) onSetQuantity(purchaseItemId, parsed);
     };
 
+    const hasPackages =
+        packAmount != null &&
+        Number(packAmount) > 0 &&
+        Number.isFinite(Number(packAmount)) &&
+        onAdjustPackage != null;
+
     return (
-        <div className="flex items-center gap-1">
-            <Button
-                variant="outline"
-                size="icon-xs"
-                disabled={pending}
-                aria-label="Убавить"
-                onClick={() => onAdjust(purchaseItemId, -step)}
-            >
-                <Minus />
-            </Button>
-            <Input
-                inputMode="decimal"
-                value={value}
-                disabled={pending}
-                onFocus={() => {
-                    focused.current = true;
-                }}
-                onChange={(e) => setValue(e.target.value)}
-                onBlur={() => {
-                    focused.current = false;
-                    commit();
-                }}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                }}
-                className="h-7 w-16 text-center tabular-nums"
-                aria-label="Количество"
-            />
-            <Button
-                variant="outline"
-                size="icon-xs"
-                disabled={pending}
-                aria-label="Добавить"
-                onClick={() => onAdjust(purchaseItemId, step)}
-            >
-                <Plus />
-            </Button>
+        <div className="flex items-center gap-2">
+            {/* Колонка контролов: россыпь, при hasPackages — упаковки под ней. */}
+            <div className={hasPackages ? 'flex flex-col gap-1' : 'flex items-center gap-1'}>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="outline"
+                        size="icon-xs"
+                        disabled={pending}
+                        aria-label="Убавить"
+                        onClick={() => onAdjust(purchaseItemId, -step)}
+                    >
+                        <Minus />
+                    </Button>
+                    <Input
+                        inputMode="decimal"
+                        value={value}
+                        disabled={pending}
+                        onFocus={() => {
+                            focused.current = true;
+                        }}
+                        onChange={(e) => setValue(e.target.value)}
+                        onBlur={() => {
+                            focused.current = false;
+                            commit();
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        }}
+                        className="h-7 w-16 text-center tabular-nums"
+                        aria-label="Количество"
+                    />
+                    <Button
+                        variant="outline"
+                        size="icon-xs"
+                        disabled={pending}
+                        aria-label="Добавить"
+                        onClick={() => onAdjust(purchaseItemId, step)}
+                    >
+                        <Plus />
+                    </Button>
+                </div>
+                {hasPackages && (
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="icon-xs"
+                            disabled={pending || packageCount <= 0}
+                            aria-label="Убавить упаковку"
+                            onClick={() => onAdjustPackage!(purchaseItemId, -1)}
+                        >
+                            <Minus />
+                        </Button>
+                        <Input
+                            readOnly
+                            value={`${packageCount} уп`}
+                            tabIndex={-1}
+                            aria-label="Целые упаковки"
+                            className="h-7 w-16 cursor-default text-center text-12-semibold tabular-nums text-fg-secondary"
+                        />
+                        <Button
+                            variant="outline"
+                            size="icon-xs"
+                            disabled={pending}
+                            aria-label="Добавить упаковку"
+                            onClick={() => onAdjustPackage!(purchaseItemId, 1)}
+                        >
+                            <Plus />
+                        </Button>
+                    </div>
+                )}
+            </div>
             <Button
                 variant="ghost"
                 size="icon-xs"
                 disabled={pending}
                 aria-label="Удалить позицию"
-                onClick={() => onDelete(orderId, productName)}
+                onClick={() => onDelete(purchaseItemId, productName)}
                 className="text-fg-tertiary hover:text-error"
             >
                 <Trash2 />

@@ -12,7 +12,9 @@ export type CallbackAction =
     | { kind: 'orders:noop' }
     | { kind: 'orders:pick'; purchaseId: number }
     | { kind: 'pay:pick'; purchaseId: number }
-    | { kind: 'pay:all'; purchaseId: number };
+    | { kind: 'pay:all'; purchaseId: number }
+    | { kind: 'pay:promo' }
+    | { kind: 'pay:skip' };
 
 /** Все известные префиксы callback-data (для регистрации dispatcher'а). */
 export const CALLBACK_PREFIXES = ['orders:', 'pay:'] as const;
@@ -42,6 +44,9 @@ export class CallbackParser {
             if (Number.isFinite(purchaseId)) return { kind: 'pay:all', purchaseId };
         }
 
+        if (data === 'pay:promo') return { kind: 'pay:promo' };
+        if (data === 'pay:skip') return { kind: 'pay:skip' };
+
         return null;
     }
 
@@ -58,6 +63,10 @@ export class CallbackParser {
                 return `pay:pick:${action.purchaseId}`;
             case 'pay:all':
                 return `pay:all:${action.purchaseId}`;
+            case 'pay:promo':
+                return 'pay:promo';
+            case 'pay:skip':
+                return 'pay:skip';
         }
     }
 }

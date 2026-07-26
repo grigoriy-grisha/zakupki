@@ -411,6 +411,30 @@ export class PurchaseRepository {
     }
 
     /**
+     * Загружает один PurchaseItem с полным графом, нужным для серверной
+     * регенерации описания из шаблона: product с productInclude (атрибуты,
+     * характеристики, бренд, фото), supplier, currency, и purchase с тегом
+     * и currencyRates (для расчёта unitPriceRub).
+     */
+    async findItemForDescription(id: number) {
+        return dbClient.purchaseItem.findUnique({
+            where: { id },
+            include: {
+                product: { include: productInclude },
+                supplier: { select: { id: true, name: true } },
+                currency: { select: { id: true, name: true, code: true, symbol: true } },
+                purchase: {
+                    select: {
+                        id: true,
+                        tag: true,
+                        currencyRates: { include: { currency: true } },
+                    },
+                },
+            },
+        });
+    }
+
+    /**
      * Универсальный апдейт PurchaseItem. Поддерживает partial update —
      * любая комбинация полей за один round-trip. Поля, перенесённые с Product
      * (описание, цены, фасовка), редактируются здесь, а не в Product.

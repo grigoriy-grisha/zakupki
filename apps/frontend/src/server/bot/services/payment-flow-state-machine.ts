@@ -1,15 +1,17 @@
-import type { CustomContext } from '../domain/types';
-import type { PaymentFlow, PaymentFlowStep } from '../domain/types';
+import type { CustomContext, PaymentFlow, PaymentFlowStep, PromoCodeApplied } from '../domain/types';
 
 /**
  * Тонкая обёртка над `ctx.session.paymentFlow`.
  *
  * Инкапсулирует все мутации payment flow в одном месте, чтобы handler'ы
- * (PayCommand, PaymentAmountHandler, PaymentProofHandler, CancelPaymentCommand)
- * не дублировали session-логику.
+ * (PayCommand, PaymentAmountHandler, PaymentPromoHandler, PaymentProofHandler,
+ * CancelPaymentCommand) не дублировали session-логику.
  *
  * НЕ бросает ошибок — handler сам решает, что отвечать пользователю при
  * невалидном состоянии (например, истёкшая сессия).
+ *
+ * Шаги: amount → promo → proof. Шаг `promo` опциональный — пользователь может
+ * нажать «Продолжить без промокода» и пройти сразу в proof.
  */
 export class PaymentFlowStateMachine {
     constructor(private readonly ctx: CustomContext) {}
@@ -26,6 +28,11 @@ export class PaymentFlowStateMachine {
         return this.ctx.session.paymentFlow?.step;
     }
 
+    /** Применённый промокод (если есть) — читается proof-хендлером при сабмите. */
+    get promo(): PromoCodeApplied | undefined {
+        return this.ctx.session.paymentFlow?.promoCode;
+    }
+
     /**
      * Стартует flow с шага amount.
      */
@@ -39,12 +46,13 @@ export class PaymentFlowStateMachine {
     }
 
     /**
-     * Стартует flow с шага proof и сразу выставленной суммой.
-     * Используется при `pay:all:{id}`.
+     * Стартует flow с шага promo и сразу выставленной суммой.
+     * Используется при `pay:all:{id}` — сумма известна (= remaining), но
+     * сначала предлагаем ввести промокод, а потом уже чек.
      */
-    startProofStep(purchaseId: number, purchaseTag: string, remaining: number, amount: number): void {
+    startPromoStep(purchaseId: number, purchaseTag: string, remaining: number, amount: number): void {
         this.ctx.session.paymentFlow = {
-            step: 'proof',
+            step: 'promo',
             purchaseId,
             purchaseTag,
             remaining,
@@ -53,13 +61,29 @@ export class PaymentFlowStateMachine {
     }
 
     /**
-     * Переход amount → proof после того, как пользователь ввёл сумму.
-     * Ничего не делает, если flow не активен или уже на proof.
+     * Переход amount → promo после того, как пользователь ввёл сумму.
+     * Ничего не делает, если flow не активен или не на шаге amount.
      */
-    advanceToProof(amount: number): void {
+    advanceToPromo(amount: number): void {
         const flow = this.ctx.session.paymentFlow;
         if (!flow) return;
         flow.amount = amount;
+        flow.step = 'promo';
+        this.ctx.session.paymentFlow = flow;
+    }
+
+    /**
+     * Переход promo → proof с опциональным сохранением валидного промокода.
+     * Сумма уже выставлена на шаге amount/promo. Ничего не делает, если flow
+     * не активен.
+     */
+    advanceToProof(promo?: PromoCodeApplied): void {
+        const flow = this.ctx.session.paymentFlow;
+        if (!flow) return;
+        if (promo) {
+            flow.promoCode = promo;
+            flow.amount = promo.finalAmount;
+        }
         flow.step = 'proof';
         this.ctx.session.paymentFlow = flow;
     }

@@ -26,9 +26,9 @@ function buildPurchasesKeyboard(purchases: BotPurchaseListItem[]) {
 function buildDetailKeyboard(purchaseId: number, canPay: boolean, paymentOpen: boolean, hasDebt: boolean) {
     const keyboard = new InlineKeyboard();
     if (canPay) {
-        keyboard.text('📎 Приложить чек об оплате', `pay:pick:${purchaseId}`).row();
+        keyboard.text('Приложить чек об оплате', `pay:pick:${purchaseId}`).row();
     } else if (hasDebt && !paymentOpen) {
-        keyboard.text('⏳ Ждём начала оплаты', 'orders:noop').row();
+        keyboard.text('Ждём начала оплаты', 'orders:noop').row();
     }
     keyboard.text('← К списку закупок', 'orders:list');
     return keyboard;
@@ -119,32 +119,32 @@ function formatPurchaseDetail(
     const lineTexts = Array.from(groupedLines.values()).map((g) => {
         const qty = g.totalQty.toLocaleString('ru-RU');
         const amount = g.totalAmount.toLocaleString('ru-RU');
-        return `▫️ <b>${escapeHtml(g.name)}</b>\n<code>${qty}${g.unit ? ` ${escapeHtml(g.unit)}` : ''} · ${amount} ₽</code>`;
+        return `• <b>${escapeHtml(g.name)}</b>\n<code>${qty}${g.unit ? ` ${escapeHtml(g.unit)}` : ''} · ${amount} ₽</code>`;
     });
 
     const parts = [
-        detail.purchaseOrderId != null ? `📦 Заказ №${detail.purchaseOrderId}` : null,
-        `🛒 <b>${escapeHtml(detail.tag)}</b>`,
-        `📋 Статус: ${escapeHtml(fulfillmentLabel)}`,
+        detail.purchaseOrderId != null ? `Заказ №${detail.purchaseOrderId}` : null,
+        `<b>${escapeHtml(detail.tag)}</b>`,
+        `Статус: ${escapeHtml(fulfillmentLabel)}`,
         '',
         lineTexts.join('\n\n'),
         '',
-        `💰 <b>Итого: ${detail.totalDue.toLocaleString('ru-RU')} ₽</b>`,
+        `<b>Итого: ${detail.totalDue.toLocaleString('ru-RU')} ₽</b>`,
     ];
 
     if (payment) {
         if (payment.paid > 0) {
-            parts.push(`✅ Учтено оплат: ${payment.paid.toLocaleString('ru-RU')} ₽`);
+            parts.push(`Учтено оплат: ${payment.paid.toLocaleString('ru-RU')} ₽`);
         }
         if (payment.hasPending) {
-            parts.push('⏳ Есть оплата на проверке');
+            parts.push('Есть оплата на проверке');
         } else if (!isPurchasePaymentOpen(status) && payment.remaining > 0) {
-            parts.push('❌ Пока нельзя оплатить заказ');
-            parts.push('⏳ Ждём начала оплаты — следите за статусом выше');
+            parts.push('Пока нельзя оплатить заказ');
+            parts.push('Ждём начала оплаты — следите за статусом выше');
         } else if (payment.remaining > 0) {
-            parts.push(`📌 К оплате: ${payment.remaining.toLocaleString('ru-RU')} ₽`);
+            parts.push(`К оплате: ${payment.remaining.toLocaleString('ru-RU')} ₽`);
         } else if (payment.due > 0) {
-            parts.push('✅ Оплачено');
+            parts.push('Оплачено');
         }
     }
 

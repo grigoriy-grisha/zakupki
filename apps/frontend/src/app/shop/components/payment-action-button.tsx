@@ -35,7 +35,7 @@ export function PaymentActionButton({
     if (showPayCta && !paymentOpen) {
         return (
             <div className={cn('relative mt-4 w-full', className)}>
-                <Button variant="default" disabled className="w-full blur-[3px] opacity-50 pointer-events-none">
+                <Button variant="brand" disabled className="w-full blur-[3px] opacity-50 pointer-events-none">
                     <CreditCard className="h-4 w-4" />
                     Оплатить {remaining.toLocaleString('ru-RU')} ₽
                 </Button>
@@ -51,6 +51,7 @@ export function PaymentActionButton({
     if (variant === 'inline') {
         return (
             <Button
+                variant="brand"
                 size="sm"
                 className={cn('w-full', className)}
                 disabled={hasPending || !paymentOpen}

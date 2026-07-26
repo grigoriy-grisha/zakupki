@@ -331,9 +331,13 @@ export class TgPostWorker {
         if (item.hidden) {
             log.info({ itemId, messageId: item.tgMessageId }, 'editItemPost: item hidden, deleting channel post');
             await this.tg.deletePost(item.tgChannelId!, Number(item.tgMessageId));
+            // Back to DRAFT: tgMessageId/tgChannelId are nulled, and publicationState must
+            // follow — otherwise it stays PUBLISHED with no post, breaking
+            // findItemByTelegramPost/findItemByTgMessageId (they filter publicationState:
+            // 'PUBLISHED') and the status semantics on re-publish.
             await this.db.purchaseItem.update({
                 where: { id: itemId },
-                data: { tgMessageId: null, tgChannelId: null },
+                data: { tgMessageId: null, tgChannelId: null, publicationState: 'DRAFT' },
             });
             return;
         }

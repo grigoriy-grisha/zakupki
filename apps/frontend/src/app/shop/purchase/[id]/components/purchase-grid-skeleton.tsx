@@ -3,13 +3,13 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * Скелетон витрины закупки: 8 карточек в сетке 2/3/4.
+ * Скелетон витрины закупки: карточки в сетке 1/2/3/4.
  * Соответствует раскладке `ProductGrid`.
  */
 export function PurchaseGridSkeleton() {
     return (
         <div
-            className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 xl:grid-cols-4"
             role="list"
             aria-busy="true"
             aria-label="Загрузка товаров"

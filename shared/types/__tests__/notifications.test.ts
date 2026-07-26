@@ -221,14 +221,14 @@ describe('renderNotificationBody', () => {
 });
 
 describe('renderNotificationTelegramBody', () => {
-    it('emits a bold headline with a leading emoji + the purchase tag', () => {
+    it('emits a bold headline + the purchase tag', () => {
         const body = renderNotificationTelegramBody('PAYMENT_CONFIRMED', {
             purchaseId: 1,
             purchaseTag: '#SUMMER',
             amount: 1500,
         });
-        // Leading emoji + bolded title as the first line.
-        expect(body.startsWith('✅ <b>Оплата подтверждена</b>')).toBe(true);
+        // Bolded title as the first line, no leading emoji.
+        expect(body.startsWith('<b>Оплата подтверждена</b>')).toBe(true);
         // Purchase tag rendered as a single # (not ##), and the line is present.
         expect(body).toContain('Закупка #SUMMER');
         expect(body).not.toContain('##SUMMER');
@@ -294,7 +294,7 @@ describe('renderNotificationTelegramBody', () => {
         expect(body).toContain('<b>Стало:</b> 5 шт');
     });
 
-    it('uses the 📦 emoji for ORDER_QTY_CHANGED and 🗑 for ORDER_LINE_DELETED', () => {
+    it('renders the correct bold headline per type (no leading emoji)', () => {
         const qty = renderNotificationTelegramBody('ORDER_QTY_CHANGED', {
             purchaseId: 1,
             purchaseTag: '#X',
@@ -304,7 +304,7 @@ describe('renderNotificationTelegramBody', () => {
             newQty: 2,
             unitShort: 'шт',
         });
-        expect(qty.startsWith('📦')).toBe(true);
+        expect(qty.startsWith('<b>Заказ изменён</b>')).toBe(true);
 
         const del = renderNotificationTelegramBody('ORDER_LINE_DELETED', {
             purchaseId: 1,
@@ -312,7 +312,7 @@ describe('renderNotificationTelegramBody', () => {
             purchaseItemId: 10,
             productLabel: 'X',
         });
-        expect(del.startsWith('🗑')).toBe(true);
+        expect(del.startsWith('<b>Позиция удалена</b>')).toBe(true);
     });
 
     it('escapes HTML-unsafe characters in user-supplied fields', () => {
@@ -346,7 +346,7 @@ describe('renderNotificationTelegramBody', () => {
             purchaseTag: '#X',
             stage: 'PAYMENT',
         });
-        expect(body.startsWith('🔄')).toBe(true);
+        expect(body.startsWith('<b>Этап закупки обновлён</b>')).toBe(true);
         expect(body).toContain('<b>Новый этап:</b>');
         expect(body).toContain(PURCHASE_FULFILLMENT_LABELS.PAYMENT);
     });
@@ -357,7 +357,7 @@ describe('renderNotificationTelegramBody', () => {
             purchaseTag: '#X',
             status: 'DONE',
         });
-        expect(body.startsWith('📌')).toBe(true);
+        expect(body.startsWith('<b>Статус закупки обновлён</b>')).toBe(true);
         expect(body).toContain('<b>Новый статус:</b>');
         expect(body).toContain(PURCHASE_STATUS_LABELS.DONE);
     });

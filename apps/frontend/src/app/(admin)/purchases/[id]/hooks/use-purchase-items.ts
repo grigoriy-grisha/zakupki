@@ -107,3 +107,22 @@ export function useInlineUpdateItem(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 }
+
+/**
+ * Серверная регенерация описания товара из шаблона поста. Пересобирает
+ * DescriptionFields из актуальных данных товара + выбранного шаблона и
+ * обновляет пост в канале (через ITEM_CHANGED). Применяется к уже
+ * опубликованным товарам, когда тело шаблона изменилось в Settings
+ * или когда хочется актуализировать пост без открытия формы.
+ */
+export function useRegenerateItemDescription(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.regenerateItemDescription.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            toast.success('Пост обновлён в Telegram');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}

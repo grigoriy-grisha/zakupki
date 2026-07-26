@@ -45,7 +45,7 @@ export function AvailablePurchaseCard({ purchase }: AvailablePurchaseCardProps) 
                         </div>
                     </div>
 
-                    <Button variant="default" className="mt-4 w-full">
+                    <Button variant="brand" className="mt-4 w-full">
                         Участвовать
                         <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>

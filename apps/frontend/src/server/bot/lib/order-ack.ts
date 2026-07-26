@@ -3,7 +3,11 @@ import { GrammyError } from 'grammy';
 import type { CustomContext } from '../domain/types';
 import { log } from './logger';
 
-/** Grammy типизирует стандартный набор; ❤ — красное сердце в Telegram. */
+/**
+ * Реакции для подтверждения принятого заказа. Telegram-реакции — это не текст
+ * сообщения, а отдельный API (`setMessageReaction`), поэтому эмодзи здесь
+ * остаются (в отличие от текстов сообщений, где мы их вычистили).
+ */
 const ACK_REACTIONS = ['❤', '👍', '🎉'] as const;
 
 function describeError(err: unknown): string {
@@ -30,12 +34,13 @@ export async function reactOrderAccepted(ctx: CustomContext): Promise<void> {
         }
     }
 
+    // Все реакции упали — пишем короткое текстовое подтверждение без эмодзи.
     try {
-        await ctx.reply('❤️', {
+        await ctx.reply('Заказ принят. Ваши заказы: /orders', {
             reply_parameters: { message_id: message.message_id },
             disable_notification: true,
         });
-        log.warn({ messageId: message.message_id }, 'sent ❤️ reply fallback');
+        log.warn({ messageId: message.message_id }, 'sent text ack fallback');
     } catch (err) {
         log.error({ err, messageId: message.message_id }, 'ack failed');
     }

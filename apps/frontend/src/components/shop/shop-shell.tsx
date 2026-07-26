@@ -4,6 +4,7 @@ import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { useAppPathname } from '@/lib/hooks/use-app-pathname';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
+import { useTelegramAutoLogin } from '@/lib/hooks/use-telegram-auto-login';
 import { cn } from '@/lib/utils';
 
 import { ShopHeader } from './shop-header';
@@ -11,6 +12,12 @@ import { ShopSidebar } from './shop-sidebar';
 import { ShopFooter } from './shop-footer';
 
 export function ShopShell({ children }: { children: React.ReactNode }) {
+    // Establish a NextAuth session from Telegram initData when opened inside the
+    // Mini App. Otherwise the header would keep showing "Войти": useSession()
+    // reads the session cookie, which only exists after this call succeeds.
+    // Outside a Mini App (browser/VK) the hook is a no-op.
+    useTelegramAutoLogin();
+
     return (
         <div className="flex h-[100dvh] flex-col bg-bg-base">
             <ShopHeader />
@@ -56,7 +63,7 @@ function MobilePurchaseTabs() {
                         className={cn(
                             'h-auto shrink-0 rounded-full px-3 py-1.5 text-14-medium',
                             isActive
-                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                ? 'bg-primary text-white hover:bg-primary/90'
                                 : 'bg-bg-soft text-fg-secondary',
                         )}
                     >

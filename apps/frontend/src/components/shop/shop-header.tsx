@@ -18,7 +18,7 @@ export function ShopHeader() {
     return (
         <header className="flex h-14 shrink-0 items-center justify-between bg-bg-card px-4">
             <AppLink href={isAdmin ? '/' : '/shop'} className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
                     <ShoppingCart className="h-4 w-4" />
                 </div>
                 <span className="text-18-semibold tracking-tight text-fg-primary">Закупки</span>

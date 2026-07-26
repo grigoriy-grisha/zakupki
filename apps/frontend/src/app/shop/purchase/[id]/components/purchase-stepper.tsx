@@ -73,7 +73,7 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
                                     <div
                                         className={cn(
                                             'flex size-6 items-center justify-center rounded-full border-[1.5px] transition-colors sm:size-7',
-                                            isCompleted && 'border-primary bg-primary text-primary-foreground',
+                                            isCompleted && 'border-primary bg-primary text-white',
                                             isCurrent && 'border-primary bg-bg-card text-primary ring-4 ring-primary/15',
                                             !isCompleted &&
                                                 !isCurrent &&

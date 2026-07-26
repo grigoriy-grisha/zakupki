@@ -15,8 +15,19 @@ import {
 
 import type { PurchaseCurrencyRateRef, PurchaseItem } from './types';
 
+/**
+ * Поля, реально читаемые функциями расчёта цены. Вынесено из {@link PurchaseItem},
+ * чтобы форма редактирования товара могла собрать минимальный объект из своих
+ * live-значений без необходимости приведения к полному типу PurchaseItem
+ * (в форме нет orderLines/product и пр.).
+ */
+export type ItemPricingFields = Pick<
+    PurchaseItem,
+    'pricePerPackCurrency' | 'currencyId' | 'packAmount' | 'orgFeePercentOverride'
+>;
+
 /** Кол. 4: цена упаковки в ₽ = pricePerPackCurrency × курс. */
-export function getPackPriceRub(item: PurchaseItem, rates: PurchaseCurrencyRateRef[]): number | null {
+export function getPackPriceRub(item: ItemPricingFields, rates: PurchaseCurrencyRateRef[]): number | null {
     const priceCur = toNum(item.pricePerPackCurrency);
     const rate = resolveCurrencyRate(toRates(rates), item.currencyId ?? null);
     return computePackPriceRub(priceCur, rate);
@@ -24,7 +35,7 @@ export function getPackPriceRub(item: PurchaseItem, rates: PurchaseCurrencyRateR
 
 /** Кол. 5: цена упаковки с оргсбором = цена в ₽ × (1 + оргсбор/100). */
 export function getPackPriceWithOrgFeeRub(
-    item: PurchaseItem,
+    item: ItemPricingFields,
     rates: PurchaseCurrencyRateRef[],
     orgFeeDefaultPercent: number,
 ): number | null {
@@ -35,7 +46,7 @@ export function getPackPriceWithOrgFeeRub(
 
 /** Кол. 6: цена за 1ед (гр/шт) в ₽ = (цена уп. с оргсбором) / вес упаковки. */
 export function getUnitPriceRub(
-    item: PurchaseItem,
+    item: ItemPricingFields,
     rates: PurchaseCurrencyRateRef[],
     orgFeeDefaultPercent: number,
 ): number | null {

@@ -1,6 +1,7 @@
 export {
     useAddPurchaseItems,
     useInlineUpdateItem,
+    useRegenerateItemDescription,
     useRemovePurchaseItem,
     usePublishItemToTg,
     useUpdateItemProduct,

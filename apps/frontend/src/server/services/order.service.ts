@@ -146,6 +146,34 @@ export class OrderService {
     }
 
     /**
+     * Admin: изменить кол-во упаковок на delta (+1 / -1) в обход stage-правил/пула/лимита.
+     * Упаковки всегда на COLLECTION-строке. amountDue пересчитывается.
+     * delta>0 — добавить, delta<0 — убавить (нельзя больше, чем есть).
+     */
+    async adminAdjustPackageCount(purchaseItemId: number, userId: number, delta: number): Promise<void> {
+        if (delta === 0) return;
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        const prevQty = userEffectiveQty(lines, userId, item.packAmount);
+        const result = OrderBook.create(item, lines).adminAdjustPackages(userId, delta);
+        if (!result.ok) throw new ValidationError(result.error.message);
+        await this.persistEffects(result.changes);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        // If all of the user's lines on this item got deleted (pkg=0 + qty=0), treat as line deleted.
+        const remaining = result.book.activeLines.filter((l) => l.userId === userId);
+        if (remaining.length === 0) {
+            await this.notifyOrderLineDeleted(purchaseItemId, userId);
+        } else {
+            await this.notifyOrderQtyChanged(
+                purchaseItemId,
+                userId,
+                item.packAmount,
+                prevQty,
+                result.book.activeLines,
+            );
+        }
+    }
+
+    /**
      * Все заказы пользователя (в т.ч. CANCELLED). Используется для админ-карточки.
      */
     async getUserOrders(userId: number) {
@@ -159,6 +187,11 @@ export class OrderService {
 
     async getByPurchase(purchaseId: number) {
         return this.repo.getByPurchase(purchaseId);
+    }
+
+    /** PurchaseOrder headers for a purchase — covers bare participants too. */
+    async getPurchaseOrdersByPurchase(purchaseId: number) {
+        return this.repo.findPurchaseOrdersByPurchase(purchaseId);
     }
 
     /** Все строки пользователя (для расчёта карты оплат ботом). */
@@ -194,9 +227,35 @@ export class OrderService {
     async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
         const itemIds = await this.repo.findPurchaseItemIdsByUserAndPurchase(userId, purchaseId);
         const result = await this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
+        // Also drop the PurchaseOrder header so a "bare" participant (no order
+        // lines, only a header created via addParticipant) is fully removed.
+        await this.repo.deletePurchaseOrder(userId, purchaseId);
         await Promise.all(itemIds.map((id) => this.eventBus.emitPurchaseItemChanged(id)));
         await this.notifyOrderCleared(userId, purchaseId);
         return result;
+    }
+
+    /**
+     * Admin: register a participant with no items — creates the per-(user, purchase)
+     * PurchaseOrder header (idempotent). The user then appears in the participants
+     * list even with zero order lines; positions can be added later via adminAdjust.
+     * No eventBus/notify — there is no item to push and nothing to notify about.
+     * Returns the PurchaseOrder id.
+     */
+    async addParticipant(userId: number, purchaseId: number): Promise<number> {
+        const created = await this.repo.ensurePurchaseOrder(userId, purchaseId);
+        return created.id;
+    }
+
+    /**
+     * Admin: удалить ВСЕ строки пользователя на конкретный PurchaseItem
+     * (сбор + добор + упаковки). Используется объединённой карточкой участника,
+     * где несколько OrderLine одного товара показываются как одна позиция.
+     */
+    async deleteAllByUserAndItem(purchaseItemId: number, userId: number): Promise<void> {
+        await this.repo.deleteAllByUserAndItem(purchaseItemId, userId);
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        await this.notifyOrderLineDeleted(purchaseItemId, userId);
     }
 
     async getActivePurchases(userId: number) {

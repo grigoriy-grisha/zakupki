@@ -8,12 +8,12 @@ import type { CommandHandler } from '../../domain/handler';
 const log = createLogger('start-command');
 
 const START_TEXT = (name: string, hasShop: boolean) =>
-    `Привет, ${name}! 👋\n\n` +
+    `Привет, ${name}!\n\n` +
     `Я бот закупок. Здесь можно:\n` +
     `• Просматривать активные закупки\n` +
     `• Делать заказы\n` +
     `• Оплачивать и отслеживать статус\n\n` +
-    `📋 Команды:\n` +
+    `Команды:\n` +
     `/start — открыть приложение\n` +
     `/help — справка\n` +
     `/orders — мои заказы\n` +

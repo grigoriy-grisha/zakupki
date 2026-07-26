@@ -250,7 +250,7 @@
     --popover: var(--bg-surface);
     --popover-foreground: var(--fg-primary);
     --primary: var(--claude-orange);
-    --primary-foreground: #09090b;
+    --primary-foreground: #ffffff;
     --secondary: rgb(255 255 255 / 0.06);
     --secondary-foreground: var(--fg-primary);
     --muted: rgb(255 255 255 / 0.05);
@@ -265,7 +265,7 @@
     --sidebar: var(--bg-base);
     --sidebar-foreground: var(--fg-secondary);
     --sidebar-primary: var(--claude-orange);
-    --sidebar-primary-foreground: #09090b;
+    --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: var(--bg-soft);
     --sidebar-accent-foreground: var(--fg-primary);
     --sidebar-border: var(--border-soft);

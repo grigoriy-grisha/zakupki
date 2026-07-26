@@ -35,7 +35,7 @@ export function PurchasePaymentDialog({
 
     const payButton = !paymentOpen ? (
         <div className={cn('relative w-full', buttonClassName)}>
-            <Button size={buttonSize} disabled className="w-full blur-[3px] opacity-50 pointer-events-none">
+            <Button variant="brand" size={buttonSize} disabled className="w-full blur-[3px] opacity-50 pointer-events-none">
                 <CreditCard className="h-4 w-4" />
                 Оплатить {remaining.toLocaleString('ru-RU')} ₽
             </Button>
@@ -58,6 +58,7 @@ export function PurchasePaymentDialog({
         </Button>
     ) : (
         <Button
+            variant="brand"
             size={buttonSize}
             className={cn('w-full gap-2', buttonClassName)}
             onClick={() => form.handleOpenChange(true)}
@@ -219,7 +220,12 @@ export function PurchasePaymentDialog({
                         {!form.fileData && <p className="text-xs text-destructive">Прикрепите подтверждение оплаты</p>}
                     </div>
 
-                    <Button type="submit" disabled={!form.canSubmit || form.mutation.isPending} className="w-full">
+                    <Button
+                        type="submit"
+                        variant="brand"
+                        disabled={!form.canSubmit || form.mutation.isPending}
+                        className="w-full"
+                    >
                         {form.mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         Отправить
                     </Button>

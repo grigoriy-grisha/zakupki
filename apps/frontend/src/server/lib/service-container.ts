@@ -13,6 +13,7 @@ import { SettingsService } from '../services/settings/settings.service';
 import { ProductService } from '../services/product.service';
 import { PromoCodeService } from '../services/promo-code.service';
 import { PurchaseService } from '../services/purchase.service';
+import { PurchaseItemDescriptionService } from '../services/purchase-item-description.service';
 import { PurchaseStatusService } from '../services/purchase-status.service';
 import { TelegramPublishService } from '../services/telegram-publish.service';
 import { UserService } from '../services/user.service';
@@ -77,14 +78,23 @@ export class ServiceContainer {
     );
     public readonly product = new ProductService(this.productRepo, this.eventBus);
     public readonly payment = new PaymentService(this.paymentRepo, this.notification);
-    public readonly botPayment = new BotPaymentService(this.paymentRepo, this.order);
     public readonly promoCode = new PromoCodeService(this.promoCodeRepo);
+    public readonly botPayment = new BotPaymentService(this.paymentRepo, this.order, this.promoCode);
     public readonly attributeType = new AttributeTypeService(this.attributeTypeRepo);
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);
     public readonly postTemplate = new PostTemplateService(this.postTemplateRepo);
     public readonly supplier = new SupplierService(this.supplierRepo);
     public readonly currency = new CurrencyService(this.currencyRepo);
+    public readonly purchaseItemDescription = new PurchaseItemDescriptionService(
+        this.purchaseRepo,
+        this.attributeTypeRepo,
+        this.characteristicRepo,
+        this.productAttributeRepo,
+        this.postTemplateRepo,
+        this.pricingSettings,
+        this.eventBus,
+    );
 }
 
 export const serviceContainer = new ServiceContainer();

@@ -145,7 +145,7 @@ function ProductCardImpl({
                 aria-label={`Открыть карточку товара ${product.name}`}
                 className="block w-full text-left"
             >
-                <div className="relative aspect-square w-full overflow-hidden bg-bg-soft sm:aspect-[4/3]">
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
                     {/* Контейнер с overflow-hidden — оборачиваем, чтобы scale работал корректно */}
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105">
@@ -164,7 +164,7 @@ function ProductCardImpl({
 
                     {/* In-cart пилл (сверху-слева) */}
                     {hasOrder && !ctx.isSoldOut && (
-                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-12-semibold leading-none text-primary-foreground shadow-sm">
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-12-semibold leading-none text-white shadow-sm">
                             <ShoppingCart className="size-2.5" />В корзине
                         </div>
                     )}
@@ -199,7 +199,7 @@ function ProductCardImpl({
             </div>
 
             {/* ── Контент ── */}
-            <div className="flex flex-1 flex-col gap-1.5 p-3">
+            <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
                 {/* Заголовок */}
                 <button
                     type="button"
@@ -210,7 +210,7 @@ function ProductCardImpl({
                     <PurchaseProductLabel
                         product={product}
                         className="min-w-0 overflow-hidden"
-                        primaryClassName="block text-13-semibold leading-tight text-fg-primary line-clamp-2 transition-colors group-hover:text-primary"
+                        primaryClassName="block text-14-semibold leading-snug text-fg-primary line-clamp-2 transition-colors group-hover:text-primary"
                         secondaryClassName="mt-0.5 block truncate text-12-regular text-fg-tertiary"
                     />
                 </button>
@@ -228,7 +228,7 @@ function ProductCardImpl({
                 {ctx.freeRemainderLabel && <p className="text-12-medium text-warning">{ctx.freeRemainderLabel}</p>}
 
                 {/* Цена + скидка в одной строке */}
-                <div className="mt-0.5 flex items-baseline gap-1.5">
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                     {hasOrder ? (
                         <span className="text-18-semibold text-fg-primary tabular-nums">{formatRubles(ctx.total)}</span>
                     ) : (
@@ -253,7 +253,7 @@ function ProductCardImpl({
                 )}
 
                 {/* Контролы — фиксируются внизу карточки через mt-auto */}
-                <div className="mt-auto pt-2" onClick={stop} onPointerDown={stop}>
+                <div className="mt-auto pt-1.5" onClick={stop} onPointerDown={stop}>
                     {isSoldOutNoOrder ? (
                         <Button
                             className="h-9 w-full rounded-lg text-12-medium"
@@ -271,28 +271,28 @@ function ProductCardImpl({
                             <Button
                                 variant="brand"
                                 size="default"
-                                className="h-9 w-full rounded-lg text-12-semibold"
+                                className="h-8 w-full rounded-lg text-12-semibold sm:h-9"
                                 onClick={(e) => {
                                     stop(e);
                                     ctx.handleAdd();
                                 }}
                                 disabled={!ctx.canAdd || ctx.isPending}
                             >
-                                <Plus className="mr-1 size-3.5" />В корзину
+                                Добавить
                             </Button>
                             {ctx.showPackageButtons && ctx.packSize != null && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 w-full text-12-medium"
+                                    className="h-8 w-full justify-center text-12-medium"
                                     onClick={(e) => {
                                         stop(e);
                                         ctx.handleAddPackage();
                                     }}
                                     disabled={!ctx.canAddPackage || ctx.isPending}
                                 >
-                                    <Plus className="mr-1 size-3" />
-                                    +1 упаковка ({ctx.packSize} {ctx.shortName})
+                                    <Plus className="mr-1 size-3 shrink-0" />
+                                    <span className="truncate">+1 упаковка ({ctx.packSize} {ctx.shortName})</span>
                                 </Button>
                             )}
                         </div>
@@ -306,7 +306,7 @@ function ProductCardImpl({
 /** Компактные ± кнопки в in-cart состоянии (как у маркетплейсов). */
 function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> }) {
     return (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
             <div className="flex items-stretch gap-1">
                 <Button
                     variant="outline"
@@ -337,23 +337,21 @@ function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> 
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 min-w-0 flex-1 text-12-medium"
+                        className="h-8 min-w-0 flex-1 justify-center text-12-medium"
                         onClick={ctx.handleRemovePackage}
                         disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
                         aria-label="Убрать упаковку"
                     >
-                        <Minus className="mr-1 size-3" />
-                        −1 упак.
+                        <span className="truncate">− 1 упак.</span>
                     </Button>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 min-w-0 flex-1 text-12-medium"
+                        className="h-8 min-w-0 flex-1 justify-center text-12-medium"
                         onClick={ctx.handleAddPackage}
                         disabled={!ctx.canAddPackage || ctx.isPending}
                     >
-                        <Plus className="mr-1 size-3" />
-                        +1 упак. ({ctx.packSize} {ctx.shortName})
+                        <span className="truncate">+ 1 упак. ({ctx.packSize} {ctx.shortName})</span>
                     </Button>
                 </div>
             )}

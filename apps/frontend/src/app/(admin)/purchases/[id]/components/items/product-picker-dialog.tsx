@@ -12,12 +12,15 @@ import { toast } from 'sonner';
 import { useAddPurchaseItems } from '../../hooks';
 import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '../../../../products/lib';
 import { ProductSheet } from '../../../../products/components';
+import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { PurchaseProductEditForm, type PurchaseProductSaveData } from './purchase-product-edit-form';
 import { cn } from '@/lib/utils';
 
 interface ProductPickerDialogProps {
     purchaseId: number;
     purchaseTag: string;
+    /** Курсы валют закупки — для шаблонных меток {{цены}}, {{фасовка поставщика}}. */
+    currencyRates: PurchaseCurrencyRateRef[];
 }
 
 type PickerProduct = ProductLabelSource & {
@@ -26,7 +29,7 @@ type PickerProduct = ProductLabelSource & {
     unitCode: string;
 };
 
-export function ProductPickerDialog({ purchaseId, purchaseTag }: ProductPickerDialogProps) {
+export function ProductPickerDialog({ purchaseId, purchaseTag, currencyRates }: ProductPickerDialogProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
@@ -90,6 +93,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag }: ProductPickerDi
                     <ProductDetail
                         productId={detailProduct}
                         purchaseTag={purchaseTag}
+                        currencyRates={currencyRates}
                         onAdd={handleAdd}
                         onBack={() => setDetailProduct(null)}
                         isAdding={addItems.isPending}
@@ -190,12 +194,14 @@ function ProductPickerRow({ product, onOpenDetail }: { product: PickerProduct; o
 function ProductDetail({
     productId,
     purchaseTag,
+    currencyRates,
     onAdd,
     onBack,
     isAdding,
 }: {
     productId: number;
     purchaseTag: string;
+    currencyRates: PurchaseCurrencyRateRef[];
     onAdd: (items: { productId: number; data: PurchaseProductSaveData }[]) => void;
     onBack: () => void;
     isAdding: boolean;
@@ -255,6 +261,7 @@ function ProductDetail({
                 key={productId}
                 product={product}
                 purchaseTag={purchaseTag}
+                currencyRates={currencyRates}
                 loadSavedDescription={false}
                 onCancel={onBack}
                 onSave={(data) => {

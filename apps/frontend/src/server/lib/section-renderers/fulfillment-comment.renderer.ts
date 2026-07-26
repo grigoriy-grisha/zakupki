@@ -21,7 +21,7 @@ export interface FulfillmentCommentData {
 }
 
 /**
- * Комментарий "🔄 Статус закупки изменён" под постом в обсуждении.
+ * Комментарий «Статус закупки изменён» под постом в обсуждении.
  * В обычной супергруппе (не форум) — Telegram не поддерживает message_thread_id,
  * поэтому комментарий «висит» в общей ленте. Префикс "Пост #N" помогает
  * пользователю понять, к какому посту он относится.
@@ -36,7 +36,7 @@ export class FulfillmentCommentRenderer extends BaseSectionRenderer<FulfillmentC
         const prefix = data.channelPostMessageId != null ? `Пост #${data.channelPostMessageId}` : null;
 
         return joinNonEmpty([
-            '🔄 <b>Статус закупки изменён</b>',
+            '<b>Статус закупки изменён</b>',
             prefix,
             `<b>${escapeHtmlLocal(label)}</b>`,
             hint || null,

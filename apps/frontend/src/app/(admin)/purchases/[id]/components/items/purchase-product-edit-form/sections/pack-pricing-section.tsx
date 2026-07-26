@@ -14,6 +14,21 @@ import { cn } from '@/lib/utils';
 
 import { PACKAGE_UNITS } from '../../../../../../products/lib';
 
+/**
+ * Sensible defaults when the admin picks grams as the package unit. Grams are
+ * a bulk unit where a step of 1 is almost always wrong (nobody orders 1 gram
+ * of tea); 5 g min packaging and 10 g reorder step match how organic small-batch
+ * purchasing actually works in this domain. Only applied the moment the unit
+ * switches to «гр» — the admin can still override afterwards, and switching
+ * back to another unit does NOT reset the values.
+ *
+ * Exported so the parent form can apply the same defaults when wiring the
+ * `onGramsSelected` callback (keeps the magic numbers in one place).
+ */
+export const GRAM_DEFAULT_MIN_PACKAGE = 5;
+export const GRAM_DEFAULT_SUPPLEMENT_STEP = 10;
+export const GRAM_UNIT = 'гр';
+
 /** Строка валюты из trpc.currencies.list. */
 interface CurrencyRow {
     id: number;
@@ -42,6 +57,13 @@ interface PackPricingSectionProps {
     onPackAmountChange: (value: number | null) => void;
     onPackUnitChange: (value: string | null) => void;
     onOrgFeeChange: (value: number | null) => void;
+    /**
+     * Optional: prefill these when the package unit switches to grams. Wired
+     * by the parent form so that picking «гр» also sets the supplement-step
+     * section defaults (min package 5, supplement step 10). Omitted on the
+     * standalone product form where these fields don't exist.
+     */
+    onGramsSelected?: () => void;
 }
 
 /**
@@ -67,7 +89,16 @@ export function PackPricingSection({
     onPackAmountChange,
     onPackUnitChange,
     onOrgFeeChange,
+    onGramsSelected,
 }: PackPricingSectionProps) {
+    // On switching the unit to grams, prefill min package and supplement step
+    // with domain-sensible defaults via the parent's callback. Pass-through for
+    // any other unit, so the admin's previously typed values survive a roundtrip.
+    const handlePackUnitChange = (v: string | null) => {
+        onPackUnitChange(v);
+        if (v === GRAM_UNIT) onGramsSelected?.();
+    };
+
     return (
         <FormSection card title="Цена за упаковку">
             {/* Цена + валюта */}
@@ -136,7 +167,7 @@ export function PackPricingSection({
                     <label className="mb-1 block text-12-regular text-fg-tertiary">Единица</label>
                     <PackageUnitSelect
                         value={packUnit ?? PACKAGE_UNITS[0]}
-                        onChange={onPackUnitChange}
+                        onChange={handlePackUnitChange}
                         className="h-9 rounded-xl"
                     />
                 </div>

@@ -7,18 +7,6 @@ import { PackageEditor } from '../../../../../../products/components/package-fie
 import { PackageUnitSelect } from '../../../../../../products/components/package-unit-select';
 import { PACKAGE_UNITS } from '../../../../../../products/lib';
 
-/**
- * Sensible defaults when the admin picks grams as the package unit. Grams are
- * a bulk unit where a step of 1 is almost always wrong (nobody orders 1 gram
- * of tea); 5 g min packaging and 10 g reorder step match how organic small-batch
- * purchasing actually works in this domain. Only applied the moment the unit
- * switches to «гр» — the admin can still override afterwards, and switching
- * back to another unit does NOT reset the values.
- */
-const GRAM_DEFAULT_MIN_PACKAGE = 5;
-const GRAM_DEFAULT_SUPPLEMENT_STEP = 10;
-const GRAM_UNIT = 'гр';
-
 interface SupplementLimitsSectionProps {
     minPackageAmount: number | null;
     supplementStep: number | null;
@@ -48,17 +36,6 @@ export function SupplementLimitsSection({
     onMinPkgUnitChange,
     onTargetRemainderChange,
 }: SupplementLimitsSectionProps) {
-    // On switching the unit to grams, prefill min package and supplement step
-    // with domain-sensible defaults. Pass-through for any other unit, so the
-    // admin's previously typed values survive a unit roundtrip.
-    const handleMinPkgUnitChange = (v: string | null) => {
-        onMinPkgUnitChange(v);
-        if (v === GRAM_UNIT) {
-            onMinPackageAmountChange(GRAM_DEFAULT_MIN_PACKAGE);
-            onSupplementStepChange(GRAM_DEFAULT_SUPPLEMENT_STEP);
-        }
-    };
-
     return (
         <FormSection card title="Добор и лимиты">
             <FormField
@@ -80,7 +57,7 @@ export function SupplementLimitsSection({
                     />
                     <PackageUnitSelect
                         value={minPkgUnit ?? PACKAGE_UNITS[0]}
-                        onChange={handleMinPkgUnitChange}
+                        onChange={onMinPkgUnitChange}
                     />
                 </div>
             </FormField>

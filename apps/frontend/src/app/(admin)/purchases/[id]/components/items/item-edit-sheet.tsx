@@ -68,6 +68,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                             }}
                             loadSavedDescription
                             purchaseTag={purchase?.tag}
+                            currencyRates={purchase?.currencyRates ?? []}
                             onSave={(data) =>
                                 updateMutation.mutate(
                                     {

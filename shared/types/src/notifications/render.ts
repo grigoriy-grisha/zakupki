@@ -84,24 +84,8 @@ export function renderNotificationBody<T extends NotificationType>(
 }
 
 /**
- * Leading emoji per notification type. Gives the Telegram message a visual
- * anchor so the user can tell at a glance whether it's a payment / order
- * change / lifecycle event before reading the text.
- */
-const NOTIFICATION_EMOJI: Record<NotificationType, string> = {
-    PAYMENT_CONFIRMED: '✅',
-    PAYMENT_REJECTED: '❌',
-    ORDER_QTY_CHANGED: '📦',
-    ORDER_LINE_DELETED: '🗑',
-    ORDER_CLEARED: '🧹',
-    PURCHASE_FULFILLMENT_STAGE: '🔄',
-    PURCHASE_STATUS_CHANGED: '📌',
-};
-
-/**
  * Telegram-HTML body. Unlike `renderNotificationBody` (plain text for the web
  * bell), this variant adds:
- *   - a leading type emoji (💳/📦/❌/…),
  *   - a <b>bold</b> headline (the same headline the web card uses as title),
  *   - structured multi-line layout with <b>labels</b> for key fields.
  *
@@ -119,9 +103,8 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
     payload: NotificationPayload<T>,
 ): string {
     const p = payload as NotificationPayload<typeof type>;
-    const emoji = NOTIFICATION_EMOJI[type];
     const title = renderNotificationTitle(type);
-    const lines: string[] = [`${emoji} <b>${title}</b>`, `Закупка ${escapeHtml(formatTag(p.purchaseTag))}`];
+    const lines: string[] = [`<b>${title}</b>`, `Закупка ${escapeHtml(formatTag(p.purchaseTag))}`];
 
     switch (type) {
         case 'PAYMENT_CONFIRMED':

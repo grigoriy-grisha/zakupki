@@ -4,6 +4,7 @@ import { isPurchasePaymentOpen, PROOF_MIME_TYPES, type PurchaseFulfillmentStatus
 import { storage } from '@/lib/server/storage';
 
 import { OrderService } from './order.service';
+import { PromoCodeService } from './promo-code.service';
 import { PaymentRepository } from '../domain/payment.repository';
 
 export type PurchasePaymentInfo = {
@@ -21,10 +22,10 @@ export type PayablePurchase = {
     fulfillmentStatus: PurchaseFulfillmentStatus;
 };
 
-const PAYMENT_STATUS: Record<string, { emoji: string; label: string }> = {
-    PENDING: { emoji: '⏳', label: 'Ожидает проверки' },
-    CONFIRMED: { emoji: '✅', label: 'Подтверждено' },
-    REJECTED: { emoji: '❌', label: 'Отклонено' },
+const PAYMENT_STATUS: Record<string, { label: string }> = {
+    PENDING: { label: 'Ожидает проверки' },
+    CONFIRMED: { label: 'Подтверждено' },
+    REJECTED: { label: 'Отклонено' },
 };
 
 /**
@@ -38,6 +39,7 @@ export class BotPaymentService {
     constructor(
         private repo: PaymentRepository,
         private orderService: OrderService,
+        private promoCodeService: PromoCodeService,
     ) {}
 
     async getUserPayments(userId: number) {
@@ -45,9 +47,9 @@ export class BotPaymentService {
 
         const lines = payments.map((p) => {
             const total = Number(p.amount) + this.sumChildAmount(p.children);
-            const { emoji = '❓', label = p.status } = PAYMENT_STATUS[p.status] ?? {};
+            const { label = p.status } = PAYMENT_STATUS[p.status] ?? {};
             return (
-                `${emoji} ${total.toLocaleString('ru-RU')} ₽ — ${p.purchase?.tag ?? '—'}\n` +
+                `${total.toLocaleString('ru-RU')} ₽ — ${p.purchase?.tag ?? '—'}\n` +
                 `   ${label} · ${new Date(p.submittedAt).toLocaleDateString('ru-RU')}`
             );
         });
@@ -102,6 +104,8 @@ export class BotPaymentService {
         userComment?: string;
         proofData: Buffer;
         proofMimeType: string;
+        promoCodeId?: number;
+        discountAmount?: number;
     }) {
         if (!PROOF_MIME_TYPES.has(data.proofMimeType)) {
             throw new Error('Допустимы только изображения и PDF');
@@ -142,7 +146,23 @@ export class BotPaymentService {
             amount: data.amount,
             userComment: data.userComment,
             proofObjectKey,
+            promoCodeId: data.promoCodeId,
+            discountAmount: data.discountAmount,
         });
+    }
+
+    /**
+     * Validates a promo code against an order amount. Delegates to
+     * `PromoCodeService` and surfaces its Russian error messages to the user
+     * (NotFoundError / ValidationError). On success returns the discount
+     * details used to drive the promo → proof transition.
+     */
+    async validatePromoCode(
+        code: string,
+        purchaseId: number,
+        orderAmount: number,
+    ): Promise<{ id: number; code: string; label: string | null; discount: number; finalAmount: number }> {
+        return this.promoCodeService.validate(code.toUpperCase().trim(), purchaseId, orderAmount);
     }
 
     private async buildPaymentMap(userId: number): Promise<Map<number, PurchasePaymentInfo>> {

@@ -17,6 +17,7 @@ import { getStageConfig, type StageConfig } from '../stages';
 import {
     activeUserLines,
     aggregateForPool,
+    applySetPackagesOnLine,
     applyZeroOutOnLine,
     err,
     findBaseLine,
@@ -58,6 +59,7 @@ export abstract class StageStrategy {
     abstract adminDecrease(userId: number, amount: number): MultiUpdate;
     abstract adminSetQuantity(userId: number, qty: number): MultiUpdate;
     abstract adminDelete(userId: number): MultiUpdate;
+    abstract adminAdjustPackages(userId: number, delta: number): MultiUpdate;
 
     // ── Protected helpers (доступны наследникам) ──
 
@@ -202,6 +204,38 @@ export abstract class BaseMutableStrategy extends StageStrategy {
             updates: userLines.map((l) => ({ old: l, new: null }) as LineUpdate),
             effects: userLines.map((l) => ({ type: 'delete' as const, lineId: l.id })),
         };
+    }
+
+    // ── adminAdjustPackages: override кол-ва упаковок на COLLECTION-строке ──
+
+    /**
+     * Admin: изменить кол-во упаковок на delta в обход stage-правил/пула/лимита.
+     * Упаковки всегда живут на COLLECTION-строке (инвариант модели).
+     *
+     * delta>0 — добавить к существующей base-строке (или создать COLLECTION с qty=0).
+     * delta<0 — убавить от base-строки; newPkg=0 + qty=0 → hard delete (см. applySetPackagesOnLine).
+     * Нельзя убавить больше, чем есть packageCount.
+     */
+    override adminAdjustPackages(userId: number, delta: number): MultiUpdate {
+        if (delta === 0) return ok();
+        if (!this.item.packAmount) {
+            return err({ code: 'no_package', message: 'У товара не указан размер упаковки поставщика' });
+        }
+        const base = this.findBaseLine(userId);
+        const currentPkg = base?.packageCount ?? 0;
+        if (delta < 0) {
+            if (!base || currentPkg === 0) {
+                return err({ code: 'negative', message: 'У участника нет упаковок для убавки' });
+            }
+            if (-delta > currentPkg) {
+                return err({
+                    code: 'negative',
+                    message: 'Нельзя убавить упаковок больше, чем есть в заказе',
+                });
+            }
+        }
+        const newPkg = currentPkg + delta;
+        return applySetPackagesOnLine(this.item, base ?? null, userId, true, newPkg);
     }
 }
 

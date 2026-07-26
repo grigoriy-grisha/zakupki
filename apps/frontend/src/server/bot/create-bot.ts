@@ -83,6 +83,7 @@ export function createBot(
         .addMessage(new ChannelPostShopCommentHandler())
         .addMessage(new PaymentProofHandler(container))
         .addMessage(new PaymentAmountHandler(container))
+        .addMessage(new PaymentPromoHandler(container))
         .addMessage(new OrderReplyHandler(container))
         .addMessage(new FallbackTextHandler());
 
@@ -114,5 +115,6 @@ import { PayCallbackQueryHandler } from './handlers/callback/pay.callback';
 import { ChannelPostShopCommentHandler } from './handlers/message/channel-post-comment.handler';
 import { PaymentProofHandler } from './handlers/message/payment-proof.handler';
 import { PaymentAmountHandler } from './handlers/message/payment-amount.handler';
+import { PaymentPromoHandler } from './handlers/message/payment-promo.handler';
 import { OrderReplyHandler } from './handlers/message/order-reply.handler';
 import { FallbackTextHandler } from './handlers/message/fallback-text.handler';

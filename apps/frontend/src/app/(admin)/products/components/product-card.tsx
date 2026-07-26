@@ -1,14 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Package, Trash2 } from 'lucide-react';
+import { Loader2, Lock, Package, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
-import { formatProductCatalogCardLines, type CatalogCardLineRole, type ProductCatalogCardSource } from '../lib';
+import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '../lib';
 import { productPhotoUrl } from '@/lib/product-photo-url';
 
 interface CatalogProductCardProps {
@@ -19,6 +20,9 @@ interface CatalogProductCardProps {
     };
     onClick: () => void;
 }
+
+/** Максимум meta-строк (характеристики/единицы), показываемых на карточке каталога. */
+const MAX_META_LINES = 2;
 
 export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -36,16 +40,8 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     }, [product, attributeTypes]);
 
     const photo = product.photos?.[0];
-
-    function catalogLineClass(role: CatalogCardLineRole): string {
-        if (role === 'name') {
-            return 'line-clamp-3 text-sm font-semibold leading-snug sm:min-h-[3rem] sm:text-base';
-        }
-        if (role === 'title') {
-            return 'line-clamp-2 text-xs font-medium leading-snug text-muted-foreground';
-        }
-        return 'line-clamp-1 text-[11px] leading-snug text-muted-foreground';
-    }
+    const visibleMetaLines = metaLines.slice(0, MAX_META_LINES);
+    const hiddenMetaCount = Math.max(0, metaLines.length - MAX_META_LINES);
 
     async function handleDelete() {
         try {
@@ -61,29 +57,46 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
     return (
         <>
             <Card
-                className="group flex cursor-pointer flex-row gap-0 overflow-hidden py-0 transition-all hover:border-primary/20 hover:shadow-md sm:flex-col"
+                rounded="2xl"
+                className={cn(
+                    'group relative flex h-full flex-col cursor-pointer overflow-hidden border py-0 transition-all duration-200 ease-out',
+                    'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg',
+                )}
                 onClick={onClick}
             >
-                <div className="relative aspect-square w-20 shrink-0 bg-muted sm:w-full">
+                {/* ── Фото ── */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
                     {photo ? (
-                        <img
-                            src={productPhotoUrl(
-                                photo.id,
-                                `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`,
-                            )}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
+                        <div className="h-full w-full overflow-hidden">
+                            <img
+                                src={productPhotoUrl(
+                                    photo.id,
+                                    `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`,
+                                )}
+                                alt={product.name}
+                                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                            />
+                        </div>
                     ) : (
                         <div className="flex h-full items-center justify-center">
-                            <Package className="h-8 w-8 text-muted-foreground/30 sm:h-10 sm:w-10" />
+                            <Package className="h-10 w-10 text-fg-tertiary/40" />
                         </div>
                     )}
+
+                    {/* Бейдж «В закупке» — объясняет отсутствие кнопки удаления */}
+                    {product.inActivePurchase && (
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-11-medium leading-none text-white backdrop-blur-md">
+                            <Lock className="size-2.5" />
+                            В закупке
+                        </div>
+                    )}
+
+                    {/* Кнопка удаления — только для товаров вне закупки */}
                     {!product.inActivePurchase && (
                         <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1.5 right-1.5 h-7 w-7 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                            className="absolute top-1.5 right-1.5 z-[1] h-7 w-7 opacity-70 transition-opacity group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmOpen(true);
@@ -94,19 +107,40 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                     )}
                 </div>
 
-                <CardContent className="flex min-w-0 flex-1 flex-col justify-start gap-0.5 px-2 py-2 sm:flex-none sm:px-2.5 sm:py-2">
+                {/* ── Контент ── */}
+                <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
+                    {/* Название */}
                     {nameLine ? (
-                        <p className={catalogLineClass('name')}>{nameLine.text}</p>
+                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-primary sm:text-14-semibold">
+                            {nameLine.text}
+                        </p>
                     ) : (
-                        <p className={catalogLineClass('name')}>{product.name}</p>
+                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-primary sm:text-14-semibold">
+                            {product.name}
+                        </p>
                     )}
-                    {titleLine && <p className={catalogLineClass('title')}>{titleLine.text}</p>}
-                    {metaLines.map((line, index) => (
-                        <p key={`${index}-${line.text}`} className={catalogLineClass('meta')}>
+
+                    {/* Подзаголовок (бренд + тип) */}
+                    {titleLine && (
+                        <p className="line-clamp-1 text-12-medium leading-snug text-fg-secondary">
+                            {titleLine.text}
+                        </p>
+                    )}
+
+                    {/* Характеристики / единицы — максимум MAX_META_LINES строк */}
+                    {visibleMetaLines.map((line, index) => (
+                        <p key={`${index}-${line.text}`} className="line-clamp-1 text-11-regular leading-snug text-fg-tertiary">
                             {line.text}
                         </p>
                     ))}
-                </CardContent>
+
+                    {/* Скрытые характеристики */}
+                    {hiddenMetaCount > 0 && (
+                        <p className="text-11-medium leading-snug text-fg-tertiary transition-colors group-hover:text-fg-secondary">
+                            +{hiddenMetaCount} ещё
+                        </p>
+                    )}
+                </div>
             </Card>
 
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
