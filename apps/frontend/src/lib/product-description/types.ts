@@ -31,4 +31,10 @@ export interface DescriptionFields {
     packUnit?: string | null;
     /** Применённый % оргсбора. */
     orgFeePercent?: number | null;
+    /**
+     * Цена за 1 единицу (гр/шт) в ₽ — с учётом курса валюты и оргсбора.
+     * Считается клиентом в форме через getUnitPriceRub и используется для меток
+     * {{цены}} и {{фасовка поставщика}}.
+     */
+    unitPriceRub?: number | null;
 }

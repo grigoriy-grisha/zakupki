@@ -1,4 +1,4 @@
-import { stripAttributesFromName } from '../product-label';
+import { stripAttributesFromName } from '@/lib/product-label';
 import { isPositive, formatNumber, formatRubles } from '@/lib/utils/format';
 import { escapeHtml } from '@/lib/utils/html';
 
@@ -49,6 +49,8 @@ export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'мин фасовка' },
     { key: 'цена за пачку' },
     { key: 'вес упаковки' },
+    { key: 'цены' },
+    { key: 'фасовка поставщика' },
     { key: 'свободно' },
     { key: 'тег' },
     { key: 'поставщик' },
@@ -101,6 +103,36 @@ export function stripPlaceholderHintDebris(html: string): string {
 
 function normalizePlaceholderKey(key: string): string {
     return key.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+/**
+ * Канонический набор известных плейсхолдеров — ровно те, что показаны в подсказке UI
+ * (см. {@link POST_TEMPLATE_PLACEHOLDERS}). Legacy-алиасы (цены, фасовка_поставщика,
+ * цена_со_скидкой_за_пачку, описание, *_строка) сюда НЕ входят: они тихо подставляются
+ * в {@link applyPostTemplate}, но в редакторе шаблона помечаются как «неизвестные»,
+ * чтобы мягко подтолкнуть к переходу на актуальные имена.
+ */
+const KNOWN_PLACEHOLDER_KEYS: ReadonlySet<string> = new Set(
+    POST_TEMPLATE_PLACEHOLDERS.map((p) => normalizePlaceholderKey(p.key)),
+);
+
+/**
+ * Возвращает ключи неизвестных плейсхолдеров ({{...}}), встречающихся в теле шаблона,
+ * в исходном виде (как написаны в шаблоне, без нормализации). Чистая функция,
+ * не зависит от данных товара. Используется для подсветки опечаток в редакторе шаблона.
+ */
+export function findUnknownPlaceholders(templateHtml: string): string[] {
+    const unknown: string[] = [];
+    const seen = new Set<string>();
+    (templateHtml ?? '').replace(/\{\{\s*([^}]+?)\s*\}\}/gi, (match, rawKey: string) => {
+        const key = normalizePlaceholderKey(rawKey);
+        if (!KNOWN_PLACEHOLDER_KEYS.has(key) && !seen.has(key)) {
+            seen.add(key);
+            unknown.push(rawKey.trim());
+        }
+        return match;
+    });
+    return unknown;
 }
 
 /** Значение для метки {{свободно}}: «СВОБОДНО: 45 гр». Возвращает null если supplierLimit не задан. */
@@ -172,5 +204,37 @@ function buildPlaceholderValues(fields: DescriptionFields, fullHtml: string): Re
         свободно: formatStockLine(fields) ? escapeHtml(formatStockLine(fields) as string) : '',
         тег: tag ? escapeHtml(tag) : '',
         поставщик: fields.supplierName ? escapeHtml(fields.supplierName) : '',
+        // {{цены}} — две строки: «1 {ед} - {unitPrice} руб» и «{мин.фасовка} {ед} - {цена} руб».
+        // Цена за 1ед (unitPriceRub) уже в ₽ с учётом курса и оргсбора. Вторая строка
+        // по мин. фасовке (minPackageAmount); если она не задана — только первая строка.
+        // linesInline сам экранирует каждую строку.
+        цены: (() => {
+            const u = fields.unitPriceRub;
+            if (!isPositive(u)) return '';
+            const unit = fields.packUnit ?? fields.minPackageUnit ?? '';
+            const lines = [`1 ${unit} - ${formatRubles(u)} руб`];
+            const min = fields.minPackageAmount;
+            if (isPositive(min)) {
+                const minTotal = Number(u) * Number(min);
+                lines.push(`${formatNumber(min)} ${unit} - ${formatRubles(minTotal)} руб`);
+            }
+            return linesInline(lines);
+        })(),
+        // {{фасовка поставщика}} — блок «ФАСОВКА ПОСТАВЩИКА:\n{вес упаковки} {ед} - {цена} руб».
+        // Источник — поле «Вес упаковки» (packAmount/packUnit). Цена = unitPrice × packAmount.
+        фасовка_поставщика: (() => {
+            const u = fields.unitPriceRub;
+            const amt = fields.packAmount;
+            const unit = fields.packUnit;
+            if (!isPositive(amt) || !unit || !isPositive(u)) return '';
+            const total = Number(u) * Number(amt);
+            return linesInline(['ФАСОВКА ПОСТАВЩИКА:', `${formatNumber(amt)} ${unit} - ${formatRubles(total)} руб`]);
+        })(),
+        // {{цена со скидкой за пачку}} — legacy-метка без аналога в новой модели (скидок нет).
+        // Не показывается в подсказках UI; ближайший эквивалент — цена за пачку в валюте.
+        цена_со_скидкой_за_пачку:
+            isPositive(fields.pricePerPackCurrency) && fields.currencyName
+                ? escapeHtml(`${formatNumber(fields.pricePerPackCurrency!)} ${fields.currencyName}`)
+                : '',
     };
 }

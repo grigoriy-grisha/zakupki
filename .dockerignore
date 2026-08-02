@@ -1,0 +1,16 @@
+.idea
+.vscode
+.git
+.gitignore
+**/*.md
+**/node_modules
+**/dist
+**/.next
+**/.env
+**/.env.*
+**/*.tsbuildinfo
+tmp
+coverage
+uploads
+letsencrypt
+.zcode

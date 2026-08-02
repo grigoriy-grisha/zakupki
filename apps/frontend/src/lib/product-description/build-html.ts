@@ -1,4 +1,4 @@
-import { stripAttributesFromName } from '../product-label';
+import { stripAttributesFromName } from '@/lib/product-label';
 import { isPositive, formatNumber } from '@/lib/utils/format';
 
 import type { DescriptionFields } from './types';
