@@ -141,7 +141,9 @@ export function PromoCodeDialog() {
                         <div className="space-y-3">
                             <div className="space-y-2">
                                 <Label>Закупка</Label>
-                                <Select onValueChange={(v) => setValue('purchaseId', v === 'all' ? undefined : Number(v))}>
+                                <Select
+                                    onValueChange={(v) => setValue('purchaseId', v === 'all' ? undefined : Number(v))}
+                                >
                                     <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Любая закупка" />
                                     </SelectTrigger>
@@ -149,7 +151,7 @@ export function PromoCodeDialog() {
                                         <SelectItem value="all">Любая закупка</SelectItem>
                                         {purchases?.map((p) => (
                                             <SelectItem key={p.id} value={String(p.id)}>
-                                                {p.tag} — {p.title}
+                                                {p.tag}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -162,7 +164,12 @@ export function PromoCodeDialog() {
                                     <Input
                                         type="number"
                                         placeholder="Безлимит"
-                                        {...register('maxUses', { valueAsNumber: true })}
+                                        {...register('maxUses', {
+                                            setValueAs: (v) =>
+                                                v === '' || v === null || Number.isNaN(v)
+                                                    ? undefined
+                                                    : Number(v),
+                                        })}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -171,7 +178,12 @@ export function PromoCodeDialog() {
                                         type="number"
                                         step="0.01"
                                         placeholder="Без минимума"
-                                        {...register('minAmount', { valueAsNumber: true })}
+                                        {...register('minAmount', {
+                                            setValueAs: (v) =>
+                                                v === '' || v === null || Number.isNaN(v)
+                                                    ? undefined
+                                                    : Number(v),
+                                        })}
                                     />
                                 </div>
                             </div>
@@ -180,7 +192,7 @@ export function PromoCodeDialog() {
                         </div>
                     </div>
 
-                    <Button type="submit" disabled={createMutation.isPending} className="w-full h-11">
+                    <Button type="submit" size="lg" disabled={createMutation.isPending} className="w-full">
                         {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         Создать промокод
                     </Button>

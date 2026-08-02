@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ProductHeaderRenderer > escapes HTML in name (safety) 1`] = `"<b>&lt;script&gt;alert(1)&lt;/script&gt;</b>"`;
+
+exports[`ProductHeaderRenderer > falls back to "ед." when unitCode is unknown 1`] = `
+"<b>Болгарский перец</b>
+100 ₽/ед."
+`;
+
+exports[`ProductHeaderRenderer > formats price with ru-RU separators 1`] = `
+"<b>Болгарский перец</b>
+1 234 567,89 ₽/ед."
+`;
+
+exports[`ProductHeaderRenderer > normalizes <br> and <strong> in description HTML 1`] = `
+"<b>Заголовок</b>
+Текст с <i>курсивом</i>"
+`;
+
+exports[`ProductHeaderRenderer > renders description HTML when present (with normalization) 1`] = `
+"Свежий <b>болгарский</b> перец
+
+Из Болгарии"
+`;
+
+exports[`ProductHeaderRenderer > renders name + minPackage + price when description is null 1`] = `
+"<b>Болгарский перец</b>
+<b>Минимальная фасовка - 1 кг</b>
+250 ₽/ед."
+`;
+
+exports[`ProductHeaderRenderer > renders only name when description null and no minPackage 1`] = `"<b>Болгарский перец</b>"`;
+
+exports[`ProductHeaderRenderer > uses unit shortName from unitCode lookup 1`] = `
+"<b>Болгарский перец</b>
+100 ₽/ед."
+`;

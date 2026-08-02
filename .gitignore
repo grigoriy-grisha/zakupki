@@ -6,3 +6,5 @@ dist
 generated
 .prisma
 .idea
+uploads
+*.tsbuildinfo

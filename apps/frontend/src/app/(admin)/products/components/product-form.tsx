@@ -1,187 +1,202 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
+import { UNITS } from '@zakupki/types';
+import { Controller } from 'react-hook-form';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SheetFooter } from '@/components/ui/sheet';
-import { toast } from 'sonner';
-import { productSchema, type ProductFormValues } from '../lib/schema';
-import { useUnits, useCreateProduct, useUpdateProduct, useDeletePhoto } from '../hooks';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { FormField } from '@/components/ui/form-field';
+import { FormSection } from '@/components/ui/form-section';
+import { FormFooter } from '@/components/ui/form-footer';
+import { cn } from '@/lib/utils';
+
+import { useProductFormState, useProductFormSubmit, type ProductFormExisting } from '../hooks';
 import { PhotoUploader } from './photo-uploader';
+import { AttributeTreePicker } from './attribute-tree-picker';
+import { ProductCharacteristicsFields } from './product-characteristics-fields';
 
 interface ProductFormProps {
     editId: number | null;
-    existing: {
-        name: string;
-        description: string | null;
-        unitId: number;
-        pricePerUnit: string | number;
-        brand: string | null;
-        sku: string | null;
-        photos: { id: number }[];
-    } | null | undefined;
+    existing: ProductFormExisting | null | undefined;
     onSuccess: () => void;
 }
 
 export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
-    const [photoIds, setPhotoIds] = useState<number[]>([]);
-    const { data: units } = useUnits(true);
-    const createMutation = useCreateProduct();
-    const updateMutation = useUpdateProduct();
-    const deletePhotoMutation = useDeletePhoto();
-
-    const {
-        register,
-        handleSubmit,
-        reset,
-        setValue,
-        watch,
-        formState: { errors },
-    } = useForm<ProductFormValues>({
-        resolver: zodResolver(productSchema),
-        defaultValues: { name: '', unitId: units?.[0]?.id ?? 0, pricePerUnit: 0 },
+    const state = useProductFormState(editId, existing);
+    const submit = useProductFormSubmit({
+        editId,
+        isCreating: state.isCreating,
+        basePayload: state.basePayload,
+        pendingFiles: state.pendingFiles,
+        setPhotoIds: state.setPhotoIds,
+        setPendingFiles: state.setPendingFiles,
+        onSuccess,
     });
 
-    const currentUnitId = watch('unitId');
-
-    useEffect(() => {
-        if (existing && editId) {
-            reset({
-                name: existing.name,
-                description: existing.description ?? '',
-                unitId: existing.unitId,
-                pricePerUnit: Number(existing.pricePerUnit),
-                brand: existing.brand ?? '',
-                sku: existing.sku ?? '',
-            });
-            setPhotoIds(existing.photos.map((p) => p.id));
-        } else if (!editId) {
-            reset({
-                name: '',
-                unitId: units?.[0]?.id ?? 0,
-                pricePerUnit: 0,
-                description: '',
-                brand: '',
-                sku: '',
-            });
-            setPhotoIds([]);
-        }
-    }, [existing, editId, reset, units]);
-
-    async function onSubmit(data: ProductFormValues) {
-        const cleaned = {
-            ...data,
-            sku: data.sku?.trim() || undefined,
-            brand: data.brand?.trim() || undefined,
-            description: data.description?.trim() || undefined,
-        };
-        if (editId) {
-            await updateMutation.mutateAsync({ id: editId, ...cleaned });
-        } else {
-            const result = await createMutation.mutateAsync(cleaned);
-            // After creation, prompt to reload with new ID for photo upload
-            if (photoIds.length === 0) {
-                toast.info('Товар создан. Теперь можно загрузить фото.');
-            }
-            // Return the new product id so the sheet can switch to edit mode
-            return result.id;
-        }
-        onSuccess();
-        return undefined;
-    }
-
-    // Wrapper for handleSubmit that also handles create-and-switch
-    function handleFormSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        handleSubmit(async (data) => {
-            const newId = await onSubmit(data);
-            if (newId) {
-                // For create: we need to let the parent know to switch to edit mode
-                onSuccess();
-            }
-        })();
-    }
-
-    const isPending = createMutation.isPending || updateMutation.isPending;
-
-    async function handleDeletePhoto(id: number) {
-        await deletePhotoMutation.mutateAsync({ id });
-    }
+    const errors = state.form.formState.errors;
 
     return (
-        <form onSubmit={handleFormSubmit} className="space-y-4 px-4">
-            <div className="space-y-2">
-                <Label htmlFor="name">Название</Label>
-                <Input id="name" {...register('name')} />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="description">Описание</Label>
-                <Textarea id="description" {...register('description')} />
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="brand">Бренд</Label>
-                <Input id="brand" {...register('brand')} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="pricePerUnit">Цена за единицу (₽)</Label>
-                    <Input id="pricePerUnit" type="number" step="0.01" {...register('pricePerUnit', { valueAsNumber: true })} />
-                    {errors.pricePerUnit && (
-                        <p className="text-xs text-destructive">{errors.pricePerUnit.message}</p>
-                    )}
+        <form onSubmit={state.form.handleSubmit(submit.submitForm)} className="flex flex-col gap-4">
+            {/* === Основное === */}
+            <FormSection card title="Основное">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <FormField label="Артикул" htmlFor="articleNumber">
+                        <Input
+                            id="articleNumber"
+                            className="h-9 rounded-xl"
+                            {...state.form.register('articleNumber')}
+                        />
+                    </FormField>
+                    <FormField
+                        label="Название"
+                        required
+                        htmlFor="name"
+                        error={errors.name?.message}
+                    >
+                        <Input
+                            id="name"
+                            className="h-9 rounded-xl"
+                            {...state.form.register('name')}
+                        />
+                    </FormField>
                 </div>
+            </FormSection>
 
-                <div className="space-y-2">
-                    <Label>Единица</Label>
-                    <Select value={String(currentUnitId)} onValueChange={(v) => setValue('unitId', Number(v))}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Выберите..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {units?.map((u) => (
-                                <SelectItem key={u.id} value={String(u.id)}>
-                                    {u.name} ({u.shortName})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.unitId && (
-                        <p className="text-xs text-destructive">{errors.unitId.message}</p>
-                    )}
-                </div>
-            </div>
+            {/* === Единица + Категории === */}
+            <FormSection card title="Единица и категории">
+                <FormField label="Единица учёта" required error={errors.unitCode?.message}>
+                    <Controller
+                        name="unitCode"
+                        control={state.form.control}
+                        render={({ field }) => {
+                            const unitCode = field.value || '';
+                            const valueInList = UNITS.some((u) => u.code === unitCode);
+                            const selectValue = unitCode && valueInList ? unitCode : undefined;
+                            return (
+                                <Select
+                                    key={`unit-${editId ?? 'new'}-${unitCode}`}
+                                    value={selectValue}
+                                    onValueChange={field.onChange}
+                                >
+                                    <SelectTrigger className="h-9 rounded-xl">
+                                        <SelectValue placeholder="Выберите единицу" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {UNITS.map((u) => (
+                                            <SelectItem key={u.code} value={u.code}>
+                                                {u.name} ({u.shortName})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            );
+                        }}
+                    />
+                </FormField>
 
-            <div className="space-y-2">
-                <Label htmlFor="sku">SKU</Label>
-                <Input id="sku" {...register('sku')} />
-            </div>
+                {(state.attributeTypes?.length ?? 0) > 0 && (
+                    <AttributeTreePicker
+                        rootTypes={state.childrenOfType(null)}
+                        childrenOfType={state.childrenOfType}
+                        attrsTreeByType={state.attrsTreeByType}
+                        selectedAttrs={state.selectedAttrs}
+                        onSelect={state.handleSelectType}
+                    />
+                )}
 
-            {/* Photos — only in edit mode */}
-            {editId && (
-                <PhotoUploader
-                    photoIds={photoIds}
-                    onPhotoIdsChange={setPhotoIds}
-                    productId={editId}
-                    onDeletePhoto={handleDeletePhoto}
+                <ProductCharacteristicsFields
+                    fields={state.activeCharFields}
+                    values={state.charValues}
+                    onChange={(id, value) =>
+                        state.setCharValues((prev) => ({ ...prev, [id]: value }))
+                    }
                 />
-            )}
+            </FormSection>
 
-            <SheetFooter>
-                <Button type="submit" disabled={isPending} className="w-full">
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editId ? 'Сохранить' : 'Создать'}
+            {/* === Фото === */}
+            <FormSection card title="Фото">
+                {state.isCreating ? (
+                    <div className="flex flex-wrap gap-2">
+                        {state.pendingFiles.map((f) => (
+                            <div key={f.id} className="relative">
+                                <img
+                                    src={f.preview}
+                                    alt=""
+                                    className="h-20 w-20 rounded-xl object-cover"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="icon-xs"
+                                    aria-label="Удалить фото"
+                                    onClick={() =>
+                                        state.setPendingFiles((prev) => {
+                                            const item = prev.find((x) => x.id === f.id);
+                                            if (item) URL.revokeObjectURL(item.preview);
+                                            return prev.filter((x) => x.id !== f.id);
+                                        })
+                                    }
+                                    className="absolute -top-1 -right-1 size-5 rounded-full bg-error p-0 text-error-foreground hover:bg-error/90"
+                                >
+                                    <X className="size-3" />
+                                </Button>
+                            </div>
+                        ))}
+                        <label
+                            className={cn(
+                                'flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border text-fg-tertiary transition-colors',
+                                'hover:border-primary hover:text-primary',
+                            )}
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                    const files = Array.from(e.target.files ?? []);
+                                    const withPreviews = files.map((file) => ({
+                                        id: crypto.randomUUID(),
+                                        file,
+                                        preview: URL.createObjectURL(file),
+                                    }));
+                                    state.setPendingFiles((prev) => [...prev, ...withPreviews]);
+                                    e.target.value = '';
+                                }}
+                            />
+                            <Plus className="h-5 w-5" />
+                        </label>
+                    </div>
+                ) : (
+                    <PhotoUploader
+                        photoIds={state.photoIds}
+                        onPhotoIdsChange={state.setPhotoIds}
+                        productId={editId!}
+                        onDeletePhoto={submit.handleDeletePhoto}
+                    />
+                )}
+            </FormSection>
+
+            {/* === Sticky footer === */}
+            <FormFooter>
+                <Button
+                    type="submit"
+                    variant="brand"
+                    className="rounded-full"
+                    disabled={submit.isPending}
+                >
+                    {submit.isPending && <Loader2 className="size-4 animate-spin" />}
+                    {state.isCreating ? 'Создать товар' : 'Сохранить'}
                 </Button>
-            </SheetFooter>
+            </FormFooter>
         </form>
     );
 }

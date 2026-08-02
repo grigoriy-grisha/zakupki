@@ -10,6 +10,7 @@
         }
     },
     "scripts": {
+        "postinstall": "prisma generate --config ./prisma/prisma.config.ts",
         "prisma:generate": "prisma generate --config ./prisma/prisma.config.ts",
         "prisma:migrate": "prisma migrate dev --config ./prisma/prisma.config.ts",
         "prisma:deploy": "prisma migrate deploy --config ./prisma/prisma.config.ts",

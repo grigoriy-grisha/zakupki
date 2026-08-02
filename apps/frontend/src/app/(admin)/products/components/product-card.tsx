@@ -1,61 +1,167 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Package } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Loader2, Lock, Package, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { trpc } from '@/lib/client/trpc';
+import { useDeleteProduct } from '../hooks';
+import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '../lib';
+import { productPhotoUrl } from '@/lib/product-photo-url';
 
-interface ProductCardProps {
-    product: {
+interface CatalogProductCardProps {
+    product: ProductCatalogCardSource & {
         id: number;
         name: string;
-        brand: string | null;
-        pricePerUnit: string | number;
-        unit: { shortName: string } | null;
-        photos: { id: number }[];
+        inActivePurchase?: boolean;
     };
     onClick: () => void;
 }
 
-export function ProductCard({ product, onClick }: ProductCardProps) {
+/** Максимум meta-строк (характеристики/единицы), показываемых на карточке каталога. */
+const MAX_META_LINES = 2;
+
+export function ProductCard({ product, onClick }: CatalogProductCardProps) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const deleteMutation = useDeleteProduct();
+    const utils = trpc.useUtils();
+    const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
+
+    const { nameLine, titleLine, metaLines } = useMemo(() => {
+        const lines = formatProductCatalogCardLines(product, attributeTypes);
+        return {
+            nameLine: lines.find((l) => l.role === 'name'),
+            titleLine: lines.find((l) => l.role === 'title'),
+            metaLines: lines.filter((l) => l.role === 'meta'),
+        };
+    }, [product, attributeTypes]);
+
     const photo = product.photos?.[0];
-    const price = Number(product.pricePerUnit);
+    const visibleMetaLines = metaLines.slice(0, MAX_META_LINES);
+    const hiddenMetaCount = Math.max(0, metaLines.length - MAX_META_LINES);
+
+    async function handleDelete() {
+        try {
+            await deleteMutation.mutateAsync({ id: product.id });
+            await utils.products.list.invalidate();
+            toast.success('Товар удалён');
+            setConfirmOpen(false);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Ошибка удаления');
+        }
+    }
 
     return (
-        <Card
-            className="group overflow-hidden transition-all hover:shadow-md hover:border-primary/20 cursor-pointer"
-            onClick={onClick}
-        >
-            <div className="relative h-44 bg-muted">
-                {photo ? (
-                    <img
-                        src={`/api/photos/${photo.id}`}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    />
-                ) : (
-                    <div className="flex h-full items-center justify-center">
-                        <Package className="h-12 w-12 text-muted-foreground/30" />
-                    </div>
+        <>
+            <Card
+                rounded="2xl"
+                className={cn(
+                    'group relative flex h-full flex-col cursor-pointer overflow-hidden border py-0 transition-all duration-200 ease-out',
+                    'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg',
                 )}
-                <Badge className="absolute bottom-2 right-2">
-                    {product.unit?.shortName ?? ''}
-                </Badge>
-            </div>
+                onClick={onClick}
+            >
+                {/* ── Фото ── */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
+                    {photo ? (
+                        <div className="h-full w-full overflow-hidden">
+                            <img
+                                src={productPhotoUrl(
+                                    photo.id,
+                                    `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`,
+                                )}
+                                alt={product.name}
+                                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex h-full items-center justify-center">
+                            <Package className="h-10 w-10 text-fg-tertiary/40" />
+                        </div>
+                    )}
 
-            <CardContent className="p-4">
-                <h3 className="font-semibold leading-tight line-clamp-1">{product.name}</h3>
-                {product.brand && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">{product.brand}</p>
-                )}
-                <div className="mt-2 flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary">
-                        {price.toLocaleString('ru-RU')} ₽
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                        за {product.unit?.shortName ?? ''}
-                    </span>
+                    {/* Бейдж «В закупке» — объясняет отсутствие кнопки удаления */}
+                    {product.inActivePurchase && (
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-11-medium leading-none text-white backdrop-blur-md">
+                            <Lock className="size-2.5" />
+                            В закупке
+                        </div>
+                    )}
+
+                    {/* Кнопка удаления — только для товаров вне закупки */}
+                    {!product.inActivePurchase && (
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1.5 right-1.5 z-[1] h-7 w-7 opacity-70 transition-opacity group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmOpen(true);
+                            }}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
                 </div>
-            </CardContent>
-        </Card>
+
+                {/* ── Контент ── */}
+                <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
+                    {/* Название */}
+                    {nameLine ? (
+                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-primary sm:text-14-semibold">
+                            {nameLine.text}
+                        </p>
+                    ) : (
+                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-primary sm:text-14-semibold">
+                            {product.name}
+                        </p>
+                    )}
+
+                    {/* Подзаголовок (бренд + тип) */}
+                    {titleLine && (
+                        <p className="line-clamp-1 text-12-medium leading-snug text-fg-secondary">
+                            {titleLine.text}
+                        </p>
+                    )}
+
+                    {/* Характеристики / единицы — максимум MAX_META_LINES строк */}
+                    {visibleMetaLines.map((line, index) => (
+                        <p key={`${index}-${line.text}`} className="line-clamp-1 text-11-regular leading-snug text-fg-tertiary">
+                            {line.text}
+                        </p>
+                    ))}
+
+                    {/* Скрытые характеристики */}
+                    {hiddenMetaCount > 0 && (
+                        <p className="text-11-medium leading-snug text-fg-tertiary transition-colors group-hover:text-fg-secondary">
+                            +{hiddenMetaCount} ещё
+                        </p>
+                    )}
+                </div>
+            </Card>
+
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <DialogContent onClick={(e) => e.stopPropagation()}>
+                    <DialogHeader>
+                        <DialogTitle>Удалить товар?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Товар <strong>{product.name}</strong> будет удалён без возможности восстановления.
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" disabled={deleteMutation.isPending} onClick={handleDelete}>
+                            {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Удалить
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

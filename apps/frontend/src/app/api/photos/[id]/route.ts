@@ -1,19 +1,34 @@
+import { loadProductPhoto } from '@zakupki/storage';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { storage } from '@/lib/server/storage';
+import { dbClient } from '@zakupki/database';
+
+function photoResponse(data: ArrayBuffer | Buffer, mimeType: string, objectKey: string) {
+    return new Response(data as BodyInit, {
+        headers: {
+            'Content-Type': mimeType,
+            'Cache-Control': 'public, max-age=86400',
+            ETag: `"${objectKey}"`,
+        },
+    });
+}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const photo = await storage.read(Number(id));
+
+    const photo = await dbClient.productPhoto.findUnique({
+        where: { id: Number(id) },
+        select: { objectKey: true, mimeType: true },
+    });
 
     if (!photo) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    return new Response(new Uint8Array(photo.data), {
-        headers: {
-            'Content-Type': photo.mimeType,
-            'Cache-Control': 'public, max-age=31536000, immutable',
-        },
-    });
+    const data = await loadProductPhoto(photo.objectKey);
+    if (!data) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    return photoResponse(data, photo.mimeType, photo.objectKey);
 }

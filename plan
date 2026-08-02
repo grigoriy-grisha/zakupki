@@ -1,0 +1,177 @@
+Отлично, вижу схему. Она уже хорошо построена, давай натяну логику на неё детально.
+
+---
+
+## Ключевые таблицы и их роль
+
+**`Purchase`** — сама закупка. Имеет два статуса:
+- `status` (PurchaseStatus) — административный: DRAFT → ACTIVE → SUPPLEMENT → CLOSED → ARRIVED → DONE
+- `fulfillmentStatus` (PurchaseFulfillmentStatus) — этап исполнения, именно по нему строится вся логика доступа
+
+**`PurchaseItem`** — товар в закупке (уникален: `@@unique([purchaseId, productId])`). Здесь хранится `targetRemainder` — это и есть "сколько упаковок поставщика" в граммах/единицах. Остаток вычисляется как `targetRemainder - SUM(orderLines.quantity)`.
+
+**`OrderLine`** — строка заказа конкретного пользователя на конкретный товар. Связка `@@unique([purchaseItemId, userId])` означает: один пользователь — одна строка на товар. Количество просто меняется при редактировании.
+
+**`PurchaseOrder`** — факт участия пользователя в закупке (`@@unique([userId, purchaseId])`). Создаётся когда пользователь добавляет первый товар.
+
+---
+
+## Логика по этапам `fulfillmentStatus`
+
+### COLLECTION — Сбор заказов
+
+Пользователь может свободно добавлять и убирать товары.
+
+```
+Пользователь добавляет товар (quantity = 40г):
+  1. Проверить: remaining(purchaseItem) >= 40
+  2. Upsert OrderLine { purchaseItemId, userId, quantity: 40 }
+  3. Upsert PurchaseOrder { userId, purchaseId }  ← факт участия
+
+Пользователь убирает 20г:
+  1. Новый quantity = текущий - 20 = 20г
+  2. Если quantity <= 0 → удалить OrderLine
+  3. Если у пользователя не осталось OrderLine → удалить PurchaseOrder
+
+baseQuantity = NULL на этом этапе (ещё не заморожен)
+```
+
+Остаток по товару: `targetRemainder - SUM(активных orderLines.quantity)`
+
+---
+
+### COLLECTION → REORDER — переход
+
+Это самый важный момент. При переходе нужно **заморозить снимок**:
+
+```
+Для каждой активной OrderLine в этой закупке:
+  SET baseQuantity = quantity   ← снимок текущего состояния
+```
+
+`baseQuantity` — это "сколько пользователь взял в период сбора". Он больше не меняется. Это защита от манипуляций и основа для расчёта дельты на REORDER.
+
+---
+
+### REORDER — Добор
+
+Пользователь может:
+- **Убавить** от своего заказа (но не ниже 0)
+- **Добрать из остатка** (взять ещё)
+- **НЕ может** добавить новый товар которого у него не было
+
+```
+Убавить (было 40г, убирает 20г):
+  1. newQty = 40 - 20 = 20г
+  2. Проверить: newQty >= 0
+  3. UPDATE OrderLine.quantity = 20
+  → Остаток вырос на 20г (автоматически, т.к. вычисляется)
+
+Добрать из остатка (берёт ещё 20г):
+  1. Проверить: remaining >= 20
+  2. newQty = 40 + 20 = 60г
+  3. UPDATE OrderLine.quantity = 60
+  → Остаток уменьшился на 20г
+
+Убрать полностью (qty → 0):
+  1. DELETE OrderLine
+  2. Проверить: остались ли другие OrderLine у пользователя
+  3. Если нет → DELETE PurchaseOrder
+```
+
+`baseQuantity` не трогаем — он заморожен и нужен для истории/аналитики.
+
+---
+
+### REORDER → PAYMENT — переход
+
+Никаких заморозок не нужно. Просто меняем `fulfillmentStatus`.
+
+---
+
+### PAYMENT — Оплата
+
+Пользователь **не может** менять количество товаров. Только:
+- Полностью отменить свой заказ (все OrderLine → CANCELLED)
+- Добрать из остатка (взять ещё, если остаток есть)
+- Оплатить через Payment
+
+```
+Отмена заказа пользователем или админом:
+  1. UPDATE OrderLine.status = CANCELLED  (для всех линий пользователя)
+  2. UPDATE PurchaseOrder — можно оставить как факт что был
+  → Остаток освобождается автоматически (фильтр WHERE status = ACTIVE)
+
+Добор из остатка:
+  1. Проверить: remaining >= delta
+  2. UPDATE OrderLine.quantity += delta
+  (только если OrderLine уже существует — новые не создаём)
+
+Убавить — НЕЛЬЗЯ
+Добавить новый товар — НЕЛЬЗЯ
+```
+
+---
+
+### После PAYMENT (SUPPLIER_ASSEMBLY и далее)
+
+Заказы заморожены полностью. Нельзя ничего менять кроме добора из остатка:
+
+```
+Добор из остатка — МОЖНО (если остаток есть)
+Убавить — НЕЛЬЗЯ
+Отменить — НЕЛЬЗЯ
+```
+
+---
+
+## Как считать остаток — единая функция
+
+```typescript
+async function getRemaining(purchaseItemId: number): Promise<Decimal> {
+  const item = await prisma.purchaseItem.findUniqueOrThrow({
+    where: { id: purchaseItemId },
+    select: {
+      targetRemainder: true,
+      orderLines: {
+        where: { status: 'ACTIVE' },
+        select: { quantity: true }
+      }
+    }
+  })
+
+  if (!item.targetRemainder) return new Decimal(0)
+
+  const taken = item.orderLines.reduce(
+    (sum, line) => sum.plus(line.quantity),
+    new Decimal(0)
+  )
+
+  return item.targetRemainder.minus(taken)
+}
+```
+
+---
+
+## Таблица разрешений по этапам
+
+| Действие | COLLECTION | REORDER | PAYMENT | После PAYMENT |
+|---|---|---|---|---|
+| Добавить новый товар | ✅ | ❌ | ❌ | ❌ |
+| Убавить существующий | ✅ | ✅ | ❌ | ❌ |
+| Убрать полностью | ✅ | ✅ | ❌ | ❌ |
+| Добрать из остатка | ❌ | ✅ | ✅ | ✅ |
+| Отменить весь заказ | ✅ | ✅ | ✅ | ❌ |
+| Заморозить baseQty | ❌ | при переходе | — | — |
+
+---
+
+## Где хранить `targetRemainder`
+
+У тебя в схеме `targetRemainder Decimal?` уже есть на `PurchaseItem`. Это правильно — это и есть "сколько грамм/единиц доступно по этому товару в закупке". Администратор задаёт его вручную.
+
+Если нужно поддержать **несколько упаковок поставщика** в будущем (например 2 упаковки по 100г = 200г), можешь добавить `supplierPacksCount Int` и считать `targetRemainder = supplierPackSize * supplierPacksCount`. Пока `targetRemainder` напрямую — проще.
+
+---
+
+Что разобрать подробнее — валидацию на уровне API, транзакции при переходе между этапами, или логику Payment с промокодами?

@@ -1,14 +1,18 @@
 'use client';
 
+import { useState } from 'react';
+
 import { trpc } from '@/lib/client/trpc';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShoppingBag } from 'lucide-react';
-import { UserOrdersRow } from './components';
+
+import { UserOrdersRow, UserProfileSheet, type UserListItem } from './components';
 
 export default function UsersPage() {
     const { data: users, isLoading } = trpc.users.list.useQuery();
+    const [profileUser, setProfileUser] = useState<UserListItem | null>(null);
 
     return (
         <div className="space-y-6">
@@ -19,7 +23,7 @@ export default function UsersPage() {
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">Участники</h1>
                     <p className="text-sm text-muted-foreground">
-                        {users?.length ?? 0} участников · нажмите на строку для просмотра заказов
+                        {users?.length ?? 0} участников · стрелка — закупки, имя — профиль
                     </p>
                 </div>
             </div>
@@ -32,32 +36,44 @@ export default function UsersPage() {
                 </div>
             ) : (
                 <Card>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-12" />
                                     <TableHead>Имя</TableHead>
-                                    <TableHead>Заказы</TableHead>
+                                    <TableHead>Роль</TableHead>
+                                    <TableHead>Закупки</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {users?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                             Нет участников
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                {users?.map((user) => {
-                                    const name = [user.firstName, user.lastName].filter(Boolean).join(' ');
-                                    return <UserOrdersRow key={user.id} userId={user.id} userName={name} />;
-                                })}
+                                {users?.map((user) => (
+                                    <UserOrdersRow
+                                        key={user.id}
+                                        user={{ ...user, role: user.role ?? 'CLIENT' }}
+                                        onOpenProfile={setProfileUser}
+                                    />
+                                ))}
                             </TableBody>
                         </Table>
                     </CardContent>
                 </Card>
             )}
+
+            <UserProfileSheet
+                user={profileUser}
+                open={profileUser != null}
+                onOpenChange={(open) => {
+                    if (!open) setProfileUser(null);
+                }}
+            />
         </div>
     );
 }

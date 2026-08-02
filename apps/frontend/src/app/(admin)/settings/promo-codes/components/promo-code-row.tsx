@@ -7,7 +7,6 @@ import { CircleCheck, CircleX, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTogglePromoCode } from '../hooks';
 import { getPromoStatus } from '../lib';
-
 interface PromoCodeRowProps {
     promo: {
         id: number;
@@ -15,7 +14,7 @@ interface PromoCodeRowProps {
         label: string | null;
         type: 'PERCENT' | 'FIXED';
         value: string | number;
-        purchase: any;
+        purchase: unknown;
         usedCount: number;
         maxUses: number | null;
         minAmount: string | null;
@@ -33,36 +32,27 @@ export function PromoCodeRow({ promo, onDelete }: PromoCodeRowProps) {
     return (
         <TableRow key={promo.id}>
             <TableCell>
-                <code className="rounded bg-muted px-2 py-0.5 text-sm font-mono font-semibold">
-                    {promo.code}
-                </code>
+                <code className="rounded bg-muted px-2 py-0.5 text-sm font-mono font-semibold">{promo.code}</code>
             </TableCell>
-            <TableCell className="text-sm text-muted-foreground">
-                {promo.label || '—'}
-            </TableCell>
+            <TableCell className="text-sm text-muted-foreground">{promo.label || '—'}</TableCell>
             <TableCell>
-                <Badge variant="outline">
-                    {promo.type === 'PERCENT' ? 'Процент' : 'Фикс. сумма'}
-                </Badge>
+                <Badge variant="outline">{promo.type === 'PERCENT' ? 'Процент' : 'Фикс. сумма'}</Badge>
             </TableCell>
             <TableCell className="font-medium">
                 {promo.type === 'PERCENT'
                     ? `${Number(promo.value)}%`
                     : `${Number(promo.value).toLocaleString('ru-RU')} ₽`}
             </TableCell>
-            <TableCell className="text-sm">
-                {purchase ? `${purchase.tag} — ${purchase.title}` : 'Любая'}
-            </TableCell>
+            <TableCell className="text-sm">{purchase ? `${purchase.tag}` : 'Любая'}</TableCell>
             <TableCell className="text-center text-sm">
-                {promo.usedCount}{promo.maxUses ? `/${promo.maxUses}` : ''}
+                {promo.usedCount}
+                {promo.maxUses ? `/${promo.maxUses}` : ''}
             </TableCell>
             <TableCell className="text-sm">
                 {promo.minAmount ? `${Number(promo.minAmount).toLocaleString('ru-RU')} ₽` : '—'}
             </TableCell>
             <TableCell className="text-sm">
-                {promo.expiresAt
-                    ? new Date(promo.expiresAt).toLocaleDateString('ru-RU')
-                    : 'Бессрочно'}
+                {promo.expiresAt ? new Date(promo.expiresAt).toLocaleDateString('ru-RU') : 'Бессрочно'}
             </TableCell>
             <TableCell className="text-center">
                 <Badge className={status.className}>{status.label}</Badge>

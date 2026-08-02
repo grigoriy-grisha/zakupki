@@ -1,184 +1,119 @@
 'use client';
 
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowRightIcon, LayoutDashboardIcon, PackageIcon, PlusIcon, ShoppingCartIcon } from 'lucide-react';
+
+import { AppLink } from '@/components/app-link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    LayoutDashboard,
-    Package,
-    ShoppingCart,
-    Users,
-    Clock,
-    ArrowRight,
-    TrendingUp,
-    AlertCircle,
-} from 'lucide-react';
-
-const stats = [
-    { title: 'Активных закупок', value: '3', icon: ShoppingCart, change: '+1 за неделю' },
-    { title: 'Участников', value: '24', icon: Users, change: '+5 за неделю' },
-    { title: 'Товаров в каталоге', value: '156', icon: Package, change: '+12 за неделю' },
-    { title: 'Ожидают оплаты', value: '8', icon: AlertCircle, change: 'На сумму 45 000 ₽' },
-];
-
-const recentOrders = [
-    { id: 1, user: 'Анна К.', product: 'MIYUKI 11/0 Black', quantity: '50г', amount: '6 000 ₽', date: 'Вчера', status: 'new' },
-    { id: 2, user: 'Мария С.', product: 'TOHO 15/0 Gold', quantity: '30г', amount: '5 400 ₽', date: 'Вчера', status: 'confirmed' },
-    { id: 3, user: 'Елена П.', product: 'Чехия 2 мм Кристалл', quantity: '100 шт', amount: '2 500 ₽', date: '2 дня', status: 'paid' },
-    { id: 4, user: 'Ольга В.', product: 'Нитка Fireline 4lb', quantity: '20 м', amount: '1 800 ₽', date: '3 дня', status: 'new' },
-    { id: 5, user: 'Татьяна Р.', product: 'Мионо 0,3мм', quantity: '50 м', amount: '1 200 ₽', date: '4 дня', status: 'confirmed' },
-];
-
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-    new: { label: 'Новый', variant: 'default' },
-    confirmed: { label: 'Подтверждён', variant: 'secondary' },
-    paid: { label: 'Оплачен', variant: 'outline' },
-};
-
-const recentPurchases = [
-    { id: 1, tag: '#СЗ7', title: 'Бисер MIYUKI', status: 'ACTIVE', deadline: '15 июня', progress: 85, items: 12, orders: 24, amount: '185 000 ₽', color: 'bg-claude-terracotta' },
-    { id: 2, tag: '#СЗ8', title: 'Чешские кристаллы', status: 'ACTIVE', deadline: '20 июня', progress: 62, items: 8, orders: 18, amount: '92 000 ₽', color: 'bg-claude-purple' },
-    { id: 3, tag: '#СЗ9', title: 'Нити и леска', status: 'DRAFT', deadline: '25 июня', progress: 0, items: 5, orders: 0, amount: '0 ₽', color: 'bg-muted-foreground/50' },
-];
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { trpc } from '@/lib/client/trpc';
 
 export default function DashboardPage() {
+    const { data: purchases } = trpc.purchases.list.useQuery({ status: 'ACTIVE' });
+    const { data: products } = trpc.products.list.useQuery({});
+
+    const activeCount = purchases?.length ?? 0;
+    const productCount = products?.length ?? 0;
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                        <LayoutDashboard className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-                        <p className="text-sm text-muted-foreground">Обзор ваших закупок</p>
-                    </div>
-                </div>
-            </div>
+        <div className="flex flex-col gap-6">
+            <PageHeader
+                title="Dashboard"
+                description="Обзор ваших закупок"
+                actions={
+                    <Button asChild variant="brand" className="rounded-full">
+                        <AppLink href="/purchases">
+                            <PlusIcon className="size-4" />
+                            Новая закупка
+                        </AppLink>
+                    </Button>
+                }
+            />
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {stats.map((stat) => (
-                    <Card key={stat.title} className="p-4 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                                <stat.icon className="h-4 w-4 text-primary" />
-                            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card rounded="2xl" className="gap-3 p-5">
+                    <div className="flex items-center justify-between">
+                        <span className="text-14-medium text-fg-secondary">Активных закупок</span>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <ShoppingCartIcon className="size-4" />
                         </div>
-                        <p className="mt-2 text-3xl font-bold">{stat.value}</p>
-                        <p className="mt-1 text-xs font-medium text-muted-foreground">
-                            <TrendingUp className="mr-1 inline h-3 w-3" />
-                            {stat.change}
-                        </p>
-                    </Card>
-                ))}
+                    </div>
+                    <p className="text-36-semibold text-fg-primary tracking-tighter">{activeCount}</p>
+                    <Button variant="link" className="h-auto p-0 text-14-medium text-primary" asChild>
+                        <AppLink href="/purchases" className="inline-flex items-center gap-1">
+                            Перейти к закупкам <ArrowRightIcon className="size-3.5" />
+                        </AppLink>
+                    </Button>
+                </Card>
+                <Card rounded="2xl" className="gap-3 p-5">
+                    <div className="flex items-center justify-between">
+                        <span className="text-14-medium text-fg-secondary">Товаров в каталоге</span>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <PackageIcon className="size-4" />
+                        </div>
+                    </div>
+                    <p className="text-36-semibold text-fg-primary tracking-tighter">{productCount}</p>
+                    <Button variant="link" className="h-auto p-0 text-14-medium text-primary" asChild>
+                        <AppLink href="/products" className="inline-flex items-center gap-1">
+                            Перейти к каталогу <ArrowRightIcon className="size-3.5" />
+                        </AppLink>
+                    </Button>
+                </Card>
             </div>
 
-            {/* Main Content */}
-            <div className="grid gap-6 lg:grid-cols-5">
-                {/* Recent Orders */}
-                <Card className="lg:col-span-3">
+            <div className="grid gap-4 lg:grid-cols-2">
+                <Card rounded="2xl">
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Последние заказы</CardTitle>
-                            <p className="text-sm text-muted-foreground">Новые заказы участников</p>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href="/purchases">
-                                Все заказы
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
+                        <CardTitle>Активные закупки</CardTitle>
+                        <StatusBadge status="active" />
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Пользователь</TableHead>
-                                    <TableHead>Товар</TableHead>
-                                    <TableHead>Кол-во</TableHead>
-                                    <TableHead>Сумма</TableHead>
-                                    <TableHead>Статус</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recentOrders.map((order) => {
-                                    const sc = statusConfig[order.status];
-                                    return (
-                                        <TableRow key={order.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                                                        {order.user.charAt(0)}
-                                                    </div>
-                                                    <span className="font-medium">{order.user}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-sm">{order.product}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{order.quantity}</TableCell>
-                                            <TableCell className="font-medium">{order.amount}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={sc.variant}>{sc.label}</Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
+                        {activeCount === 0 ? (
+                            <EmptyState
+                                icon={LayoutDashboardIcon}
+                                title="Пока нет активных закупок"
+                                description="Создайте первую закупку, чтобы начать собирать заказы участников"
+                                actionLabel="Создать закупку"
+                                onAction={() => (window.location.href = '/purchases')}
+                            />
+                        ) : (
+                            <ul className="flex flex-col gap-1.5">
+                                {purchases?.map((p) => (
+                                    <li key={p.id}>
+                                        <AppLink
+                                            href={`/purchases/${p.id}`}
+                                            className="group flex items-center justify-between rounded-xl border border-border bg-bg-card px-4 py-3 text-14-medium text-fg-primary transition-colors hover:bg-bg-soft"
+                                        >
+                                            <span className="truncate">{p.tag}</span>
+                                            <ArrowRightIcon className="size-4 text-fg-tertiary transition-transform group-hover:translate-x-0.5" />
+                                        </AppLink>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </CardContent>
                 </Card>
 
-                {/* Active Purchases */}
-                <Card className="lg:col-span-2">
+                <Card rounded="2xl">
                     <CardHeader>
-                        <CardTitle>Активные закупки</CardTitle>
-                        <p className="text-sm text-muted-foreground">Текущие закупки и их прогресс</p>
+                        <CardTitle>Быстрые действия</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
-                        {recentPurchases.map((purchase) => (
-                            <Link key={purchase.id} href={`/purchases/${purchase.id}`}>
-                                <div className="group rounded-xl border p-4 transition-colors hover:border-primary/30">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`h-2.5 w-2.5 rounded-full ${purchase.color}`} />
-                                            <span className="font-semibold">{purchase.tag}</span>
-                                        </div>
-                                        <Badge
-                                            variant={purchase.status === 'ACTIVE' ? 'default' : 'secondary'}
-                                            className={purchase.status === 'ACTIVE' ? 'bg-success-50 text-success pointer-events-none' : 'pointer-events-none'}
-                                        >
-                                            {purchase.status === 'ACTIVE' ? 'Активна' : 'Черновик'}
-                                        </Badge>
-                                    </div>
-                                    <p className="mt-1 text-sm font-medium group-hover:text-primary transition-colors">{purchase.title}</p>
-                                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            До {purchase.deadline}
-                                        </span>
-                                        <span>{purchase.items} тов.</span>
-                                        <span>{purchase.orders} заказов</span>
-                                    </div>
-                                    {purchase.progress > 0 && (
-                                        <>
-                                            <div className="mt-3 h-2 rounded-full bg-secondary">
-                                                <div
-                                                    className={`h-2 rounded-full transition-all ${purchase.progress >= 80 ? 'bg-success' : purchase.progress >= 50 ? 'bg-primary' : 'bg-warning'}`}
-                                                    style={{ width: `${purchase.progress}%` }}
-                                                />
-                                            </div>
-                                            <div className="mt-1 flex items-center justify-between text-xs">
-                                                <span className="text-muted-foreground">Прогресс</span>
-                                                <span className="font-medium">{purchase.progress}%</span>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </Link>
-                        ))}
+                    <CardContent className="flex flex-col gap-2">
+                        <Button variant="outline" size="lg" asChild className="justify-start rounded-xl">
+                            <AppLink href="/products">
+                                <PackageIcon className="mr-2 size-4" />
+                                Каталог товаров
+                            </AppLink>
+                        </Button>
+                        <Button variant="outline" size="lg" asChild className="justify-start rounded-xl">
+                            <AppLink href="/shop">
+                                <ShoppingCartIcon className="mr-2 size-4" />
+                                Мои закупки (участник)
+                            </AppLink>
+                        </Button>
                     </CardContent>
                 </Card>
             </div>

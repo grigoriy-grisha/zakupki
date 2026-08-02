@@ -1,60 +1,81 @@
 'use client';
 
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AppLink } from '@/components/app-link';
 import { Badge } from '@/components/ui/badge';
-import { STATUS_LABELS, STATUS_VARIANT } from '../lib/constants';
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+import { usePurchaseActions } from '../[id]/hooks/use-purchase-actions';
+import { STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
+import { PurchaseFulfillmentStatusSelect } from './purchase-fulfillment-status-select';
 
-interface PurchaseCardProps {
+interface AdminPurchaseListCardProps {
     purchase: {
         id: number;
         tag: string;
-        title: string;
         status: string;
-        deadline: string;
-        items: { orderLines: { amountDue: unknown }[] }[];
+        fulfillmentStatus?: PurchaseFulfillmentStatus | null;
+        items?: { orderLines: { amountDue: unknown }[] }[];
     };
 }
 
-export function PurchaseCard({ purchase }: PurchaseCardProps) {
-    const deadline = new Date(purchase.deadline);
-    const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    const totalOrders = purchase.items.reduce((sum, item) => sum + item.orderLines.length, 0);
-    const totalAmount = purchase.items.reduce(
+export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
+    const items = purchase.items ?? [];
+    const { updateFulfillmentStatus } = usePurchaseActions(purchase.id);
+
+    const totalOrders = items.reduce((sum, item) => sum + item.orderLines.length, 0);
+    const totalAmount = items.reduce(
         (sum, item) => sum + item.orderLines.reduce((s, ol) => s + Number(ol.amountDue), 0),
         0,
     );
+    const isDraft = purchase.status === 'DRAFT';
 
     return (
-        <Link href={`/purchases/${purchase.id}`}>
-            <Card className="transition-colors hover:bg-accent/50">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-base">{purchase.tag}</CardTitle>
-                        <Badge variant={STATUS_VARIANT[purchase.status] ?? 'secondary'}>
-                            {STATUS_LABELS[purchase.status] ?? purchase.status}
-                        </Badge>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <p className="font-medium">{purchase.title}</p>
-                    <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>
-                            До {deadline.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                        </span>
-                        {purchase.status === 'ACTIVE' && (
-                            <span className={daysLeft <= 3 ? 'text-destructive font-medium' : ''}>
-                                {daysLeft > 0 ? `${daysLeft} дн.` : 'Просрочено'}
-                            </span>
-                        )}
-                    </div>
-                    <div className="mt-2 flex items-center gap-4 text-sm">
-                        <span>{purchase.items.length} товаров</span>
-                        <span>{totalOrders} заказов</span>
-                        <span className="font-medium">{totalAmount.toLocaleString('ru-RU')} ₽</span>
-                    </div>
-                </CardContent>
-            </Card>
-        </Link>
+        <div className="group flex h-full flex-col gap-2 rounded-2xl border border-border bg-bg-card p-3.5 transition-colors hover:border-border-strong hover:bg-bg-soft">
+            <div className="flex items-start justify-between gap-2">
+                <AppLink
+                    href={`/purchases/${purchase.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-2 leading-tight"
+                >
+                    <span className="truncate text-16-semibold text-fg-primary tracking-tight">
+                        {purchase.tag}
+                    </span>
+                    <Badge
+                        variant={STATUS_VARIANT[purchase.status] ?? 'secondary'}
+                        type="subtle"
+                        size="sm"
+                    >
+                        {STATUS_LABELS[purchase.status] ?? purchase.status}
+                    </Badge>
+                </AppLink>
+            </div>
+
+            <AppLink href={`/purchases/${purchase.id}`} className="block">
+                <div className="mt-1 flex items-center gap-2 text-12-regular text-fg-tertiary">
+                    <span className="tabular-nums">{items.length} тов.</span>
+                    <span className="text-fg-disabled">·</span>
+                    <span className="tabular-nums">{totalOrders} заказ.</span>
+                    <span className="text-fg-disabled">·</span>
+                    <span className="font-semibold text-fg-primary tabular-nums">
+                        {totalAmount.toLocaleString('ru-RU')} ₽
+                    </span>
+                </div>
+            </AppLink>
+
+            {!isDraft && (
+                <div
+                    className="pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                >
+                    <PurchaseFulfillmentStatusSelect
+                        value={purchase.fulfillmentStatus}
+                        disabled={updateFulfillmentStatus.isPending}
+                        triggerClassName="h-8 w-full rounded-full text-12-medium"
+                        onChange={(fulfillmentStatus) => {
+                            updateFulfillmentStatus.mutate({ id: purchase.id, fulfillmentStatus });
+                        }}
+                    />
+                </div>
+            )}
+        </div>
     );
 }

@@ -1,30 +1,27 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PurchaseCard } from './components';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PurchaseCard, PurchaseForm } from './components';
 
 export default function PurchasesPage() {
     const [tab, setTab] = useState('all');
+    const [newOpen, setNewOpen] = useState(false);
 
-    const { data: purchases, isLoading } = trpc.purchases.list.useQuery(
-        tab === 'all' ? undefined : { status: tab },
-    );
+    const { data: purchases, isLoading } = trpc.purchases.list.useQuery(tab === 'all' ? undefined : { status: tab });
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold tracking-tight">Закупки</h1>
-                <Button asChild>
-                    <Link href="/purchases/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Новая закупка
-                    </Link>
+                <Button onClick={() => setNewOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Новая закупка
                 </Button>
             </div>
 
@@ -46,9 +43,7 @@ export default function PurchasesPage() {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {purchases?.length === 0 && (
-                                <p className="col-span-full py-12 text-center text-muted-foreground">
-                                    Нет закупок
-                                </p>
+                                <p className="col-span-full py-12 text-center text-muted-foreground">Нет закупок</p>
                             )}
                             {purchases?.map((purchase) => (
                                 <PurchaseCard key={purchase.id} purchase={purchase} />
@@ -57,6 +52,16 @@ export default function PurchasesPage() {
                     )}
                 </TabsContent>
             </Tabs>
+
+            <Dialog open={newOpen} onOpenChange={setNewOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Новая закупка</DialogTitle>
+                        <DialogDescription>Заполните данные для создания новой закупки</DialogDescription>
+                    </DialogHeader>
+                    <PurchaseForm />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

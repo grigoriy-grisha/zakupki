@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ShopCommentRenderer > renders the standard shop comment text 1`] = `"Оформить заказ в приложении:"`;
+
+exports[`ShopCommentRenderer > returns the same text regardless of subtext (currently unused) 1`] = `"Оформить заказ в приложении:"`;

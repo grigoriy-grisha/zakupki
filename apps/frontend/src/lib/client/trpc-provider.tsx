@@ -11,6 +11,11 @@ function getBaseUrl() {
     return `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
+function getTelegramInitData(): string | null {
+    if (typeof window === 'undefined') return null;
+    return window.Telegram?.WebApp?.initData ?? null;
+}
+
 export function TrpcProvider({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
         () =>
@@ -25,7 +30,31 @@ export function TrpcProvider({ children }: { children: React.ReactNode }) {
     );
     const [trpcClient] = useState(() =>
         trpc.createClient({
-            links: [httpBatchLink({ url: `${getBaseUrl()}/api/trpc` })],
+            links: [
+                httpBatchLink({
+                    url: `${getBaseUrl()}/api/trpc`,
+                    fetch(url, options) {
+                        const telegramInitData = getTelegramInitData();
+                        const headers: Record<string, string> = {};
+
+                        if (options?.headers) {
+                            if (options.headers instanceof Headers) {
+                                options.headers.forEach((value, key) => {
+                                    headers[key] = value;
+                                });
+                            } else {
+                                Object.assign(headers, options.headers);
+                            }
+                        }
+
+                        if (telegramInitData) {
+                            headers.Authorization = `Bearer ${telegramInitData}`;
+                        }
+
+                        return fetch(url, { ...options, headers });
+                    },
+                }),
+            ],
         }),
     );
 

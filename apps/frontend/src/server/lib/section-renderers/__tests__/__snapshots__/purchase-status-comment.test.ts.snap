@@ -1,0 +1,55 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PurchaseStatusCommentRenderer > all purchase statuses > status=ACTIVE → renders with correct label and hint 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>Активная</b>
+Закупка активирована — приём заказов открыт."
+`;
+
+exports[`PurchaseStatusCommentRenderer > all purchase statuses > status=ARRIVED → renders with correct label and hint 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>Прибыла</b>
+Товар прибыл."
+`;
+
+exports[`PurchaseStatusCommentRenderer > all purchase statuses > status=CLOSED → renders with correct label and hint 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>Закрыта</b>
+Закупка закрыта."
+`;
+
+exports[`PurchaseStatusCommentRenderer > all purchase statuses > status=DONE → renders with correct label and hint 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>Завершена</b>
+Закупка завершена."
+`;
+
+exports[`PurchaseStatusCommentRenderer > all purchase statuses > status=DRAFT → renders with correct label and hint 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>Черновик</b>
+Закупка в черновике."
+`;
+
+exports[`PurchaseStatusCommentRenderer > handles unknown status 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>BOGUS</b>"
+`;
+
+exports[`PurchaseStatusCommentRenderer > renders comment without channelPostMessageId prefix 1`] = `
+"<b>Закупка</b>
+<b>Активная</b>
+Закупка активирована — приём заказов открыт."
+`;
+
+exports[`PurchaseStatusCommentRenderer > renders full comment with channelPostMessageId prefix 1`] = `
+"<b>Закупка</b>
+Пост #123
+<b>Активная</b>
+Закупка активирована — приём заказов открыт."
+`;

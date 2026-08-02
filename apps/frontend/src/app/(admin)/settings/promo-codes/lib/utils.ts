@@ -1,14 +1,4 @@
-type PromoWithDates = {
-    isActive: boolean;
-    expiresAt: string | null;
-    maxUses: number | null;
-    usedCount: number;
-};
-
-type PromoStatus = {
-    label: string;
-    className: string;
-};
+import type { PromoStatus, PromoWithDates } from './types';
 
 export function getPromoStatus(promo: PromoWithDates): PromoStatus {
     const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date();

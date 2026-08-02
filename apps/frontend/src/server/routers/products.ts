@@ -1,72 +1,81 @@
 import { z } from 'zod';
+import { Prisma } from '@zakupki/database';
+import { AppError } from '@zakupki/types';
 
-import { ProductRepository } from '../domain/product.repository';
-import { ProductService } from '../services/product.service';
-import type { PrismaClient } from '@zakupki/database';
-import { adminProcedure, publicProcedure, router } from '../trpc';
+import { withDbConflict } from '../lib/error-utils';
+import { adminProcedure, protectedProcedure, router } from '../trpc';
 
-function services(db: PrismaClient) {
-    return { product: new ProductService(new ProductRepository(db)) };
-}
+const productCreateInput = z.object({
+    name: z.string().min(1),
+    articleNumber: z.string().nullable().optional(),
+    brandId: z.number().nullable().optional(),
+    unitCode: z.string().optional(),
+    multiplicity: z.number().optional(),
+    attributeIds: z.array(z.number()).optional(),
+    characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
+});
+
+const productUpdateInput = z.object({
+    id: z.number(),
+    expectedVersion: z.number().optional(),
+    name: z.string().optional(),
+    articleNumber: z.string().nullable().optional(),
+    brandId: z.number().nullable().optional(),
+    unitCode: z.string().optional(),
+    multiplicity: z.number().optional(),
+    attributeIds: z.array(z.number()).optional(),
+    characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
+});
 
 export const productsRouter = router({
-    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
-        return product.list(input?.search);
-    }),
-
-    getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
-        return product.getById(input.id);
-    }),
-
-    create: adminProcedure
-        .input(
-            z.object({
-                name: z.string().min(1),
-                description: z.string().optional(),
-                unitId: z.number(),
-                pricePerUnit: z.number().positive(),
-                brand: z.string().optional(),
-                sku: z.string().optional(),
-            }),
-        )
-        .mutation(async ({ ctx, input }) => {
-            const { product } = services(ctx.db);
-            return product.create(input);
+    list: protectedProcedure
+        .input(z.object({ search: z.string().optional() }).optional())
+        .query(async ({ ctx, input }) => {
+            return ctx.services.product.list(input?.search);
         }),
 
-    update: adminProcedure
-        .input(
-            z.object({
-                id: z.number(),
-                name: z.string().optional(),
-                description: z.string().optional(),
-                unitId: z.number().optional(),
-                pricePerUnit: z.number().positive().optional(),
-                brand: z.string().optional(),
-                sku: z.string().optional(),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+        return ctx.services.product.getById(input.id);
+    }),
+
+    create: adminProcedure.input(productCreateInput).mutation(async ({ ctx, input }) => {
+        return withDbConflict(() =>
+            ctx.services.product.create({
+                ...input,
+                unitCode: input.unitCode ?? 'piece',
+                multiplicity: input.multiplicity ?? 1,
             }),
-        )
-        .mutation(async ({ ctx, input }) => {
-            const { id, ...data } = input;
-            const { product } = services(ctx.db);
-            return product.update(id, data);
-        }),
+        );
+    }),
+
+    update: adminProcedure.input(productUpdateInput).mutation(async ({ ctx, input }) => {
+        const { id, expectedVersion, ...data } = input;
+        if (expectedVersion != null) {
+            const updated = await ctx.services.product.updateWithVersionCheck(id, data, expectedVersion);
+            if (!updated) {
+                throw new AppError(
+                    'CONFLICT',
+                    'Товар был изменён другим пользователем. Обновите страницу и попробуйте снова.',
+                );
+            }
+            return updated;
+        }
+        return withDbConflict(() => ctx.services.product.update(id, data));
+    }),
 
     delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
-        return product.delete(input.id);
+        try {
+            return await ctx.services.product.delete(input.id);
+        } catch (err) {
+            if (err instanceof AppError) throw err;
+            if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+                throw new AppError('NOT_FOUND', 'Товар не найден');
+            }
+            throw err;
+        }
     }),
 
-    uploadPhoto: adminProcedure
-        .input(z.object({ productId: z.number(), sortOrder: z.number().default(0) }))
-        .mutation(async () => {
-            return { ok: true };
-        }),
-
     deletePhoto: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
-        const { product } = services(ctx.db);
-        return product.deletePhoto(input.id);
+        return ctx.services.product.deletePhoto(input.id);
     }),
 });
