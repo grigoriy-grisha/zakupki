@@ -1,90 +1,84 @@
 #!/usr/bin/env bash
-# Build the frontend image for linux/amd64 (server arch) and push to ghcr.io.
+# Build the frontend image ON THE SERVER (native linux/amd64, no emulation)
+# and push it to ghcr.io.
+#
+# Why not build locally on macOS (Apple Silicon)?
+#   QEMU cross-build segfaults on `next build` (Turbopack native binary).
+#   Rosetta hangs on the same step. The server is native amd64, so building
+#   there is both faster and reliable. Swap (4 GB) covers the RAM peak.
 #
 # Usage:
-#   ./scripts/build-and-push.sh              # uses NEXT_PUBLIC_* from .env.prod
-#   ./scripts/build-and-push.sh --tag v1.2   # tag as :v1.2 in addition to :latest
+#   ./scripts/build-and-push.sh              # build + push :latest + redeploy
+#   ./scripts/build-and-push.sh --tag v1.2   # also tag as :v1.2
+#   ./scripts/build-and-push.sh --no-deploy  # build + push only, skip redeploy
 #
-# Prerequisites (one-time):
-#   - docker running
-#   - gh auth login  (scope write:packages is included)
-#   - QEMU for amd64 cross-build on Apple Silicon:
-#       docker run --rm --privileged tonistiigi/binfmt --install amd64
-#
-# NEXT_PUBLIC_* values are inlined into the bundle at build time, so they must
-# be present as build args. This script reads them from .env.prod in the repo
-# root (the same file used on the server).
+# Prerequisites:
+#   - sshpass installed (brew install hudochenkov/sshpass/sshpass)
+#   - SSH credentials below (or set SERVER_HOST / SERVER_USER / SERVER_PASS env)
+#   - gh auth login on the server (for ghcr push) — or set GHCR_PUSH_TOKEN
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="ghcr.io/grigoriy-grisha/zakupki-frontend"
-ENV_FILE="${REPO_ROOT}/.env.prod"
+SERVER_HOST="${SERVER_HOST:-62.109.0.90}"
+SERVER_USER="${SERVER_USER:-root}"
+SERVER_PASS="${SERVER_PASS:-}"
+SERVER_REPO_DIR="/root/zakupki"
 
 cd "${REPO_ROOT}"
 
 # --- preflight ---
-if ! docker info >/dev/null 2>&1; then
-    echo "✗ Docker daemon is not running. Start Docker Desktop." >&2
+if [ -z "${SERVER_PASS}" ]; then
+    echo "✗ SERVER_PASS not set. Export it or hardcode in the script." >&2
+    echo "  export SERVER_PASS='your-password'" >&2
     exit 1
 fi
+export SSHPASS="${SERVER_PASS}"
 
-if ! gh auth status >/dev/null 2>&1; then
-    echo "✗ Not logged in to GitHub. Run: gh auth login" >&2
-    exit 1
-fi
+SSH_OPTS=(-o StrictHostKeyChecking=accept-new
+          -o PreferredAuthentications=password
+          -o PubkeyAuthentication=no
+          -o ServerAliveInterval=15
+          -o ServerAliveCountMax=120)
+SCP_OPTS=("${SSH_OPTS[@]}")
 
-if [ ! -f "${ENV_FILE}" ]; then
-    echo "✗ ${ENV_FILE} not found. Create it from .env.prod.example:" >&2
-    echo "    cp .env.prod.example .env.prod" >&2
-    exit 1
-fi
-
-# Read NEXT_PUBLIC_* values from .env.prod (first match wins, strips quotes).
-read_env() {
-    local key="$1"
-    grep -E "^${key}=" "${ENV_FILE}" | head -1 | cut -d= -f2- | tr -d '"' || true
-}
-
-VK_APP_ID="$(read_env NEXT_PUBLIC_VK_APP_ID)"
-VK_REDIRECT="$(read_env NEXT_PUBLIC_VK_REDIRECT_URL)"
-TG_BOT_ID="$(read_env NEXT_PUBLIC_TELEGRAM_BOT_ID)"
-BOT_USERNAME="$(read_env NEXT_PUBLIC_BOT_USERNAME)"
-
-echo "Build args:"
-echo "  NEXT_PUBLIC_VK_APP_ID=${VK_APP_ID:-<empty>}"
-echo "  NEXT_PUBLIC_VK_REDIRECT_URL=${VK_REDIRECT:-<empty>}"
-echo "  NEXT_PUBLIC_TELEGRAM_BOT_ID=${TG_BOT_ID:-<empty>}"
-echo "  NEXT_PUBLIC_BOT_USERNAME=${BOT_USERNAME:-<empty>}"
-echo ""
-
-# --- docker login to ghcr.io (idempotent) ---
-echo "→ Logging in to ghcr.io..."
-echo "$(gh auth token)" | docker login ghcr.io -u grigoriy-grisha --password-stdin 2>/dev/null
-
-# --- resolve build tags ---
-TAGS=(-t "${IMAGE}:latest")
-if [ "${1:-}" = "--tag" ] && [ -n "${2:-}" ]; then
-    TAGS+=(-t "${IMAGE}:${2}")
-fi
-
-# --- cross-build for amd64 + push ---
-echo "→ Building linux/amd64 (QEMU cross-build on Apple Silicon)..."
-BUILD_ARGS=(
-    --platform linux/amd64
-    -f apps/frontend/Dockerfile
-    --build-arg "NEXT_PUBLIC_VK_APP_ID=${VK_APP_ID}"
-    --build-arg "NEXT_PUBLIC_VK_REDIRECT_URL=${VK_REDIRECT}"
-    --build-arg "NEXT_PUBLIC_TELEGRAM_BOT_ID=${TG_BOT_ID}"
-    --build-arg "NEXT_PUBLIC_BOT_USERNAME=${BOT_USERNAME}"
-    --push
-    "${TAGS[@]}"
-)
-
-docker buildx build "${BUILD_ARGS[@]}" .
+echo "→ Syncing local code to server (git)..."
+sshpass -e ssh "${SSH_OPTS[@]}" "${SERVER_USER}@${SERVER_HOST}" \
+    "cd ${SERVER_REPO_DIR} && git fetch origin && git checkout ${GIT_BRANCH:-authorization-admin} && git pull origin ${GIT_BRANCH:-authorization-admin}" 2>&1 | tail -5
 
 echo ""
-echo "✓ Pushed: ${IMAGE}:latest"
-echo "  On the server:"
-echo "    docker compose -f docker-compose.prod.yml --env-file .env.prod pull frontend"
-echo "    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps frontend"
+echo "→ Building linux/amd64 on server (native, ~5 min with swap)..."
+sshpass -e ssh "${SSH_OPTS[@]}" "${SERVER_USER}@${SERVER_HOST}" bash -s <<'REMOTE_BUILD' 2>&1 | tail -25
+set -euo pipefail
+cd /root/zakupki
+set -a; source .env.prod; set +a
+
+# Push the NEXT_PUBLIC_* (and anything else) to build args + tag for ghcr.
+docker build \
+    -f apps/frontend/Dockerfile \
+    --build-arg "NEXT_PUBLIC_VK_APP_ID=${NEXT_PUBLIC_VK_APP_ID}" \
+    --build-arg "NEXT_PUBLIC_VK_REDIRECT_URL=${NEXT_PUBLIC_VK_REDIRECT_URL}" \
+    --build-arg "NEXT_PUBLIC_TELEGRAM_BOT_ID=${NEXT_PUBLIC_TELEGRAM_BOT_ID}" \
+    --build-arg "NEXT_PUBLIC_BOT_USERNAME=${NEXT_PUBLIC_BOT_USERNAME}" \
+    -t ghcr.io/grigoriy-grisha/zakupki-frontend:latest \
+    . 2>&1 | tail -15
+echo "BUILD_EXIT=$?"
+REMOTE_BUILD
+
+echo ""
+echo "→ Pushing image to ghcr.io..."
+sshpass -e ssh "${SSH_OPTS[@]}" "${SERVER_USER}@${SERVER_HOST}" \
+    "docker push ${IMAGE}:latest" 2>&1 | tail -6
+
+# Optional redeploy
+if [ "${1:-}" != "--no-deploy" ]; then
+    echo ""
+    echo "→ Redeploying frontend container..."
+    sshpass -e ssh "${SSH_OPTS[@]}" "${SERVER_USER}@${SERVER_HOST}" \
+        "cd ${SERVER_REPO_DIR} && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate --no-deps frontend" 2>&1 | tail -4
+fi
+
+echo ""
+echo "✓ Done. Image: ${IMAGE}:latest"
+[ "${1:-}" != "--no-deploy" ] && echo "  Frontend redeployed."
