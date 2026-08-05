@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "PurchaseStatus" AS ENUM ('DRAFT', 'ACTIVE', 'CLOSED', 'ARRIVED', 'DONE');
 
@@ -123,26 +126,41 @@ CREATE TABLE "VkCredential" (
 );
 
 -- CreateTable
+CREATE TABLE "Supplier" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "contact" TEXT,
+    "notes" TEXT,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Supplier_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Currency" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "code" TEXT,
+    "symbol" TEXT,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Currency_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Product" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
-    "description" TEXT,
     "unitCode" TEXT NOT NULL DEFAULT 'piece',
     "multiplicity" DECIMAL(10,3) NOT NULL DEFAULT 1,
-    "pricePerUnit" DECIMAL(10,2) NOT NULL,
-    "minPackageAmount" DECIMAL(10,3),
-    "minPackageUnit" TEXT,
-    "priceTiers" JSONB,
-    "supplierPackageAmount" DECIMAL(10,3),
-    "supplierPackageUnit" TEXT,
-    "supplierPackagePrice" DECIMAL(10,2),
-    "referenceStock" DECIMAL(10,3),
-    "referenceStockUnit" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "articleNumber" TEXT,
     "brandId" INTEGER,
-    "supplierPackageTiers" JSONB,
     "version" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
@@ -165,14 +183,23 @@ CREATE TABLE "ProductPhoto" (
 CREATE TABLE "Purchase" (
     "id" SERIAL NOT NULL,
     "tag" TEXT NOT NULL,
-    "supplier" TEXT NOT NULL,
     "status" "PurchaseStatus" NOT NULL DEFAULT 'DRAFT',
-    "minAmount" DECIMAL(10,2) NOT NULL,
-    "deadline" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "fulfillmentStatus" "PurchaseFulfillmentStatus" NOT NULL DEFAULT 'COLLECTION',
 
     CONSTRAINT "Purchase_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PurchaseCurrencyRate" (
+    "id" SERIAL NOT NULL,
+    "purchaseId" INTEGER NOT NULL,
+    "currencyId" INTEGER NOT NULL,
+    "rateToRub" DECIMAL(10,4) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PurchaseCurrencyRate_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -182,6 +209,9 @@ CREATE TABLE "PurchaseOrder" (
     "purchaseId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "comment" TEXT,
+    "commentAuthor" INTEGER,
+    "commentAt" TIMESTAMP(3),
 
     CONSTRAINT "PurchaseOrder_pkey" PRIMARY KEY ("id")
 );
@@ -191,13 +221,29 @@ CREATE TABLE "PurchaseItem" (
     "id" SERIAL NOT NULL,
     "purchaseId" INTEGER NOT NULL,
     "productId" INTEGER NOT NULL,
-    "priceOverride" DECIMAL(10,2),
+    "supplierId" INTEGER,
+    "description" TEXT,
+    "minPackageAmount" DECIMAL(10,3),
+    "minPackageUnit" TEXT,
+    "supplementStep" DECIMAL(10,3),
     "targetRemainder" DECIMAL(10,3),
+    "supplierLimit" DECIMAL(10,3),
+    "supplierLimitUnit" TEXT,
     "tgMessageId" TEXT,
     "tgChannelId" TEXT,
     "publicationState" "PublicationState" NOT NULL DEFAULT 'DRAFT',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "packAmount" DECIMAL(10,3),
+    "packUnit" TEXT,
+    "currencyId" INTEGER,
+    "pricePerPackCurrency" DECIMAL(10,2),
+    "orgFeePercentOverride" DECIMAL(5,2),
+    "orderedQty" DECIMAL(10,3),
+    "assembledQty" DECIMAL(10,3),
+    "reorderedQty" DECIMAL(10,3),
+    "adminComment" TEXT,
+    "hidden" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "PurchaseItem_pkey" PRIMARY KEY ("id")
 );
@@ -207,10 +253,14 @@ CREATE TABLE "OrderLine" (
     "id" SERIAL NOT NULL,
     "purchaseItemId" INTEGER NOT NULL,
     "userId" INTEGER NOT NULL,
+    "purchaseOrderId" INTEGER NOT NULL,
     "quantity" DECIMAL(10,3) NOT NULL,
     "amountDue" DECIMAL(10,2) NOT NULL,
     "status" "OrderLineStatus" NOT NULL DEFAULT 'ACTIVE',
+    "createdOnStage" "PurchaseFulfillmentStatus" NOT NULL DEFAULT 'COLLECTION',
     "baseQuantity" DECIMAL(10,3),
+    "basePackageCount" INTEGER,
+    "packageCount" INTEGER NOT NULL DEFAULT 0,
     "tgChatMessageId" BIGINT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -273,6 +323,22 @@ CREATE TABLE "AppSetting" (
     CONSTRAINT "AppSetting_pkey" PRIMARY KEY ("key")
 );
 
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "type" TEXT NOT NULL,
+    "payload" JSONB NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "url" TEXT,
+    "readAt" TIMESTAMP(3),
+    "tgDeliveredAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Characteristic_name_key" ON "Characteristic"("name");
 
@@ -328,6 +394,18 @@ CREATE UNIQUE INDEX "VkCredential_userId_key" ON "VkCredential"("userId");
 CREATE UNIQUE INDEX "VkCredential_vkId_key" ON "VkCredential"("vkId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Supplier_name_key" ON "Supplier"("name");
+
+-- CreateIndex
+CREATE INDEX "Supplier_position_idx" ON "Supplier"("position");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Currency_name_key" ON "Currency"("name");
+
+-- CreateIndex
+CREATE INDEX "Currency_position_idx" ON "Currency"("position");
+
+-- CreateIndex
 CREATE INDEX "Product_createdAt_idx" ON "Product"("createdAt");
 
 -- CreateIndex
@@ -349,6 +427,12 @@ CREATE INDEX "Purchase_createdAt_idx" ON "Purchase"("createdAt");
 CREATE INDEX "Purchase_fulfillmentStatus_idx" ON "Purchase"("fulfillmentStatus");
 
 -- CreateIndex
+CREATE INDEX "PurchaseCurrencyRate_purchaseId_idx" ON "PurchaseCurrencyRate"("purchaseId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PurchaseCurrencyRate_purchaseId_currencyId_key" ON "PurchaseCurrencyRate"("purchaseId", "currencyId");
+
+-- CreateIndex
 CREATE INDEX "PurchaseOrder_userId_idx" ON "PurchaseOrder"("userId");
 
 -- CreateIndex
@@ -358,13 +442,19 @@ CREATE INDEX "PurchaseOrder_purchaseId_idx" ON "PurchaseOrder"("purchaseId");
 CREATE UNIQUE INDEX "PurchaseOrder_userId_purchaseId_key" ON "PurchaseOrder"("userId", "purchaseId");
 
 -- CreateIndex
+CREATE INDEX "PurchaseItem_purchaseId_productId_idx" ON "PurchaseItem"("purchaseId", "productId");
+
+-- CreateIndex
 CREATE INDEX "PurchaseItem_purchaseId_idx" ON "PurchaseItem"("purchaseId");
 
 -- CreateIndex
 CREATE INDEX "PurchaseItem_productId_idx" ON "PurchaseItem"("productId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "PurchaseItem_purchaseId_productId_key" ON "PurchaseItem"("purchaseId", "productId");
+CREATE INDEX "PurchaseItem_supplierId_idx" ON "PurchaseItem"("supplierId");
+
+-- CreateIndex
+CREATE INDEX "PurchaseItem_currencyId_idx" ON "PurchaseItem"("currencyId");
 
 -- CreateIndex
 CREATE INDEX "OrderLine_userId_idx" ON "OrderLine"("userId");
@@ -376,7 +466,7 @@ CREATE INDEX "OrderLine_purchaseItemId_idx" ON "OrderLine"("purchaseItemId");
 CREATE INDEX "OrderLine_status_idx" ON "OrderLine"("status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "OrderLine_purchaseItemId_userId_key" ON "OrderLine"("purchaseItemId", "userId");
+CREATE UNIQUE INDEX "OrderLine_purchaseItemId_userId_createdOnStage_key" ON "OrderLine"("purchaseItemId", "userId", "createdOnStage");
 
 -- CreateIndex
 CREATE INDEX "Payment_userId_idx" ON "Payment"("userId");
@@ -395,6 +485,12 @@ CREATE UNIQUE INDEX "PromoCode_code_key" ON "PromoCode"("code");
 
 -- CreateIndex
 CREATE INDEX "PromoCode_purchaseId_idx" ON "PromoCode"("purchaseId");
+
+-- CreateIndex
+CREATE INDEX "Notification_userId_readAt_idx" ON "Notification"("userId", "readAt");
+
+-- CreateIndex
+CREATE INDEX "Notification_tgDeliveredAt_idx" ON "Notification"("tgDeliveredAt");
 
 -- AddForeignKey
 ALTER TABLE "AttributeType" ADD CONSTRAINT "AttributeType_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "AttributeType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -436,6 +532,12 @@ ALTER TABLE "Product" ADD CONSTRAINT "Product_brandId_fkey" FOREIGN KEY ("brandI
 ALTER TABLE "ProductPhoto" ADD CONSTRAINT "ProductPhoto_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "PurchaseCurrencyRate" ADD CONSTRAINT "PurchaseCurrencyRate_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseCurrencyRate" ADD CONSTRAINT "PurchaseCurrencyRate_currencyId_fkey" FOREIGN KEY ("currencyId") REFERENCES "Currency"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "PurchaseOrder" ADD CONSTRAINT "PurchaseOrder_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -448,7 +550,16 @@ ALTER TABLE "PurchaseItem" ADD CONSTRAINT "PurchaseItem_productId_fkey" FOREIGN 
 ALTER TABLE "PurchaseItem" ADD CONSTRAINT "PurchaseItem_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "PurchaseItem" ADD CONSTRAINT "PurchaseItem_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PurchaseItem" ADD CONSTRAINT "PurchaseItem_currencyId_fkey" FOREIGN KEY ("currencyId") REFERENCES "Currency"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "OrderLine" ADD CONSTRAINT "OrderLine_purchaseItemId_fkey" FOREIGN KEY ("purchaseItemId") REFERENCES "PurchaseItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrderLine" ADD CONSTRAINT "OrderLine_purchaseOrderId_fkey" FOREIGN KEY ("purchaseOrderId") REFERENCES "PurchaseOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrderLine" ADD CONSTRAINT "OrderLine_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -467,3 +578,7 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "PromoCode" ADD CONSTRAINT "PromoCode_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
