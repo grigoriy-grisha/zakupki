@@ -10,7 +10,7 @@
 
 services:
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.4
     container_name: traefik
     restart: unless-stopped
     command:
@@ -20,15 +20,25 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=infra"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
     labels:
       - "traefik.enable=true"
-      # Dashboard at http://<host>/dashboard/ (and /api/ for the raw API).
-      - "traefik.http.routers.traefik.rule=PathPrefix(`/dashboard`) || PathPrefix(`/api`)"
-      - "traefik.http.routers.traefik.entrypoints=web"
+      # Dashboard at https://traefik.${HOST}/dashboard/ (and /api/ for the raw API).
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${HOST}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=myresolver"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.services.traefik.loadbalancer.server.port=8080"
       - "traefik.http.middlewares.compress.compress=true"
@@ -71,14 +81,10 @@ services:
       - infra
 
   frontend:
-    build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_VK_APP_ID: ${NEXT_PUBLIC_VK_APP_ID}
-        NEXT_PUBLIC_VK_REDIRECT_URL: ${NEXT_PUBLIC_VK_REDIRECT_URL}
-        NEXT_PUBLIC_TELEGRAM_BOT_ID: ${NEXT_PUBLIC_TELEGRAM_BOT_ID}
-        NEXT_PUBLIC_BOT_USERNAME: ${NEXT_PUBLIC_BOT_USERNAME}
+    # Pre-built image from ghcr.io — avoids running the heavy `next build`
+    # on the memory-constrained server (1.8 GB RAM).
+    # To rebuild: build locally, then `docker push ghcr.io/grigoriy-grisha/zakupki-frontend:latest`.
+    image: ghcr.io/grigoriy-grisha/zakupki-frontend:latest
     container_name: frontend
     restart: always
     env_file:
@@ -96,8 +102,9 @@ services:
       - uploads:/app/uploads
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.rule=Host(`${HOST}`) || Host(`www.${HOST}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
       - "traefik.http.routers.frontend.middlewares=compress"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
     networks:
