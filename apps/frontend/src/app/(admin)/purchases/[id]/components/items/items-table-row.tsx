@@ -210,6 +210,7 @@ export function ItemsTableRow({
                 <div className={cn('flex items-center gap-2', item.hidden && 'opacity-50')}>
                     <ProductPhotoPreview
                         photoId={item.product.photos?.[0]?.id}
+                        photoIds={item.product.photos?.map((p) => p.id)}
                         alt={item.product.name}
                         thumbClassName="size-7 shrink-0 rounded-md"
                     />

@@ -230,7 +230,13 @@ function ItemDetailLoaded({
                 {/* Photo */}
                 <div className="relative h-72 w-full shrink-0 overflow-hidden rounded-xl bg-muted lg:h-96 lg:w-96">
                     {product.photos?.[0] ? (
-                        <ProductPhotoPreview photoId={product.photos[0].id} alt={product.name} fill zoomSize="lg" />
+                        <ProductPhotoPreview
+                            photoId={product.photos[0].id}
+                            photoIds={product.photos.map((p: { id: number }) => p.id)}
+                            alt={product.name}
+                            fill
+                            zoomSize="lg"
+                        />
                     ) : (
                         <div className="flex h-full items-center justify-center">
                             <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />

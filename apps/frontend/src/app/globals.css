@@ -558,6 +558,29 @@
     animation: shimmer 1.6s linear infinite;
 }
 
+/* Lightbox photo transition — slide + fade for gallery navigation */
+@keyframes lightbox-slide-right {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes lightbox-slide-left {
+    from {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 /* Novel / Tiptap editor content styles (не трогаем) */
 .novel-editor p {
     margin: 0;

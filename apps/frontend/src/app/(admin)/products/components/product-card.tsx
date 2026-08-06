@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
 import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '../lib';
-import { productPhotoUrl } from '@/lib/product-photo-url';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 
 interface CatalogProductCardProps {
     product: ProductCatalogCardSource & {
@@ -67,14 +67,12 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                 {/* ── Фото ── */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
                     {photo ? (
-                        <div className="h-full w-full overflow-hidden">
-                            <img
-                                src={productPhotoUrl(
-                                    photo.id,
-                                    `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`,
-                                )}
+                        <div className="h-full w-full overflow-hidden transition-transform duration-500 ease-out group-hover:scale-105">
+                            <ProductPhotoPreview
+                                photoId={photo.id}
+                                photoIds={product.photos?.map((p) => p.id)}
                                 alt={product.name}
-                                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                                fill
                             />
                         </div>
                     ) : (

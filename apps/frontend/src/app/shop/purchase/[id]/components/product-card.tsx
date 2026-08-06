@@ -73,6 +73,7 @@ function ProductCardImpl({
     });
 
     const photo = product.photos?.[0];
+    const photoIds = product.photos?.map((p: { id: number }) => p.id);
     const detailHref = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
 
     // Поставщик позиции закупки (опц.). Показываем под названием, чтобы
@@ -149,7 +150,12 @@ function ProductCardImpl({
                     {/* Контейнер с overflow-hidden — оборачиваем, чтобы scale работал корректно */}
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105">
-                            <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
+                            <ProductPhotoPreview
+                                photoId={photo?.id}
+                                photoIds={photoIds}
+                                alt={product.name}
+                                fill
+                            />
                         </div>
                     </div>
 

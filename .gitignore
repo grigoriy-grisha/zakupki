@@ -10,3 +10,4 @@ generated
 uploads
 *.tsbuildinfo
 letsencrypt
+.pnpm-store/

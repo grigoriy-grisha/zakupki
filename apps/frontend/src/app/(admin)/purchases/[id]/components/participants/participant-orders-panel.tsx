@@ -85,6 +85,7 @@ export function ParticipantOrdersPanel({
                             {product && (
                                 <ProductPhotoPreview
                                     photoId={product.photos?.[0]?.id}
+                                    photoIds={product.photos?.map((p) => p.id)}
                                     alt={product.name}
                                     thumbClassName="h-11 w-11 rounded-md"
                                 />
