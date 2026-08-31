@@ -2,7 +2,7 @@ name: Build and Push
 
 on:
     push:
-        branches: [main, authorization-admin]
+        branches: [main]
     workflow_dispatch:
         inputs:
             tag:

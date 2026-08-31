@@ -11,3 +11,7 @@ uploads
 *.tsbuildinfo
 letsencrypt
 .pnpm-store/
+.zcode/
+.claude/
+.agents/
+skills-lock.json
