@@ -11,7 +11,6 @@ function formatPurchaseProductLine1(product: ProductLabelSource): string {
     return article || displayName;
 }
 
-/** Части второй строки заголовка: все атрибуты «в заголовок» по дереву типов. */
 function getPurchaseProductSubtitleParts(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string[] {
     const showInTitleByTypeId = buildShowInTitleByTypeId(attributeTypes);
     return getProductTitleAttributeNames(product, showInTitleByTypeId, attributeTypes)
@@ -35,7 +34,6 @@ export function getPurchaseProductSubtitleLine(
     return '';
 }
 
-/** Две строки для таблицы «Товары в закупке»: «номер название» и бренд/тип. */
 export function formatPurchaseProductLabel(
     product: ProductLabelSource,
     _showInTitleByTypeId?: ShowInTitleByTypeId,

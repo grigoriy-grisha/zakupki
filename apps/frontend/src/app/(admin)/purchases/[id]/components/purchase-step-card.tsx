@@ -25,6 +25,7 @@ interface PurchaseStepCardProps {
     onOpenRemainderDialog?: () => void;
     /** Тег закупки (для текста подтверждения). */
     purchaseTag?: string;
+    canClose?: boolean;
 }
 
 const NEXT_STATUS_LABEL: Partial<Record<PurchaseFulfillmentStatus, string>> = {
@@ -56,6 +57,7 @@ export function PurchaseStepCard({
     onClearPublishSelection,
     onOpenRemainderDialog,
     purchaseTag,
+    canClose,
 }: PurchaseStepCardProps) {
     const [publishOpen, setPublishOpen] = useState(false);
     const actions = usePurchaseActions(purchaseId);
@@ -88,6 +90,21 @@ export function PurchaseStepCard({
         if (!next) return;
         advanceConfirm.requestStatusChange({ target: next });
     }
+
+    const closeConfirm = useStatusChangeConfirm<'DONE'>({
+        onConfirm: () => actions.complete.mutate({ id: purchaseId }),
+        buildMessage: () => ({
+            title: 'Завершить закупку?',
+            description: (
+                <>
+                    Закупка {purchaseTag && <strong>{purchaseTag}</strong>} получит статус «Завершена».
+                    Участники получат уведомление, отменить будет нельзя.
+                </>
+            ),
+            confirmLabel: 'Завершить',
+            variant: 'destructive',
+        }),
+    });
 
     function handlePublish() {
         actions.publishAll.mutate(
@@ -145,8 +162,14 @@ export function PurchaseStepCard({
                             <ArrowRightIcon className="size-3.5" />
                         </Button>
                     )}
-                    {desc.actions.includes('close') && (
-                        <Button variant="brand" size="sm" className="rounded-full" disabled>
+                    {desc.actions.includes('close') && canClose && (
+                        <Button
+                            variant="brand"
+                            size="sm"
+                            className="rounded-full"
+                            onClick={() => closeConfirm.requestStatusChange({ target: 'DONE' })}
+                            disabled={actions.complete.isPending}
+                        >
                             <ShieldCheckIcon className="size-3.5" />
                             Закрыть закупку
                         </Button>
@@ -162,6 +185,7 @@ export function PurchaseStepCard({
                 onPublish={handlePublish}
             />
             {advanceConfirm.dialog}
+            {closeConfirm.dialog}
         </div>
     );
 }

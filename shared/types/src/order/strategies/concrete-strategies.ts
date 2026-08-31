@@ -17,27 +17,25 @@ import type { StageStrategy } from './stage-strategy';
 import { CollectionStrategy } from './collection-strategy';
 import { ReorderStrategy } from './reorder-strategy';
 import { PaymentPlusStrategy } from './payment-plus-strategy';
+import { OrderingClosedStrategy } from './ordering-closed-strategy';
 
 // Re-export concrete classes для удобства (импорт из одного места)
 export { CollectionStrategy } from './collection-strategy';
 export { ReorderStrategy } from './reorder-strategy';
 export { PaymentPlusStrategy } from './payment-plus-strategy';
+export { OrderingClosedStrategy } from './ordering-closed-strategy';
 
 // ── Factory ─────────────────────────────────────────────────────────
 
-/**
- * Создаёт concrete strategy по item.fulfillmentStatus.
- *
- * - COLLECTION → CollectionStrategy
- * - REORDER → ReorderStrategy
- * - PAYMENT+ (PAYMENT, SUPPLIER_ASSEMBLY, ..., READY_FOR_PICKUP) → PaymentPlusStrategy
- */
 export function makeStrategy(item: PurchaseItem, lines: readonly OrderLine[]): StageStrategy {
     switch (item.fulfillmentStatus) {
         case 'COLLECTION':
             return new CollectionStrategy(item, lines);
         case 'REORDER':
             return new ReorderStrategy(item, lines);
+        case 'PACKAGING':
+        case 'READY_FOR_PICKUP':
+            return new OrderingClosedStrategy(item, lines);
         default:
             return new PaymentPlusStrategy(item, lines);
     }

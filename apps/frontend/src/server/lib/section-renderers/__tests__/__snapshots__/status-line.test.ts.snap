@@ -27,21 +27,18 @@ exports[`StatusLineRenderer > escapes HTML in unit name (safety) 1`] = `
 exports[`StatusLineRenderer > formats large numbers with ru-RU separators (1 234 567) 1`] = `
 "<b>Доборы</b>
 Лимит поставщика: <b>1 234 567 кг</b>
-Целевой остаток: <b>0 кг</b>
 Свободно к заказу: <b>1 234 567 кг</b>"
 `;
 
 exports[`StatusLineRenderer > free-to-order clamps negative result to 0 (oversubscribed) 1`] = `
 "<b>Доборы</b>
 Лимит поставщика: <b>100 кг</b>
-Целевой остаток: <b>50 кг</b>
 Свободно к заказу: <b>0 кг</b>"
 `;
 
-exports[`StatusLineRenderer > renders full block: status + supplier limit + target remainder + free 1`] = `
+exports[`StatusLineRenderer > renders full block: status + supplier limit + free 1`] = `
 "<b>Доборы</b>
 Лимит поставщика: <b>500 кг</b>
-Целевой остаток: <b>50 кг</b>
 Свободно к заказу: <b>400 кг</b>"
 `;
 

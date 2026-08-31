@@ -27,17 +27,10 @@ export class ProductService {
     async update(id: number, data: ProductWriteData) {
         const result = await this.repo.update(id, data);
 
-        // При смене unitCode товара синхронизируем единицы фасовки/лимита на
-        // связанных позициях закупок. Раньше minPackageUnit/supplierLimitUnit
-        // оставались со старой единицей (напр. «шт» при смене на gram), из-за
-        // чего хинты показывали рассогласованный текст («от N шт» при «гр»).
         if (data.unitCode !== undefined) {
             await this.syncUnitOnPurchaseItems(id, data.unitCode);
         }
 
-        // Emit в шину: найти все PurchaseItem с этим Product, у которых УЖЕ есть пост
-        // в канале (tgMessageId != null), и обновить их. Дедуп по `pi:<id>` сольёт
-        // несколько emit'ов в одно обновление в течение debounce-окна.
         const linkedItems = await dbClient.purchaseItem.findMany({
             where: { productId: id, tgMessageId: { not: null } },
             select: { id: true },
@@ -47,21 +40,11 @@ export class ProductService {
         return result;
     }
 
-    /**
-     * Приводит minPackageUnit/supplierLimitUnit/packUnit связанных PurchaseItem
-     * к новой единице товара (Product.unitCode).
-     *
-     * Обновляет только те позиции, где юнит отличается от нового shortName.
-     * Сам шаг числом (minPackageAmount, supplementStep) НЕ трогается — только
-     * единица измерения. Это чинит косметический баг «от N шт» при смене на gram.
-     */
     private async syncUnitOnPurchaseItems(productId: number, unitCode: string) {
         const unit = getUnitByCode(unitCode);
         const shortName = unit?.shortName ?? null;
         if (shortName == null) return;
 
-        // Берём ВСЕ связанные позиции (не только с tgMessageId) — юнит нужно
-        // синхронизировать везде, т.к. он влияет на shop UI и хинты.
         const items = await dbClient.purchaseItem.findMany({
             where: { productId },
             select: {

@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { NovelEditor } from '@/components/ui/novel-editor';
 import { AlertCircle, ChevronRight, Loader2, Trash2 } from 'lucide-react';
-import { findUnknownPlaceholders } from '@/app/(admin)/products/lib';
+import { postTemplateEngine } from '@/lib/product-description';
 import { useUpdatePostTemplate } from '../hooks';
+import { PostTemplatePreview } from './post-template-preview';
 
 export function PostTemplateRow({
     template,
@@ -29,10 +30,7 @@ export function PostTemplateRow({
     const isDirty = trimmedName !== template.name || body !== template.body;
     const canSave = trimmedName.length > 0 && isDirty;
 
-    // Подсветка неизвестных/устаревших меток: они попадут в пост как обычный текст.
-    // Legacy-алиасы ({{цены}} и т.п.) тоже считаются «неизвестными» — пост не сломается,
-    // но админа мягко подтолкнём перейти на актуальное имя.
-    const unknownPlaceholders = useMemo(() => findUnknownPlaceholders(body), [body]);
+    const unknownPlaceholders = useMemo(() => postTemplateEngine.findUnknownPlaceholders(body), [body]);
 
     function handleSave() {
         if (!canSave) return;
@@ -69,7 +67,15 @@ export function PostTemplateRow({
             </div>
             {expanded && (
                 <div className="space-y-3 border-t px-3 pb-3 pt-2">
-                    <NovelEditor key={template.id} value={body} onChange={setBody} placeholder="Текст шаблона поста…" />
+                    <div className="grid gap-3 lg:grid-cols-2">
+                        <NovelEditor
+                            key={template.id}
+                            value={body}
+                            onChange={setBody}
+                            placeholder="Текст шаблона поста…"
+                        />
+                        <PostTemplatePreview body={body} />
+                    </div>
                     {unknownPlaceholders.length > 0 && (
                         <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
                             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />

@@ -4,6 +4,7 @@ import {
     CheckCircle2,
     CircleSlash,
     ListChecks,
+    PackageCheck,
     PackageX,
     Flag,
     RefreshCw,
@@ -27,13 +28,14 @@ const ICONS: Record<NotificationIconKind, typeof CheckCircle2> = {
     'payment-fail': CircleSlash,
     'order-edit': ListChecks,
     'order-remove': PackageX,
+    handoff: PackageCheck,
     stage: Flag,
     status: RefreshCw,
 };
 
 const TONE_ICON: Record<NotificationTone, string> = {
     success: 'text-success',
-    critical: 'text-critical',
+    critical: 'text-error',
     warning: 'text-warning',
     accent: 'text-primary',
     neutral: 'text-fg-secondary',
@@ -41,7 +43,7 @@ const TONE_ICON: Record<NotificationTone, string> = {
 
 const TONE_BG: Record<NotificationTone, string> = {
     success: 'bg-success/10',
-    critical: 'bg-critical/10',
+    critical: 'bg-error/10',
     warning: 'bg-warning/10',
     accent: 'bg-primary/10',
     neutral: 'bg-bg-soft',
@@ -49,7 +51,7 @@ const TONE_BG: Record<NotificationTone, string> = {
 
 const TONE_BORDER: Record<NotificationTone, string> = {
     success: 'border-success/20',
-    critical: 'border-critical/20',
+    critical: 'border-error/20',
     warning: 'border-warning/20',
     accent: 'border-primary/20',
     neutral: 'border-border',

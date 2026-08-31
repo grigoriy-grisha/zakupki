@@ -35,7 +35,7 @@ export function createMockProductHeader(overrides: Partial<ProductHeaderData> = 
 
 export function createMockStatusLineData(overrides: Partial<StatusLineData> = {}): StatusLineData {
     return {
-        item: { supplierLimit: 500, supplierLimitUnit: 'кг', targetRemainder: 50 },
+        item: { supplierLimit: 500, supplierLimitUnit: 'кг' },
         purchase: { fulfillmentStatus: 'REORDER' },
         orderLinesSum: 100,
         ...overrides,

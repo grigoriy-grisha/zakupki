@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { EyeOff, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react';
+import {
+    solvePricePerPackFromPackOrgRub,
+    solvePricePerPackFromPackRub,
+    solvePricePerPackFromUnitRub,
+} from '@zakupki/types';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,18 +35,18 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PackageUnitSelect } from '@/components/shared/package-unit-select';
+import { Highlight } from '@/components/shared/highlight';
 import { TruncatedText } from '@/components/shared/truncated-text';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
-import type { ProductLabelSource } from '../../../../products/lib';
+import type { ProductLabelSource } from '@/lib/product-label';
+import {
+    formatUnitRub,
+    formatWholeRub,
+    getRateToRub,
+} from '../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef, PurchaseItem } from '../../lib/types';
 import { InlineCell } from './inline-cell';
-
-/** Форматирует число как рубли: `1 234,56 ₽`. Пусто/NaN → `—`. */
-function formatRubPrice(value: number | null | undefined): string {
-    if (value == null || !Number.isFinite(value)) return '—';
-    return `${value.toLocaleString('ru-RU')} ₽`;
-}
 
 /** Вычисленные значения колонок новой модели цен (считаются в items-tab). */
 export interface ItemsTableRowDerived {
@@ -83,6 +88,8 @@ interface ItemsTableRowProps {
     /** Курс валют закупки (для расчёта производных колонок 4/5/6). */
     currencyRates: PurchaseCurrencyRateRef[];
     selected: boolean;
+    /** Активный поисковый запрос — для подсветки совпадений. */
+    searchQuery?: string;
     onToggleSelect: (id: number, v: boolean) => void;
     onEdit: (id: number) => void;
     onPublish: (id: number) => void;
@@ -94,6 +101,8 @@ interface ItemsTableRowProps {
     }) => void;
     /** Тихий inline-коммит одного/нескольких полей позиции. */
     onCommit: (patch: ItemPatch) => void;
+    /** Удалить пост в Telegram, оставив товар в закупке. */
+    onDeletePost?: (itemId: number) => void;
     /**
      * Перегенерировать описание из шаблона поста (для опубликованных товаров).
      * Открывает диалог выбора шаблона; сервер пересоберёт description и обновит пост.
@@ -115,9 +124,11 @@ function numOrDash(value: string | number | null | undefined): string {
  */
 function CommentCell({
     value,
+    query = '',
     onCommit,
 }: {
     value: string | null | undefined;
+    query?: string;
     onCommit: (next: string) => void;
 }) {
     const [open, setOpen] = useState(false);
@@ -142,7 +153,9 @@ function CommentCell({
                 aria-label="Редактировать комментарий"
             >
                 <Pencil className="size-3 shrink-0 text-fg-tertiary" />
-                <span className="truncate">{value || '—'}</span>
+                <span className="truncate">
+                    {value ? <Highlight text={value} query={query} /> : '—'}
+                </span>
             </button>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
@@ -169,12 +182,15 @@ function CommentCell({
 export function ItemsTableRow({
     item,
     derived,
+    currencyRates,
     selected,
+    searchQuery = '',
     onToggleSelect,
     onEdit,
     onPublish,
     onDelete,
     onCommit,
+    onDeletePost,
     onRegenerate,
 }: ItemsTableRowProps) {
     const {
@@ -191,6 +207,16 @@ export function ItemsTableRow({
     } = derived;
 
     const unit = item.packUnit ?? item.minPackageUnit ?? shortName;
+
+    const rateToRub = getRateToRub(item, currencyRates);
+    const rubEditable = rateToRub != null && rateToRub > 0;
+    const packSizeRaw = item.packAmount == null ? null : Number(item.packAmount);
+    const packSize = packSizeRaw != null && Number.isFinite(packSizeRaw) ? packSizeRaw : null;
+    const unitEditable = rubEditable && packSize != null && packSize > 0;
+
+    function commitRubPrice(solved: number | null) {
+        if (solved != null) onCommit({ pricePerPackCurrency: solved });
+    }
 
     // Все валюты из справочника — Select всегда активен. Если у выбранной
     // валюты нет курса, производные колонки ₽ (4/5/6) покажут «—».
@@ -220,7 +246,7 @@ export function ItemsTableRow({
                                 fullText={item.product.name ?? ''}
                                 className="text-13-medium text-fg-primary"
                             >
-                                {item.product.name}
+                                <Highlight text={item.product.name ?? ''} query={searchQuery} />
                             </TruncatedText>
                             {item.hidden && (
                                 <EyeOff className="size-3 shrink-0 text-fg-tertiary" />
@@ -262,7 +288,7 @@ export function ItemsTableRow({
             <TableCell className="px-2 py-1 text-right">
                 <div className="flex items-center justify-end gap-1">
                     <InlineCell
-                        value={item.pricePerPackCurrency}
+                        value={item.pricePerPackCurrency == null ? null : Number(item.pricePerPackCurrency)}
                         onCommit={(v) => onCommit({ pricePerPackCurrency: v })}
                         onClear={() => onCommit({ pricePerPackCurrency: 0 })}
                         min={0}
@@ -301,31 +327,69 @@ export function ItemsTableRow({
                 </div>
             </TableCell>
 
-            {/* 4. Цена за упаковку в ₽ (derived) */}
-            <TableCell className="px-3 text-right text-13-medium tabular-nums">
-                {formatRubPrice(packPriceRub)}
+            <TableCell className="px-2 py-1 text-right">
+                <InlineCell
+                    value={packPriceRub}
+                    disabled={!rubEditable}
+                    onCommit={(v) => commitRubPrice(solvePricePerPackFromPackRub(v, rateToRub))}
+                    min={0}
+                    ariaLabel="Цена за упаковку в рублях"
+                    align="right"
+                    placeholder="—"
+                    format={formatWholeRub}
+                    className="w-full"
+                />
             </TableCell>
 
-            {/* 5. Цена за уп. в ₽ + оргсбор (read-only, оргсбор правится в модалке) */}
-            <TableCell className="px-3 text-right">
-                <div className="flex flex-col items-end">
-                    <span className="text-13-medium tabular-nums">
-                        {formatRubPrice(packPriceWithOrgFeeRub)}
+            <TableCell className="px-2 py-1 text-right">
+                <div className="flex items-center justify-end gap-1">
+                    <InlineCell
+                        value={packPriceWithOrgFeeRub}
+                        disabled={!rubEditable}
+                        onCommit={(v) =>
+                            commitRubPrice(
+                                solvePricePerPackFromPackOrgRub(v, rateToRub, orgFeePercent),
+                            )
+                        }
+                        min={0}
+                        ariaLabel="Цена за упаковку с оргсбором в рублях"
+                        align="right"
+                        placeholder="—"
+                        format={formatWholeRub}
+                        className="w-full"
+                    />
+                    <span className="w-9 shrink-0 text-11-regular text-fg-tertiary">
+                        +{orgFeePercent}%
                     </span>
-                    <span className="text-11-regular text-fg-tertiary">+{orgFeePercent}%</span>
                 </div>
             </TableCell>
 
-            {/* 6. Цена за 1ед в ₽ (derived) */}
-            <TableCell className="px-3 text-right">
-                <span className="text-14-semibold tabular-nums text-fg-primary">
-                    {formatRubPrice(unitPriceRub)}
-                    {unitPriceRub != null && (
-                        <span className="ml-1 text-11-regular text-fg-tertiary">
-                            /{unit || 'ед'}
-                        </span>
-                    )}
-                </span>
+            <TableCell className="px-2 py-1 text-right">
+                <div className="flex items-center justify-end gap-1">
+                    <InlineCell
+                        value={unitPriceRub}
+                        disabled={!unitEditable}
+                        onCommit={(v) =>
+                            commitRubPrice(
+                                solvePricePerPackFromUnitRub(
+                                    v,
+                                    rateToRub,
+                                    orgFeePercent,
+                                    packSize,
+                                ),
+                            )
+                        }
+                        min={0}
+                        ariaLabel="Цена за 1 единицу в рублях"
+                        align="right"
+                        placeholder="—"
+                        format={formatUnitRub}
+                        className="w-full"
+                    />
+                    <span className="w-9 shrink-0 text-11-regular text-fg-tertiary">
+                        /{unit || 'ед'}
+                    </span>
+                </div>
             </TableCell>
 
             {/* 7. Собрано (авто из заказов, derived) */}
@@ -396,6 +460,7 @@ export function ItemsTableRow({
             <TableCell className="px-3 py-1">
                 <CommentCell
                     value={item.adminComment}
+                    query={searchQuery}
                     onCommit={(v) => onCommit({ adminComment: v })}
                 />
             </TableCell>
@@ -442,6 +507,11 @@ export function ItemsTableRow({
                         {!published && isActive && !item.hidden && (
                             <DropdownMenuItem onClick={() => onPublish(item.id)}>
                                 <Send className="size-3.5" /> Опубликовать в TG
+                            </DropdownMenuItem>
+                        )}
+                        {published && onDeletePost && (
+                            <DropdownMenuItem onClick={() => onDeletePost(item.id)}>
+                                <Trash2 className="size-3.5" /> Удалить пост в TG
                             </DropdownMenuItem>
                         )}
                         {published && onRegenerate && (

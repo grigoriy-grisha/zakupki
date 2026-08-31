@@ -77,6 +77,18 @@ export function usePublishItemToTg(purchaseId: number) {
     });
 }
 
+export function useDeleteItemPost(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.purchases.deleteItemPost.useMutation({
+        onSuccess: () => {
+            void utils.purchases.getById.invalidate({ id: purchaseId });
+            toast.success('Пост удалён из Telegram');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+}
+
 export function useUpdateItemProduct(purchaseId: number) {
     const utils = trpc.useUtils();
 
@@ -101,10 +113,30 @@ export function useInlineUpdateItem(purchaseId: number) {
     const utils = trpc.useUtils();
 
     return trpc.purchases.updateItemProduct.useMutation({
+        onMutate: async (vars) => {
+            await utils.purchases.getById.cancel({ id: purchaseId });
+            const prev = utils.purchases.getById.getData({ id: purchaseId });
+            if (prev) {
+                utils.purchases.getById.setData({ id: purchaseId }, {
+                    ...prev,
+                    items: prev.items.map((it) =>
+                        it.id === vars.purchaseItemId
+                            ? ({ ...it, ...vars.product } as typeof it)
+                            : it,
+                    ),
+                });
+            }
+            return { prev };
+        },
         onSuccess: () => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
         },
-        onError: (err) => toast.error(err.message),
+        onError: (err, _vars, ctx) => {
+            if (ctx?.prev) {
+                utils.purchases.getById.setData({ id: purchaseId }, ctx.prev);
+            }
+            toast.error(err.message);
+        },
     });
 }
 

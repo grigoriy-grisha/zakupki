@@ -16,8 +16,11 @@ export class EventBus {
         return this.queue.addImmediate({ type: 'POST_CREATE', itemId }, `post-create-${itemId}`);
     }
 
-    emitPostDelete(itemId: number) {
-        return this.queue.addImmediate({ type: 'POST_DELETE', itemId }, `post-delete-${itemId}`);
+    emitPostDelete(itemId: number, messageId?: string, channelId?: string) {
+        return this.queue.addImmediate(
+            { type: 'POST_DELETE', itemId, messageId, channelId },
+            `post-delete-${itemId}`,
+        );
     }
 
     emitUserOrdersReject(messageIds: string[]) {

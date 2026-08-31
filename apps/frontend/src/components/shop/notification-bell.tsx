@@ -10,30 +10,33 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
+import { cn } from '@/lib/utils';
+import {
+    useMarkAllRead,
+    useMarkRead,
+    useNotifications,
+    useUnreadCount,
+} from '@/app/shop/hooks/use-notifications';
 
-/**
- * Bell icon with an unread badge and a popover listing the latest notifications
- * in compact form. Mounted in the shop header. Clicking a notification marks
- * it read and routes to /shop/notifications?id=<id> so the page can scroll to
- * and highlight the just-clicked row — this mirrors how the user expects "I
- * clicked something" to behave even when the notification itself doesn't have
- * a natural deep link of its own.
- */
+function pluralUnread(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'непрочитанное';
+    return 'непрочитанных';
+}
+
 export function NotificationBell() {
     const [open, setOpen] = useState(false);
     const router = useRouter();
     const { data: count, isLoading: countLoading } = useUnreadCount();
     const { data, isLoading: listLoading } = useNotifications();
     const markRead = useMarkRead();
+    const markAllRead = useMarkAllRead();
     const unread = count ?? 0;
 
     const activate = (n: NotificationRowData) => {
         if (!n.readAt) markRead.mutate({ id: n.id });
         setOpen(false);
-        // Always route to the notifications page with ?id= so the page can
-        // scroll to + highlight the clicked row. The page itself surfaces the
-        // purchase deep link inside the card.
         router.push(`/shop/notifications?id=${n.id}`);
     };
 
@@ -46,31 +49,56 @@ export function NotificationBell() {
                     className="relative rounded-full text-fg-secondary"
                     aria-label="Уведомления"
                 >
-                    <Bell className="h-4 w-4" />
+                    <Bell className="size-4" />
                     {!countLoading && unread > 0 && (
-                        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-critical px-1 text-[10px] font-semibold text-white">
+                        <span
+                            className={cn(
+                                'absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center',
+                                'justify-center rounded-full bg-error px-1',
+                                'text-[10px] font-semibold leading-none text-white',
+                            )}
+                        >
                             {unread > 99 ? '99+' : unread}
                         </span>
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-96 p-2">
-                <div className="flex items-center justify-between px-2 py-2">
-                    <span className="text-14-medium text-fg-primary">Уведомления</span>
+            <PopoverContent
+                align="end"
+                className={cn(
+                    'w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl',
+                    'border border-border bg-bg-card p-0 shadow-xl ring-1 ring-black/5',
+                )}
+            >
+                <div className="flex items-center justify-between gap-2 border-b border-border-soft px-3 py-2.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-14-semibold text-fg-primary">Уведомления</span>
+                        {unread > 0 && (
+                            <Badge type="subtle" variant="accent" size="sm">
+                                {unread} {pluralUnread(unread)}
+                            </Badge>
+                        )}
+                    </div>
                     {unread > 0 && (
-                        <Badge variant="neutral" type="subtle">
-                            {unread} непрочитан.
-                        </Badge>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 shrink-0 rounded-full px-2 text-12-medium"
+                            onClick={() => markAllRead.mutate()}
+                            disabled={markAllRead.isPending}
+                        >
+                            Прочитать все
+                        </Button>
                     )}
                 </div>
 
                 {listLoading ? (
-                    <div className="space-y-2 p-2">
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
+                    <div className="flex flex-col gap-2 p-2">
+                        <Skeleton className="h-16 w-full rounded-xl" />
+                        <Skeleton className="h-16 w-full rounded-xl" />
                     </div>
                 ) : data && data.length > 0 ? (
-                    <div className="max-h-96 space-y-1.5 overflow-y-auto px-1 pb-1">
+                    <div className="flex max-h-96 flex-col gap-1.5 overflow-y-auto p-2">
                         {(data as NotificationRowData[]).slice(0, 8).map((n) => (
                             <NotificationCard
                                 key={n.id}
@@ -81,14 +109,27 @@ export function NotificationBell() {
                         ))}
                     </div>
                 ) : (
-                    <div className="px-4 py-8 text-center text-13 text-fg-tertiary">Нет уведомлений</div>
+                    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+                        <div
+                            className={cn(
+                                'flex size-10 items-center justify-center rounded-full',
+                                'bg-bg-soft text-fg-tertiary',
+                            )}
+                        >
+                            <Bell className="size-4" />
+                        </div>
+                        <p className="text-13-regular text-fg-tertiary">Нет уведомлений</p>
+                    </div>
                 )}
 
-                <div className="p-1 pt-2">
+                <div className="border-t border-border-soft p-1">
                     <AppLink
                         href="/shop/notifications"
                         onClick={() => setOpen(false)}
-                        className="block rounded-md px-3 py-2 text-center text-13-medium text-primary transition-colors hover:bg-bg-soft"
+                        className={cn(
+                            'block rounded-lg px-3 py-2 text-center text-13-medium text-primary',
+                            'transition-colors hover:bg-bg-soft',
+                        )}
                     >
                         Показать все
                     </AppLink>

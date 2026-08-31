@@ -1,5 +1,5 @@
 import type { OrderLineRef } from '../../lib/types';
-import type { ProductLabelSource } from '../../../../products/lib';
+import type { ProductLabelSource } from '@/lib/product-label';
 
 /**
  * Форма позиции закупки из trpc.purchases.getById (для ручного редактирования).
@@ -14,6 +14,8 @@ export interface ParticipantOrderItem {
     packAmount?: string | number | null;
     /** Единица веса упаковки. */
     packUnit?: string | null;
+    /** Комментарий организатора к позиции закупки. */
+    adminComment?: string | null;
     product?: ProductLabelSource & {
         unitCode?: string | null;
         multiplicity?: string | number | null;

@@ -245,7 +245,7 @@ export function ProductPhotoPreview({
                     />
                     {/* Multi-photo indicator badge (top-right) */}
                     {hasGallery && (
-                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-12-medium text-white">
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1 rounded-full border border-white/30 bg-black/50 px-2 py-0.5 text-12-medium text-white shadow-sm backdrop-blur-md">
                             {gallery.length}
                         </div>
                     )}

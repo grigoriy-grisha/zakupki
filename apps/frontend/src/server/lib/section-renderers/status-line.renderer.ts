@@ -6,7 +6,6 @@ export interface StatusLineData {
     item: {
         supplierLimit: number | null;
         supplierLimitUnit: string | null;
-        targetRemainder: number | null;
     };
     purchase: { fulfillmentStatus: string };
     orderLinesSum: number;
@@ -21,12 +20,11 @@ export interface StatusLineData {
 }
 
 /**
- * Нижняя часть поста в канале: статус закупки + лимит/остаток поставщика + пул
- * добора. Лимит/целевой остаток гейтятся на supplierLimitUnit: если ед. не задана
- * — скрываются, но строка статуса остаётся (админ видит «нет единицы, иди в
- * ItemEditSheet»). «Свободно к заказу» — это пул (как в UI), с собственной ед.
- * (unit), поэтому показывается даже без supplierLimit — пока есть
- * packSize/targetRemainder.
+ * Нижняя часть поста в канале: статус закупки + лимит поставщика + пул добора.
+ * Лимит гейтится на supplierLimitUnit: если ед. не задана — скрывается, но
+ * строка статуса остаётся (админ видит «нет единицы, иди в ItemEditSheet»).
+ * «Свободно к заказу» — это пул (как в UI), с собственной ед. (unit), поэтому
+ * показывается даже без supplierLimit — пока есть packSize/targetRemainder.
  */
 export class StatusLineRenderer extends BaseSectionRenderer<StatusLineData> {
     readonly id = 'STATUS_LINE' as const;
@@ -37,15 +35,11 @@ export class StatusLineRenderer extends BaseSectionRenderer<StatusLineData> {
         const statusLabel = PURCHASE_FULFILLMENT_LABELS[status] ?? status;
         const unit = item.supplierLimitUnit;
         const supplierLimit = item.supplierLimit;
-        const targetRemainder = item.targetRemainder;
 
         const lines: string[] = [`<b>${escapeHtmlLocal(statusLabel)}</b>`];
 
         if (supplierLimit != null && unit) {
             lines.push(`Лимит поставщика: <b>${formatNumberRu(supplierLimit)} ${escapeHtmlLocal(unit)}</b>`);
-        }
-        if (targetRemainder != null && unit) {
-            lines.push(`Целевой остаток: <b>${formatNumberRu(targetRemainder)} ${escapeHtmlLocal(unit)}</b>`);
         }
 
         // «Свободно к заказу» — это пул добора, он имеет смысл только начиная с

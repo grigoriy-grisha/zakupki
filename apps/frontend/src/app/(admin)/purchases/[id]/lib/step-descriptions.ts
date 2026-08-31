@@ -67,8 +67,8 @@ export const STEP_DESCRIPTIONS: Record<PurchaseFulfillmentStatus, StepDescriptio
         actions: ['advance'],
     },
     PACKAGING: {
-        title: 'Фасовка',
-        description: 'Организатор фасует заказ по участникам.',
+        title: 'Фасовка и сбор заказов',
+        description: 'Организатор фасует товары и комплектует индивидуальные заказы участников.',
         icon: PackageCheckIcon,
         actions: ['advance'],
     },

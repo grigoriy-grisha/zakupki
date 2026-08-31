@@ -48,3 +48,12 @@ export function isPaymentPlusFreezePoint(status: PurchaseFulfillmentStatus): boo
 export function isUnfreezePoint(status: PurchaseFulfillmentStatus): boolean {
     return status === FULFILLMENT_UNFREEZE_POINT;
 }
+
+const ITEM_ADD_BLOCKED_STAGES: ReadonlySet<PurchaseFulfillmentStatus> = new Set([
+    'PACKAGING',
+    'READY_FOR_PICKUP',
+]);
+
+export function canAddItemsAtStage(status: string | null | undefined): boolean {
+    return !ITEM_ADD_BLOCKED_STAGES.has((status ?? 'COLLECTION') as PurchaseFulfillmentStatus);
+}

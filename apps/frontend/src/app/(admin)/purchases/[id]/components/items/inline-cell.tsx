@@ -36,6 +36,7 @@ interface InlineCellProps {
     /** Заполнитель для пустого поля. */
     placeholder?: string;
     disabled?: boolean;
+    format?: (value: number) => string;
     /** Доп. className. */
     className?: string;
     ariaLabel?: string;
@@ -61,20 +62,22 @@ export function InlineCell({
     align = 'right',
     placeholder,
     disabled,
+    format,
     className,
     ariaLabel,
 }: InlineCellProps) {
-    const initial = value == null || value === '' ? '' : String(value);
-    const [draft, setDraft] = useState(initial);
+    const display = value == null || value === '' ? '' : format ? format(Number(value)) : String(value);
+    const [draft, setDraft] = useState(display);
     const focused = useRef(false);
 
     useEffect(() => {
         if (!focused.current) {
-            setDraft(value == null || value === '' ? '' : String(value));
+            setDraft(display);
         }
-    }, [value]);
+    }, [display]);
 
     function commit() {
+        if (draft === display) return;
         const opts = { min, allowNegative };
         const parsed = parseInlineNumber(draft, opts);
         if (parsed == null) {
@@ -82,7 +85,7 @@ export function InlineCell({
             if (draft.trim() === '' && onClear) {
                 onClear();
             } else {
-                setDraft(value == null || value === '' ? '' : String(value));
+                setDraft(display);
             }
             return;
         }
@@ -110,7 +113,7 @@ export function InlineCell({
                     (e.target as HTMLInputElement).blur();
                 } else if (e.key === 'Escape') {
                     focused.current = false;
-                    setDraft(value == null || value === '' ? '' : String(value));
+                    setDraft(display);
                     (e.target as HTMLInputElement).blur();
                 }
             }}

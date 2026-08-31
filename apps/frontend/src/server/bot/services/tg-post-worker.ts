@@ -73,7 +73,6 @@ function buildStatusBlock(renderer: BotProductRenderer, item: Item, orderLinesSu
         item: {
             supplierLimit: item.supplierLimit as unknown as number | null,
             supplierLimitUnit: item.supplierLimitUnit,
-            targetRemainder: item.targetRemainder as unknown as number | null,
         },
         purchase: { fulfillmentStatus: item.purchase.fulfillmentStatus },
         orderLinesSum,
@@ -206,7 +205,7 @@ export class TgPostWorker {
                 case 'POST_CREATE':
                     return this.createPost(job.data.itemId);
                 case 'POST_DELETE':
-                    return this.deletePost(job.data.itemId);
+                    return this.deletePost(job.data);
                 case 'USER_ORDERS_REJECT':
                     return this.rejectUserOrders(job.data.messageIds);
                 case 'ITEM_CHANGED':
@@ -282,17 +281,23 @@ export class TgPostWorker {
         log.info({ itemId, messageId }, 'createPost done');
     }
 
-    private async deletePost(itemId: number): Promise<void> {
-        const item = await this.db.purchaseItem.findUnique({
-            where: { id: itemId },
-            select: { tgChannelId: true, tgMessageId: true },
-        });
-        if (!item?.tgChannelId || !item.tgMessageId) {
-            log.warn({ itemId }, 'deletePost: no post to delete');
+    private async deletePost(job: Extract<TgPostJob, { type: 'POST_DELETE' }>): Promise<void> {
+        let channelId = job.channelId ?? null;
+        let messageId = job.messageId ?? null;
+        if (!channelId || !messageId) {
+            const item = await this.db.purchaseItem.findUnique({
+                where: { id: job.itemId },
+                select: { tgChannelId: true, tgMessageId: true },
+            });
+            channelId = item?.tgChannelId ?? null;
+            messageId = item?.tgMessageId ?? null;
+        }
+        if (!channelId || !messageId) {
+            log.warn({ itemId: job.itemId }, 'deletePost: no post to delete');
             return;
         }
-        await this.tg.deletePost(item.tgChannelId, Number(item.tgMessageId));
-        log.info({ itemId, messageId: item.tgMessageId }, 'deletePost done');
+        await this.tg.deletePost(channelId, Number(messageId));
+        log.info({ itemId: job.itemId, messageId }, 'deletePost done');
     }
 
     // ── Реакции ────────────────────────────────────────────────

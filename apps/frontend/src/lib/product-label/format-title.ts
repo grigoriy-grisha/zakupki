@@ -15,7 +15,6 @@ import {
 } from './format-attributes';
 import type { ProductAttributeValueSource, AttributeTypeMeta, ShowInTitleByTypeId, ProductLabelSource } from './types';
 
-/** Значения атрибутов с флагом «показывать в заголовке описания» по порядку дерева типов. */
 export function getProductTitleAttributeNames(
     product: ProductLabelSource,
     showInTitleByTypeId?: ShowInTitleByTypeId,
@@ -43,7 +42,6 @@ export function getProductTitleAttributeNames(
             const typeInTitle = typeHasShowInTitle(type.id, maps, showInTitleByTypeId);
             const inBranch = isTypeInTitleBranch(type.id, maps, showInTitleByTypeId);
 
-            // Тип с галочкой и выбранным значением: «Miyuki Delica 11/0»
             if (typeInTitle && valueName && attributeInTitle) {
                 const typeLabel = type.name.trim();
                 if (typeLabel) parts.push(typeLabel);
@@ -63,7 +61,6 @@ export function getProductTitleAttributeNames(
     return parts;
 }
 
-/** Тип или его предок/потомок участвует в первой строке заголовка. */
 function isTypeInTitleBranch(
     typeId: number,
     maps: ReturnType<typeof buildTypeMaps>,

@@ -7,6 +7,7 @@ import {
     getActiveStep,
     getPackDiscountPricingInfo,
     getUnitByCode,
+    isOrderingClosedStage,
     isSupplementPhase,
     mapToPurchaseItem,
     OrderBook,
@@ -69,6 +70,8 @@ export interface ItemOrderContext {
     canAdd: boolean;
     canDecrease: boolean;
     hasOrder: boolean;
+    /** Приём заказов закрыт (фасовка и далее). */
+    orderingClosed: boolean;
 
     // Границы для handleAdd/handleRemove
     maxAllowed: number;
@@ -214,10 +217,11 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const minAllowed = fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
 
     // Разрешения
+    const orderingClosed = isOrderingClosedStage(fulfillmentStatus);
     const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
     const poolExhausted = isSupplement && availablePool != null && availablePool <= 1e-9;
     const isSoldOut = poolExhausted && !hasOrder;
-    const canAdd = currentQuantity < maxAllowed;
+    const canAdd = !orderingClosed && currentQuantity < maxAllowed;
     const canDecrease =
         currentQuantity > 0 &&
         (fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER' || currentQuantity > baseQuantity);
@@ -244,6 +248,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         canAdd,
         canDecrease,
         hasOrder,
+        orderingClosed,
         maxAllowed,
         minAllowed,
     };

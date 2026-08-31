@@ -1,5 +1,6 @@
 export {
     useAddPurchaseItems,
+    useDeleteItemPost,
     useInlineUpdateItem,
     useRegenerateItemDescription,
     useRemovePurchaseItem,

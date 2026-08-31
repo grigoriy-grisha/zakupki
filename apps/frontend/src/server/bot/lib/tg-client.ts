@@ -86,9 +86,14 @@ export class TgClient {
             await this.api.deleteMessage(chatId, messageId);
             log.info({ chatId, messageId }, 'deletePost');
         } catch (err) {
-            // "message to delete not found" — не ошибка, пост уже удалён
-            if (err instanceof GrammyError && err.description.includes('message to delete not found')) {
-                log.info({ chatId, messageId }, 'deletePost: already gone');
+            // Пост уже удалён или бот не может его удалить (не админ / старше 48ч) —
+            // считаем пост удалённым, иначе tgMessageId никогда не очистится.
+            const description = err instanceof GrammyError ? err.description : '';
+            if (
+                description.includes('message to delete not found') ||
+                description.includes("message can't be deleted")
+            ) {
+                log.warn({ chatId, messageId, description }, 'deletePost: post already gone');
                 return;
             }
             log.error({ chatId, messageId, err }, 'deletePost failed');

@@ -18,6 +18,7 @@ export function useParticipantOrderActions(purchaseId: number) {
 
     const invalidate = () => {
         void utils.orders.getAllByPurchase.invalidate({ purchaseId });
+        void utils.orders.getPurchaseOrdersByPurchase.invalidate({ purchaseId });
         void utils.purchases.getById.invalidate({ id: purchaseId });
     };
 
@@ -85,6 +86,14 @@ export function useParticipantOrderActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
+    const setHandoffStatus = trpc.orders.setHandoffStatus.useMutation({
+        onSuccess: () => {
+            invalidate();
+            toast.success('Статус выдачи обновлён');
+        },
+        onError: (err) => toast.error(err.message),
+    });
+
     return {
         adminAdjust,
         adminSetQuantity,
@@ -94,5 +103,6 @@ export function useParticipantOrderActions(purchaseId: number) {
         deleteAllByUserItem,
         setOrderComment,
         addParticipant,
+        setHandoffStatus,
     };
 }

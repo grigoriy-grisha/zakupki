@@ -6,10 +6,6 @@ import { productInclude } from './product-include';
 export class PurchaseRepository {
     constructor() {}
 
-    /**
-     * Shared where-clause for nested items include.
-     * When includeHidden is false (clients), hidden items are excluded.
-     */
     private static itemsWhere(includeHidden: boolean) {
         return includeHidden ? undefined : { hidden: false };
     }
@@ -98,18 +94,11 @@ export class PurchaseRepository {
         return dbClient.purchase.findUnique({ where: { tag }, select: { id: true, tag: true } });
     }
 
-    /** Lightweight tag lookup for notification payloads. */
     async findTagById(id: number): Promise<string | null> {
         const purchase = await dbClient.purchase.findUnique({ where: { id }, select: { tag: true } });
         return purchase?.tag ?? null;
     }
 
-    /**
-     * Fetch the display label of a PurchaseItem (product name + unit short name),
-     * its purchase id + tag, for notification payloads. Returns null if the item
-     * no longer exists. `purchaseId` is the numeric route key needed to build a
-     * deep link into the purchase page.
-     */
     async findItemLabel(id: number): Promise<{
         purchaseId: number;
         purchaseTag: string;
@@ -132,11 +121,6 @@ export class PurchaseRepository {
         };
     }
 
-    /**
-     * Fetch just the purchase id for a PurchaseItem. Used by the order service
-     * when deleting a single line — the line is gone after the delete, so the
-     * purchase id must be loaded first to build the notification deep link.
-     */
     async findPurchaseIdByItem(purchaseItemId: number): Promise<number | null> {
         const row = await dbClient.purchaseItem.findUnique({
             where: { id: purchaseItemId },
@@ -191,11 +175,6 @@ export class PurchaseRepository {
         });
     }
 
-    /**
-     * Находит существующие позиции закупки по парам (productId, supplierId).
-     * Используется для дедупликации при batch-добавлении. supplierId=null
-     * матчится с позициями без поставщика.
-     */
     async findExistingPurchaseItems(purchaseId: number, pairs: { productId: number; supplierId: number | null }[]) {
         if (pairs.length === 0) return [];
         const OR = pairs.map((p) => ({ productId: p.productId, supplierId: p.supplierId }));
@@ -205,10 +184,6 @@ export class PurchaseRepository {
         });
     }
 
-    /**
-     * Создаёт PurchaseItem. Вся per-purchase конкретика (supplierId, описание,
-     * цены, фасовка) приходит в config — Product больше не источник.
-     */
     async addItem(
         purchaseId: number,
         config: {
@@ -292,10 +267,6 @@ export class PurchaseRepository {
         });
     }
 
-    /**
-     * Полная замена ставок валют закупки. Удаляет старые и создаёт новые
-     * одной транзакцией. rates = [{ currencyId, rateToRub }, …] (до 3 валют).
-     */
     async setCurrencyRates(
         purchaseId: number,
         rates: { currencyId: number; rateToRub: number }[],
@@ -410,12 +381,6 @@ export class PurchaseRepository {
         });
     }
 
-    /**
-     * Загружает один PurchaseItem с полным графом, нужным для серверной
-     * регенерации описания из шаблона: product с productInclude (атрибуты,
-     * характеристики, бренд, фото), supplier, currency, и purchase с тегом
-     * и currencyRates (для расчёта unitPriceRub).
-     */
     async findItemForDescription(id: number) {
         return dbClient.purchaseItem.findUnique({
             where: { id },
@@ -434,11 +399,6 @@ export class PurchaseRepository {
         });
     }
 
-    /**
-     * Универсальный апдейт PurchaseItem. Поддерживает partial update —
-     * любая комбинация полей за один round-trip. Поля, перенесённые с Product
-     * (описание, цены, фасовка), редактируются здесь, а не в Product.
-     */
     async updatePurchaseItem(
         purchaseItemId: number,
         data: Prisma.PurchaseItemUncheckedUpdateInput,
@@ -449,13 +409,6 @@ export class PurchaseRepository {
         });
     }
 
-    /**
-     * Установить/очистить служебный комментарий админа к участнику закупки
-     * (один на пару user+purchase). Пустая/whitespace-only строка → сброс
-     * (comment=null, commentAt=null, commentAuthor=null). commentAt
-     * ставится в now() только при записи, чтобы не зависеть от общего
-     * PurchaseOrder.updatedAt (обновляется при любой правке).
-     */
     async setOrderComment(id: number, comment: string, authorId: number) {
         const trimmed = comment.trim();
         if (trimmed === '') {

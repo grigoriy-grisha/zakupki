@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
-import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '../lib';
+import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '@/lib/product-label';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 
 interface CatalogProductCardProps {
@@ -83,7 +83,7 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
 
                     {/* Бейдж «В закупке» — объясняет отсутствие кнопки удаления */}
                     {product.inActivePurchase && (
-                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-11-medium leading-none text-white backdrop-blur-md">
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full border border-white/40 bg-bg-card/80 px-2 py-0.5 text-11-medium leading-none text-warning shadow-sm backdrop-blur-md">
                             <Lock className="size-2.5" />
                             В закупке
                         </div>

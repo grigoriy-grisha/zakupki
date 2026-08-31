@@ -43,7 +43,6 @@ export class ProductRepository {
         });
     }
 
-    /** Возвращает продукты с флагом inActivePurchase для UI. */
     async listWithPurchaseFlag(search?: string) {
         const products = await this.list(search);
         const lockedIds = await findProductIdsInActivePurchases(
@@ -60,7 +59,6 @@ export class ProductRepository {
         });
     }
 
-    /** Возвращает продукт с флагом inActivePurchase, бросает NotFoundError если не найден. */
     async getByIdOrThrow(id: number) {
         const product = await this.getById(id);
         if (!product) return null;
@@ -69,95 +67,35 @@ export class ProductRepository {
     }
 
     async create(data: ProductCreateData) {
-        const resolved = await resolveBrandFromAttributeIds(data.attributeIds, data.brandId);
+        const resolved = await this.resolveBrandFromAttributeIds(data.attributeIds, data.brandId);
         return dbClient.product.create({
-            data: toPrismaCreate({ ...data, ...resolved }),
+            data: this.toPrismaCreate({ ...data, ...resolved }),
             include: productInclude,
         });
     }
 
     async update(id: number, data: ProductWriteData) {
-        const { attributeIds, characteristics, ...rest } = data;
-
-        // Определяем brandId: если переданы attributeIds — резолвим бренд из них,
-        // иначе используем явно переданный brandId из rest
-        const resolved = await resolveBrandFromAttributeIds(attributeIds, rest.brandId);
+        const resolved = await this.resolveBrandFromAttributeIds(data.attributeIds, data.brandId);
 
         return dbClient.$transaction(async (tx) => {
-            if (attributeIds !== undefined) {
-                await tx.productAttributeValue.deleteMany({ where: { productId: id } });
-                if (attributeIds.length > 0) {
-                    await tx.productAttributeValue.createMany({
-                        data: attributeIds.map((attributeId) => ({ productId: id, attributeId })),
-                    });
-                }
-            }
-
-            if (characteristics !== undefined) {
-                await tx.productCharacteristicValue.deleteMany({ where: { productId: id } });
-                const rows = characteristics
-                    .filter((c) => c.value.trim())
-                    .map((c, index) => ({
-                        productId: id,
-                        characteristicId: c.characteristicId,
-                        value: c.value.trim(),
-                        sortOrder: c.sortOrder ?? index,
-                    }));
-                if (rows.length > 0) {
-                    await tx.productCharacteristicValue.createMany({ data: rows });
-                }
-            }
-
-            const updateData = toPrismaUpdate({
-                ...rest,
-                brandId: resolved.brandId,
-            });
-
+            await this.replaceProductRelations(tx, id, data.attributeIds, data.characteristics);
             return tx.product.update({
                 where: { id },
-                data: { ...updateData, version: { increment: 1 } },
+                data: this.buildVersionedUpdateData(data, resolved.brandId),
                 include: productInclude,
             });
         });
     }
 
     async updateWithVersionCheck(id: number, data: ProductWriteData, expectedVersion: number) {
-        const { attributeIds, characteristics, ...rest } = data;
-        const resolved = await resolveBrandFromAttributeIds(attributeIds, rest.brandId);
+        const resolved = await this.resolveBrandFromAttributeIds(data.attributeIds, data.brandId);
 
         return dbClient.$transaction(async (tx) => {
-            if (attributeIds !== undefined) {
-                await tx.productAttributeValue.deleteMany({ where: { productId: id } });
-                if (attributeIds.length > 0) {
-                    await tx.productAttributeValue.createMany({
-                        data: attributeIds.map((attributeId) => ({ productId: id, attributeId })),
-                    });
-                }
-            }
-
-            if (characteristics !== undefined) {
-                await tx.productCharacteristicValue.deleteMany({ where: { productId: id } });
-                const rows = characteristics
-                    .filter((c) => c.value.trim())
-                    .map((c, index) => ({
-                        productId: id,
-                        characteristicId: c.characteristicId,
-                        value: c.value.trim(),
-                        sortOrder: c.sortOrder ?? index,
-                    }));
-                if (rows.length > 0) {
-                    await tx.productCharacteristicValue.createMany({ data: rows });
-                }
-            }
-
-            const updateData = toPrismaUpdate({
-                ...rest,
-                brandId: resolved.brandId,
-            });
+            await this.replaceProductRelations(tx, id, data.attributeIds, data.characteristics);
 
             const updated = await tx.product.updateMany({
                 where: { id, version: expectedVersion },
-                data: { ...updateData, version: { increment: 1 } },
+                data: this.buildVersionedUpdateData(data, resolved.brandId),
             });
 
             if (updated.count === 0) return null;
@@ -215,75 +153,118 @@ export class ProductRepository {
             orderBy: { sortOrder: 'asc' },
         });
     }
-}
 
-function toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
-    const { attributeIds, characteristics, brandId, ...rest } = data;
-    return {
-        ...rest,
-        multiplicity: data.multiplicity ?? 1,
-        ...(brandId != null ? { brand: { connect: { id: brandId } } } : {}),
-        ...(attributeIds && attributeIds.length > 0
-            ? { attributeValues: { create: attributeIds.map((id) => ({ attribute: { connect: { id } } })) } }
-            : {}),
-        ...characteristicValuesCreate(characteristics),
-    };
-}
-
-function toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
-    const { brandId, attributeIds: _attributeIds, characteristics: _characteristics, ...rest } = data;
-    const update: Prisma.ProductUpdateInput = { ...rest };
-    if (brandId !== undefined) {
-        update.brand = brandId == null ? { disconnect: true } : { connect: { id: brandId } };
-    }
-    return update;
-}
-
-/**
- * Определяет brandId на основе attributeIds.
- * - Если attributeIds не переданы — brandId не меняется (используется только явный brandId)
- * - Если attributeIds переданы (даже пустые) — бренд резолвится из атрибутов
- * - Если brandId уже задан явно — пропускает DB-запрос
- */
-async function resolveBrandFromAttributeIds(
-    attributeIds: number[] | undefined,
-    brandId: number | null | undefined,
-): Promise<{ brandId?: number | null }> {
-    // attributeIds не переданы — не трогаем brand
-    if (attributeIds === undefined) {
-        return brandId !== undefined ? { brandId } : {};
+    private buildVersionedUpdateData(
+        data: ProductWriteData,
+        brandId: number | null | undefined,
+): Prisma.ProductUpdateInput {
+        const { attributeIds: _attributeIds, characteristics: _characteristics, ...rest } = data;
+        return { ...this.toPrismaUpdate({ ...rest, brandId }), version: { increment: 1 } };
     }
 
-    // brandId задан явно — не нужен DB-запрос
-    if (brandId !== undefined) {
-        return { brandId };
+    private async replaceProductRelations(
+        tx: Prisma.TransactionClient,
+        id: number,
+        attributeIds: number[] | undefined,
+        characteristics: ProductCharacteristicInput[] | undefined,
+    ): Promise<void> {
+        if (attributeIds !== undefined) {
+            await tx.productAttributeValue.deleteMany({ where: { productId: id } });
+            if (attributeIds.length > 0) {
+                await tx.productAttributeValue.createMany({
+                    data: attributeIds.map((attributeId) => ({ productId: id, attributeId })),
+                });
+            }
+        }
+
+        if (characteristics !== undefined) {
+            await tx.productCharacteristicValue.deleteMany({ where: { productId: id } });
+            const rows = characteristics
+                .filter((c) => c.value.trim())
+                .map((c, index) => ({
+                    productId: id,
+                    characteristicId: c.characteristicId,
+                    value: c.value.trim(),
+                    sortOrder: c.sortOrder ?? index,
+                }));
+            if (rows.length > 0) {
+                await tx.productCharacteristicValue.createMany({ data: rows });
+            }
+        }
     }
 
-    // Пустые attributeIds — очищаем бренд
-    if (attributeIds.length === 0) {
+    private toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
+        const { attributeIds, characteristics, brandId, ...rest } = data;
+        return {
+            ...rest,
+            multiplicity: data.multiplicity ?? 1,
+            ...(brandId != null ? { brand: { connect: { id: brandId } } } : {}),
+            ...(attributeIds && attributeIds.length > 0
+                ? { attributeValues: { create: attributeIds.map((id) => ({ attribute: { connect: { id } } })) } }
+                : {}),
+            ...this.characteristicValuesCreate(characteristics),
+        };
+    }
+
+    private toPrismaUpdate(data: ProductWriteData): Prisma.ProductUpdateInput {
+        const { brandId, attributeIds: _attributeIds, characteristics: _characteristics, ...rest } = data;
+        const update: Prisma.ProductUpdateInput = { ...rest };
+        if (brandId !== undefined) {
+            update.brand = brandId == null ? { disconnect: true } : { connect: { id: brandId } };
+        }
+        return update;
+    }
+
+    private async resolveBrandFromAttributeIds(
+        attributeIds: number[] | undefined,
+        brandId: number | null | undefined,
+    ): Promise<{ brandId?: number | null }> {
+        if (attributeIds === undefined) {
+            return brandId !== undefined ? { brandId } : {};
+        }
+
+        if (brandId !== undefined) {
+            return { brandId };
+        }
+
+        if (attributeIds.length === 0) {
+            return { brandId: null };
+        }
+
+        const attrs = await dbClient.productAttribute.findMany({
+            where: { id: { in: attributeIds } },
+            select: { id: true, isBrand: true, parentId: true },
+        });
+        const directBrand = attrs.find((a) => a.isBrand);
+        if (directBrand) return { brandId: directBrand.id };
+
+        let frontier = [...new Set(attrs.map((a) => a.parentId).filter((id): id is number => id != null))];
+        const visited = new Set<number>();
+        while (frontier.length > 0) {
+            const parents = await dbClient.productAttribute.findMany({
+                where: { id: { in: frontier.filter((id) => !visited.has(id)) } },
+                select: { id: true, isBrand: true, parentId: true },
+            });
+            const parentBrand = parents.find((p) => p.isBrand);
+            if (parentBrand) return { brandId: parentBrand.id };
+            for (const p of parents) visited.add(p.id);
+            frontier = [...new Set(parents.map((p) => p.parentId).filter((id): id is number => id != null))];
+        }
         return { brandId: null };
     }
 
-    // Ищем isBrand среди переданных attributeIds
-    const attrs = await dbClient.productAttribute.findMany({
-        where: { id: { in: attributeIds } },
-        select: { id: true, isBrand: true },
-    });
-    const brand = attrs.find((a) => a.isBrand);
-    return { brandId: brand?.id ?? null };
-}
-
-function characteristicValuesCreate(
-    characteristics: ProductCharacteristicInput[] | undefined,
-): Pick<Prisma.ProductCreateInput, 'characteristicValues'> {
-    if (!characteristics?.length) return { characteristicValues: undefined };
-    const rows = characteristics
-        .filter((c) => c.value.trim())
-        .map((c, index) => ({
-            characteristicId: c.characteristicId,
-            value: c.value.trim(),
-            sortOrder: c.sortOrder ?? index,
-        }));
-    if (!rows.length) return { characteristicValues: undefined };
-    return { characteristicValues: { create: rows } };
+    private characteristicValuesCreate(
+        characteristics: ProductCharacteristicInput[] | undefined,
+    ): Pick<Prisma.ProductCreateInput, 'characteristicValues'> {
+        if (!characteristics?.length) return { characteristicValues: undefined };
+        const rows = characteristics
+            .filter((c) => c.value.trim())
+            .map((c, index) => ({
+                characteristicId: c.characteristicId,
+                value: c.value.trim(),
+                sortOrder: c.sortOrder ?? index,
+            }));
+        if (!rows.length) return { characteristicValues: undefined };
+        return { characteristicValues: { create: rows } };
+    }
 }

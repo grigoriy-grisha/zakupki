@@ -17,7 +17,7 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
     const status = payment.status;
     const statusCfg = SHOP_PAYMENT_STATUS[status] ?? {
         label: status,
-        className: 'text-muted-foreground',
+        className: 'text-fg-tertiary',
     };
     const StatusIcon = status === 'CONFIRMED' ? CircleCheck : status === 'REJECTED' ? CircleX : Clock;
     const iconCls = statusCfg.className;
@@ -35,8 +35,8 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                 role="button"
                 tabIndex={0}
                 className={cn(
-                    'flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2 transition-colors',
-                    'cursor-pointer hover:bg-muted/60',
+                    'flex items-center justify-between gap-2 rounded-xl bg-bg-soft/50 px-3 py-2.5',
+                    'cursor-pointer transition-colors hover:bg-bg-soft',
                     status === 'PENDING' && 'ring-1 ring-warning/20',
                 )}
                 onClick={() => setProofOpen(true)}
@@ -47,21 +47,23 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                     }
                 }}
             >
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <StatusIcon className={cn('h-4 w-4 shrink-0', iconCls)} />
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <StatusIcon className={cn('size-4 shrink-0', iconCls)} />
                     <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium">{total.toLocaleString('ru-RU')} ₽</span>
-                            <span className={cn('text-xs font-medium', iconCls)}>{statusCfg.label}</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span className="text-14-semibold text-fg-primary tabular-nums">
+                                {total.toLocaleString('ru-RU')} ₽
+                            </span>
+                            <span className={cn('text-12-medium', iconCls)}>{statusCfg.label}</span>
                             {hasProof ? (
-                                <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                                    <Eye className="h-3 w-3" />
+                                <span className="inline-flex items-center gap-0.5 text-12-regular text-fg-tertiary">
+                                    <Eye className="size-3" />
                                     чек
                                 </span>
                             ) : null}
                         </div>
                         {childAmount > 0 && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="mt-0.5 text-12-regular text-fg-tertiary tabular-nums">
                                 Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽
                                 <span className="text-success">
                                     {' '}

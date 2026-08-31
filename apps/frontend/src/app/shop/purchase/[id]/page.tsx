@@ -1,37 +1,84 @@
 'use client';
 
-import { use, useMemo } from 'react';
-import { Package } from 'lucide-react';
+import { use, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Package, PackageSearch } from 'lucide-react';
 import {
     PURCHASE_FULFILLMENT_LABELS,
+    computeUnitPriceRubNewModel,
+    isSupplementPhase,
+    mapToPurchaseItem,
     type CurrencyRate,
     type PurchaseFulfillmentStatus,
-    isSupplementPhase,
 } from '@zakupki/types';
 
 import { AppLink } from '@/components/app-link';
 import { trpc } from '@/lib/client/trpc';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import { cn } from '@/lib/utils';
 
 import { aggregateByItem } from '../../lib/order-aggregation';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 import { usePurchasePaymentDetail } from './hooks';
-import { FilterBar, ProductGrid, PurchaseGridSkeleton, PurchaseStepper } from './components';
+import {
+    CatalogToolbar,
+    ProductGrid,
+    PurchaseGridSkeleton,
+    PurchaseStepper,
+    pluralProducts,
+    type SortMode,
+} from './components';
 import type { ProductGridItem } from './components/product-grid';
+
+function getSortPriceRub(
+    item: ProductGridItem,
+    fulfillmentStatus: PurchaseFulfillmentStatus,
+    packDiscountPercent: number,
+    orgFeeDefaultPercent: number,
+    currencyRates: CurrencyRate[],
+): number | null {
+    const purchaseItem = mapToPurchaseItem(
+        { ...item, purchase: { fulfillmentStatus } },
+        packDiscountPercent,
+        { orgFeeDefaultPercent, currencyRates },
+    );
+    return computeUnitPriceRubNewModel(purchaseItem);
+}
+
+function comparePrices(a: number | null, b: number | null): number {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return a - b;
+}
+
+function pluralSuppliers(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'поставщик';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'поставщика';
+    return 'поставщиков';
+}
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
     const id = Number(idStr);
+    const router = useRouter();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const paymentDetail = usePurchasePaymentDetail(id);
     const { beadPackPriceDiscountPercent: packDiscountPercent, orgFeeDefaultPercent } = usePricingSettings();
 
-    // Currency rates for the new pricing model (валюта × курс × оргсбор).
+    const [query, setQuery] = useState('');
+    const [sortMode, setSortMode] = useState<SortMode>('default');
+    const [onlyMine, setOnlyMine] = useState(false);
+
+    const fulfillmentStatus = (purchase?.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
+
     const currencyRates = useMemo<CurrencyRate[]>(
         () =>
             (purchase?.currencyRates ?? []).map((r) => ({
@@ -48,26 +95,102 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         selectedFolderLabel,
         ancestorPath,
         expandedIds,
-        filteredItems,
+        filteredItems: treeItems,
         handleToggle,
         handleSelectNode,
         clearSelection,
         totalCount,
     } = usePurchaseFilterTree(items);
+    const filteredItems = treeItems as ProductGridItem[];
 
     const aggregatedByItem = useMemo(
         () => aggregateByItem(paymentDetail.myOrdersInPurchase),
         [paymentDetail.myOrdersInPurchase],
     );
 
+    const myItemIds = useMemo(() => {
+        const ids = new Set<number>();
+        aggregatedByItem.forEach((aggregated, itemId) => {
+            if (aggregated.quantity > 0 || aggregated.packageCount > 0) {
+                ids.add(itemId);
+            }
+        });
+        return ids;
+    }, [aggregatedByItem]);
+
+    const searchedItems = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return filteredItems;
+        return filteredItems.filter((item) => {
+            const haystack = [
+                item.product?.name,
+                item.product?.articleNumber,
+                item.product?.brand?.name,
+                item.supplier?.name,
+            ];
+            return haystack.some((value) => typeof value === 'string' && value.toLowerCase().includes(q));
+        });
+    }, [filteredItems, query]);
+
+    const visibleItems = useMemo(() => {
+        let result = searchedItems;
+        if (onlyMine) {
+            result = result.filter((item) => myItemIds.has(item.purchaseItemId ?? item.id));
+        }
+        if (sortMode === 'default') {
+            return result;
+        }
+        const withKeys = result.map((item) => ({
+            item,
+            price:
+                sortMode === 'name-asc'
+                    ? null
+                    : getSortPriceRub(
+                          item,
+                          fulfillmentStatus,
+                          packDiscountPercent,
+                          orgFeeDefaultPercent,
+                          currencyRates,
+                      ),
+            name: String(item.product?.name ?? ''),
+        }));
+        if (sortMode === 'name-asc') {
+            withKeys.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        } else if (sortMode === 'price-asc') {
+            withKeys.sort((a, b) => comparePrices(a.price, b.price));
+        } else {
+            withKeys.sort((a, b) => comparePrices(b.price, a.price));
+        }
+        return withKeys.map((entry) => entry.item);
+    }, [
+        searchedItems,
+        onlyMine,
+        myItemIds,
+        sortMode,
+        currencyRates,
+        orgFeeDefaultPercent,
+        fulfillmentStatus,
+        packDiscountPercent,
+    ]);
+
+    const supplierCount = useMemo(
+        () => new Set(items.map((item) => item.supplier?.name).filter(Boolean)).size,
+        [items],
+    );
+
     if (isLoading) {
         return (
-            <div className="flex flex-col gap-6">
-                <div className="space-y-3">
-                    <Skeleton className="h-5 w-24 rounded-md" />
-                    <Skeleton className="h-8 w-72 rounded-md" />
-                    <Skeleton className="h-4 w-96 rounded-md" />
+            <div className="flex flex-col gap-5 sm:gap-6">
+                <div className="flex items-start gap-3">
+                    <Skeleton className="size-8 shrink-0 rounded-xl" />
+                    <div className="flex flex-col gap-2">
+                        <Skeleton className="h-5 w-28 rounded-full" />
+                        <Skeleton className="h-7 w-56 rounded-md" />
+                        <Skeleton className="h-4 w-72 rounded-md" />
+                    </div>
                 </div>
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-14 rounded-xl md:h-12 md:rounded-2xl" />
                 <PurchaseGridSkeleton />
             </div>
         );
@@ -75,68 +198,127 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     if (!purchase) {
         return (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-bg-card py-16 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-bg-soft text-fg-secondary">
-                    <Package className="size-5" />
-                </div>
-                <h2 className="text-18-semibold text-fg-primary">Закупка не найдена</h2>
-                <Button variant="outline" className="mt-2 rounded-full" asChild>
-                    <AppLink href="/shop">Назад к закупкам</AppLink>
-                </Button>
+            <div className="rounded-2xl border border-border bg-bg-card">
+                <EmptyState
+                    icon={Package}
+                    title="Закупка не найдена"
+                    description="Возможно, она была удалена или ссылка неверная"
+                    actionLabel="Назад к закупкам"
+                    onAction={() => router.push('/shop')}
+                />
             </div>
         );
     }
 
-    const fulfillmentStatus = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
     const isSupplement = isSupplementPhase(fulfillmentStatus);
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
 
-    const activityBadge = (
-        <Badge type="subtle" size="default" variant={isSupplement ? 'warning' : 'success'}>
-            {isSupplement ? 'Добор' : 'Активна'}
-        </Badge>
-    );
+    const hasActiveFilters = query.trim() !== '' || selectedId != null || onlyMine;
+    const showOnlyMine = aggregatedByItem.size > 0;
+
+    const resetAllFilters = () => {
+        setQuery('');
+        setOnlyMine(false);
+        clearSelection();
+    };
 
     return (
         <div className="flex flex-col gap-5 sm:gap-6">
-            <PageHeader
-                title={purchase.tag}
-                description={
-                    <span className="inline-flex items-center gap-1.5">
-                        <Package className="size-3.5 text-fg-tertiary" />
-                        {fulfillmentLabel}
-                    </span>
-                }
-                badge={<div className="flex flex-wrap items-center gap-2">{activityBadge}</div>}
-            />
+            <header className="flex items-start gap-2 sm:gap-3">
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="mt-0.5 shrink-0 rounded-xl"
+                    asChild
+                    aria-label="Назад к закупкам"
+                >
+                    <AppLink href="/shop">
+                        <ArrowLeft className="size-4" />
+                    </AppLink>
+                </Button>
+                <div className="flex min-w-0 flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge type="subtle" variant={isSupplement ? 'warning' : 'success'}>
+                            {isSupplement ? 'Добор' : 'Активна'}
+                        </Badge>
+                        <Badge type="subtle" variant="neutral">
+                            {totalCount} {pluralProducts(totalCount)}
+                        </Badge>
+                    </div>
+                    <h1 className="truncate text-20-semibold leading-tight text-fg-primary sm:text-30-semibold">
+                        {purchase.tag}
+                    </h1>
+                    <p
+                        className={cn(
+                            'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-13-regular text-fg-secondary',
+                            'sm:text-14-regular',
+                        )}
+                    >
+                        <span className="inline-flex items-center gap-1.5">
+                            <Package className="size-3.5 text-fg-tertiary" />
+                            {fulfillmentLabel}
+                        </span>
+                        {supplierCount > 0 && (
+                            <>
+                                <span aria-hidden className="text-fg-tertiary">
+                                    ·
+                                </span>
+                                <span>
+                                    {supplierCount} {pluralSuppliers(supplierCount)}
+                                </span>
+                            </>
+                        )}
+                    </p>
+                </div>
+            </header>
 
             <PurchaseStepper currentStatus={fulfillmentStatus} />
 
-            <FilterBar
+            <CatalogToolbar
+                query={query}
+                onQueryChange={setQuery}
                 tree={tree}
                 selectedId={selectedId}
                 onSelectNode={handleSelectNode}
                 expandedIds={expandedIds}
                 onToggle={handleToggle}
-                onClear={clearSelection}
+                onClearTree={clearSelection}
+                onlyMine={onlyMine}
+                onOnlyMineToggle={() => setOnlyMine((value) => !value)}
+                showOnlyMine={showOnlyMine}
+                sortMode={sortMode}
+                onSortModeChange={setSortMode}
                 totalCount={totalCount}
-                filteredCount={filteredItems.length}
+                filteredCount={visibleItems.length}
                 ancestorPath={ancestorPath}
                 selectedFolderLabel={selectedFolderLabel}
+                onResetAll={resetAllFilters}
             />
 
-            <ProductGrid
-                items={filteredItems}
-                aggregatedByItem={aggregatedByItem}
-                purchaseId={id}
-                packDiscountPercent={packDiscountPercent}
-                orgFeeDefaultPercent={orgFeeDefaultPercent}
-                currencyRates={currencyRates}
-                isSupplement={isSupplement}
-                canAddPackage={canAddPackage}
-                fulfillmentStatus={fulfillmentStatus}
-            />
+            {visibleItems.length === 0 && hasActiveFilters ? (
+                <div className="rounded-2xl border border-border bg-bg-card">
+                    <EmptyState
+                        icon={PackageSearch}
+                        title="Ничего не найдено"
+                        description="Измените запрос или сбросьте фильтры"
+                        actionLabel="Сбросить всё"
+                        onAction={resetAllFilters}
+                    />
+                </div>
+            ) : (
+                <ProductGrid
+                    items={visibleItems}
+                    aggregatedByItem={aggregatedByItem}
+                    purchaseId={id}
+                    packDiscountPercent={packDiscountPercent}
+                    orgFeeDefaultPercent={orgFeeDefaultPercent}
+                    currencyRates={currencyRates}
+                    isSupplement={isSupplement}
+                    canAddPackage={canAddPackage}
+                    fulfillmentStatus={fulfillmentStatus}
+                />
+            )}
         </div>
     );
 }

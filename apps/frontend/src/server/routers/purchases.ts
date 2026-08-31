@@ -16,30 +16,23 @@ const purchaseFulfillmentStatusSchema = z.enum([
     'READY_FOR_PICKUP',
 ]);
 
-// Переиспользуемая схема per-purchase полей. Вынесена на верхний уровень, чтобы
-// tRPC мог корректно вывести типы (вложенные z.object-ы ломают рекурсивный инферент).
 const purchaseItemFieldsSchema = z.object({
     supplierId: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
     minPackageAmount: z.number().nullable().optional(),
     minPackageUnit: z.string().nullable().optional(),
     supplementStep: z.number().nullable().optional(),
-    // Лимит поставщика + targetRemainder редактируются через отдельные мутации,
-    // но updateItemProduct тоже их принимает (для удобства из ItemEditSheet).
     supplierLimit: z.number().nullable().optional(),
     supplierLimitUnit: z.string().nullable().optional(),
     targetRemainder: z.number().nullable().optional(),
-    // Новая модель цен (валюта + курс + оргсбор):
     packAmount: z.number().nullable().optional(),
     packUnit: z.string().nullable().optional(),
     currencyId: z.number().nullable().optional(),
     pricePerPackCurrency: z.number().nullable().optional(),
     orgFeePercentOverride: z.number().min(0).max(100).nullable().optional(),
-    // Операционные количества (заполняет организатор):
     orderedQty: z.number().nullable().optional(),
     assembledQty: z.number().nullable().optional(),
     reorderedQty: z.number().nullable().optional(),
-    // Комментарий организатора + скрытие товара:
     adminComment: z.string().max(2000).nullable().optional(),
     hidden: z.boolean().optional(),
 });
@@ -166,6 +159,13 @@ export const purchasesRouter = router({
         return ctx.services.telegramPublish.publishPurchaseItem(input.purchaseItemId);
     }),
 
+    deleteItemPost: adminProcedure
+        .input(z.object({ purchaseItemId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            await ctx.services.purchase.deleteItemPost(input.purchaseItemId);
+            return { ok: true };
+        }),
+
     removeItem: adminProcedure.input(z.object({ purchaseItemId: z.number() })).mutation(async ({ ctx, input }) => {
         return ctx.services.purchase.removeItem(input.purchaseItemId);
     }),
@@ -179,17 +179,9 @@ export const purchasesRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product);
-            // Edit поста в канале обрабатывается шиной channel-post-events —
-            // PurchaseService.updateItemProduct уже вызывает eventBus.emitPurchaseItemChanged.
             return { ok: true };
         }),
 
-    /**
-     * Перегенерировать описание товара из шаблона поста на сервере и обновить
-     * пост в канале. Используется когда тело шаблона изменилось в Settings,
-     * а пост уже опубликован (или когда хочется применить актуальный шаблон
-     * без открытия формы товара). `templateId: null` = «Без шаблона» (очистить).
-     */
     regenerateItemDescription: adminProcedure
         .input(
             z.object({
@@ -205,21 +197,12 @@ export const purchasesRouter = router({
             return { ok: true };
         }),
 
-    /**
-     * Admin: установить/очистить комментарий к участнику закупки (PurchaseOrder).
-     * Пустая строка (или только пробелы) → удаление комментария.
-     * commentAt ставится автоматически на уровне репозитория.
-     */
     setOrderComment: adminProcedure
         .input(z.object({ id: z.number(), comment: z.string().max(2000) }))
         .mutation(async ({ ctx, input }) => {
             return ctx.services.purchase.setOrderComment(input.id, input.comment, ctx.userId);
         }),
 
-    /**
-     * Admin: установить ставки валют закупки (до 3 валют).
-     * Полная замена: переданный массив перезаписывает существующие ставки.
-     */
     updateCurrencyRates: adminProcedure
         .input(
             z.object({

@@ -6,6 +6,8 @@ import {
     COALESCE_WINDOW_MS,
     getNotificationFields,
     getNotificationVisual,
+    HANDOFF_DEFAULT_LABEL,
+    HANDOFF_STATUS_LABELS,
     NOTIFIABLE_FULFILLMENT_STAGES,
     NOTIFICATION_TYPES,
     PURCHASE_FULFILLMENT_LABELS,
@@ -17,13 +19,14 @@ import {
 } from '../src';
 
 describe('NOTIFICATION_TYPES', () => {
-    it('includes all 7 expected types', () => {
+    it('includes all 8 expected types', () => {
         expect(NOTIFICATION_TYPES).toEqual([
             'PAYMENT_CONFIRMED',
             'PAYMENT_REJECTED',
             'ORDER_QTY_CHANGED',
             'ORDER_LINE_DELETED',
             'ORDER_CLEARED',
+            'ORDER_HANDOFF_STATUS',
             'PURCHASE_FULFILLMENT_STAGE',
             'PURCHASE_STATUS_CHANGED',
         ]);
@@ -100,6 +103,7 @@ describe('renderNotificationTitle', () => {
         ['ORDER_QTY_CHANGED', 'Заказ изменён'],
         ['ORDER_LINE_DELETED', 'Позиция удалена'],
         ['ORDER_CLEARED', 'Заказ очищен'],
+        ['ORDER_HANDOFF_STATUS', 'Статус заказа обновлён'],
         ['PURCHASE_FULFILLMENT_STAGE', 'Этап закупки обновлён'],
         ['PURCHASE_STATUS_CHANGED', 'Статус закупки обновлён'],
     ] as const)('returns Russian title for %s', (type, expected) => {
@@ -199,6 +203,26 @@ describe('renderNotificationBody', () => {
         const body = renderNotificationBody('ORDER_CLEARED', { purchaseId: 1, purchaseTag: 'BIG' });
         expect(body).toContain('#BIG');
         expect(body).toContain('очистил');
+    });
+
+    it('ORDER_HANDOFF_STATUS — uses the canonical handoff label', () => {
+        const body = renderNotificationBody('ORDER_HANDOFF_STATUS', {
+            purchaseId: 1,
+            purchaseTag: 'X',
+            status: 'SENT',
+        });
+        expect(body).toContain('#X');
+        expect(body).toContain(HANDOFF_STATUS_LABELS.SENT);
+    });
+
+    it('ORDER_HANDOFF_STATUS — reset to null says the status was сброшен', () => {
+        const body = renderNotificationBody('ORDER_HANDOFF_STATUS', {
+            purchaseId: 1,
+            purchaseTag: 'X',
+            status: null,
+        });
+        expect(body).toContain('сброшен');
+        expect(body).not.toContain(HANDOFF_DEFAULT_LABEL);
     });
 
     it('PURCHASE_FULFILLMENT_STAGE — uses the canonical fulfillment label', () => {
@@ -361,16 +385,41 @@ describe('renderNotificationTelegramBody', () => {
         expect(body).toContain('<b>Новый статус:</b>');
         expect(body).toContain(PURCHASE_STATUS_LABELS.DONE);
     });
+
+    it('renders the handoff label for ORDER_HANDOFF_STATUS', () => {
+        const body = renderNotificationTelegramBody('ORDER_HANDOFF_STATUS', {
+            purchaseId: 1,
+            purchaseTag: '#X',
+            status: 'RECEIVED',
+        });
+        expect(body.startsWith('<b>Статус заказа обновлён</b>')).toBe(true);
+        expect(body).toContain(`<b>Статус:</b> ${HANDOFF_STATUS_LABELS.RECEIVED}`);
+    });
+
+    it('renders the default label for a reset handoff status', () => {
+        const body = renderNotificationTelegramBody('ORDER_HANDOFF_STATUS', {
+            purchaseId: 1,
+            purchaseTag: '#X',
+            status: null,
+        });
+        expect(body).toContain(`<b>Статус:</b> ${HANDOFF_DEFAULT_LABEL}`);
+    });
 });
 
 describe('renderNotificationUrl', () => {
-    it('routes payment notifications to /shop/payments', () => {
+    it('routes payment notifications to /shop/orders', () => {
         expect(
             renderNotificationUrl('PAYMENT_CONFIRMED', { purchaseId: 7, purchaseTag: 'X', amount: 1 }),
-        ).toBe('/shop/payments');
+        ).toBe('/shop/orders');
         expect(
             renderNotificationUrl('PAYMENT_REJECTED', { purchaseId: 7, purchaseTag: 'X', amount: 1 }),
-        ).toBe('/shop/payments');
+        ).toBe('/shop/orders');
+    });
+
+    it('routes handoff notifications to /shop/orders — the participant sees the status there', () => {
+        expect(
+            renderNotificationUrl('ORDER_HANDOFF_STATUS', { purchaseId: 7, purchaseTag: 'X', status: 'SENT' }),
+        ).toBe('/shop/orders');
     });
 
     it('deep-links order-change notifications to the purchase page', () => {
@@ -415,6 +464,7 @@ describe('getNotificationVisual', () => {
         ['ORDER_QTY_CHANGED', 'accent'],
         ['ORDER_LINE_DELETED', 'warning'],
         ['ORDER_CLEARED', 'warning'],
+        ['ORDER_HANDOFF_STATUS', 'accent'],
         ['PURCHASE_FULFILLMENT_STAGE', 'neutral'],
         ['PURCHASE_STATUS_CHANGED', 'neutral'],
     ] as const)('returns tone %s for %s', (type, expectedTone) => {
@@ -530,6 +580,18 @@ describe('getNotificationFields', () => {
         expect(fields).toContainEqual({ label: 'Новый статус', value: PURCHASE_STATUS_LABELS.DONE });
     });
 
+    it('ORDER_HANDOFF_STATUS — surfaces the handoff label', () => {
+        const fields = getNotificationFields('ORDER_HANDOFF_STATUS', {
+            purchaseId: 1,
+            purchaseTag: 'X',
+            status: 'STORED',
+        });
+        expect(fields).toEqual([
+            { label: 'Закупка', value: '#X' },
+            { label: 'Статус', value: HANDOFF_STATUS_LABELS.STORED },
+        ]);
+    });
+
     it('always puts Закупка first so the purchase is identifiable at a glance', () => {
         for (const type of NOTIFICATION_TYPES) {
             // Build a minimal valid payload per type — fields() reads only what it needs.
@@ -553,7 +615,9 @@ describe('getNotificationFields', () => {
                           ? { purchaseId: 1, purchaseTag: 'T', amount: 1 }
                           : type === 'PURCHASE_FULFILLMENT_STAGE'
                             ? { purchaseId: 1, purchaseTag: 'T', stage: 'PAYMENT' }
-                            : { purchaseId: 1, purchaseTag: 'T', status: 'DONE' };
+                            : type === 'ORDER_HANDOFF_STATUS'
+                              ? { purchaseId: 1, purchaseTag: 'T', status: 'SENT' }
+                              : { purchaseId: 1, purchaseTag: 'T', status: 'DONE' };
             const fields = getNotificationFields(type, payload);
             expect(fields[0]?.label).toBe('Закупка');
             expect(fields[0]?.value).toMatch(/^#T$/);

@@ -1,4 +1,12 @@
-import { computeAmountDueWithPackages, mapToPurchaseItem, NotFoundError, ValidationError } from '@zakupki/types';
+import {
+    canAddItemsAtStage,
+    computeAmountDueWithPackages,
+    mapToPurchaseItem,
+    NotFoundError,
+    PURCHASE_FULFILLMENT_LABELS,
+    ValidationError,
+    type PurchaseFulfillmentStatus,
+} from '@zakupki/types';
 
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import { OrderRepository } from '../domain/order.repository';
@@ -85,13 +93,32 @@ export class PurchaseService {
 
     async ensureCanPublishItem(purchaseItemId: number) {
         const item = await this.repo.findItemWithPurchase(purchaseItemId);
-        if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
+        if (!item) throw new NotFoundError('Позиция закупки', purchaseItemId);
         if (item.purchase.status !== 'ACTIVE') {
             throw new ValidationError('Публиковать в Telegram можно только для активной закупки');
         }
         if (item.tgMessageId) {
             throw new ValidationError('Товар уже опубликован в Telegram');
         }
+    }
+
+    async deleteItemPost(purchaseItemId: number) {
+        const item = await this.repo.findItemWithPurchase(purchaseItemId);
+        if (!item) throw new NotFoundError('Позиция закупки', purchaseItemId);
+        if (!item.tgMessageId) {
+            throw new ValidationError('Пост не опубликован');
+        }
+
+        await this.repo.updatePurchaseItem(purchaseItemId, {
+            tgMessageId: null,
+            tgChannelId: null,
+            publicationState: 'DRAFT',
+        });
+        await this.telegramPublish.enqueueDeleteChannelPost(
+            purchaseItemId,
+            item.tgMessageId,
+            item.tgChannelId,
+        );
     }
 
     async ensureItemExists(purchaseItemId: number) {
@@ -137,11 +164,24 @@ export class PurchaseService {
             if (itemData[key] !== undefined) itemUpdate[key] = itemData[key];
         }
 
+        const hidingPublishedItem = itemData.hidden === true && item.tgMessageId != null;
+        if (hidingPublishedItem) {
+            itemUpdate.tgMessageId = null;
+            itemUpdate.tgChannelId = null;
+            itemUpdate.publicationState = 'DRAFT';
+        }
+
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
 
-        // Emit в шину доменных событий (попадает в debounce-окно 7s).
-        // Воркер в боте сам подтянет актуальные данные из БД и обновит пост в канале.
-        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        if (hidingPublishedItem) {
+            await this.eventBus.emitPostDelete(
+                purchaseItemId,
+                item.tgMessageId ?? undefined,
+                item.tgChannelId ?? undefined,
+            );
+        } else {
+            await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        }
 
         return item;
     }
@@ -172,6 +212,12 @@ export class PurchaseService {
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status === 'DONE') {
             throw new ValidationError('В завершённую закупку нельзя добавлять товары');
+        }
+        if (!canAddItemsAtStage(purchase.fulfillmentStatus)) {
+            const stage = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
+            throw new ValidationError(
+                `На этапе «${PURCHASE_FULFILLMENT_LABELS[stage]}» добавление товаров недоступно`,
+            );
         }
 
         if (items.length === 0) {
@@ -213,7 +259,11 @@ export class PurchaseService {
         if (!item) throw new NotFoundError('Позиция закупки', id);
 
         if (item.tgMessageId) {
-            await this.telegramPublish.enqueueDeleteChannelPost(id);
+            await this.telegramPublish.enqueueDeleteChannelPost(
+                id,
+                item.tgMessageId,
+                item.tgChannelId,
+            );
         }
 
         return this.repo.removeItem(id);

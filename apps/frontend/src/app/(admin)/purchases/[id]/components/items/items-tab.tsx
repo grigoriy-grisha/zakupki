@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Send } from 'lucide-react';
-import { getUnitByCode, resolveOrgFeePercent } from '@zakupki/types';
+import { ClipboardList, Search, SearchX, Send } from 'lucide-react';
+import { canAddItemsAtStage, getUnitByCode, resolveOrgFeePercent } from '@zakupki/types';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -29,13 +30,14 @@ import {
     getUnitPriceRub,
 } from '../../lib/items-table-pricing';
 import {
+    useDeleteItemPost,
     useInlineUpdateItem,
     usePurchaseActions,
     useRemovePurchaseItem,
 } from '../../hooks';
 import { usePurchaseDetail } from '../../hooks/use-purchase-detail';
 import type { PurchaseDetail } from '../../lib/types';
-import type { ProductLabelSource } from '../../../../products/lib';
+import type { ProductLabelSource } from '@/lib/product-label';
 import { CurrencyRatesPanel } from './currency-rates-panel';
 import { ItemEditSheet } from './item-edit-sheet';
 import { ItemsTableRow, type ItemsTableRowDerived } from './items-table-row';
@@ -55,6 +57,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const removeItem = useRemovePurchaseItem(purchaseId);
     const { publishAll } = usePurchaseActions(purchaseId);
     const inlineUpdate = useInlineUpdateItem(purchaseId);
+    const deletePost = useDeleteItemPost(purchaseId);
 
     const [search, setSearch] = useState('');
     const [publishedFilter, setPublishedFilter] = useState<'all' | 'published' | 'unpublished'>('all');
@@ -67,7 +70,9 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
         published: boolean;
     } | null>(null);
     const [publishOpen, setPublishOpen] = useState(false);
-    const [regenerateTarget, setRegenerateTarget] = useState<number | null>(null);
+    const [regenerateTarget, setRegenerateTarget] = useState<{ itemId: number; productId: number } | null>(
+        null,
+    );
 
     if (isLoading || !purchase) {
         return <div className="h-64 animate-pulse rounded-2xl bg-bg-soft" />;
@@ -76,7 +81,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const typedPurchase = purchase as PurchaseDetail;
     const items = typedPurchase.items;
     const currencyRates = typedPurchase.currencyRates ?? [];
-    const canAddItems = typedPurchase.status !== 'DONE';
+    const canAddItems = typedPurchase.status !== 'DONE' && canAddItemsAtStage(typedPurchase.fulfillmentStatus);
     const isActive = typedPurchase.status === 'ACTIVE';
     const isDone = typedPurchase.status === 'DONE';
 
@@ -86,7 +91,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
             if (publishedFilter === 'published' && !it.tgMessageId) return false;
             if (publishedFilter === 'unpublished' && it.tgMessageId) return false;
             if (!q) return true;
-            const name = `${it.product.name ?? ''} ${it.product.brand ?? ''}`.toLowerCase();
+            const name = `${it.product.name ?? ''} ${it.product.brand ?? ''} ${it.adminComment ?? ''}`.toLowerCase();
             return name.includes(q);
         });
     }, [items, search, publishedFilter]);
@@ -148,7 +153,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Поиск по названию или бренду..."
+                            placeholder="Поиск: название, бренд или комментарий…"
                             className="rounded-full pl-9 text-13-regular"
                         />
                     </div>
@@ -202,6 +207,19 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
             </div>
 
             <TooltipProvider delayDuration={150}>
+                {filtered.length === 0 ? (
+                    <div className="rounded-2xl border border-border bg-bg-card">
+                        <EmptyState
+                            icon={search.trim() ? SearchX : ClipboardList}
+                            title={search.trim() ? 'Ничего не найдено' : 'Нет товаров в закупке'}
+                            description={
+                                search.trim()
+                                    ? 'Попробуйте изменить запрос — поиск идёт по названию, бренду и комментарию.'
+                                    : 'Добавьте товары, чтобы они появились здесь.'
+                            }
+                        />
+                    </div>
+                ) : (
                 <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
                     <Table className="table-fixed min-w-[2200px]">
                         <TableHeader>
@@ -238,17 +256,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filtered.length === 0 ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={14}
-                                        className="h-24 text-center text-14-regular text-fg-tertiary"
-                                    >
-                                        {search ? 'Ничего не найдено' : 'Нет товаров в закупке'}
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filtered.map((item) => {
+                            {filtered.map((item) => {
                                     // Скрытый товар = «не опубликован» в UI, даже если tgMessageId
                                     // ещё не обнулён воркером (он обнулит его через ~7с в ITEM_CHANGED).
                                     // Иначе после «Скрыть» чекбокс зависает в состоянии «Опубликовано».
@@ -289,6 +297,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                                                 derived={derived}
                                                 currencyRates={currencyRates}
                                                 selected={selectedIds.has(item.id)}
+                                                searchQuery={search}
                                             onToggleSelect={toggleSelect}
                                             onEdit={setEditItemId}
                                             onPublish={(id) => {
@@ -301,14 +310,22 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                                             }}
                                             onDelete={setDeleteTarget}
                                             onCommit={(patch) => handleInlineCommit(item.id, patch)}
-                                            onRegenerate={(target) => setRegenerateTarget(target.itemId)}
-                                        />
+                                            onDeletePost={(itemId) =>
+                                                deletePost.mutate({ purchaseItemId: itemId })
+                                            }
+                                            onRegenerate={(target) =>
+                                                setRegenerateTarget({
+                                                    itemId: target.itemId,
+                                                    productId: item.productId,
+                                                })
+                                        }
+                                    />
                                     );
-                                })
-                            )}
+                                })}
                         </TableBody>
                     </Table>
                 </div>
+                )}
             </TooltipProvider>
 
             <ItemEditSheet
@@ -374,7 +391,8 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
 
             <RegeneratePostDialog
                 purchaseId={purchaseId}
-                purchaseItemId={regenerateTarget}
+                purchaseItemId={regenerateTarget?.itemId ?? null}
+                productId={regenerateTarget?.productId ?? 0}
                 open={regenerateTarget !== null}
                 onOpenChange={(open) => {
                     if (!open) setRegenerateTarget(null);

@@ -1,4 +1,4 @@
-import type { PurchaseFulfillmentStatus, PurchaseStatus } from '../index';
+import type { HandoffStatus, PurchaseFulfillmentStatus, PurchaseStatus } from '../index';
 
 /**
  * All notification types triggered by admin-side mutations.
@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPES = [
     'ORDER_QTY_CHANGED',
     'ORDER_LINE_DELETED',
     'ORDER_CLEARED',
+    'ORDER_HANDOFF_STATUS',
     'PURCHASE_FULFILLMENT_STAGE',
     'PURCHASE_STATUS_CHANGED',
 ] as const;
@@ -60,6 +61,11 @@ export interface NotificationPayloads {
     ORDER_CLEARED: {
         purchaseId: number;
         purchaseTag: string;
+    };
+    ORDER_HANDOFF_STATUS: {
+        purchaseId: number;
+        purchaseTag: string;
+        status: HandoffStatus | null;
     };
     PURCHASE_FULFILLMENT_STAGE: {
         purchaseId: number;

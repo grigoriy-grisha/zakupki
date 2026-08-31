@@ -1,5 +1,5 @@
 import { dbClient } from '@zakupki/database';
-import { NotFoundError } from '@zakupki/types';
+import { NotFoundError, type HandoffStatus } from '@zakupki/types';
 
 import { productInclude } from './product-include';
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
@@ -166,6 +166,9 @@ export class OrderRepository {
                         },
                     },
                 },
+                purchaseOrder: {
+                    select: { handoffStatus: true },
+                },
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -193,7 +196,7 @@ export class OrderRepository {
                     },
                 },
                 purchaseOrder: {
-                    select: { id: true, comment: true, commentAuthor: true, commentAt: true },
+                    select: { id: true, comment: true, commentAuthor: true, commentAt: true, handoffStatus: true },
                 },
             },
         });
@@ -309,9 +312,38 @@ export class OrderRepository {
                 comment: true,
                 commentAuthor: true,
                 commentAt: true,
+                handoffStatus: true,
+                handoffAt: true,
                 user: { include: USER_CREDENTIALS_INCLUDE },
             },
             orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async findPurchaseOrderWithPurchase(id: number) {
+        return dbClient.purchaseOrder.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                userId: true,
+                purchaseId: true,
+                handoffStatus: true,
+                purchase: { select: { tag: true } },
+            },
+        });
+    }
+
+    async setHandoffStatus(id: number, status: HandoffStatus | null, actorId: number) {
+        const data =
+            status == null
+                ? { handoffStatus: null, handoffAt: null, handoffBy: null }
+                : { handoffStatus: status, handoffAt: new Date(), handoffBy: actorId };
+        return dbClient.purchaseOrder.update({ where: { id }, data });
+    }
+
+    async countParticipantsWithoutHandoff(purchaseId: number): Promise<number> {
+        return dbClient.purchaseOrder.count({
+            where: { purchaseId, handoffStatus: null },
         });
     }
 

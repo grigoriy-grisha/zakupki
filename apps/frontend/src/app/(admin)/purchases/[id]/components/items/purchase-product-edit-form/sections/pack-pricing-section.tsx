@@ -1,5 +1,13 @@
 'use client';
 
+import {
+    resolveCurrencyRate,
+    resolveOrgFeePercent,
+    solvePricePerPackFromPackOrgRub,
+    solvePricePerPackFromPackRub,
+    solvePricePerPackFromUnitRub,
+} from '@zakupki/types';
+
 import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,6 +21,15 @@ import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { cn } from '@/lib/utils';
 
 import { PACKAGE_UNITS } from '../../../../../../products/lib';
+import {
+    formatUnitRub,
+    formatWholeRub,
+    getPackPriceRub,
+    getPackPriceWithOrgFeeRub,
+    getUnitPriceRub,
+} from '../../../../lib/items-table-pricing';
+import type { PurchaseCurrencyRateRef } from '../../../../lib/types';
+import { InlineCell } from '../../inline-cell';
 
 /**
  * Sensible defaults when the admin picks grams as the package unit. Grams are
@@ -52,6 +69,8 @@ interface PackPricingSectionProps {
     orgFeeDefaultPercent: number;
     /** Все валюты из справочника. */
     currencies: CurrencyRow[];
+    /** Курсы валют закупки (для ₽-полей; без них ₽-поля выключены). */
+    currencyRates?: PurchaseCurrencyRateRef[];
     onPriceChange: (value: number | null) => void;
     onCurrencyChange: (value: number | null) => void;
     onPackAmountChange: (value: number | null) => void;
@@ -72,9 +91,8 @@ interface PackPricingSectionProps {
  * Поля: цена в валюте + валюта (Select из справочника), вес упаковки +
  * единица (гр/шт/туба), оргсбор % (override; пусто = глобальный default).
  *
- * Цена в ₽, цена с оргсбором и цена за 1ед считаются автоматически на сервере
- * после сохранения (chain: pricePerPackCurrency × rateToRub × (1+orgFee/100)
- * / packSize).
+ * Цена в ₽, цена с оргсбором и цена за 1ед редактируются в форме и связаны
+ * с ценой в валюте обратным пересчётом — как колонки 4/5/6 таблицы товаров.
  */
 export function PackPricingSection({
     pricePerPackCurrency,
@@ -84,6 +102,7 @@ export function PackPricingSection({
     orgFeePercentOverride,
     orgFeeDefaultPercent,
     currencies,
+    currencyRates,
     onPriceChange,
     onCurrencyChange,
     onPackAmountChange,
@@ -98,6 +117,22 @@ export function PackPricingSection({
         onPackUnitChange(v);
         if (v === GRAM_UNIT) onGramsSelected?.();
     };
+
+    const rateToRub = resolveCurrencyRate(
+        (currencyRates ?? []).map((r) => ({
+            currencyId: r.currencyId,
+            rateToRub: Number(r.rateToRub),
+        })),
+        currencyId,
+    );
+    const effOrgFee = resolveOrgFeePercent(orgFeePercentOverride, orgFeeDefaultPercent);
+    const pricingFields = { pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride };
+    const packRub = getPackPriceRub(pricingFields, currencyRates ?? []);
+    const packOrgRub = getPackPriceWithOrgFeeRub(pricingFields, currencyRates ?? [], orgFeeDefaultPercent);
+    const unitRub = getUnitPriceRub(pricingFields, currencyRates ?? [], orgFeeDefaultPercent);
+    const rubEditable = rateToRub != null && rateToRub > 0;
+    const unitEditable = rubEditable && packAmount != null && packAmount > 0;
+    const rubInputClassName = 'h-9 rounded-xl px-3 text-13-medium tabular-nums';
 
     return (
         <FormSection card title="Цена за упаковку">
@@ -141,6 +176,57 @@ export function PackPricingSection({
                             ))}
                         </SelectContent>
                     </Select>
+                </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">Цена в ₽</label>
+                    <InlineCell
+                        value={packRub}
+                        disabled={!rubEditable}
+                        onCommit={(v) => onPriceChange(solvePricePerPackFromPackRub(v, rateToRub))}
+                        min={0}
+                        ariaLabel="Цена за упаковку в рублях"
+                        placeholder="—"
+                        format={formatWholeRub}
+                        className={rubInputClassName}
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                        С оргсбором, ₽
+                        <span className="ml-1 opacity-70">+{effOrgFee}%</span>
+                    </label>
+                    <InlineCell
+                        value={packOrgRub}
+                        disabled={!rubEditable}
+                        onCommit={(v) =>
+                            onPriceChange(solvePricePerPackFromPackOrgRub(v, rateToRub, effOrgFee))
+                        }
+                        min={0}
+                        ariaLabel="Цена за упаковку с оргсбором в рублях"
+                        placeholder="—"
+                        format={formatWholeRub}
+                        className={rubInputClassName}
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">За 1 ед, ₽</label>
+                    <InlineCell
+                        value={unitRub}
+                        disabled={!unitEditable}
+                        onCommit={(v) =>
+                            onPriceChange(
+                                solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount),
+                            )
+                        }
+                        min={0}
+                        ariaLabel="Цена за 1 единицу в рублях"
+                        placeholder="—"
+                        format={formatUnitRub}
+                        className={rubInputClassName}
+                    />
                 </div>
             </div>
 
@@ -197,8 +283,8 @@ export function PackPricingSection({
                     aria-label="Оргсбор процент"
                 />
                 <p className="mt-1.5 text-12-regular text-fg-tertiary">
-                    Цена в ₽, цена с оргсбором и цена за 1 единицу считаются автоматически.
-                    Курс валюты задаётся в панели «Валюты закупки».
+                    Поля связаны: введи цену в валюте или в любой рублёвой — остальные
+                    пересчитаются. Курс валюты задаётся в панели «Валюты закупки».
                 </p>
             </div>
         </FormSection>

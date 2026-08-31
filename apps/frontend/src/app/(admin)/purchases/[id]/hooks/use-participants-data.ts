@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
+import type { HandoffStatus } from '@zakupki/types';
 import { trpc } from '@/lib/client/trpc';
 import { displayName } from '@/lib/utils/user';
 import { safeNumber } from '@/lib/utils';
 import { paymentTotal } from '../../lib/utils';
+import type { ParticipantOrderItem } from '../components/participants/types';
 import type { PaymentRef, UserBrief, OrderLineRef } from '../lib/types';
 
 /** PurchaseOrder в том виде, как его отдаёт orders.getAllByPurchase (см. order.repository.getByPurchase). */
@@ -13,11 +15,13 @@ export interface OrderComment {
     comment: string | null;
     commentAuthor: number | null;
     commentAt: string | null;
+    handoffStatus?: HandoffStatus | null;
 }
 
 type OrderRow = OrderLineRef & {
     purchaseOrder?: OrderComment | null;
     user?: UserBrief;
+    purchaseItem?: ParticipantOrderItem;
 };
 
 /**
@@ -30,6 +34,7 @@ interface PurchaseOrderRow {
     comment: string | null;
     commentAuthor: number | null;
     commentAt: string | null;
+    handoffStatus: HandoffStatus | null;
     user: {
         firstName: string;
         lastName: string | null;
@@ -49,6 +54,7 @@ const emptyMaps = () => ({
     // Денормализованная карта «участник → комментарий» — comment привязан
     // к PurchaseOrder, а не к OrderLine, поэтому одна запись на userId.
     orderComments: new Map<number, OrderComment>(),
+    handoffByUser: new Map<number, HandoffStatus | null>(),
     totalDue: 0,
     totalPaid: 0,
     totalPending: 0,
@@ -70,6 +76,7 @@ export function useParticipantsData(purchaseId: number) {
         const userMap = new Map<number, { name: string; username?: string }>();
         const userOrders = new Map<number, OrderRow[]>();
         const orderComments = new Map<number, OrderComment>();
+        const handoffByUser = new Map<number, HandoffStatus | null>();
 
         // 1) PurchaseOrder — источник правды участников (включает «голых»).
         //    Сначала заполняем userMap и orderComments из заголовков.
@@ -93,7 +100,11 @@ export function useParticipantsData(purchaseId: number) {
                     comment: po.comment,
                     commentAuthor: po.commentAuthor,
                     commentAt: po.commentAt,
+                    handoffStatus: po.handoffStatus,
                 });
+            }
+            if (!handoffByUser.has(po.userId)) {
+                handoffByUser.set(po.userId, po.handoffStatus);
             }
         }
 
@@ -111,6 +122,9 @@ export function useParticipantsData(purchaseId: number) {
             // берём purchaseOrder из строки (инвариант: одна запись на userId).
             if (o.purchaseOrder && !orderComments.has(o.userId)) {
                 orderComments.set(o.userId, o.purchaseOrder);
+            }
+            if (o.purchaseOrder && !handoffByUser.has(o.userId)) {
+                handoffByUser.set(o.userId, o.purchaseOrder.handoffStatus ?? null);
             }
         });
 
@@ -166,6 +180,7 @@ export function useParticipantsData(purchaseId: number) {
             paidByUser,
             pendingByUser,
             orderComments,
+            handoffByUser,
             totalDue,
             totalPaid,
             totalPending,

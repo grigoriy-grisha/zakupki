@@ -25,7 +25,6 @@ export {
 export { getProductTitleAttributeNames } from './format-title';
 
 export {
-    getProductCatalogAttributeLabels,
     formatProductCatalogCardLines,
     buildShopItemDescriptionRows,
 } from './format-catalog';

@@ -19,6 +19,10 @@ import type { NotificationService } from './notification.service';
 
 const log = createLogger('purchase-status-service');
 
+function pluralParticipants(count: number): string {
+    return count % 10 === 1 && count % 100 !== 11 ? 'участника' : 'участников';
+}
+
 /**
  * Управление жизненным циклом закупки: переходы статусов (DRAFT/ACTIVE/DONE) и
  * этапов комплектации (fulfillment), включая заморозку/разморозку базовых
@@ -107,6 +111,12 @@ export class PurchaseStatusService {
         if (!purchase) throw new NotFoundError('Закупка', id);
         if (purchase.status !== 'ACTIVE') {
             throw new ValidationError('Завершить можно только активную закупку');
+        }
+        const missing = await this.orderRepo.countParticipantsWithoutHandoff(id);
+        if (missing > 0) {
+            throw new ValidationError(
+                `Нельзя завершить закупку: не проставлен статус выдачи у ${missing} ${pluralParticipants(missing)}`,
+            );
         }
         const result = await this.repo.updateStatus(id, 'DONE');
         await this.eventBus.emitPurchaseStatusChanged(id, 'ACTIVE', 'DONE');
