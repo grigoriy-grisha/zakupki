@@ -85,7 +85,12 @@ export class PaymentProofHandler implements MessageHandler {
         const userComment = message.caption?.trim() || undefined;
 
         try {
-            const proofData = await downloadTelegramFile(ctx.api, fileId, this.container.cfg.telegram.token);
+            const proofData = await downloadTelegramFile(
+                ctx.api,
+                fileId,
+                this.container.cfg.telegram.token,
+                this.container.cfg.telegram.proxyUrl,
+            );
             const promo = flow.promo;
             await this.container.paymentService.submitPaymentWithProof({
                 userId: ctx.session.userId!,
