@@ -59,17 +59,23 @@ export function PurchaseStepper({ currentStatus }: PurchaseStepperProps) {
                             />
                             <div
                                 className={cn(
-                                    'z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all',
+                                    'relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all',
                                     isCompleted && 'bg-primary/15 text-primary',
                                     isCurrent &&
                                         'bg-primary text-primary-foreground ring-4 ring-primary/15',
                                     isFuture && 'border-2 border-border-low bg-bg-card text-fg-tertiary',
                                 )}
                             >
+                                {isCurrent && (
+                                    <span
+                                        className="absolute -inset-1 animate-pulse rounded-full bg-primary/20 motion-reduce:animate-none"
+                                        aria-hidden
+                                    />
+                                )}
                                 {isCompleted ? (
-                                    <CheckIcon className="size-3.5" />
+                                    <CheckIcon className="relative size-3.5" />
                                 ) : (
-                                    <span className="text-12-medium tabular-nums">{idx + 1}</span>
+                                    <span className="relative text-12-medium tabular-nums">{idx + 1}</span>
                                 )}
                             </div>
                             <div

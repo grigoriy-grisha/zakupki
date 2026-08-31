@@ -115,6 +115,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                 >
                                     <ProductPhotoPreview
                                         photoId={item.product.photos?.[0]?.id}
+                                        photoIds={item.product.photos?.map((p: { id: number }) => p.id)}
                                         alt={item.product.name}
                                         thumbClassName="h-10 w-10 rounded-lg"
                                     />

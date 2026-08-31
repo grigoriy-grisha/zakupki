@@ -15,6 +15,19 @@ export function isPurchaseCompleted(status: PurchaseStatus | string | null | und
     return status === 'DONE';
 }
 
+// Handoff statuses — выдача заказа участнику (живёт на PurchaseOrder)
+export const HANDOFF_STATUSES = ['SENT', 'RECEIVED', 'STORED'] as const;
+
+export type HandoffStatus = (typeof HANDOFF_STATUSES)[number];
+
+export const HANDOFF_STATUS_LABELS: Record<HandoffStatus, string> = {
+    SENT: 'Отправлен',
+    RECEIVED: 'Получение подтверждено',
+    STORED: 'Отложен на хранение',
+};
+
+export const HANDOFF_DEFAULT_LABEL = 'Ожидает выдачи';
+
 // Fulfillment statuses
 export const PURCHASE_FULFILLMENT_STATUSES = [
     'COLLECTION',
@@ -119,6 +132,9 @@ export {
     computeAmountDueNewModel,
     resolveOrgFeePercent,
     resolveCurrencyRate,
+    solvePricePerPackFromPackRub,
+    solvePricePerPackFromPackOrgRub,
+    solvePricePerPackFromUnitRub,
     type PriceTier,
     type OrderQuantityOptions,
     type CurrencyRate,
@@ -195,12 +211,14 @@ export {
     canCancelOrder,
     canDecreaseOrder,
     canIncreaseFromRemainder,
+    isOrderingClosedStage,
     isSupplementPhase,
 } from './order-strategies';
 
 // Purchase fulfillment state machine
 export {
     FULFILLMENT_TRANSITIONS,
+    canAddItemsAtStage,
     canTransitionFulfillment,
     isFreezePoint,
     isPaymentPlusFreezePoint,

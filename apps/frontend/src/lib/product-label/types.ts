@@ -9,7 +9,6 @@ export type ProductAttributeValueSource = {
     };
 };
 
-/** Актуальные флаги «в заголовок» из настроек (перекрывают вложенный type у товара из кэша). */
 export type ShowInTitleByTypeId = Readonly<Record<number, boolean>>;
 
 export type AttributeTypeMeta = {

@@ -7,7 +7,7 @@ import {
     formatPurchaseProductLabel,
     getProductDisplayName,
     type ProductLabelSource,
-} from '@/app/(admin)/products/lib';
+} from '@/lib/product-label';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 

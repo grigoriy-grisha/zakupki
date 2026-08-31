@@ -9,8 +9,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/client/trpc';
 import { useDeleteProduct } from '../hooks';
-import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '../lib';
-import { productPhotoUrl } from '@/lib/product-photo-url';
+import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '@/lib/product-label';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 
 interface CatalogProductCardProps {
     product: ProductCatalogCardSource & {
@@ -67,14 +67,12 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                 {/* ── Фото ── */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
                     {photo ? (
-                        <div className="h-full w-full overflow-hidden">
-                            <img
-                                src={productPhotoUrl(
-                                    photo.id,
-                                    `${product.id}-${(photo as { sortOrder?: number }).sortOrder ?? 0}`,
-                                )}
+                        <div className="h-full w-full overflow-hidden transition-transform duration-500 ease-out group-hover:scale-105">
+                            <ProductPhotoPreview
+                                photoId={photo.id}
+                                photoIds={product.photos?.map((p) => p.id)}
                                 alt={product.name}
-                                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                                fill
                             />
                         </div>
                     ) : (
@@ -85,7 +83,7 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
 
                     {/* Бейдж «В закупке» — объясняет отсутствие кнопки удаления */}
                     {product.inActivePurchase && (
-                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-11-medium leading-none text-white backdrop-blur-md">
+                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full border border-white/40 bg-bg-card/80 px-2 py-0.5 text-11-medium leading-none text-warning shadow-sm backdrop-blur-md">
                             <Lock className="size-2.5" />
                             В закупке
                         </div>

@@ -1,7 +1,3 @@
-/**
- * Shared Prisma include для загрузки Product с полными связями.
- * Используется в ProductRepository и PurchaseRepository.
- */
 export const productInclude = {
     photos: { select: { id: true, sortOrder: true }, orderBy: { sortOrder: 'asc' as const } },
     brand: { select: { id: true, name: true, typeId: true, showInTitle: true, isBrand: true } },

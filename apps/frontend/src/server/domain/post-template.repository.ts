@@ -9,7 +9,6 @@ export class PostTemplateRepository {
         });
     }
 
-    /** Single-template lookup by id. Used by server-side description regeneration. */
     async findById(id: number) {
         return dbClient.postTemplate.findUnique({ where: { id } });
     }

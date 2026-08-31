@@ -3,9 +3,9 @@
  *
  * Таблица разрешений (из plan):
  *
- * | Действие              | COLLECTION | REORDER | PAYMENT | После PAYMENT |
- * |-----------------------|------------|---------|---------|---------------|
- * | Добавить новый товар  | Да         | Да      | Да      | Да            |
+ * | Действие              | COLLECTION | REORDER | PAYMENT | До фасовки | Фасовка+ |
+ * |-----------------------|------------|---------|---------|------------|----------|
+ * | Добавить новый товар  | Да         | Да      | Да      | Да         | Нет      |
  * | Убавить существующий  | Да         | Да      | Нет     | Нет           |
  * | Убрать полностью      | Да         | Да      | Нет     | Нет           |
  * | Добрать из остатка    | Нет        | Да      | Да      | Да            |
@@ -14,9 +14,14 @@
 
 /** Статусы, на которых можно добавлять НОВЫЙ товар (создавать OrderLine) из свободного остатка. */
 export function canAddNewItem(fulfillmentStatus: string): boolean {
+    if (isOrderingClosedStage(fulfillmentStatus)) return false;
     if (fulfillmentStatus === 'COLLECTION') return true;
-    // На этапах добора (REORDER+) тоже можно создать OrderLine из остатка
     return isSupplementPhase(fulfillmentStatus);
+}
+
+/** Фасовка и выдача: приём заказов закрыт, участники могут только убавлять. */
+export function isOrderingClosedStage(fulfillmentStatus: string): boolean {
+    return fulfillmentStatus === 'PACKAGING' || fulfillmentStatus === 'READY_FOR_PICKUP';
 }
 
 /**

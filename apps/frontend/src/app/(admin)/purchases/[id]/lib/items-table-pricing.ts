@@ -33,6 +33,18 @@ export function getPackPriceRub(item: ItemPricingFields, rates: PurchaseCurrency
     return computePackPriceRub(priceCur, rate);
 }
 
+export function getRateToRub(item: ItemPricingFields, rates: PurchaseCurrencyRateRef[]): number | null {
+    return resolveCurrencyRate(toRates(rates), item.currencyId ?? null);
+}
+
+export function formatWholeRub(value: number): string {
+    return String(Math.round(value));
+}
+
+export function formatUnitRub(value: number): string {
+    return Number.isInteger(value) ? String(value) : String(parseFloat(value.toFixed(2)));
+}
+
 /** Кол. 5: цена упаковки с оргсбором = цена в ₽ × (1 + оргсбор/100). */
 export function getPackPriceWithOrgFeeRub(
     item: ItemPricingFields,

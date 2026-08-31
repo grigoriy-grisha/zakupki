@@ -1,8 +1,8 @@
 /**
  * PaymentPlusStrategy — логика для этапов PAYMENT+.
  *
- * Покрывает все 7 подстадий: PAYMENT, SUPPLIER_ASSEMBLY, PREPARING_SHIPMENT_RF,
- * IN_TRANSIT_RF, IN_TRANSIT_TO_ORGANIZER, PACKAGING, READY_FOR_PICKUP.
+ * Покрывает подстадии PAYMENT, SUPPLIER_ASSEMBLY, PREPARING_SHIPMENT_RF,
+ * IN_TRANSIT_RF, IN_TRANSIT_TO_ORGANIZER (PACKAGING+ — OrderingClosedStrategy).
  *
  * На PAYMENT+ пользователь может только добавлять добор (supplement) к своей
  * COLLECTION-строке:

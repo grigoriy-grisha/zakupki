@@ -19,8 +19,7 @@ import type {
     ShopItemDescriptionRow,
 } from './types';
 
-/** Подписи атрибутов для каталога: «Тип: Бренд Значение» по дереву типов. */
-export function getProductCatalogAttributeLabels(
+function getProductCatalogAttributeLabels(
     product: ProductLabelSource,
     attributeTypes?: AttributeTypeMeta[],
 ): string[] {
@@ -47,7 +46,6 @@ export function getProductCatalogAttributeLabels(
     return labels;
 }
 
-/** Строки полного описания для карточки товара в каталоге. */
 export function formatProductCatalogCardLines(
     product: ProductCatalogCardSource,
     attributeTypes?: AttributeTypeMeta[],
@@ -90,7 +88,6 @@ export function formatProductCatalogCardLines(
     return lines.map((l) => ({ ...l, text: l.text.trim() })).filter((l) => l.text.length > 0);
 }
 
-/** Строки характеристик на странице товара в магазине (без дубля подзаголовка). */
 export function buildShopItemDescriptionRows(
     product: ProductCatalogCardSource,
     attributeTypes?: AttributeTypeMeta[],

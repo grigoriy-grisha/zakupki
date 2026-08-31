@@ -71,7 +71,7 @@ export function buildDisplayContext(
     const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
     const poolExhausted = isSupplement && availablePool != null && availablePool <= 1e-9;
     const isSoldOut = poolExhausted && !hasOrder;
-    const canAdd = currentQuantity < maxAllowed;
+    const canAdd = cfg.canIncrease && currentQuantity < maxAllowed;
     const canDecrease = currentQuantity > 0 && (cfg.target === 'base' || currentQuantity > frozenBase);
 
     return {

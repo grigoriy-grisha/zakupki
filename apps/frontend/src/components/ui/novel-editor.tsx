@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { normalizeNovelHtml } from '@/app/(admin)/products/lib';
+import { normalizeNovelHtml } from '@/lib/product-description';
 
 interface NovelEditorProps {
     value?: string;

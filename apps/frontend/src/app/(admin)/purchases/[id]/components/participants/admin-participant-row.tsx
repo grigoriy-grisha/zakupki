@@ -6,13 +6,16 @@ import { ChevronDown, ChevronRight, CircleCheck, CircleX, Clock, Trash2 } from '
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { Highlight } from '@/components/shared/highlight';
 import { cn } from '@/lib/utils';
 import { getPaymentStatus } from '../../../lib/payment-status';
 import { useParticipantOrderActions } from '../../hooks';
 import { type PurchaseItemOption } from './admin-order-controls';
 import { ParticipantCommentStrip } from './participant-comment-strip';
+import { ParticipantHandoffSelect } from './participant-handoff-select';
 import { ParticipantOrdersPanel } from './participant-orders-panel';
 import { ParticipantPaymentsPanel } from './participant-payments-panel';
+import type { HandoffStatus } from '@zakupki/types';
 import type { PaymentRef } from '../../lib/types';
 import type { OrderComment } from '../../hooks/use-participants-data';
 import type { ParticipantOrder } from './types';
@@ -27,6 +30,8 @@ interface AdminParticipantRowProps {
     purchaseOrderId?: number | null;
     /** Комментарий к участнику (PurchaseOrder) — для индикатора и модалки. */
     orderComment: OrderComment | null;
+    /** Статус выдачи заказа участника (null = «Ожидает выдачи»). */
+    handoffStatus: HandoffStatus | null;
     orders: ParticipantOrder[];
     payments: PaymentRef[];
     /** Позиции закупки — для шага ± и пикера «добавить позицию». */
@@ -35,6 +40,8 @@ interface AdminParticipantRowProps {
     paid: number;
     pending: number;
     onPaymentClick: (id: number) => void;
+    /** Активный поисковый запрос — для подсветки совпадений в карточке. */
+    searchQuery?: string;
     /** Раскрыть карточку по умолчанию (например, для списка всех участников). */
     defaultOpen?: boolean;
 }
@@ -47,6 +54,7 @@ export function AdminParticipantRow({
     onOpenProfile,
     purchaseOrderId,
     orderComment,
+    handoffStatus,
     orders,
     payments,
     purchaseItems,
@@ -54,6 +62,7 @@ export function AdminParticipantRow({
     paid,
     pending,
     onPaymentClick,
+    searchQuery = '',
     defaultOpen = false,
 }: AdminParticipantRowProps) {
     const [open, setOpen] = useState(defaultOpen);
@@ -78,6 +87,18 @@ export function AdminParticipantRow({
     // для мутации). Если purchaseOrderId == null — у пользователя ещё нет
     // записи, комментарий не к чему привязать.
     const canComment = purchaseOrderId != null;
+
+    const q = searchQuery.trim().toLowerCase().replace(/^@/, '');
+    const nameMatched = q !== '' && name.toLowerCase().includes(q);
+    const usernameMatched = q !== '' && (username ?? '').toLowerCase().includes(q);
+    const participantComment = orderComment?.comment ?? '';
+    const commentMatched = q !== '' && participantComment.toLowerCase().includes(q);
+    const matchedItems =
+        q === ''
+            ? []
+            : orders.filter((o) => (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q));
+    // Пояснительные строки нужны только когда заголовок сам не объясняет совпадение.
+    const showMatchStrips = q !== '' && !nameMatched && !usernameMatched && (commentMatched || matchedItems.length > 0);
 
     return (
         <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
@@ -106,8 +127,14 @@ export function AdminParticipantRow({
                         {name.charAt(0)}
                     </div>
                     <div className="min-w-0">
-                        <p className="truncate text-14-semibold text-fg-primary">{name}</p>
-                        {username && <p className="truncate text-12-regular text-fg-tertiary">@{username}</p>}
+                        <p className="truncate text-14-semibold text-fg-primary">
+                            <Highlight text={name} query={searchQuery} />
+                        </p>
+                        {username && (
+                            <p className="truncate text-12-regular text-fg-tertiary">
+                                @<Highlight text={username} query={searchQuery} />
+                            </p>
+                        )}
                     </div>
                 </button>
 
@@ -137,6 +164,15 @@ export function AdminParticipantRow({
                 </div>
 
                 <div className="ml-auto flex items-center gap-2">
+                    {purchaseOrderId != null && (
+                        <ParticipantHandoffSelect
+                            value={handoffStatus}
+                            disabled={orderActions.setHandoffStatus.isPending}
+                            onSelect={(status) => {
+                                orderActions.setHandoffStatus.mutate({ id: purchaseOrderId, status });
+                            }}
+                        />
+                    )}
                     {isPaid ? (
                         <Badge type="subtle" variant="success" size="sm">
                             <CircleCheck className="mr-1 size-3" /> Оплачено
@@ -168,6 +204,26 @@ export function AdminParticipantRow({
                     </Button>
                 </div>
             </div>
+
+            {showMatchStrips && (
+                <div className="space-y-1 border-t border-border-soft bg-bg-base px-3 py-2 sm:px-4">
+                    {commentMatched && (
+                        <p className="line-clamp-2 text-12-regular text-fg-secondary">
+                            <span className="text-fg-tertiary">Комментарий: </span>
+                            <Highlight text={participantComment} query={searchQuery} />
+                        </p>
+                    )}
+                    {matchedItems.slice(0, 3).map((o) => (
+                        <p
+                            key={o.id}
+                            className="line-clamp-2 text-12-regular text-fg-secondary"
+                        >
+                            <span className="text-fg-tertiary">{o.purchaseItem?.product?.name ?? 'Товар'}: </span>
+                            <Highlight text={o.purchaseItem?.adminComment ?? ''} query={searchQuery} />
+                        </p>
+                    ))}
+                </div>
+            )}
 
             {/* Раскрытая панель: комментарий + 2 ListView-секции (заказы / оплаты) */}
             {open && (

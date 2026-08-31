@@ -2,9 +2,16 @@ node_modules
 dist
 .next
 .env
+.env.prod
 *.env.local
 generated
 .prisma
 .idea
 uploads
 *.tsbuildinfo
+letsencrypt
+.pnpm-store/
+.zcode/
+.claude/
+.agents/
+skills-lock.json

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from 'sonner';
 
 import { useAddPurchaseItems } from '../../hooks';
-import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '../../../../products/lib';
+import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '@/lib/product-label';
 import { ProductSheet } from '../../../../products/components';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { PurchaseProductEditForm, type PurchaseProductSaveData } from './purchase-product-edit-form';

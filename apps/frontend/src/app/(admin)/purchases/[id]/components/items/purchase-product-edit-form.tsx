@@ -9,13 +9,12 @@ import { trpc } from '@/lib/client/trpc';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { FormFooter } from '@/components/ui/form-footer';
 
+import { buildShowInTitleByTypeId, type ProductLabelSource } from '@/lib/product-label';
 import {
-    applyPostTemplate,
-    buildShowInTitleByTypeId,
     normalizeNovelHtml,
-    productToDescriptionFields,
-    type ProductLabelSource,
-} from '../../../../products/lib';
+    postTemplateEngine,
+    productDescriptionBuilder,
+} from '@/lib/product-description';
 
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import { getUnitPriceRub } from '../../lib/items-table-pricing';
@@ -30,7 +29,6 @@ import {
 } from './purchase-product-edit-form/sections/pack-pricing-section';
 import { SupplementLimitsSection } from './purchase-product-edit-form/sections/supplement-limits-section';
 import { SupplierSection } from './purchase-product-edit-form/sections/supplier-section';
-import { TemplateSection } from './purchase-product-edit-form/sections/template-section';
 
 /**
  * Данные формы при сохранении — новая модель цен + добор/лимиты + описание.
@@ -311,19 +309,16 @@ export function PurchaseProductEditForm({
 
     const descriptionFields = useMemo(
         () => ({
-            ...productToDescriptionFields(product, showInTitleByTypeId, attributeTypes, characteristicsCatalog),
+            ...productDescriptionBuilder.fromProduct(product, showInTitleByTypeId, attributeTypes, characteristicsCatalog),
             name: product.name,
-            // Новая модель цен для шаблона:
             pricePerPackCurrency,
             currencyName: currencyName ?? undefined,
             packAmount,
             packUnit,
             supplierName: supplierName ?? undefined,
             purchaseTag,
-            // Добор и лимиты — нужны для меток {{цены}} (вторая строка по мин. фасовке):
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit ?? undefined,
-            // Цена за 1ед в ₽ для меток {{цены}} и {{фасовка поставщика}}:
             unitPriceRub,
         }),
         [
@@ -366,7 +361,7 @@ export function PurchaseProductEditForm({
             const body = getTemplateBody(id)?.trim();
             if (!body) return false;
 
-            const nextHtml = applyPostTemplate(body, descriptionFieldsRef.current);
+            const nextHtml = postTemplateEngine.apply(body, descriptionFieldsRef.current);
 
             if (preserveSavedDescriptionRef.current) {
                 lastAppliedSignatureRef.current = `${id}:${body}`;
@@ -448,11 +443,6 @@ export function PurchaseProductEditForm({
 
     return (
         <div className="flex flex-col gap-4">
-            <TemplateSection
-                templateId={templateId}
-                postTemplates={postTemplates as { id: number; name: string }[] | undefined}
-                onChange={handleTemplateChange}
-            />
             <SupplierSection supplierId={supplierId} onChange={setSupplierId} />
             <PackPricingSection
                 pricePerPackCurrency={pricePerPackCurrency}
@@ -461,6 +451,7 @@ export function PurchaseProductEditForm({
                 packUnit={packUnit}
                 orgFeePercentOverride={orgFeePercentOverride}
                 orgFeeDefaultPercent={orgFeeDefaultPercent}
+                currencyRates={currencyRates}
                 currencies={(currencies ?? []).map((c) => ({
                     id: c.id,
                     name: c.name,
@@ -501,6 +492,8 @@ export function PurchaseProductEditForm({
                 description={description}
                 descriptionRevision={descriptionRevision}
                 templateId={templateId}
+                postTemplates={postTemplates as { id: number; name: string }[] | undefined}
+                onTemplateChange={handleTemplateChange}
                 onChange={setDescription}
             />
 

@@ -2,13 +2,13 @@
 
 import * as VKID from '@vkid/sdk';
 import { signIn } from 'next-auth/react';
-import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 
 import { trpc } from '@/lib/client/trpc';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useProviderUnlink } from '@/lib/hooks/use-provider-unlink';
 import { exchangeVkCode, initVkId } from '@/lib/vk-id';
-import { toast } from 'sonner';
 
 export function useVkAuth() {
     const router = useAppRouter();
@@ -30,7 +30,7 @@ export function useVkAuth() {
             .render({
                 container,
                 showAlternativeLogin: true,
-                styles: { width: 320, height: 44 },
+                styles: { width: 320, height: 44, borderRadius: 22 },
             })
             .on(VKID.WidgetEvents.ERROR, (e: unknown) => console.error('[VK]', e))
             .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, async (payload: unknown) => {

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 
-import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '../../../products/lib';
+import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '@/lib/product-label';
 import { paymentTotal } from '../../lib/utils';
 import { unitsInPack } from './purchase-item-order-stats';
 

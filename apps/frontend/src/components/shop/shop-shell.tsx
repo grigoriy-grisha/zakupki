@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 
 import { ShopHeader } from './shop-header';
 import { ShopSidebar } from './shop-sidebar';
-import { ShopFooter } from './shop-footer';
 
 export function ShopShell({ children }: { children: React.ReactNode }) {
     // Establish a NextAuth session from Telegram initData when opened inside the
@@ -33,7 +32,6 @@ export function ShopShell({ children }: { children: React.ReactNode }) {
                 <main className="min-h-0 flex-1 overflow-y-auto bg-bg-base">{children}</main>
             </div>
 
-            <ShopFooter />
         </div>
     );
 }

@@ -10,6 +10,9 @@ export {
     computeAmountDueNewModel,
     resolveOrgFeePercent,
     resolveCurrencyRate,
+    solvePricePerPackFromPackRub,
+    solvePricePerPackFromPackOrgRub,
+    solvePricePerPackFromUnitRub,
 } from './currency-pricing';
 export { getOrderQuantityStep, getSupplementStep, getActiveStep } from './quantity-rules';
 export { formatActiveStepHint } from './formatting';

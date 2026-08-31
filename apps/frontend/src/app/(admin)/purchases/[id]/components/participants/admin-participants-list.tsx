@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search, UsersIcon } from 'lucide-react';
+import { Search, SearchX, UsersIcon } from 'lucide-react';
+import { HANDOFF_DEFAULT_LABEL, HANDOFF_STATUS_LABELS, type HandoffStatus } from '@zakupki/types';
 
 import { UserProfileSheet } from '@/app/(admin)/users/components';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ interface AdminParticipantsListProps {
 }
 
 type StatusFilter = PaymentStatus | 'all';
+type HandoffFilter = HandoffStatus | 'none' | 'all';
 
 export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps) {
     const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
@@ -29,6 +31,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     const [profileUserId, setProfileUserId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [handoffFilter, setHandoffFilter] = useState<HandoffFilter>('all');
 
     const data = useParticipantsData(purchaseId);
     // Позиции закупки — для шага ± и пикера «добавить позицию» в карточке.
@@ -61,22 +64,45 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
 
     const selectedPayment = data.payments.find((p) => p.id === selectedPaymentId) ?? null;
 
-    // Фильтр участников по имени/@username и статусу оплаты.
+    // Фильтр участников по имени/@username, статусу оплаты и статусу выдачи.
     const filteredUserIds = useMemo(() => {
         const q = search.trim().toLowerCase().replace(/^@/, '');
         return data.userIds.filter((uid) => {
             const info = data.userMap.get(uid);
             const name = (info?.name ?? `Участник #${uid}`).toLowerCase();
             const uname = (info?.username ?? '').toLowerCase();
-            const matchesSearch = !q || name.includes(q) || uname.includes(q);
-            if (!matchesSearch) return false;
-            if (statusFilter === 'all') return true;
-            const userOrdersList = data.userOrders.get(uid) ?? [];
-            const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
-            const paid = data.paidByUser.get(uid) ?? 0;
-            return getPaymentStatus(due, paid) === statusFilter;
+            if (q) {
+                const comment = (data.orderComments.get(uid)?.comment ?? '').toLowerCase();
+                const hasItemCommentMatch = (data.userOrders.get(uid) ?? []).some((o) =>
+                    (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q),
+                );
+                const matchesSearch =
+                    name.includes(q) || uname.includes(q) || comment.includes(q) || hasItemCommentMatch;
+                if (!matchesSearch) return false;
+            }
+            if (statusFilter !== 'all') {
+                const userOrdersList = data.userOrders.get(uid) ?? [];
+                const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
+                const paid = data.paidByUser.get(uid) ?? 0;
+                if (getPaymentStatus(due, paid) !== statusFilter) return false;
+            }
+            if (handoffFilter !== 'all') {
+                const handoff = data.handoffByUser.get(uid) ?? null;
+                if (handoff !== handoffFilter) return false;
+            }
+            return true;
         });
-    }, [data.userIds, data.userMap, data.userOrders, data.paidByUser, search, statusFilter]);
+    }, [
+        data.userIds,
+        data.userMap,
+        data.userOrders,
+        data.paidByUser,
+        data.handoffByUser,
+        data.orderComments,
+        search,
+        statusFilter,
+        handoffFilter,
+    ]);
 
     // Счётчики для фильтра-статуса (по всем участникам, без текстового поиска).
     const statusCounts = useMemo(() => {
@@ -92,6 +118,18 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
         }
         return counts;
     }, [data.userIds, data.userOrders, data.paidByUser]);
+
+    const handoffCounts = useMemo(() => {
+        const counts: Record<HandoffFilter, number> = { all: data.userIds.length, none: 0, SENT: 0, RECEIVED: 0, STORED: 0 };
+        for (const uid of data.userIds) {
+            const handoff = data.handoffByUser.get(uid) ?? null;
+            if (handoff == null) counts.none += 1;
+            else counts[handoff] += 1;
+        }
+        return counts;
+    }, [data.userIds, data.handoffByUser]);
+
+    const handoffDone = data.userIds.length - handoffCounts.none;
 
     return (
         <div className="space-y-4">
@@ -132,7 +170,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                 <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-tertiary" />
                     <Input
-                        placeholder="Поиск участника по имени или @username…"
+                        placeholder="Поиск: имя, @username, комментарий участника или товара…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="h-9 rounded-full pl-9 text-13-regular"
@@ -171,15 +209,58 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                     />
                 </div>
 
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusChip
+                        label={HANDOFF_DEFAULT_LABEL}
+                        count={handoffCounts.none}
+                        active={handoffFilter === 'none'}
+                        onClick={() => setHandoffFilter('none')}
+                    />
+                    <StatusChip
+                        label={HANDOFF_STATUS_LABELS.SENT}
+                        count={handoffCounts.SENT}
+                        active={handoffFilter === 'SENT'}
+                        activeClass="border-primary/40 bg-primary/10 text-primary"
+                        onClick={() => setHandoffFilter('SENT')}
+                    />
+                    <StatusChip
+                        label={HANDOFF_STATUS_LABELS.RECEIVED}
+                        count={handoffCounts.RECEIVED}
+                        active={handoffFilter === 'RECEIVED'}
+                        activeClass="border-success/40 bg-success/10 text-success"
+                        onClick={() => setHandoffFilter('RECEIVED')}
+                    />
+                    <StatusChip
+                        label="На хранении"
+                        count={handoffCounts.STORED}
+                        active={handoffFilter === 'STORED'}
+                        activeClass="border-warning/40 bg-warning/10 text-warning"
+                        onClick={() => setHandoffFilter('STORED')}
+                    />
+                    <span className="ml-auto hidden text-12-regular text-fg-tertiary sm:block">
+                        Статус выдачи проставлен: {handoffDone} из {data.userIds.length}
+                    </span>
+                </div>
+
                 {filteredUserIds.length === 0 && (
-                    <div className="rounded-2xl border border-border bg-bg-card py-8 text-center">
-                        <p className="text-13-regular text-fg-tertiary">
-                            {search.trim()
-                                ? 'Ничего не найдено'
-                                : statusFilter !== 'all'
-                                  ? 'Нет участников с этим статусом'
-                                  : 'Участников нет'}
-                        </p>
+                    <div className="rounded-2xl border border-border bg-bg-card">
+                        <EmptyState
+                            icon={search.trim() ? SearchX : UsersIcon}
+                            title={
+                                search.trim()
+                                    ? 'Ничего не найдено'
+                                    : statusFilter !== 'all' || handoffFilter !== 'all'
+                                      ? 'Нет участников с этим статусом'
+                                      : 'Участников нет'
+                            }
+                            description={
+                                search.trim()
+                                    ? 'Попробуйте изменить запрос — поиск идёт по имени, @username и комментариям.'
+                                    : statusFilter !== 'all' || handoffFilter !== 'all'
+                                      ? 'Смените фильтр или сбросьте его, чтобы увидеть всех участников.'
+                                      : 'Когда участники оформят заказы, они появятся здесь'
+                            }
+                        />
                     </div>
                 )}
 
@@ -196,6 +277,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                     const userPaymentsList = data.userPayments.get(userId) ?? [];
                     const orderComment = data.orderComments.get(userId) ?? null;
                     const purchaseOrderId = orderComment?.id ?? null;
+                    const handoffStatus = data.handoffByUser.get(userId) ?? null;
 
                     return (
                         <AdminParticipantRow
@@ -206,6 +288,8 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             purchaseId={purchaseId}
                             purchaseOrderId={purchaseOrderId}
                             orderComment={orderComment}
+                            handoffStatus={handoffStatus}
+                            searchQuery={search}
                             onOpenProfile={setProfileUserId}
                             orders={userOrdersList}
                             payments={userPaymentsList}

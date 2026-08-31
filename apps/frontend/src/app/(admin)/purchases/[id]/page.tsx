@@ -161,6 +161,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     status={fulfillmentStatus}
                     purchaseTag={purchase.tag}
                     selectedForPublishCount={selectedForPublish}
+                    canClose={canComplete}
                     onClearPublishSelection={() => setSelectedForPublish(0)}
                     onOpenRemainderDialog={() => setRemainderOpen(true)}
                 />

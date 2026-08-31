@@ -4,6 +4,7 @@ import {
     getActiveStep,
     getOrderQuantityStep,
     getUnitByCode,
+    isOrderingClosedStage,
     mapToPurchaseItem,
     mergeLines,
     toOrderLinesVO,
@@ -33,7 +34,7 @@ export type OrderCollectionResult =
           subtracted?: OrderCollectionAction;
           cancelled?: boolean;
       }
-    | { ok: false; reason: 'invalid_quantity' | 'product_not_found' | 'purchase_inactive' | 'error' | 'below_step'; message: string };
+    | { ok: false; reason: 'invalid_quantity' | 'product_not_found' | 'purchase_inactive' | 'error' | 'below_step' | 'ordering_closed'; message: string };
 
 type ResolvedItem = NonNullable<Awaited<ReturnType<PurchaseItemResolver['resolvePurchaseItem']>>>;
 
@@ -91,6 +92,14 @@ export class OrderCollectionService {
                 ok: false,
                 reason: 'product_not_found',
                 message: 'Этот товар больше недоступен для заказа',
+            };
+        }
+
+        if (parsed.kind === 'add' && isOrderingClosedStage(purchaseItem.purchase.fulfillmentStatus ?? 'COLLECTION')) {
+            return {
+                ok: false,
+                reason: 'ordering_closed',
+                message: 'Приём заказов завершён — этот товар больше заказать нельзя',
             };
         }
 

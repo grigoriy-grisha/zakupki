@@ -7,6 +7,7 @@ import { AppLink } from '@/components/app-link';
 import { NotificationBell } from '@/components/shop/notification-bell';
 import { Button } from '@/components/ui/button';
 import { withPlatformPrefix } from '@/lib/app-path';
+import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
 import { usePlatform } from '@/lib/hooks/use-platform';
 import { useUserRole } from '@/lib/hooks/use-user-role';
 
@@ -14,6 +15,10 @@ export function ShopHeader() {
     const { data: session } = useSession();
     const platform = usePlatform();
     const { isAdmin } = useUserRole();
+    // Inside a Telegram Mini App the user is always authenticated via initData,
+    // even when the next-auth cookie is missing. Hide login/logout there.
+    const isTelegramWebApp = useIsTelegramWebApp();
+    const isAuthenticated = !!session?.user || isTelegramWebApp;
 
     return (
         <header className="flex h-14 shrink-0 items-center justify-between bg-bg-card px-4">
@@ -25,7 +30,7 @@ export function ShopHeader() {
             </AppLink>
 
             <div className="flex items-center gap-1">
-                {session?.user ? (
+                {isAuthenticated ? (
                     <>
                         <AppLink href="/shop/profile">
                             <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
@@ -40,21 +45,25 @@ export function ShopHeader() {
                             </Button>
                         </AppLink>
                         <NotificationBell />
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="rounded-full text-fg-secondary"
-                            onClick={() => {
-                                const base =
-                                    process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
-                                    window.location.origin;
-                                const loginPath = platform ? withPlatformPrefix('/login', platform) : '/login';
-                                void signOut({ callbackUrl: `${base}${loginPath}` });
-                            }}
-                            aria-label="Выйти"
-                        >
-                            <LogOut className="h-4 w-4" />
-                        </Button>
+                        {!isTelegramWebApp && (
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="rounded-full text-fg-secondary"
+                                onClick={() => {
+                                    const base =
+                                        process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
+                                        window.location.origin;
+                                    const loginPath = platform
+                                        ? withPlatformPrefix('/login', platform)
+                                        : '/login';
+                                    void signOut({ callbackUrl: `${base}${loginPath}` });
+                                }}
+                                aria-label="Выйти"
+                            >
+                                <LogOut className="h-4 w-4" />
+                            </Button>
+                        )}
                     </>
                 ) : (
                     <AppLink href={platform ? withPlatformPrefix('/login', platform) : '/login'}>

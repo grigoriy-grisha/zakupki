@@ -49,6 +49,42 @@ export function computeUnitPriceRub(packPriceWithOrgFee: number | null, packSize
     return roundMoney(packPriceWithOrgFee / packSize);
 }
 
+export function solvePricePerPackFromPackRub(
+    packPriceRub: number | null,
+    rateToRub: number | null,
+): number | null {
+    if (packPriceRub == null || !isPositiveFinite(rateToRub)) return null;
+    return roundPrice4(packPriceRub / rateToRub);
+}
+
+export function solvePricePerPackFromPackOrgRub(
+    packPriceWithOrgFeeRub: number | null,
+    rateToRub: number | null,
+    orgFeePercent: number,
+): number | null {
+    if (packPriceWithOrgFeeRub == null || !isPositiveFinite(rateToRub)) return null;
+    const divisor = 1 + orgFeePercent / 100;
+    if (!Number.isFinite(divisor) || divisor <= 0) return null;
+    return roundPrice4(packPriceWithOrgFeeRub / divisor / rateToRub);
+}
+
+export function solvePricePerPackFromUnitRub(
+    unitPriceRub: number | null,
+    rateToRub: number | null,
+    orgFeePercent: number,
+    packAmount: number | null,
+): number | null {
+    if (unitPriceRub == null || !isPositiveFinite(rateToRub)) return null;
+    if (packAmount == null || !Number.isFinite(packAmount) || packAmount <= 0) return null;
+    const divisor = 1 + orgFeePercent / 100;
+    if (!Number.isFinite(divisor) || divisor <= 0) return null;
+    return roundPrice4((unitPriceRub * packAmount) / divisor / rateToRub);
+}
+
+function isPositiveFinite(value: number | null): value is number {
+    return value != null && Number.isFinite(value) && value > 0;
+}
+
 /**
  * Найти курс валюты по id среди ставок закупки.
  */
@@ -96,4 +132,9 @@ export function computeAmountDueNewModel(input: {
 /** Округление денег до копеек. */
 export function roundMoney(value: number): number {
     return Math.round(value * 100) / 100;
+}
+
+/** Округление валютной цены до 4 знаков (точность колонки в БД). */
+function roundPrice4(value: number): number {
+    return Math.round(value * 10000) / 10000;
 }

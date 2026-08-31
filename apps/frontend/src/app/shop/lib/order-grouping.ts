@@ -17,6 +17,7 @@ export interface GroupableOrderLine {
     baseQuantity?: unknown;
     createdOnStage?: string | null;
     purchaseOrderId?: number | null;
+    purchaseOrder?: { handoffStatus?: string | null } | null;
     purchaseItem?: {
         purchase?: {
             id: number;
@@ -33,6 +34,7 @@ export interface OrderPurchaseGroup {
     tag: string;
     status: string;
     fulfillmentStatus: string | null;
+    handoffStatus: string | null;
     /** Сгруппированные строки — по одной на purchaseItemId (COLLECTION + supplement объединены) */
     orders: MergedOrderLine[];
     total: number;
@@ -81,6 +83,7 @@ export function groupOrdersByPurchase(orders: GroupableOrderLine[]): OrderPurcha
                     tag: purchase.tag,
                     status: purchase.status,
                     fulfillmentStatus: purchase.fulfillmentStatus ?? null,
+                    handoffStatus: order.purchaseOrder?.handoffStatus ?? null,
                 },
                 total: 0,
                 byItem: new Map(),

@@ -149,4 +149,19 @@ export const ordersRouter = router({
         .mutation(async ({ ctx, input }) => {
             return ctx.services.order.addParticipant(input.userId, input.purchaseId);
         }),
+
+    /**
+     * Admin: проставить/сбросить статус выдачи заказа участника.
+     * null = сброс в «Ожидает выдачи». Участнику уходит уведомление.
+     */
+    setHandoffStatus: adminProcedure
+        .input(
+            z.object({
+                id: z.number(),
+                status: z.enum(['SENT', 'RECEIVED', 'STORED']).nullable(),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.setHandoffStatus(input.id, input.status, ctx.userId);
+        }),
 });

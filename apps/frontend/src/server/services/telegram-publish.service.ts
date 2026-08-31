@@ -4,10 +4,6 @@ import type { EventBus } from '@zakupki/queue';
 
 export type TgPublishQueuedResult = { queued: number };
 
-/**
- * Публикация товара в Telegram-канал. Тонкая обёртка над EventBus —
- * только валидирует конфиг и переводит ошибки в понятные сообщения.
- */
 export class TelegramPublishService {
     constructor(private readonly eventBus: EventBus) {}
 
@@ -34,7 +30,6 @@ export class TelegramPublishService {
         return { queued };
     }
 
-    /** Постановка в очередь после успешного addItems. */
     async enqueueAfterAddItems(
         publishToTg: boolean | undefined,
         purchaseItemIds: number[],
@@ -54,8 +49,12 @@ export class TelegramPublishService {
         return { queued: queued > 0 };
     }
 
-    async enqueueDeleteChannelPost(itemId: number): Promise<void> {
+    async enqueueDeleteChannelPost(
+        itemId: number,
+        messageId?: string | null,
+        channelId?: string | null,
+    ): Promise<void> {
         this.assertChannelConfigured();
-        await this.eventBus.emitPostDelete(itemId);
+        await this.eventBus.emitPostDelete(itemId, messageId ?? undefined, channelId ?? undefined);
     }
 }

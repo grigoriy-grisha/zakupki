@@ -9,7 +9,6 @@ import {
 } from './type-tree';
 import type { ProductAttributeValueSource, AttributeTypeMeta, ShowInTitleByTypeId, ProductLabelSource } from './types';
 
-/** Форматирует значение атрибута: «Бренд Значение» или «Родитель / Значение». */
 export function formatAttributeValueName(v: ProductAttributeValueSource): string {
     const name = v.attribute.name?.trim();
     if (!name) return '';
@@ -21,7 +20,6 @@ export function formatAttributeValueName(v: ProductAttributeValueSource): string
     return name;
 }
 
-/** Упорядоченные значения атрибутов товара по дереву типов. */
 export function orderedValues(
     product: ProductLabelSource,
     attributeTypes?: AttributeTypeMeta[],
@@ -75,14 +73,12 @@ function attributeValueShowsInTitle(attr: ProductAttributeValueSource['attribute
     return attr.showInTitle !== false;
 }
 
-/** Все значения атрибутов товара по порядку дерева типов. */
 export function getProductAttributeNames(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string[] {
     return orderedValues(product, attributeTypes)
         .map((v) => formatAttributeValueName(v))
         .filter((n): n is string => Boolean(n));
 }
 
-/** Подпись: MIYUKI · Delica 11/0 · Цилиндр · 11/0 · DB-0002 */
 export function formatProductAttributesLine(product: ProductLabelSource, attributeTypes?: AttributeTypeMeta[]): string {
     const attrNames = getProductAttributeNames(product, attributeTypes);
     const brandName = product.brand?.name?.trim() || null;
@@ -94,12 +90,10 @@ export function formatProductAttributesLine(product: ProductLabelSource, attribu
     return [...parts, product.articleNumber?.trim() || null].filter((p): p is string => Boolean(p)).join(' · ');
 }
 
-/** Только название товара без атрибутов, номера и т.д. */
 export function getProductDisplayName(product: ProductLabelSource): string {
     return stripAttributesFromName(product.name ?? '', product.articleNumber, getProductAttributeNames(product));
 }
 
-/** Убирает из названия значения атрибутов и артикул, оставляя «чистое» имя. */
 export function stripAttributesFromName(
     name: string,
     articleNumber: string | null | undefined,

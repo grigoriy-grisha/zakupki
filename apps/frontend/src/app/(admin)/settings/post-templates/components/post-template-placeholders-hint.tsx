@@ -1,6 +1,6 @@
 'use client';
 
-import { POST_TEMPLATE_PLACEHOLDERS } from '@/app/(admin)/products/lib';
+import { POST_TEMPLATE_PLACEHOLDERS } from '@/lib/product-description';
 
 export function PostTemplatePlaceholdersHint() {
     return (

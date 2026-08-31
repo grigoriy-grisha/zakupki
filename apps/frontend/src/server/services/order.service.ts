@@ -1,4 +1,11 @@
-import { canCancelOrder, NotFoundError, OrderBook, userEffectiveQty, ValidationError } from '@zakupki/types';
+import {
+    canCancelOrder,
+    NotFoundError,
+    OrderBook,
+    userEffectiveQty,
+    ValidationError,
+    type HandoffStatus,
+} from '@zakupki/types';
 import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 import { EventBus } from '@zakupki/queue';
 import { createLogger } from '@zakupki/logger';
@@ -248,6 +255,20 @@ export class OrderService {
     }
 
     /**
+     * Admin: проставить/сбросить статус выдачи заказа участника. No-op без
+     * уведомления, если статус не изменился. Участнику уходит push в колокольчик
+     * и ТГ (best-effort — сбой доставки не откатывает смену статуса).
+     */
+    async setHandoffStatus(purchaseOrderId: number, status: HandoffStatus | null, actorId: number): Promise<void> {
+        const po = await this.repo.findPurchaseOrderWithPurchase(purchaseOrderId);
+        if (!po) throw new NotFoundError('Заказ участника', purchaseOrderId);
+        if ((po.handoffStatus as HandoffStatus | null) === status) return;
+
+        await this.repo.setHandoffStatus(purchaseOrderId, status, actorId);
+        await this.notifyHandoffStatusChanged(po.userId, po.purchaseId, po.purchase.tag, status);
+    }
+
+    /**
      * Admin: удалить ВСЕ строки пользователя на конкретный PurchaseItem
      * (сбор + добор + упаковки). Используется объединённой карточкой участника,
      * где несколько OrderLine одного товара показываются как одна позиция.
@@ -386,6 +407,23 @@ export class OrderService {
             });
         } catch (err) {
             log.warn({ purchaseId, userId, err }, 'failed to notify about order cleared');
+        }
+    }
+
+    private async notifyHandoffStatusChanged(
+        userId: number,
+        purchaseId: number,
+        purchaseTag: string,
+        status: HandoffStatus | null,
+    ): Promise<void> {
+        try {
+            await this.notification.notify({
+                userId,
+                type: 'ORDER_HANDOFF_STATUS',
+                payload: { purchaseId, purchaseTag, status },
+            });
+        } catch (err) {
+            log.warn({ purchaseId, userId, status, err }, 'failed to notify about handoff status change');
         }
     }
 

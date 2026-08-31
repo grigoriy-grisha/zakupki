@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { ProductLabelSource } from '../../../../products/lib';
+import type { ProductLabelSource } from '@/lib/product-label';
 
 // ── helpers ──────────────────────────────────────────────────────────
 

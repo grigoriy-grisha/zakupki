@@ -86,6 +86,7 @@ export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
             <div className="flex flex-wrap items-start gap-3 border-b border-border-soft p-3 sm:p-4">
                 <ProductPhotoPreview
                     photoId={product.photos?.[0]?.id}
+                    photoIds={product.photos?.map((p) => p.id)}
                     alt={product.name}
                     thumbClassName="h-12 w-12 rounded-lg"
                 />

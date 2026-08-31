@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
+import { Ban, Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
 import { type CurrencyRate } from '@zakupki/types';
 
 import { Badge } from '@/components/ui/badge';
@@ -73,6 +73,7 @@ function ProductCardImpl({
     });
 
     const photo = product.photos?.[0];
+    const photoIds = product.photos?.map((p: { id: number }) => p.id);
     const detailHref = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
 
     // Поставщик позиции закупки (опц.). Показываем под названием, чтобы
@@ -145,18 +146,28 @@ function ProductCardImpl({
                 aria-label={`Открыть карточку товара ${product.name}`}
                 className="block w-full text-left"
             >
-                <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
+                <div className="relative aspect-square w-full overflow-hidden bg-bg-soft">
                     {/* Контейнер с overflow-hidden — оборачиваем, чтобы scale работал корректно */}
                     <div className="absolute inset-0 overflow-hidden">
-                        <div className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105">
-                            <ProductPhotoPreview photoId={photo?.id} alt={product.name} fill />
+                        <div
+                            className={cn(
+                                'h-full w-full transition-transform duration-500 ease-out',
+                                'group-hover:scale-105',
+                            )}
+                        >
+                            <ProductPhotoPreview
+                                photoId={photo?.id}
+                                photoIds={photoIds}
+                                alt={product.name}
+                                fill
+                            />
                         </div>
                     </div>
 
                     {/* Скидочный бейдж — только до добавления в корзину */}
                     {showPackHint && (
                         <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1]">
-                            <Badge type="subtle" variant="success" size="sm" className="shadow-sm">
+                            <Badge type="glass" variant="success" size="sm">
                                 <Percent className="mr-0.5 size-3" />−{packInfo.discountPercent}% за пачку
                             </Badge>
                         </div>
@@ -164,14 +175,27 @@ function ProductCardImpl({
 
                     {/* In-cart пилл (сверху-слева) */}
                     {hasOrder && !ctx.isSoldOut && (
-                        <div className="pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-12-semibold leading-none text-white shadow-sm">
+                        <div
+                            className={cn(
+                                'pointer-events-none absolute top-1.5 left-1.5 z-[1] flex items-center gap-1',
+                                'rounded-full bg-primary px-2 py-0.5 text-12-semibold leading-none',
+                                'text-white shadow-sm',
+                            )}
+                        >
                             <ShoppingCart className="size-2.5" />В корзине
                         </div>
                     )}
 
                     {/* In-cart qty-чип (сверху-справа) */}
                     {hasOrder && !ctx.isSoldOut && (
-                        <div className="pointer-events-none absolute top-1.5 right-1.5 z-[1] flex h-6 min-w-6 items-center justify-center rounded-full bg-bg-card px-2 text-12-semibold text-fg-primary shadow-sm tabular-nums">
+                        <div
+                            className={cn(
+                                'pointer-events-none absolute top-1.5 right-1.5 z-[1] flex h-6 min-w-6',
+                                'items-center justify-center rounded-full border border-white/40',
+                                'bg-bg-card/80 px-2 text-12-semibold text-fg-primary shadow-sm',
+                                'backdrop-blur-md tabular-nums',
+                            )}
+                        >
                             {ctx.currentQuantity}
                             {ctx.currentPackageCount > 0 && (
                                 <span className="ml-0.5 text-12-regular text-fg-tertiary">
@@ -184,10 +208,25 @@ function ProductCardImpl({
                     {/* Sold-out затемнение + крупный бейдж */}
                     {isSoldOutNoOrder && (
                         <>
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+                            <div
+                                className={cn(
+                                    'pointer-events-none absolute inset-0',
+                                    'bg-gradient-to-t from-black/55 via-black/15 to-transparent',
+                                )}
+                            />
                             <div className="absolute right-1.5 bottom-1.5 left-1.5 z-[1]">
-                                <div className="flex items-center gap-1.5 rounded-lg bg-bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
-                                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-warning/15">
+                                <div
+                                    className={cn(
+                                        'flex items-center gap-1.5 rounded-lg bg-bg-card/95 px-2.5',
+                                        'py-1.5 shadow-sm backdrop-blur',
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            'flex h-5 w-5 shrink-0 items-center justify-center',
+                                            'rounded-md bg-warning/15',
+                                        )}
+                                    >
                                         <Package className="size-3 text-warning" />
                                     </div>
                                     <span className="text-12-semibold text-fg-primary">Разобрано</span>
@@ -210,19 +249,27 @@ function ProductCardImpl({
                     <PurchaseProductLabel
                         product={product}
                         className="min-w-0 overflow-hidden"
-                        primaryClassName="block text-14-semibold leading-snug text-fg-primary line-clamp-2 transition-colors group-hover:text-primary"
-                        secondaryClassName="mt-0.5 block truncate text-12-regular text-fg-tertiary"
+                        primaryClassName={cn(
+                            'block text-13-semibold leading-snug text-fg-primary line-clamp-2',
+                            'transition-colors group-hover:text-primary sm:text-14-semibold',
+                        )}
+                        secondaryClassName="mt-0.5 block truncate text-11-regular text-fg-tertiary sm:text-12-regular"
                     />
                 </button>
 
                 {supplierName && (
-                    <p className="-mt-0.5 block truncate text-12-regular text-fg-tertiary" title={supplierName}>
+                    <p
+                        className="-mt-0.5 block truncate text-11-regular text-fg-tertiary sm:text-12-regular"
+                        title={supplierName}
+                    >
                         {supplierName}
                     </p>
                 )}
 
                 {/* Мин. фасовка (подсказка) — подсказка рядом с ценой в одной строке */}
-                {showMinHint && <p className="text-12-regular text-fg-tertiary">{minHint}</p>}
+                {showMinHint && (
+                    <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>
+                )}
 
                 {/* Добор */}
                 {ctx.freeRemainderLabel && <p className="text-12-medium text-warning">{ctx.freeRemainderLabel}</p>}
@@ -230,17 +277,26 @@ function ProductCardImpl({
                 {/* Цена + скидка в одной строке */}
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                     {hasOrder ? (
-                        <span className="text-18-semibold text-fg-primary tabular-nums">{formatRubles(ctx.total)}</span>
+                        <span className="text-16-semibold text-fg-primary tabular-nums sm:text-18-semibold">
+                            {formatRubles(ctx.total)}
+                        </span>
                     ) : (
                         <>
-                            <span className="text-18-semibold text-fg-primary tabular-nums">
+                            <span className="text-16-semibold text-fg-primary tabular-nums sm:text-18-semibold">
                                 {formatRubles(ctx.price)}
                             </span>
-                            <span className="text-12-regular text-fg-tertiary">/ {ctx.shortName}</span>
+                            <span className="text-11-regular text-fg-tertiary sm:text-12-regular">
+                                / {ctx.shortName}
+                            </span>
                         </>
                     )}
                     {showInCartDiscount && (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-success/10 px-1 py-0.5 text-12-semibold text-success tabular-nums">
+                        <span
+                            className={cn(
+                                'inline-flex items-center gap-0.5 rounded bg-success/10 px-1 py-0.5',
+                                'text-12-semibold text-success tabular-nums',
+                            )}
+                        >
                             <Percent className="size-2.5" />−{packInfo.discountPercent}% · {ctx.fullPacks}{' '}
                             {pluralPacks(ctx.fullPacks)}
                         </span>
@@ -254,15 +310,19 @@ function ProductCardImpl({
 
                 {/* Контролы — фиксируются внизу карточки через mt-auto */}
                 <div className="mt-auto pt-1.5" onClick={stop} onPointerDown={stop}>
-                    {isSoldOutNoOrder ? (
+                    {isSoldOutNoOrder || ctx.orderingClosed ? (
                         <Button
                             className="h-9 w-full rounded-lg text-12-medium"
                             variant="secondary"
                             size="default"
                             disabled
                         >
-                            <Package className="mr-1 size-3.5" />
-                            Разобрано
+                            {ctx.orderingClosed ? (
+                                <Ban className="mr-1 size-3.5" />
+                            ) : (
+                                <Package className="mr-1 size-3.5" />
+                            )}
+                            {ctx.orderingClosed ? 'Приём заказов завершён' : 'Разобрано'}
                         </Button>
                     ) : hasOrder ? (
                         <InCartControls ctx={ctx} />
@@ -292,7 +352,13 @@ function ProductCardImpl({
                                     disabled={!ctx.canAddPackage || ctx.isPending}
                                 >
                                     <Plus className="mr-1 size-3 shrink-0" />
-                                    <span className="truncate">+1 упаковка ({ctx.packSize} {ctx.shortName})</span>
+                                    <span className="truncate">
+                                        +1 упаковка
+                                        <span className="hidden sm:inline">
+                                            {' '}
+                                            ({ctx.packSize} {ctx.shortName})
+                                        </span>
+                                    </span>
                                 </Button>
                             )}
                         </div>
@@ -311,20 +377,27 @@ function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> 
                 <Button
                     variant="outline"
                     size="icon"
-                    className="size-9 shrink-0 rounded-lg"
+                    className="size-8 shrink-0 rounded-lg sm:size-9"
                     onClick={ctx.handleRemove}
                     disabled={!ctx.canDecrease}
                     aria-label="Уменьшить количество"
                 >
                     <Minus className="size-3.5" />
                 </Button>
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-border bg-bg-base text-12-semibold tabular-nums text-fg-primary">
-                    {ctx.currentQuantity} {ctx.shortName}
+                <div
+                    className={cn(
+                        'flex min-w-0 flex-1 items-center justify-center rounded-lg border border-border',
+                        'bg-bg-base px-1 text-12-semibold tabular-nums text-fg-primary',
+                    )}
+                >
+                    <span className="truncate">
+                        {ctx.currentQuantity} {ctx.shortName}
+                    </span>
                 </div>
                 <Button
                     variant="brand"
                     size="icon"
-                    className="size-9 shrink-0 rounded-lg"
+                    className="size-8 shrink-0 rounded-lg sm:size-9"
                     onClick={ctx.handleAdd}
                     disabled={!ctx.canAdd}
                     aria-label="Увеличить количество"
@@ -351,7 +424,13 @@ function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> 
                         onClick={ctx.handleAddPackage}
                         disabled={!ctx.canAddPackage || ctx.isPending}
                     >
-                        <span className="truncate">+ 1 упак. ({ctx.packSize} {ctx.shortName})</span>
+                        <span className="truncate">
+                            + 1 упак.
+                            <span className="hidden sm:inline">
+                                {' '}
+                                ({ctx.packSize} {ctx.shortName})
+                            </span>
+                        </span>
                     </Button>
                 </div>
             )}

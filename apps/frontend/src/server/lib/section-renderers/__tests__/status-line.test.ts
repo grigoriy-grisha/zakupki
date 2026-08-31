@@ -4,7 +4,7 @@ import { ALL_FULFILLMENT_STATUSES } from './test-setup';
 import { createMockStatusLineData, renderById } from './test-setup';
 
 describe('StatusLineRenderer', () => {
-    it('renders full block: status + supplier limit + target remainder + free', () => {
+    it('renders full block: status + supplier limit + free', () => {
         const result = renderById('STATUS_LINE', createMockStatusLineData());
         expect(result).toMatchSnapshot();
     });
@@ -13,7 +13,7 @@ describe('StatusLineRenderer', () => {
         const result = renderById(
             'STATUS_LINE',
             createMockStatusLineData({
-                item: { supplierLimit: 500, supplierLimitUnit: null, targetRemainder: 50 },
+                item: { supplierLimit: 500, supplierLimitUnit: null },
             }),
         );
         expect(result).toMatchSnapshot();
@@ -23,7 +23,7 @@ describe('StatusLineRenderer', () => {
         const result = renderById(
             'STATUS_LINE',
             createMockStatusLineData({
-                item: { supplierLimit: null, supplierLimitUnit: null, targetRemainder: null },
+                item: { supplierLimit: null, supplierLimitUnit: null },
                 orderLinesSum: 0,
             }),
         );
@@ -34,7 +34,7 @@ describe('StatusLineRenderer', () => {
         const result = renderById(
             'STATUS_LINE',
             createMockStatusLineData({
-                item: { supplierLimit: 100, supplierLimitUnit: 'кг', targetRemainder: 50 },
+                item: { supplierLimit: 100, supplierLimitUnit: 'кг' },
                 orderLinesSum: 200,
             }),
         );
@@ -45,7 +45,7 @@ describe('StatusLineRenderer', () => {
         const result = renderById(
             'STATUS_LINE',
             createMockStatusLineData({
-                item: { supplierLimit: 1234567, supplierLimitUnit: 'кг', targetRemainder: 0 },
+                item: { supplierLimit: 1234567, supplierLimitUnit: 'кг' },
                 orderLinesSum: 0,
             }),
         );
@@ -56,7 +56,7 @@ describe('StatusLineRenderer', () => {
         const result = renderById(
             'STATUS_LINE',
             createMockStatusLineData({
-                item: { supplierLimit: 10, supplierLimitUnit: '<script>', targetRemainder: null },
+                item: { supplierLimit: 10, supplierLimitUnit: '<script>' },
                 orderLinesSum: 0,
             }),
         );
@@ -70,7 +70,7 @@ describe('StatusLineRenderer', () => {
             'STATUS_LINE',
             createMockStatusLineData({
                 purchase: { fulfillmentStatus: 'COLLECTION' },
-                item: { supplierLimit: 100, supplierLimitUnit: 'гр', targetRemainder: 20 },
+                item: { supplierLimit: 100, supplierLimitUnit: 'гр' },
                 orderLinesSum: 30,
                 freeToOrder: 35,
                 unit: 'гр',
@@ -88,7 +88,7 @@ describe('StatusLineRenderer', () => {
                     'STATUS_LINE',
                     createMockStatusLineData({
                         purchase: { fulfillmentStatus: status },
-                        item: { supplierLimit: null, supplierLimitUnit: null, targetRemainder: null },
+                        item: { supplierLimit: null, supplierLimitUnit: null },
                     }),
                 );
                 expect(result).toMatchSnapshot();

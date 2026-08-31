@@ -1,4 +1,4 @@
-import type { ProductLabelSource } from '../../../products/lib';
+import type { ProductLabelSource } from '@/lib/product-label';
 
 /** Фото товара (из Prisma include) */
 export interface PhotoRef {

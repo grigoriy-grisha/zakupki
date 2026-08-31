@@ -72,6 +72,16 @@ const PAYMENT_PLUS_CONFIG: StageConfig = {
     canDecrease: true,
 };
 
+const ORDERING_CLOSED_CONFIG: StageConfig = {
+    target: 'supplement',
+    onZero: 'hard_delete',
+    poolApplies: true,
+    canAddPackages: false,
+    canAddNew: false,
+    canIncrease: false,
+    canDecrease: true,
+};
+
 const STAGE_CONFIGS: Record<PurchaseFulfillmentStatus, StageConfig> = {
     COLLECTION: COLLECTION_CONFIG,
     REORDER: REORDER_CONFIG,
@@ -80,8 +90,8 @@ const STAGE_CONFIGS: Record<PurchaseFulfillmentStatus, StageConfig> = {
     PREPARING_SHIPMENT_RF: PAYMENT_PLUS_CONFIG,
     IN_TRANSIT_RF: PAYMENT_PLUS_CONFIG,
     IN_TRANSIT_TO_ORGANIZER: PAYMENT_PLUS_CONFIG,
-    PACKAGING: PAYMENT_PLUS_CONFIG,
-    READY_FOR_PICKUP: PAYMENT_PLUS_CONFIG,
+    PACKAGING: ORDERING_CLOSED_CONFIG,
+    READY_FOR_PICKUP: ORDERING_CLOSED_CONFIG,
 };
 
 /** Получить конфиг этапа. O(1) lookup. */

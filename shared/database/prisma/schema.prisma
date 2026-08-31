@@ -229,6 +229,9 @@ model PurchaseOrder {
   comment         String?
   commentAuthor   Int?      // userId админа, оставившего последнюю запись
   commentAt       DateTime? // момент последнего редактирования comment
+  handoffStatus   HandoffStatus?
+  handoffAt       DateTime?
+  handoffBy       Int?
   purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderLines OrderLine[]
@@ -267,7 +270,7 @@ model PurchaseItem {
   packAmount              Decimal?  @db.Decimal(10, 3)
   packUnit                String?
   currencyId              Int?
-  pricePerPackCurrency    Decimal?  @db.Decimal(10, 2)
+  pricePerPackCurrency    Decimal?  @db.Decimal(10, 4)
   orgFeePercentOverride   Decimal?  @db.Decimal(5, 2)
   // Операционные количества (в базовых единицах, гр/шт). Заполняются организатором.
   orderedQty              Decimal?  @db.Decimal(10, 3)
@@ -450,4 +453,10 @@ enum PublicationState {
 enum OrderLineStatus {
   ACTIVE
   CANCELLED
+}
+
+enum HandoffStatus {
+  SENT
+  RECEIVED
+  STORED
 }
