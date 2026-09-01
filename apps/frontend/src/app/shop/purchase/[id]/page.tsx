@@ -7,9 +7,9 @@ import {
     mapToPurchaseItem,
         type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
-import { Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
 
 import { FilterTree } from '@/components/shared/filter-tree';
 import { useSidebarSlotContent } from '@/components/shop/sidebar-slot';
@@ -33,6 +33,8 @@ import type { ProductGridItem } from './components/product-grid';
 import { getPurchaseStageLabel } from './components/purchase-stepper';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
+
+const PAGE_SIZE = 20;
 
 function getSortPriceRub(
     item: ProductGridItem,
@@ -123,6 +125,9 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         });
     }, [filteredItems, query]);
 
+    const [page, setPage] = useState(1);
+    const gridRef = useRef<HTMLDivElement | null>(null);
+
     const visibleItems = useMemo(() => {
         let result = searchedItems;
         if (onlyMine) {
@@ -163,6 +168,22 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         fulfillmentStatus,
         packDiscountPercent,
     ]);
+
+    const totalPages = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const pagedItems = useMemo(
+        () => visibleItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+        [visibleItems, currentPage],
+    );
+
+    useEffect(() => {
+        setPage(1);
+    }, [query, selectedId, onlyMine, id]);
+
+    const handlePageChange = (next: number) => {
+        setPage(next);
+        gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     const hasActiveFilters = query.trim() !== '' || selectedId != null || onlyMine;
     const showOnlyMine = aggregatedByItem.size > 0;
@@ -323,18 +344,93 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     />
                 </div>
             ) : (
-                <ProductGrid
-                    items={visibleItems}
-                    aggregatedByItem={aggregatedByItem}
-                    purchaseId={id}
-                    packDiscountPercent={packDiscountPercent}
-                    orgFeeDefaultPercent={orgFeeDefaultPercent}
-                    currencyRates={currencyRates}
-                    isSupplement={isSupplement}
-                    canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
-                    fulfillmentStatus={fulfillmentStatus}
-                />
+                <div ref={gridRef} className="scroll-mt-20">
+                    <ProductGrid
+                        items={pagedItems}
+                        aggregatedByItem={aggregatedByItem}
+                        purchaseId={id}
+                        packDiscountPercent={packDiscountPercent}
+                        orgFeeDefaultPercent={orgFeeDefaultPercent}
+                        currencyRates={currencyRates}
+                        isSupplement={isSupplement}
+                        canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
+                        fulfillmentStatus={fulfillmentStatus}
+                    />
+
+                    {totalPages > 1 && (
+                        <CatalogPagination
+                            page={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                        />
+                    )}
+                </div>
             )}
         </div>
+    );
+}
+
+function CatalogPagination({
+    page,
+    totalPages,
+    onPageChange,
+}: {
+    page: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+}) {
+    const pages: (number | '…')[] = [];
+    for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
+            pages.push(p);
+        } else if (pages[pages.length - 1] !== '…') {
+            pages.push('…');
+        }
+    }
+
+    const btnClass = (active: boolean) =>
+        cn(
+            'flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-13-medium tabular-nums transition-colors',
+            active ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
+        );
+
+    return (
+        <nav className="flex items-center justify-center gap-1.5 pt-1" aria-label="Страницы товаров">
+            <button
+                type="button"
+                aria-label="Предыдущая страница"
+                disabled={page === 1}
+                onClick={() => onPageChange(page - 1)}
+                className={cn(btnClass(false), 'px-1.5 disabled:pointer-events-none disabled:opacity-40')}
+            >
+                <ChevronLeft className="size-4" />
+            </button>
+            {pages.map((p, i) =>
+                p === '…' ? (
+                    <span key={`dots-${i}`} className="px-1 text-13-medium text-fg-tertiary">
+                        …
+                    </span>
+                ) : (
+                    <button
+                        key={p}
+                        type="button"
+                        aria-current={p === page ? 'page' : undefined}
+                        onClick={() => onPageChange(p)}
+                        className={btnClass(p === page)}
+                    >
+                        {p}
+                    </button>
+                ),
+            )}
+            <button
+                type="button"
+                aria-label="Следующая страница"
+                disabled={page === totalPages}
+                onClick={() => onPageChange(page + 1)}
+                className={cn(btnClass(false), 'px-1.5 disabled:pointer-events-none disabled:opacity-40')}
+            >
+                <ChevronRight className="size-4" />
+            </button>
+        </nav>
     );
 }
