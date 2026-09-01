@@ -226,17 +226,28 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     return (
         <div className="flex flex-col gap-6 sm:gap-8">
-            <div className="flex flex-col items-center gap-5 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
-                <div className="flex flex-col items-center gap-3 sm:order-1 sm:items-start sm:gap-4">
+            <div className="flex flex-col items-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
+                <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 sm:order-1 sm:flex sm:flex-col sm:items-start sm:gap-4">
                     <span
                         className={cn(
-                            'inline-flex h-9 items-center rounded-full border border-secondary px-5',
-                            'text-13-medium text-secondary sm:text-14-medium',
+                            'inline-flex h-7 items-center justify-self-start self-end rounded-full border border-secondary px-3.5',
+                            'text-12-medium text-secondary sm:self-auto',
                         )}
                     >
                         {isSupplement ? 'Добор' : fulfillmentLabel}
                     </span>
-                    <h1 className="text-h1 text-secondary">{purchase.tag}</h1>
+                    <h1 className="min-w-0 truncate text-center text-h1 text-secondary sm:whitespace-normal sm:text-left">
+                        {purchase.tag}
+                    </h1>
+                    <span
+                        aria-hidden
+                        className={cn(
+                            'inline-flex h-7 items-center rounded-full border border-secondary px-3.5 text-12-medium text-secondary',
+                            'invisible sm:hidden',
+                        )}
+                    >
+                        {isSupplement ? 'Добор' : fulfillmentLabel}
+                    </span>
                 </div>
 
                 <BrandLogo className="order-first w-[124px] animate-fade-in-up text-primary sm:order-2 sm:w-[224px]" />
