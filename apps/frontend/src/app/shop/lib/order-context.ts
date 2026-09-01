@@ -165,7 +165,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
 
     const freeRemainderLabel =
         isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
-            ? `Можно докинуть: ${availablePool} ${shortName}`
+            ? `Можно добавить: ${availablePool} ${shortName}`
             : null;
 
     // Упаковка
