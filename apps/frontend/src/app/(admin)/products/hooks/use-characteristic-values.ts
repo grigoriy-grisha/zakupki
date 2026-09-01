@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+
 import {
+    type AttributeListItem,
     buildAutoCharacteristicValues,
     collectLinkedCharacteristicIds,
-    type AttributeListItem,
-} from '../lib/product-form-utils';
+} from '@/lib/product-form-utils';
 
 type CharacteristicSource = {
     id: number;

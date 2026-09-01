@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
+
 import { trpc } from '@/lib/client/trpc';
-import { buildAttributesTreeByType, type AttributeListItem } from '../lib/product-form-utils';
+import { type AttributeListItem, buildAttributesTreeByType } from '@/lib/product-form-utils';
 
 /**
  * Общий хук для каталога атрибутов.

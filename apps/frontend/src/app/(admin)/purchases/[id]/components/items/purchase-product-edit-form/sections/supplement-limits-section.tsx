@@ -1,10 +1,11 @@
 'use client';
 
-import { FormSection } from '@/components/ui/form-section';
+import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { FormField } from '@/components/ui/form-field';
+import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
+
 import { PackageEditor } from '../../../../../../products/components/package-fields';
-import { PackageUnitSelect } from '../../../../../../products/components/package-unit-select';
 import { PACKAGE_UNITS } from '../../../../../../products/lib';
 
 interface SupplementLimitsSectionProps {
@@ -55,17 +56,11 @@ export function SupplementLimitsSection({
                             onMinPackageAmountChange(e.target.value === '' ? null : Number(e.target.value))
                         }
                     />
-                    <PackageUnitSelect
-                        value={minPkgUnit ?? PACKAGE_UNITS[0]}
-                        onChange={onMinPkgUnitChange}
-                    />
+                    <PackageUnitSelect value={minPkgUnit ?? PACKAGE_UNITS[0]} onChange={onMinPkgUnitChange} />
                 </div>
             </FormField>
 
-            <FormField
-                label="Шаг добора"
-                hint="Шаг +/− на этапе добора. Если не задан — используется мин. фасовка"
-            >
+            <FormField label="Шаг добора" hint="Шаг +/− на этапе добора. Если не задан — используется мин. фасовка">
                 <Input
                     id="supplementStep"
                     type="number"
@@ -74,9 +69,7 @@ export function SupplementLimitsSection({
                     placeholder="По умолчанию (мин. фасовка)"
                     className="h-9 w-24 rounded-xl text-13-medium tabular-nums"
                     value={supplementStep != null ? String(supplementStep) : ''}
-                    onChange={(e) =>
-                        onSupplementStepChange(e.target.value === '' ? null : Number(e.target.value))
-                    }
+                    onChange={(e) => onSupplementStepChange(e.target.value === '' ? null : Number(e.target.value))}
                 />
             </FormField>
 
@@ -101,9 +94,7 @@ export function SupplementLimitsSection({
                     placeholder="0"
                     className="h-9 w-32 rounded-xl text-13-medium tabular-nums"
                     value={targetRemainder != null ? String(targetRemainder) : ''}
-                    onChange={(e) =>
-                        onTargetRemainderChange(e.target.value === '' ? null : Number(e.target.value))
-                    }
+                    onChange={(e) => onTargetRemainderChange(e.target.value === '' ? null : Number(e.target.value))}
                 />
             </FormField>
         </FormSection>

@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { trpc } from '@/lib/client/trpc';
+
 import {
     buildAttributeTree,
     collectExpandableIds,
     productMatchesTreeNode,
 } from '@/app/(admin)/products/lib/attribute-tree';
-import { buildAttributesTreeByType, type AttributeListItem } from '@/app/(admin)/products/lib/product-form-utils';
 import type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from '@/app/(admin)/products/lib/types';
+import { trpc } from '@/lib/client/trpc';
+import { type AttributeListItem, buildAttributesTreeByType } from '@/lib/product-form-utils';
 
 type PurchaseItem = {
     id: number;

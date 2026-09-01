@@ -1,10 +1,12 @@
 'use client';
 
 import { toast } from 'sonner';
+
 import { trpc } from '@/lib/client/trpc';
+import type { PendingFile } from '@/lib/product-form-utils';
+
 import type { ProductCreateFormValues } from '../lib';
 import { useCreateProduct, useDeletePhoto, useUpdateProduct } from './use-products';
-import type { PendingFile } from '../lib/product-form-utils';
 
 export type ProductFormPayload = {
     name: string;

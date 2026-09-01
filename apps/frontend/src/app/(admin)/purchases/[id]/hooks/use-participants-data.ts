@@ -1,13 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
 import type { HandoffStatus } from '@zakupki/types';
+import { useMemo } from 'react';
+
 import { trpc } from '@/lib/client/trpc';
-import { displayName } from '@/lib/utils/user';
+import { paymentTotal } from '@/lib/payment-utils';
 import { safeNumber } from '@/lib/utils';
-import { paymentTotal } from '../../lib/utils';
+import { displayName } from '@/lib/utils/user';
+
 import type { ParticipantOrderItem } from '../components/participants/types';
-import type { PaymentRef, UserBrief, OrderLineRef } from '../lib/types';
+import type { OrderLineRef, PaymentRef, UserBrief } from '../lib/types';
 
 /** PurchaseOrder в том виде, как его отдаёт orders.getAllByPurchase (см. order.repository.getByPurchase). */
 export interface OrderComment {
@@ -62,8 +64,9 @@ const emptyMaps = () => ({
 
 export function useParticipantsData(purchaseId: number) {
     const { data: orders, isLoading: ordersLoading } = trpc.orders.getAllByPurchase.useQuery({ purchaseId });
-    const { data: purchaseOrders, isLoading: poLoading } =
-        trpc.orders.getPurchaseOrdersByPurchase.useQuery({ purchaseId });
+    const { data: purchaseOrders, isLoading: poLoading } = trpc.orders.getPurchaseOrdersByPurchase.useQuery({
+        purchaseId,
+    });
     const { data: payments, isLoading: paymentsLoading } = trpc.payments.getByPurchase.useQuery({ purchaseId });
 
     const isLoading = ordersLoading || paymentsLoading || poLoading;

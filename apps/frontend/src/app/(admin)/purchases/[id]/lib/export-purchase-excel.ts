@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
 
-import { formatPurchaseProductLabel, type AttributeTypeMeta, type ProductLabelSource } from '@/lib/product-label';
-import { paymentTotal } from '../../lib/utils';
+import { paymentTotal } from '@/lib/payment-utils';
+import { type AttributeTypeMeta, formatPurchaseProductLabel, type ProductLabelSource } from '@/lib/product-label';
+
 import { unitsInPack } from './purchase-item-order-stats';
 
 type ExportUser = {
@@ -241,39 +242,6 @@ function styleFixedColumnCell(cell: ExcelJS.Cell, columnIndex: number) {
         horizontal: 'left',
         vertical: 'middle',
     };
-}
-
-function styleHeaderRow(row: ExcelJS.Row) {
-    row.eachCell((cell) => styleHeaderCell(cell));
-}
-
-function addDataSheet(
-    workbook: ExcelJS.Workbook,
-    name: string,
-    headers: string[],
-    rows: unknown[][],
-    numericColumnIndices: number[] = [],
-) {
-    const sheet = workbook.addWorksheet(name);
-    styleHeaderRow(sheet.addRow(headers));
-    rows.forEach((row) => {
-        const sheetRow = sheet.addRow(row);
-        numericColumnIndices.forEach((col) => styleNumericCell(sheetRow.getCell(col)));
-    });
-    applySheetBorders(sheet, 1, sheet.rowCount, 1, headers.length);
-    autoFitColumns(sheet);
-    return sheet;
-}
-
-function autoFitColumns(sheet: ExcelJS.Worksheet) {
-    sheet.columns.forEach((column) => {
-        if (!column?.number) return;
-        let maxLength = 10;
-        sheet.getColumn(column.number).eachCell({ includeEmpty: false }, (cell) => {
-            maxLength = Math.max(maxLength, String(cell.value ?? '').length);
-        });
-        column.width = Math.min(maxLength + 2, 50);
-    });
 }
 
 async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string) {

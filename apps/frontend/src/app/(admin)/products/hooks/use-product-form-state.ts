@@ -1,14 +1,16 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+
 import { trpc } from '@/lib/client/trpc';
-import { productCreateSchema, type ProductCreateFormValues } from '../lib';
+import { type PendingFile, revokePendingFiles } from '@/lib/product-form-utils';
+
+import { type ProductCreateFormValues, productCreateSchema } from '../lib';
 import { useAttributeCatalog } from './use-attribute-catalog';
-import { usePhotoState } from './use-photo-state';
 import { useCharacteristicValues } from './use-characteristic-values';
-import { revokePendingFiles, type AttributeListItem, type PendingFile } from '../lib/product-form-utils';
+import { usePhotoState } from './use-photo-state';
 
 type ProductAttributeValueShape = {
     attribute: { id: number; typeId: number };

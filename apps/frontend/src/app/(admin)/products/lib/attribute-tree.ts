@@ -1,4 +1,5 @@
-import type { AttributesTreeForType } from './product-form-utils';
+import type { AttributesTreeForType } from '@/lib/product-form-utils';
+
 import type { AttributeTypeRow, AttrProduct, PathSegment, ProductAttributeRef, TreeNode } from './types';
 
 function getProductAttributeAtType(product: AttrProduct, typeId: number): ProductAttributeRef | null {

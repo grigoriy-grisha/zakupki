@@ -9,17 +9,6 @@ export interface ShopPurchaseSummary {
     fulfillmentStatus?: PurchaseFulfillmentStatus | null;
 }
 
-export interface ShopMyPurchaseCardProps {
-    purchase: ShopPurchaseSummary;
-    payment: import('../hooks/use-purchase-payment-map').PurchasePaymentInfo;
-}
-
-export interface AvailablePurchaseCardProps {
-    purchase: ShopPurchaseSummary & {
-        items: { orderLines: { amountDue: unknown }[] }[];
-    };
-}
-
 // ── Product (внутри PurchaseItem) — только каталожные данные ──
 
 export interface ShopPurchaseItemProduct {

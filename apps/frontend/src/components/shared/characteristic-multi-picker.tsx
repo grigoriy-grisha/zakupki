@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { syncCharacteristicOrder } from '@/lib/product-form-utils';
 import { cn } from '@/lib/utils';
-import { syncCharacteristicOrder } from '@/app/(admin)/products/lib/product-form-utils';
 
 export type CharacteristicOption = { id: number; name: string };
 

@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Tag } from 'lucide-react';
-import { Label } from '@/components/ui/label';
+import { useEffect, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { type AttributesTreeForType, findAttributeDisplayName } from '@/lib/product-form-utils';
 import { cn } from '@/lib/utils';
-import { findAttributeDisplayName, type AttributesTreeForType } from '@/app/(admin)/products/lib/product-form-utils';
 
 type TypeRow = { id: number; name: string; parentId: number | null; position: number };
 
@@ -233,7 +234,9 @@ export function AttributeTreePicker({
                         />
                         <span>{type.name}</span>
                         {selectedName && (
-                            <span className="ml-auto truncate pl-2 text-12-regular text-fg-tertiary">{selectedName}</span>
+                            <span className="ml-auto truncate pl-2 text-12-regular text-fg-tertiary">
+                                {selectedName}
+                            </span>
                         )}
                     </Button>
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Eye, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { paymentTotal } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
-import { useAddPayment } from '../../hooks';
+
 import { PAYMENT_STATUS } from '../../../../lib/constants';
-import { paymentTotal } from '../../../lib/utils';
+import { useAddPayment } from '../../hooks';
 import type { PaymentRef } from '../../lib/types';
 
 interface ParticipantPaymentsPanelProps {
@@ -77,16 +78,13 @@ export function ParticipantPaymentsPanel({
                                     </span>
                                     {childAmount > 0 && (
                                         <p className="truncate text-12-regular text-fg-tertiary">
-                                            {Number(p.amount).toLocaleString('ru-RU')} + промокод{' '}
-                                            {promoCode?.code}
+                                            {Number(p.amount).toLocaleString('ru-RU')} + промокод {promoCode?.code}
                                         </p>
                                     )}
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
                                     {hasProof && <Eye className="size-3.5 text-fg-tertiary" />}
-                                    <Badge className={cn('text-12-medium', cfg.className)}>
-                                        {cfg.label}
-                                    </Badge>
+                                    <Badge className={cn('text-12-medium', cfg.className)}>{cfg.label}</Badge>
                                 </div>
                             </Button>
                         );

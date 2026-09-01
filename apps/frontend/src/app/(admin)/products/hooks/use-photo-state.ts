@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { revokePendingFiles, type PendingFile } from '../lib/product-form-utils';
+
+import { type PendingFile, revokePendingFiles } from '@/lib/product-form-utils';
 
 export function usePhotoState(editId: number | null, existingPhotos?: { id: number }[]) {
     const [photoIds, setPhotoIds] = useState<number[]>([]);
