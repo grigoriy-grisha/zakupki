@@ -16,7 +16,6 @@ import { useMemo, useState } from 'react';
 
 import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
-import { NotificationsPreviewCard } from '@/app/shop/orders/components/notifications-preview-card';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
@@ -305,8 +304,6 @@ export default function OrdersPage() {
     return (
         <div className="flex flex-col gap-6 sm:gap-8">
             <h1 className="text-h1 text-secondary">Мои заказы</h1>
-
-            <NotificationsPreviewCard />
 
             <OrdersSegmentedTabs
                 tab={tab}
