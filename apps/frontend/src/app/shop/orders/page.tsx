@@ -118,21 +118,26 @@ function PurchaseOrderCard({
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
     return (
-        <section className="py-5 first:pt-0 last:pb-0 sm:py-9">
+        <section className="py-5 first:pt-0 last:pb-0 sm:py-6">
             <div className="min-w-0">
                 {group.orderNumber != null && (
-                    <p className="text-14-regular text-fg-secondary tabular-nums sm:text-20-regular">
+                    <p className="text-13-regular text-fg-secondary tabular-nums sm:text-14-regular">
                         Заказ №{group.orderNumber}
                     </p>
                 )}
                 <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
-                    <h3 className="text-h1 text-secondary transition-colors group-hover/title:text-primary">
+                    <h3
+                        className={cn(
+                            'font-display text-24-bold leading-tight text-secondary transition-colors',
+                            'group-hover/title:text-primary sm:text-30-semibold',
+                        )}
+                    >
                         {group.tag}
                     </h3>
                 </AppLink>
             </div>
 
-            <div className="mt-5 divide-y divide-border-low sm:mt-8">
+            <div className="mt-5 divide-y divide-border-low sm:mt-6">
                 {group.orders.map((order) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
@@ -147,11 +152,11 @@ function PurchaseOrderCard({
                             key={order.purchaseItemId}
                             href={`/shop/purchase/${group.id}/item/${order.purchaseItemId}`}
                             className={cn(
-                                'group flex items-center gap-3 rounded-xl px-1 py-2.5 sm:gap-5 sm:py-3',
+                                'group flex items-center gap-3 rounded-xl px-1 py-2.5 sm:gap-4 sm:py-3',
                                 'transition-colors hover:bg-bg-card/60',
                             )}
                         >
-                            <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-bg-card sm:size-[147px] sm:rounded-[20px]">
+                            <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-bg-card sm:size-20 sm:rounded-2xl">
                                 {photo ? (
                                     <img
                                         src={absoluteProductPhotoUrl(photo.id)}
@@ -160,7 +165,7 @@ function PurchaseOrderCard({
                                     />
                                 ) : (
                                     <div className="flex h-full items-center justify-center text-fg-tertiary">
-                                        <Package className="size-4 sm:size-6" />
+                                        <Package className="size-4 sm:size-5" />
                                     </div>
                                 )}
                             </div>
@@ -170,16 +175,13 @@ function PurchaseOrderCard({
                                         product={product}
                                         className="min-w-0"
                                         primaryClassName={cn(
-                                            'block font-display text-18-semibold leading-tight text-fg-primary',
-                                            'transition-colors group-hover:text-secondary sm:text-30-semibold',
+                                            'block font-display text-16-semibold leading-tight text-fg-primary',
+                                            'transition-colors group-hover:text-secondary sm:text-18-semibold',
                                         )}
-                                        secondaryClassName={cn(
-                                            'mt-0.5 block truncate font-display text-14-regular text-fg-secondary',
-                                            'sm:mt-1 sm:text-24-regular',
-                                        )}
+                                        secondaryClassName="mt-0.5 block truncate text-12-regular text-fg-tertiary sm:text-13-regular"
                                     />
                                 )}
-                                <p className="mt-0.5 font-display text-14-semibold text-fg-primary tabular-nums sm:mt-1 sm:text-24-semibold">
+                                <p className="mt-0.5 font-display text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
                                     {qty} {shortName}
                                     {pkgLabel} · {formatRub(amount)}
                                 </p>
@@ -195,8 +197,8 @@ function PurchaseOrderCard({
                 })}
             </div>
 
-            <div className="mt-5 flex flex-col gap-3 sm:mt-9 sm:gap-4">
-                <p className="text-right font-display text-24-semibold text-primary sm:text-30-semibold">
+            <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:gap-4">
+                <p className="text-right font-display text-20-semibold text-primary sm:text-24-semibold">
                     Итоговая сумма {formatRub(group.total)}
                 </p>
 
@@ -275,7 +277,7 @@ export default function OrdersPage() {
             <BrandLogo className="mx-auto w-[124px] text-primary sm:hidden" />
             <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
 
-            <div className="rounded-[10px] bg-bg-soft p-4 sm:rounded-[20px] sm:p-8">
+            <div className="rounded-[10px] bg-bg-soft p-4 sm:rounded-[20px] sm:p-6">
                 <OrdersSegmentedTabs
                     tab={tab}
                     onTabChange={setTab}

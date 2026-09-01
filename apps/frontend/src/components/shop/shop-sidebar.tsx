@@ -27,60 +27,62 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
     return (
         <aside
             className={cn(
-                'sticky top-14 h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 flex-col border-r-2 border-secondary',
-                'overflow-y-auto px-8 pb-10 pt-7',
+                'sticky top-14 h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 hidden md:flex flex-col relative',
                 className,
             )}
         >
-            <p className="font-display text-30-semibold uppercase leading-none text-primary">Закупки</p>
+            <span aria-hidden className="absolute bottom-10 right-0 top-24 w-0.5 bg-secondary" />
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-7">
+                <p className="font-display text-30-semibold uppercase leading-none text-primary">Закупки</p>
 
-            <div className="mt-8">
-                {isLoading ? (
-                    <div className="space-y-4">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <Skeleton key={i} className="h-8 w-full rounded-xl" />
-                        ))}
-                    </div>
-                ) : !purchases?.length ? (
-                    <p className="text-14-regular text-fg-secondary">Нет активных закупок</p>
-                ) : (
-                    <nav className="flex flex-col items-start gap-3.5">
-                        {purchases.map((purchase) => {
-                            const isActive = activePurchaseId === purchase.id;
-                            const fulfillmentStatus = (purchase.fulfillmentStatus ??
-                                'COLLECTION') as PurchaseFulfillmentStatus;
-                            const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
+                <div className="mt-8">
+                    {isLoading ? (
+                        <div className="space-y-4">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <Skeleton key={i} className="h-8 w-full rounded-xl" />
+                            ))}
+                        </div>
+                    ) : !purchases?.length ? (
+                        <p className="text-14-regular text-fg-secondary">Нет активных закупок</p>
+                    ) : (
+                        <nav className="flex flex-col items-start gap-3.5">
+                            {purchases.map((purchase) => {
+                                const isActive = activePurchaseId === purchase.id;
+                                const fulfillmentStatus = (purchase.fulfillmentStatus ??
+                                    'COLLECTION') as PurchaseFulfillmentStatus;
+                                const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
 
-                            return (
-                                <button
-                                    key={purchase.id}
-                                    type="button"
-                                    onClick={() => router.push(`/shop/purchase/${purchase.id}`)}
-                                    className="max-w-full text-left transition-colors hover:text-secondary"
-                                >
-                                    <span
-                                        className={cn(
-                                            'font-display leading-tight',
-                                            isActive
-                                                ? 'text-24-semibold text-secondary'
-                                                : 'text-18-semibold text-fg-primary',
-                                        )}
+                                return (
+                                    <button
+                                        key={purchase.id}
+                                        type="button"
+                                        onClick={() => router.push(`/shop/purchase/${purchase.id}`)}
+                                        className="max-w-full text-left transition-colors hover:text-secondary"
                                     >
-                                        {purchase.tag}
-                                    </span>
-                                    {isActive && (
-                                        <span className="mt-0.5 block truncate text-12-regular text-fg-tertiary">
-                                            {fulfillmentLabel}
+                                        <span
+                                            className={cn(
+                                                'font-display leading-tight',
+                                                isActive
+                                                    ? 'text-24-semibold text-secondary'
+                                                    : 'text-18-semibold text-fg-primary',
+                                            )}
+                                        >
+                                            {purchase.tag}
                                         </span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </nav>
-                )}
-            </div>
+                                        {isActive && (
+                                            <span className="mt-0.5 block truncate text-12-regular text-fg-tertiary">
+                                                {fulfillmentLabel}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    )}
+                </div>
 
-            <SidebarSlot />
+                <SidebarSlot />
+            </div>
         </aside>
     );
 }
