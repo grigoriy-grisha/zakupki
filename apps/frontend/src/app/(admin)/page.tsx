@@ -3,7 +3,6 @@
 import { ArrowRightIcon, LayoutDashboardIcon, PackageIcon, PlusIcon, ShoppingCartIcon } from 'lucide-react';
 
 import { AppLink } from '@/components/app-link';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -37,12 +36,12 @@ export default function DashboardPage() {
                 <Card rounded="2xl" className="gap-3 p-5">
                     <div className="flex items-center justify-between">
                         <span className="text-14-medium text-fg-secondary">Активных закупок</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                             <ShoppingCartIcon className="size-4" />
                         </div>
                     </div>
-                    <p className="text-36-semibold text-fg-primary tracking-tighter">{activeCount}</p>
-                    <Button variant="link" className="h-auto p-0 text-14-medium text-primary" asChild>
+                    <p className="font-display text-36-semibold text-fg-primary">{activeCount}</p>
+                    <Button variant="link" className="h-auto p-0 text-14-medium text-secondary" asChild>
                         <AppLink href="/purchases" className="inline-flex items-center gap-1">
                             Перейти к закупкам <ArrowRightIcon className="size-3.5" />
                         </AppLink>
@@ -51,12 +50,12 @@ export default function DashboardPage() {
                 <Card rounded="2xl" className="gap-3 p-5">
                     <div className="flex items-center justify-between">
                         <span className="text-14-medium text-fg-secondary">Товаров в каталоге</span>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                             <PackageIcon className="size-4" />
                         </div>
                     </div>
-                    <p className="text-36-semibold text-fg-primary tracking-tighter">{productCount}</p>
-                    <Button variant="link" className="h-auto p-0 text-14-medium text-primary" asChild>
+                    <p className="font-display text-36-semibold text-fg-primary">{productCount}</p>
+                    <Button variant="link" className="h-auto p-0 text-14-medium text-secondary" asChild>
                         <AppLink href="/products" className="inline-flex items-center gap-1">
                             Перейти к каталогу <ArrowRightIcon className="size-3.5" />
                         </AppLink>
@@ -85,10 +84,12 @@ export default function DashboardPage() {
                                     <li key={p.id}>
                                         <AppLink
                                             href={`/purchases/${p.id}`}
-                                            className="group flex items-center justify-between rounded-xl border border-border bg-bg-card px-4 py-3 text-14-medium text-fg-primary transition-colors hover:bg-bg-soft"
+                                            className="group flex items-center justify-between rounded-full bg-bg-card/60 px-4 py-2.5 transition-colors hover:bg-bg-card"
                                         >
-                                            <span className="truncate">{p.tag}</span>
-                                            <ArrowRightIcon className="size-4 text-fg-tertiary transition-transform group-hover:translate-x-0.5" />
+                                            <span className="truncate font-display text-18-semibold text-secondary">
+                                                {p.tag}
+                                            </span>
+                                            <ArrowRightIcon className="size-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5" />
                                         </AppLink>
                                     </li>
                                 ))}
@@ -102,15 +103,15 @@ export default function DashboardPage() {
                         <CardTitle>Быстрые действия</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2">
-                        <Button variant="outline" size="lg" asChild className="justify-start rounded-xl">
+                        <Button variant="outline" size="lg" asChild className="justify-start">
                             <AppLink href="/products">
-                                <PackageIcon className="mr-2 size-4" />
+                                <PackageIcon className="size-4" />
                                 Каталог товаров
                             </AppLink>
                         </Button>
-                        <Button variant="outline" size="lg" asChild className="justify-start rounded-xl">
+                        <Button variant="outline" size="lg" asChild className="justify-start">
                             <AppLink href="/shop">
-                                <ShoppingCartIcon className="mr-2 size-4" />
+                                <ShoppingCartIcon className="size-4" />
                                 Мои закупки (участник)
                             </AppLink>
                         </Button>

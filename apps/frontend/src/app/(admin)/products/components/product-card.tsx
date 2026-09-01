@@ -1,16 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Loader2, Lock, Package, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import { trpc } from '@/lib/client/trpc';
-import { useDeleteProduct } from '../hooks';
-import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '@/lib/product-label';
+
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter,DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { trpc } from '@/lib/client/trpc';
+import { formatProductCatalogCardLines, type ProductCatalogCardSource } from '@/lib/product-label';
+import { cn } from '@/lib/utils';
+
+import { useDeleteProduct } from '../hooks';
 
 interface CatalogProductCardProps {
     product: ProductCatalogCardSource & {
@@ -21,7 +23,6 @@ interface CatalogProductCardProps {
     onClick: () => void;
 }
 
-/** Максимум meta-строк (характеристики/единицы), показываемых на карточке каталога. */
 const MAX_META_LINES = 2;
 
 export function ProductCard({ product, onClick }: CatalogProductCardProps) {
@@ -59,13 +60,12 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
             <Card
                 rounded="2xl"
                 className={cn(
-                    'group relative flex h-full flex-col cursor-pointer overflow-hidden border py-0 transition-all duration-200 ease-out',
-                    'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg',
+                    'group relative flex h-full cursor-pointer flex-col overflow-hidden py-0 transition-all duration-200 ease-out',
+                    'hover:-translate-y-0.5 hover:shadow-lg',
                 )}
                 onClick={onClick}
             >
-                {/* ── Фото ── */}
-                <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-soft sm:aspect-square">
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-card sm:aspect-square">
                     {photo ? (
                         <div className="h-full w-full overflow-hidden transition-transform duration-500 ease-out group-hover:scale-105">
                             <ProductPhotoPreview
@@ -81,7 +81,6 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         </div>
                     )}
 
-                    {/* Бейдж «В закупке» — объясняет отсутствие кнопки удаления */}
                     {product.inActivePurchase && (
                         <div className="pointer-events-none absolute top-1.5 left-1.5 z-1 flex items-center gap-1 rounded-full border border-white/40 bg-bg-card/80 px-2 py-0.5 text-11-medium leading-none text-warning shadow-sm backdrop-blur-md">
                             <Lock className="size-2.5" />
@@ -89,7 +88,6 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                         </div>
                     )}
 
-                    {/* Кнопка удаления — только для товаров вне закупки */}
                     {!product.inActivePurchase && (
                         <Button
                             variant="destructive"
@@ -105,34 +103,29 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                     )}
                 </div>
 
-                {/* ── Контент ── */}
                 <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
-                    {/* Название */}
                     {nameLine ? (
-                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-primary sm:text-14-semibold">
+                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-secondary sm:text-14-semibold">
                             {nameLine.text}
                         </p>
                     ) : (
-                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-primary sm:text-14-semibold">
+                        <p className="line-clamp-2 text-13-semibold leading-snug text-fg-primary transition-colors group-hover:text-secondary sm:text-14-semibold">
                             {product.name}
                         </p>
                     )}
 
-                    {/* Подзаголовок (бренд + тип) */}
                     {titleLine && (
                         <p className="line-clamp-1 text-12-medium leading-snug text-fg-secondary">
                             {titleLine.text}
                         </p>
                     )}
 
-                    {/* Характеристики / единицы — максимум MAX_META_LINES строк */}
                     {visibleMetaLines.map((line, index) => (
                         <p key={`${index}-${line.text}`} className="line-clamp-1 text-11-regular leading-snug text-fg-tertiary">
                             {line.text}
                         </p>
                     ))}
 
-                    {/* Скрытые характеристики */}
                     {hiddenMetaCount > 0 && (
                         <p className="text-11-medium leading-snug text-fg-tertiary transition-colors group-hover:text-fg-secondary">
                             +{hiddenMetaCount} ещё
@@ -146,7 +139,7 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                     <DialogHeader>
                         <DialogTitle>Удалить товар?</DialogTitle>
                     </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-14-regular text-fg-secondary">
                         Товар <strong>{product.name}</strong> будет удалён без возможности восстановления.
                     </p>
                     <DialogFooter>
@@ -154,7 +147,7 @@ export function ProductCard({ product, onClick }: CatalogProductCardProps) {
                             Отмена
                         </Button>
                         <Button variant="destructive" disabled={deleteMutation.isPending} onClick={handleDelete}>
-                            {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {deleteMutation.isPending && <Loader2 className="size-4 animate-spin" />}
                             Удалить
                         </Button>
                     </DialogFooter>

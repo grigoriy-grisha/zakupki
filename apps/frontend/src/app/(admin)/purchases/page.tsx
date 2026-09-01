@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { trpc } from '@/lib/client/trpc';
+import { useState } from 'react';
+
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { trpc } from '@/lib/client/trpc';
+
 import { PurchaseCard, PurchaseForm } from './components';
 
 export default function PurchasesPage() {
@@ -17,13 +20,15 @@ export default function PurchasesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold tracking-tight">Закупки</h1>
-                <Button onClick={() => setNewOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Новая закупка
-                </Button>
-            </div>
+            <PageHeader
+                title="Закупки"
+                actions={
+                    <Button onClick={() => setNewOpen(true)}>
+                        <Plus className="size-4" />
+                        Новая закупка
+                    </Button>
+                }
+            />
 
             <Tabs value={tab} onValueChange={setTab}>
                 <TabsList>
@@ -43,7 +48,7 @@ export default function PurchasesPage() {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {purchases?.length === 0 && (
-                                <p className="col-span-full py-12 text-center text-muted-foreground">Нет закупок</p>
+                                <p className="col-span-full py-12 text-center text-14-regular text-fg-secondary">Нет закупок</p>
                             )}
                             {purchases?.map((purchase) => (
                                 <PurchaseCard key={purchase.id} purchase={purchase} />

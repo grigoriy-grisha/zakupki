@@ -32,13 +32,13 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
     const isDraft = purchase.status === 'DRAFT';
 
     return (
-        <div className="group flex h-full flex-col gap-2 rounded-2xl border border-border bg-bg-card p-3.5 transition-colors hover:border-border-strong hover:bg-bg-soft">
+        <div className="group flex h-full flex-col gap-2 rounded-2xl bg-bg-soft p-3.5 transition-shadow hover:shadow-lg">
             <div className="flex items-start justify-between gap-2">
                 <AppLink
                     href={`/purchases/${purchase.id}`}
                     className="flex min-w-0 flex-1 items-center gap-2 leading-tight"
                 >
-                    <span className="truncate text-16-semibold text-fg-primary tracking-tight">{purchase.tag}</span>
+                    <span className="truncate font-display text-18-semibold text-secondary">{purchase.tag}</span>
                     <Badge variant={STATUS_VARIANT[purchase.status] ?? 'secondary'} type="subtle" size="sm">
                         {STATUS_LABELS[purchase.status] ?? purchase.status}
                     </Badge>
@@ -51,7 +51,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     <span className="text-fg-disabled">·</span>
                     <span className="tabular-nums">{totalOrders} заказ.</span>
                     <span className="text-fg-disabled">·</span>
-                    <span className="font-semibold text-fg-primary tabular-nums">{formatRub(totalAmount)}</span>
+                    <span className="font-display text-14-semibold text-primary tabular-nums">{formatRub(totalAmount)}</span>
                 </div>
             </AppLink>
 
