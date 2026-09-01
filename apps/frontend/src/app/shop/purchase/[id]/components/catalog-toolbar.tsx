@@ -1,27 +1,12 @@
 'use client';
 
-import { ArrowUpDown, Check, ChevronDown, ChevronRight, Search, ShoppingBag, X } from 'lucide-react';
+import { ChevronRight, Search, ShoppingBag, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
 export type SortMode = 'default' | 'price-asc' | 'price-desc' | 'name-asc';
-
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-    { value: 'default', label: 'По умолчанию' },
-    { value: 'price-asc', label: 'Сначала дешевле' },
-    { value: 'price-desc', label: 'Сначала дороже' },
-    { value: 'name-asc', label: 'По названию' },
-];
-
-const SORT_LABELS = Object.fromEntries(SORT_OPTIONS.map((o) => [o.value, o.label])) as Record<SortMode, string>;
 
 interface CatalogToolbarProps {
     query: string;
@@ -29,8 +14,6 @@ interface CatalogToolbarProps {
     onlyMine: boolean;
     onOnlyMineToggle: () => void;
     showOnlyMine: boolean;
-    sortMode: SortMode;
-    onSortModeChange: (mode: SortMode) => void;
     totalCount: number;
     filteredCount: number;
     ancestorPath: { typeId: number; typeName: string; name: string }[];
@@ -47,8 +30,6 @@ export function CatalogToolbar({
     onlyMine,
     onOnlyMineToggle,
     showOnlyMine,
-    sortMode,
-    onSortModeChange,
     totalCount,
     filteredCount,
     ancestorPath,
@@ -68,7 +49,8 @@ export function CatalogToolbar({
 
     return (
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-            <div className="relative w-full shrink-0 sm:w-64">
+            <div className="flex w-full items-center gap-3 sm:w-auto">
+                <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
                     <Search
                         className={cn(
                             'pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2',
@@ -103,10 +85,10 @@ export function CatalogToolbar({
                     )}
             </div>
 
-            <div className="flex items-center justify-between gap-2 sm:flex-1 sm:justify-end">
-                <div className="flex min-w-0 items-center gap-2">
-                    <SortMenu sortMode={sortMode} onSortModeChange={onSortModeChange} />
+                            </div>
 
+            <div className="flex items-center justify-end gap-2 sm:flex-1">
+                <div className="flex min-w-0 items-center gap-2">
                     {mobileFilterSlot && <div className="md:hidden">{mobileFilterSlot}</div>}
 
                     {showOnlyMine && (
@@ -146,41 +128,6 @@ export function CatalogToolbar({
                 />
             )}
         </div>
-    );
-}
-
-function SortMenu({ sortMode, onSortModeChange }: { sortMode: SortMode; onSortModeChange: (mode: SortMode) => void }) {
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <button
-                    type="button"
-                    aria-label="Сортировка товаров"
-                    className={cn(
-                        'flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border-low',
-                        'px-4 text-13-medium text-fg-primary transition-colors hover:border-secondary hover:text-secondary',
-                    )}
-                >
-                    <ArrowUpDown className="size-4" />
-                    <span className="hidden max-w-32 truncate sm:inline">
-                        {SORT_LABELS[sortMode]}
-                    </span>
-                    <ChevronDown className="size-3 opacity-60" />
-                </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="rounded-xl p-1">
-                {SORT_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                        key={option.value}
-                        onClick={() => onSortModeChange(option.value)}
-                        className="rounded-lg text-13-medium"
-                    >
-                        <span className="flex-1">{option.label}</span>
-                        {sortMode === option.value && <Check className="size-3.5 text-secondary" />}
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
     );
 }
 
@@ -236,10 +183,7 @@ function ActiveFilterChips({
             {hasTreeFilter && (
                 <>
                     {ancestorPath.map((segment, i) => (
-                        <span
-                            key={`${segment.typeId}:${segment.name}`}
-                            className="flex items-center gap-1.5 text-fg-tertiary"
-                        >
+                        <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5 text-fg-tertiary">
                             {i > 0 && <ChevronRight className="h-3 w-3" />}
                             <span className="text-12-medium">
                                 {segment.typeName}: {segment.name}

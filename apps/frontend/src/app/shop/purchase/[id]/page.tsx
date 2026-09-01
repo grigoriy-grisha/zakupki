@@ -65,7 +65,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const { beadPackPriceDiscountPercent: packDiscountPercent, orgFeeDefaultPercent } = usePricingSettings();
 
     const [query, setQuery] = useState('');
-    const [sortMode, setSortMode] = useState<SortMode>('default');
+    const sortMode: SortMode = 'default';
     const [onlyMine, setOnlyMine] = useState(false);
 
     const fulfillmentStatus = (purchase?.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
@@ -259,8 +259,6 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 onlyMine={onlyMine}
                 onOnlyMineToggle={() => setOnlyMine((value) => !value)}
                 showOnlyMine={showOnlyMine}
-                sortMode={sortMode}
-                onSortModeChange={setSortMode}
                 totalCount={totalCount}
                 filteredCount={visibleItems.length}
                 ancestorPath={ancestorPath}
