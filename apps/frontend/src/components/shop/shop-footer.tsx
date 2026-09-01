@@ -30,9 +30,7 @@ export function ShopFooter() {
                     {FOOTER_LINKS.map((link, i) => (
                         <span key={link} className="flex items-center gap-3">
                             {i > 0 && <span aria-hidden className="size-1.5 rounded-full bg-secondary" />}
-                            <a href="#" className="transition-colors hover:text-primary">
-                                {link}
-                            </a>
+                            {link}
                         </span>
                     ))}
                 </p>
