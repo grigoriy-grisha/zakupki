@@ -1,9 +1,10 @@
 'use client';
 
 import { ChevronDown, ChevronRight, FolderOpen, Package, Tag } from 'lucide-react';
+
+import type { TreeNode } from '@/app/(admin)/products/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { TreeNode } from '@/app/(admin)/products/lib/types';
 
 export interface FilterTreeProps {
     nodes: TreeNode[];
@@ -13,13 +14,8 @@ export interface FilterTreeProps {
     onToggle: (id: string) => void;
     totalCount: number;
     onClear: () => void;
-    depth?: number;
 }
 
-/**
- * Дерево фильтрации. Самодостаточный компонент — у него свой `bg-bg-card`,
- * не зависит от обёртки в page.tsx (на случай, если используется в Sheet/другом месте).
- */
 export function FilterTree({
     nodes,
     selectedId,
@@ -37,9 +33,7 @@ export function FilterTree({
                 onClick={onClear}
                 className={cn(
                     'h-auto w-full justify-start gap-2 rounded-full px-3 py-2 text-13-medium',
-                    selectedId === null
-                        ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft'
-                        : 'text-fg-secondary',
+                    selectedId === null ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-secondary',
                 )}
             >
                 <Package className="size-4" />
@@ -82,9 +76,7 @@ function FilterTreeNode({
                             onClick={() => onSelect(node)}
                             className={cn(
                                 'h-auto w-full justify-start gap-1.5 rounded-full px-3 py-1.5 text-13-medium',
-                                isSelected
-                                    ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft'
-                                    : 'text-fg-secondary',
+                                isSelected ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-secondary',
                                 node.isTypeFolder && !isSelected && 'text-fg-tertiary',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 12}px` }}
@@ -116,9 +108,7 @@ function FilterTreeNode({
                                     )}
                                 />
                             )}
-                            <span className="min-w-0 flex-1 text-left break-words">
-                                {node.label}
-                            </span>
+                            <span className="min-w-0 flex-1 text-left break-words">{node.label}</span>
                             <span className="ml-auto rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary">
                                 {node.count}
                             </span>

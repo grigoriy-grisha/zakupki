@@ -1,11 +1,12 @@
 'use client';
 
-import { Package } from 'lucide-react';
 import type { CurrencyRate } from '@zakupki/types';
+import { Package } from 'lucide-react';
 
-import { ProductCard } from './product-card';
 import { EmptyState } from '@/components/ui/empty-state';
+
 import type { AggregatedForUser } from '../../../lib/order-aggregation';
+import { ProductCard } from './product-card';
 
 /** Минимум, что нужно карточке от PurchaseItem. */
 export interface ProductGridItem {

@@ -1,7 +1,7 @@
 'use client';
 
 import type { CurrencyRate } from '@zakupki/types';
-import { ArrowLeft, Ban, Building2, Minus, Package, PackageSearch, Percent, Plus } from 'lucide-react';
+import { ArrowLeft, Ban, Building2, Package, PackageSearch, Percent, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { use, useMemo, useState } from 'react';
@@ -12,6 +12,7 @@ import type { ShopPurchaseItem } from '@/app/shop/lib/types';
 import { AppLink } from '@/components/app-link';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { QuantityStepper } from '@/components/shared/quantity-stepper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -406,36 +407,19 @@ function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: strin
                 </Button>
             ) : (
                 <div className="flex flex-col gap-2">
-                    <div className="hidden items-stretch gap-2 lg:flex">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="size-11 shrink-0 rounded-xl"
-                            onClick={ctx.handleRemove}
-                            disabled={!ctx.canDecrease}
-                            aria-label="Уменьшить количество"
-                        >
-                            <Minus className="size-4" />
-                        </Button>
-                        <div
-                            className={cn(
-                                'flex h-11 min-w-0 flex-1 items-center justify-center rounded-xl',
-                                'border border-border bg-bg-base px-2 text-14-semibold text-fg-primary tabular-nums',
-                            )}
-                        >
-                            {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                        </div>
-                        <Button
-                            variant="brand"
-                            size="icon"
-                            className="size-11 shrink-0 rounded-xl"
-                            onClick={ctx.handleAdd}
-                            disabled={!ctx.canAdd}
-                            aria-label="Увеличить количество"
-                        >
-                            <Plus className="size-4" />
-                        </Button>
-                    </div>
+                    <QuantityStepper
+                        size="lg"
+                        wrapClassName="hidden lg:flex"
+                        value={
+                            <>
+                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                            </>
+                        }
+                        onRemove={ctx.handleRemove}
+                        onAdd={ctx.handleAdd}
+                        canRemove={ctx.canDecrease}
+                        canAdd={ctx.canAdd}
+                    />
                     {ctx.showPackageButtons && ctx.packSize != null && (
                         <div className="flex gap-2">
                             <Button
@@ -483,36 +467,19 @@ function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                     </p>
                 </div>
                 {ctx.hasOrder ? (
-                    <div className="flex shrink-0 items-stretch gap-1.5">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="size-10 rounded-xl"
-                            onClick={ctx.handleRemove}
-                            disabled={!ctx.canDecrease}
-                            aria-label="Уменьшить количество"
-                        >
-                            <Minus className="size-4" />
-                        </Button>
-                        <div
-                            className={cn(
-                                'flex h-10 min-w-20 items-center justify-center rounded-xl',
-                                'border border-border bg-bg-base px-2 text-13-semibold text-fg-primary tabular-nums',
-                            )}
-                        >
-                            {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                        </div>
-                        <Button
-                            variant="brand"
-                            size="icon"
-                            className="size-10 rounded-xl"
-                            onClick={ctx.handleAdd}
-                            disabled={!ctx.canAdd}
-                            aria-label="Увеличить количество"
-                        >
-                            <Plus className="size-4" />
-                        </Button>
-                    </div>
+                    <QuantityStepper
+                        size="md"
+                        wrapClassName="shrink-0"
+                        value={
+                            <>
+                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                            </>
+                        }
+                        onRemove={ctx.handleRemove}
+                        onAdd={ctx.handleAdd}
+                        canRemove={ctx.canDecrease}
+                        canAdd={ctx.canAdd}
+                    />
                 ) : (
                     <Button
                         variant="brand"

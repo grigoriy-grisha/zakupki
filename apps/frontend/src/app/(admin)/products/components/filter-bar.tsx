@@ -2,11 +2,11 @@
 
 import { ChevronRight, Filter as FilterIcon, X } from 'lucide-react';
 
+import { FilterTree } from '@/components/shared/filter-tree';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-import { FilterTree } from './filter-tree';
 import type { TreeNode } from '../lib/types';
 
 interface FilterBarProps {

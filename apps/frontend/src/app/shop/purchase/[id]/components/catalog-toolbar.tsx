@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import type { TreeNode } from '@/app/(admin)/products/lib/types';
+import { FilterTree } from '@/components/shared/filter-tree';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -22,8 +23,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
-
-import { FilterTree } from './filter-tree';
 
 export type SortMode = 'default' | 'price-asc' | 'price-desc' | 'name-asc';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { type CurrencyRate } from '@zakupki/types';
-import { Ban, Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
+import { Ban, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { memo, useCallback } from 'react';
 
@@ -9,6 +9,7 @@ import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { QuantityStepper } from '@/components/shared/quantity-stepper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -357,38 +358,18 @@ function ProductCardImpl({
 function InCartControls({ ctx }: { ctx: ReturnType<typeof useItemOrderControls> }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <div className="flex items-stretch gap-1">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-8 shrink-0 rounded-lg sm:size-9"
-                    onClick={ctx.handleRemove}
-                    disabled={!ctx.canDecrease}
-                    aria-label="Уменьшить количество"
-                >
-                    <Minus className="size-3.5" />
-                </Button>
-                <div
-                    className={cn(
-                        'flex min-w-0 flex-1 items-center justify-center rounded-lg border border-border',
-                        'bg-bg-base px-1 text-12-semibold tabular-nums text-fg-primary',
-                    )}
-                >
+            <QuantityStepper
+                size="sm"
+                value={
                     <span className="truncate">
                         {ctx.currentQuantity} {ctx.shortName}
                     </span>
-                </div>
-                <Button
-                    variant="brand"
-                    size="icon"
-                    className="size-8 shrink-0 rounded-lg sm:size-9"
-                    onClick={ctx.handleAdd}
-                    disabled={!ctx.canAdd}
-                    aria-label="Увеличить количество"
-                >
-                    <Plus className="size-3.5" />
-                </Button>
-            </div>
+                }
+                onRemove={ctx.handleRemove}
+                onAdd={ctx.handleAdd}
+                canRemove={ctx.canDecrease}
+                canAdd={ctx.canAdd}
+            />
             {ctx.showPackageButtons && ctx.packSize != null && (
                 <div className="flex items-stretch gap-1">
                     <Button

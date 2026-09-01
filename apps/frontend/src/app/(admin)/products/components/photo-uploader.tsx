@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { trpc } from '@/lib/client/trpc';
 
 import { Button } from '@/components/ui/button';
+import { trpc } from '@/lib/client/trpc';
+import { uploadProductPhoto } from '@/lib/product-photo/upload';
 import { productPhotoUrl } from '@/lib/product-photo-url';
 
 interface PhotoUploaderProps {
@@ -56,15 +57,7 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
         try {
             let nextIds = photoIds;
             for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('productId', String(productId));
-                formData.append('sortOrder', String(nextIds.length));
-
-                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error('Upload failed');
-                const { id } = await res.json();
+                const id = await uploadProductPhoto(files[i], productId, nextIds.length);
                 nextIds = [...nextIds, id];
                 onPhotoIdsChange(nextIds);
                 uploadedPreviewById.set(id, added[i]?.preview ?? '');

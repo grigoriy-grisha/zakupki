@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { trpc } from '@/lib/client/trpc';
 import type { PendingFile } from '@/lib/product-form-utils';
+import { uploadProductPhoto } from '@/lib/product-photo/upload';
 
 import type { ProductCreateFormValues } from '../lib';
 import { useCreateProduct, useDeletePhoto, useUpdateProduct } from './use-products';
@@ -51,16 +52,9 @@ export function useProductFormSubmit({
 
             if (pendingFiles.length > 0) {
                 for (let i = 0; i < pendingFiles.length; i++) {
-                    const formData = new FormData();
-                    formData.append('file', pendingFiles[i].file);
-                    formData.append('productId', String(result.id));
-                    formData.append('sortOrder', String(i));
                     try {
-                        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                        if (res.ok) {
-                            const { id } = await res.json();
-                            setPhotoIds((prev) => [...prev, id]);
-                        }
+                        const id = await uploadProductPhoto(pendingFiles[i].file, result.id, i);
+                        setPhotoIds((prev) => [...prev, id]);
                     } catch {
                         /* skip failed photo */
                     }
