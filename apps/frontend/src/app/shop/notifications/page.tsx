@@ -6,7 +6,6 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
 import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
-import { BrandLogo } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -90,7 +89,6 @@ function NotificationsPageInner() {
 
     return (
         <div className="flex flex-col gap-5 sm:gap-6">
-            <BrandLogo className="mx-auto w-[124px] text-primary sm:hidden" />
 
             <header className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
