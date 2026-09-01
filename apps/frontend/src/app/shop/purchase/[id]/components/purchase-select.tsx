@@ -1,7 +1,7 @@
 'use client';
 
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppLink } from '@/components/app-link';
@@ -63,7 +63,9 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
                                 onClick={() => setOpen(false)}
                                 className={cn(
                                     'flex w-full items-center justify-between gap-3 rounded-full py-3 pl-5 pr-3 transition-colors',
-                                    isActive ? 'bg-white' : 'bg-bg-card/50 hover:bg-bg-card',
+                                    isActive
+                                        ? 'border-2 border-gold bg-white'
+                                        : 'border-2 border-transparent bg-bg-card/50 hover:bg-bg-card',
                                 )}
                             >
                                 <span
@@ -74,8 +76,13 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
                                 >
                                     {purchase.tag}
                                 </span>
-                                <span className="inline-flex h-7 shrink-0 items-center rounded-full border border-secondary/60 px-3 text-12-medium text-secondary">
-                                    {getPurchaseStageLabel(status)}
+                                <span className="flex shrink-0 items-center gap-1.5">
+                                    <span className="inline-flex h-7 items-center rounded-full border border-secondary/60 px-3 text-12-medium text-secondary">
+                                        {getPurchaseStageLabel(status)}
+                                    </span>
+                                    <ChevronRight
+                                        className={cn('size-4', isActive ? 'text-secondary' : 'text-fg-tertiary')}
+                                    />
                                 </span>
                             </AppLink>
                         );
