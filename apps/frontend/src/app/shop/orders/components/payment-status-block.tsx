@@ -66,10 +66,17 @@ export function PaymentStatusBlock({
     }
 
     if (isPast) {
+        if (remaining === total) {
+            return (
+                <div className={wrapCls}>
+                    <span className="text-fg-secondary">Не оплачено</span>
+                </div>
+            );
+        }
         return (
             <div className={wrapCls}>
                 <span className="text-fg-secondary">
-                    Итого: <span className={amountCls}>{formatRub(total)}</span>
+                    Оплачено: <span className={amountCls}>{formatRub(total - remaining)}</span>
                 </span>
                 {remaining > 0 && (
                     <span className="text-12-regular text-fg-tertiary tabular-nums">
@@ -83,9 +90,11 @@ export function PaymentStatusBlock({
     if (remaining > 0 && paymentOpen) {
         return (
             <div className={wrapCls}>
-                <span className="text-fg-secondary">
-                    К оплате: <span className={amountCls}>{formatRub(remaining)}</span>
-                </span>
+                {remaining !== total && (
+                    <span className="text-fg-secondary">
+                        К оплате: <span className={amountCls}>{formatRub(remaining)}</span>
+                    </span>
+                )}
                 <PurchasePaymentDialog
                     purchaseId={purchaseId}
                     remaining={remaining}
