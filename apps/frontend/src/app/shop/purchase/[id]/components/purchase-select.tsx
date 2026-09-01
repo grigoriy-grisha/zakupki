@@ -49,7 +49,7 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
                                 className={cn(
                                     'block px-4 py-3 transition-colors',
                                     isActive
-                                        ? 'rounded-xl border-2 border-gold bg-bg-card'
+                                        ? 'rounded-xl border-2 border-gold bg-white/70'
                                         : 'rounded-xl hover:bg-bg-soft',
                                 )}
                             >
