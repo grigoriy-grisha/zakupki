@@ -42,6 +42,10 @@ function getStepIndex(status: PurchaseFulfillmentStatus): number {
     }
 }
 
+export function getPurchaseStageLabel(status: PurchaseFulfillmentStatus): string {
+    return STEPS[getStepIndex(status)]!.label;
+}
+
 export function PurchaseStepper({ currentStatus, className }: PurchaseStepperProps) {
     const currentIndex = getStepIndex(currentStatus);
     const currentRef = useRef<HTMLDivElement | null>(null);

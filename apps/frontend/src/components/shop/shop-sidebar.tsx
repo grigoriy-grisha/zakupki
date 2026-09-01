@@ -31,10 +31,8 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                 className,
             )}
         >
-            <span aria-hidden className="absolute bottom-10 right-0 top-24 w-0.5 bg-secondary" />
+            <span aria-hidden className="absolute bottom-10 right-0 top-10 w-0.5 bg-secondary" />
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-7">
-                <p className="font-display text-30-semibold uppercase leading-none text-primary">Закупки</p>
-
                 <div className="mt-8">
                     {isLoading ? (
                         <div className="space-y-4">

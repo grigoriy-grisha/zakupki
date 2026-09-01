@@ -1,10 +1,10 @@
 import { BrandLogo, InstagramIcon, PinterestIcon, TelegramCircleIcon, VkCircleIcon } from '@/components/icons';
 
 const SOCIALS = [
-    { label: 'Instagram', href: '#', Icon: InstagramIcon },
-    { label: 'Pinterest', href: '#', Icon: PinterestIcon },
-    { label: 'Telegram', href: '#', Icon: TelegramCircleIcon },
-    { label: 'VK', href: '#', Icon: VkCircleIcon },
+    { label: 'Instagram', href: 'https://www.instagram.com/scheg.love', Icon: InstagramIcon },
+    { label: 'Pinterest', href: 'https://ru.pinterest.com/SCHEGlove/', Icon: PinterestIcon },
+    { label: 'Telegram', href: 'https://t.me/biser_zakupki', Icon: TelegramCircleIcon },
+    { label: 'VK', href: 'https://vk.ru/biser_zakupki', Icon: VkCircleIcon },
 ];
 
 const FOOTER_LINKS = ['японский и чешский бисер', 'фурнитура', 'инструменты', 'вдохновение'];
@@ -18,6 +18,8 @@ export function ShopFooter() {
                         <a
                             key={label}
                             href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             aria-label={label}
                             className="text-secondary transition-colors hover:text-primary"
                         >

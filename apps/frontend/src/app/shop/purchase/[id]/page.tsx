@@ -5,14 +5,12 @@ import {
     type CurrencyRate,
     isSupplementPhase,
     mapToPurchaseItem,
-    PURCHASE_FULFILLMENT_LABELS,
-    type PurchaseFulfillmentStatus,
+        type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
 import { Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { use, useMemo, useState } from 'react';
 
-import { BrandLogo } from '@/components/icons';
 import { FilterTree } from '@/components/shared/filter-tree';
 import { useSidebarSlotContent } from '@/components/shop/sidebar-slot';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -29,10 +27,10 @@ import {
     ProductGrid,
     PurchaseGridSkeleton,
     PurchaseSelect,
-    PurchaseStepper,
     type SortMode,
 } from './components';
 import type { ProductGridItem } from './components/product-grid';
+import { getPurchaseStageLabel } from './components/purchase-stepper';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 
@@ -221,8 +219,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         );
     }
 
-    const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
     const isSupplement = isSupplementPhase(fulfillmentStatus);
+    const stageLabel = getPurchaseStageLabel(fulfillmentStatus);
 
     return (
         <div className="flex flex-col gap-6 sm:gap-8">
@@ -234,7 +232,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             'text-12-medium text-secondary sm:h-9 sm:self-auto sm:px-5 sm:text-14-medium',
                         )}
                     >
-                        {isSupplement ? 'Добор' : fulfillmentLabel}
+                        {stageLabel}
                     </span>
                     <h1 className="min-w-0 truncate text-center text-h1 text-secondary sm:whitespace-normal sm:text-left">
                         {purchase.tag}
@@ -246,14 +244,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             'invisible sm:h-9 sm:hidden sm:px-5 sm:text-14-medium',
                         )}
                     >
-                        {isSupplement ? 'Добор' : fulfillmentLabel}
+                        {stageLabel}
                     </span>
                 </div>
-
-                <BrandLogo className="order-first w-[124px] animate-fade-in-up text-primary sm:order-2 sm:w-[224px]" />
             </div>
-
-            <PurchaseStepper currentStatus={fulfillmentStatus} />
 
             <div className="md:hidden">
                 <PurchaseSelect currentPurchaseId={id} />

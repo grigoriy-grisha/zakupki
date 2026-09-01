@@ -40,7 +40,7 @@ export function ProductCardControls({
             <Button
                 variant="brand"
                 size="default"
-                className="h-10 w-full rounded-full text-13-bold sm:h-12 sm:text-14-bold"
+                className="h-10 w-full rounded-full text-13-bold sm:text-14-medium md:text-14-medium"
                 onClick={(e) => {
                     stop(e);
                     ctx.handleAdd();

@@ -4,8 +4,8 @@ import { signOut,useSession } from 'next-auth/react';
 
 import { AppLink } from '@/components/app-link';
 import {
+    BrandLogo,
     HeaderBellIcon,
-    HeaderCartIcon,
     HeaderLogoutIcon,
     HeaderOrdersIcon,
     HeaderProfileIcon,
@@ -38,10 +38,12 @@ export function ShopHeader() {
         >
             <AppLink
                 href={isAdmin ? '/' : '/shop'}
-                className="flex items-center gap-2.5 text-fg-primary transition-colors hover:text-primary"
+                className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
             >
-                <HeaderCartIcon className="size-5" />
-                <span className="text-16-medium sm:text-18-medium">Закупки</span>
+                <BrandLogo className="h-9 w-auto text-primary" />
+                <span className="font-display text-20-semibold uppercase leading-none text-primary">
+                    Закупки
+                </span>
             </AppLink>
 
             <nav className="flex items-center gap-1 sm:gap-2">
