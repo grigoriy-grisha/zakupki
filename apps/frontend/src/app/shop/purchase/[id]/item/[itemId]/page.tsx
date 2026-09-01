@@ -207,37 +207,36 @@ function ItemDetailLoaded({
                     'xl:grid-cols-[minmax(0,28rem)_24rem] xl:gap-8',
                 )}
             >
-                <div
-                    className={cn(
-                        'order-2 flex min-w-0 flex-col gap-5 sm:gap-6',
-                        'lg:order-none lg:col-start-1 lg:row-start-1',
-                    )}
-                >
-                    <ItemGallery photoIds={photoIds} alt={product.name} />
+                <div className="max-lg:contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-6">
+                    <div className="order-2 min-w-0">
+                        <ItemGallery photoIds={photoIds} alt={product.name} />
+                    </div>
 
                     {descriptionRows.length > 0 && (
-                        <SectionCard title="Характеристики">
-                            <dl className="px-4 sm:px-5">
-                                {descriptionRows.map((row, index) => (
-                                    <div
-                                        key={row.label}
-                                        className={cn(
-                                            'flex items-baseline justify-between gap-4 py-2.5',
-                                            index < descriptionRows.length - 1 && 'border-b border-border-low',
-                                        )}
-                                    >
-                                        <dt className="shrink-0 text-13-regular text-fg-secondary">{row.label}</dt>
-                                        <dd className="min-w-0 text-right text-13-medium text-fg-primary">
-                                            {row.value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                        </SectionCard>
+                        <div className="order-4 min-w-0">
+                            <SectionCard title="Характеристики">
+                                <dl className="px-4 sm:px-5">
+                                    {descriptionRows.map((row, index) => (
+                                        <div
+                                            key={row.label}
+                                            className={cn(
+                                                'flex items-baseline justify-between gap-4 py-2.5',
+                                                index < descriptionRows.length - 1 && 'border-b border-border-low',
+                                            )}
+                                        >
+                                            <dt className="shrink-0 text-13-regular text-fg-secondary">{row.label}</dt>
+                                            <dd className="min-w-0 text-right text-13-medium text-fg-primary">
+                                                {row.value}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </SectionCard>
+                        </div>
                     )}
                 </div>
 
-                <div className="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-5">
+                <div className="max-lg:contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-5">
                     <div className="order-1 min-w-0">
                         <PurchaseProductLabel
                             product={product}
