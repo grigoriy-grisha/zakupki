@@ -23,6 +23,7 @@ interface NotificationCardProps {
     density: 'compact' | 'full';
     onActivate?: () => void;
     highlighted?: boolean;
+    className?: string;
 }
 
 export function formatRelative(iso: Date | string): string {
@@ -38,7 +39,13 @@ export function formatRelative(iso: Date | string): string {
     return date.toLocaleDateString('ru-RU');
 }
 
-export function NotificationCard({ notification, density, onActivate, highlighted }: NotificationCardProps) {
+export function NotificationCard({
+    notification,
+    density,
+    onActivate,
+    highlighted,
+    className,
+}: NotificationCardProps) {
     const { type, payload, title, readAt, createdAt } = notification;
     const visual = getNotificationVisual(type);
     const fields = density === 'full' ? getNotificationFields(type, payload) : [];
@@ -68,6 +75,7 @@ export function NotificationCard({ notification, density, onActivate, highlighte
                 !readAt ? 'border-2 border-gold/70' : cn('border', toneBorderClass(visual.tone)),
                 highlighted && 'ring-2 ring-primary/50',
                 density === 'compact' && onActivate && 'cursor-pointer hover:bg-bg-card',
+                className,
             )}
             onClick={density === 'compact' ? onActivate : undefined}
         >

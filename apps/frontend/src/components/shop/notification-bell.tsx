@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell } from 'lucide-react';
+import { Bell, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { type ComponentType,useState } from 'react';
 
@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
 export function NotificationBell({
@@ -61,15 +60,16 @@ export function NotificationBell({
             <PopoverContent
                 align="end"
                 className={cn(
-                    'w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-0 p-0 shadow-xl ring-1 ring-black/5',
+                    'w-[445px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[20px]',
+                    'border-2 border-gold bg-bg-soft p-0 shadow-xl',
                 )}
             >
-                <div className="flex items-center justify-between gap-2 border-b border-border-soft px-3 py-2.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <span className="text-14-semibold text-fg-primary">Уведомления</span>
+                <div className="flex items-start justify-between gap-3 px-7 pt-5">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <p className="font-display text-30-semibold leading-none text-primary">Уведомления</p>
                         {unread > 0 && (
                             <Badge type="subtle" variant="accent" size="sm">
-                                {unread} {pluralRu(unread, ['непрочитанное', 'непрочитанных', 'непрочитанных'])}
+                                {unread}
                             </Badge>
                         )}
                     </div>
@@ -77,7 +77,7 @@ export function NotificationBell({
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 shrink-0 rounded-full px-2 text-12-medium"
+                            className="h-7 shrink-0 rounded-full px-2 text-12-medium text-secondary hover:bg-bg-card/60"
                             onClick={() => markAllRead.mutate()}
                             disabled={markAllRead.isPending}
                         >
@@ -87,44 +87,35 @@ export function NotificationBell({
                 </div>
 
                 {listLoading ? (
-                    <div className="flex flex-col gap-2 p-2">
-                        <Skeleton className="h-16 w-full rounded-xl" />
-                        <Skeleton className="h-16 w-full rounded-xl" />
+                    <div className="flex flex-col gap-2 px-4 pb-3 pt-4">
+                        <Skeleton className="h-16 w-full rounded-xl bg-bg-card/80" />
+                        <Skeleton className="h-16 w-full rounded-xl bg-bg-card/80" />
                     </div>
                 ) : data && data.length > 0 ? (
-                    <div className="flex max-h-96 flex-col gap-1.5 overflow-y-auto p-2">
+                    <div className="mt-4 flex max-h-96 flex-col gap-2 overflow-y-auto px-4 pb-2">
                         {(data as NotificationRowData[]).slice(0, 8).map((n) => (
                             <NotificationCard
                                 key={n.id}
                                 notification={n}
                                 density="compact"
                                 onActivate={() => activate(n)}
+                                className="border-border-soft/60 bg-bg-card/80 hover:bg-bg-card"
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-                        <div
-                            className={cn(
-                                'flex size-10 items-center justify-center rounded-full',
-                                'bg-bg-soft text-fg-tertiary',
-                            )}
-                        >
-                            <BellGlyph className={cn('size-5', iconClassName)} />
-                        </div>
-                        <p className="text-13-regular text-fg-tertiary">Нет новых уведомлений</p>
-                    </div>
+                    <p className="mb-[52px] mt-12 text-center text-20-regular text-fg-primary">
+                        Нет новых уведомлений
+                    </p>
                 )}
 
-                <div className="border-t border-border-soft p-1">
+                <div className="flex justify-center pb-5 pt-1">
                     <AppLink
                         href="/shop/notifications"
                         onClick={() => setOpen(false)}
-                        className={cn(
-                            'block rounded-lg px-3 py-2 text-center text-13-medium text-primary',
-                            'transition-colors hover:bg-bg-soft',
-                        )}
+                        className="flex items-center gap-2.5 text-18-regular text-fg-primary transition-colors hover:text-primary"
                     >
+                        <Eye className="size-5" />
                         Показать все
                     </AppLink>
                 </div>
