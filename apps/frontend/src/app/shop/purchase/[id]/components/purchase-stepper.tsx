@@ -54,7 +54,7 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
         <div
             className={cn(
                 'rounded-full bg-bg-soft/60 px-4 py-4',
-                'sm:bg-bg-soft sm:px-20 sm:pt-[23px] sm:pb-5',
+                'sm:bg-bg-soft sm:px-20 sm:py-4',
                 className,
             )}
             aria-label="Прогресс закупки"
@@ -68,12 +68,12 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
                         <li key={step.key} className="flex items-center sm:flex-1 sm:last:flex-none">
                             <div
                                 ref={isCurrent ? currentRef : undefined}
-                                className="flex shrink-0 items-center gap-1.5 sm:flex-col sm:gap-4"
+                                className="flex shrink-0 items-center gap-1.5 sm:flex-col sm:gap-2"
                             >
                                 <span
                                     aria-current={isCurrent ? 'step' : undefined}
                                     className={cn(
-                                        'size-5 rounded-full transition-colors sm:size-12',
+                                        'size-5 rounded-full transition-colors sm:size-10',
                                         isCompleted && 'bg-secondary',
                                         isCurrent && 'border-2 border-secondary',
                                         !isCompleted && !isCurrent && 'bg-fg-secondary',
@@ -94,7 +94,7 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
                                 <span
                                     aria-hidden
                                     className={cn(
-                                        'mx-2 h-px w-6 shrink-0 sm:mx-3 sm:mt-[23px] sm:h-0.5 sm:w-auto sm:flex-1 sm:self-start',
+                                        'mx-2 h-px w-6 shrink-0 sm:mx-3 sm:mt-[19px] sm:h-0.5 sm:w-auto sm:flex-1 sm:self-start',
                                         isCompleted
                                             ? 'bg-secondary'
                                             : 'bg-fg-secondary/40 sm:bg-fg-secondary',
