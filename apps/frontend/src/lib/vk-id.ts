@@ -1,14 +1,18 @@
 import * as VKID from '@vkid/sdk';
 
-export function initVkId() {
+export function isVkConfigured() {
     const rawAppId = process.env.NEXT_PUBLIC_VK_APP_ID?.trim();
-    if (!rawAppId || !/^\d+$/.test(rawAppId)) {
+    return !!rawAppId && /^\d+$/.test(rawAppId);
+}
+
+export function initVkId() {
+    if (!isVkConfigured()) {
         throw new Error(
-            `NEXT_PUBLIC_VK_APP_ID is missing or invalid: expected a numeric app id from VK ID cabinet, got "${rawAppId ?? ''}"`,
+            `NEXT_PUBLIC_VK_APP_ID is missing or invalid: expected a numeric app id from VK ID cabinet, got "${process.env.NEXT_PUBLIC_VK_APP_ID?.trim() ?? ''}"`,
         );
     }
     VKID.Config.init({
-        app: Number(rawAppId),
+        app: Number(process.env.NEXT_PUBLIC_VK_APP_ID?.trim()),
         redirectUrl: process.env.NEXT_PUBLIC_VK_REDIRECT_URL || window.location.origin,
         responseMode: VKID.ConfigResponseMode.Callback,
         source: VKID.ConfigSource.LOWCODE,

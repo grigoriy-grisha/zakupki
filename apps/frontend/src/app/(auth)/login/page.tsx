@@ -8,6 +8,7 @@ import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useTelegramAutoLogin } from '@/lib/hooks/use-telegram-auto-login';
 import { useTgAuth } from '@/lib/hooks/use-tg-auth';
 import { useVkAuth } from '@/lib/hooks/use-vk-auth';
+import { isVkConfigured } from '@/lib/vk-id';
 
 import bgLogin from './assets/bg-login.png';
 import bgLoginMobile from './assets/bg-login-mobile.png';
@@ -19,10 +20,6 @@ export default function LoginPage() {
     const tg = useTgAuth();
     const { isMounted, isTelegramWebApp, isAuthenticated, isPending, loginFailed } =
         useTelegramAutoLogin();
-
-    useEffect(() => {
-        vk.initWidget();
-    }, [vk.initWidget]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -42,7 +39,7 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-bg-base p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-6">
+        <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-bg-base p-4 pb-14 sm:p-6 sm:pb-9">
             <div aria-hidden className="absolute inset-0">
                 <Image
                     src={bgLoginMobile}
@@ -62,13 +59,15 @@ export default function LoginPage() {
                     sizes="100vw"
                     className="hidden object-cover sm:block"
                 />
-                <div className="absolute inset-0 bg-fg-primary/20" />
             </div>
 
-            <div className="relative w-full max-w-[400px] animate-fade-in-up rounded-4xl border border-white/60 bg-bg-card/50 px-6 py-9 shadow-xl shadow-fg-primary/10 backdrop-blur-2xl backdrop-saturate-150 sm:px-10 sm:py-10">
+            <div className="relative w-full max-w-[264px] sm:max-w-[284px]">
                 <LoginForm
                     onTelegramLogin={tg.login}
                     telegramLoading={tg.loading}
+                    onVkLogin={vk.loginWithVk}
+                    vkLoading={vk.loginLoading}
+                    showVkButton={isVkConfigured()}
                     autoLoginFailed={loginFailed && isTelegramWebApp}
                 />
             </div>

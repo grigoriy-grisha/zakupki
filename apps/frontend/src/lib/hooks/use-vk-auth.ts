@@ -2,7 +2,7 @@
 
 import * as VKID from '@vkid/sdk';
 import { signIn } from 'next-auth/react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { trpc } from '@/lib/client/trpc';
@@ -15,50 +15,35 @@ export function useVkAuth() {
     const utils = trpc.useUtils();
     const linkProvider = trpc.users.linkProvider.useMutation();
     const { unlink: unlinkVk, loading, setLoading } = useProviderUnlink('vk');
-    const initialized = useRef(false);
+    const [loginLoading, setLoginLoading] = useState(false);
 
-    /** Render VK OneTap widget on login page */
-    const renderWidget = useCallback(() => {
-        const container = document.getElementById('vk-widget');
-        if (!container || initialized.current) return;
-
-        initialized.current = true;
-        initVkId();
-
-        const oneTap = new VKID.OneTap();
-        oneTap
-            .render({
-                container,
-                showAlternativeLogin: true,
-                styles: { width: 320, height: 44, borderRadius: 22 },
-            })
-            .on(VKID.WidgetEvents.ERROR, (e: unknown) => console.error('[VK]', e))
-            .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, async (payload: unknown) => {
-                try {
-                    const accessToken = await exchangeVkCode(payload);
-                    const result = await signIn('vk', {
-                        data: JSON.stringify({ accessToken }),
-                        redirect: false,
-                    });
-
-                    if (result?.ok) {
-                        router.push('/');
-                        router.refresh();
-                    } else {
-                        console.error('Auth failed:', result);
-                    }
-                } catch (e) {
-                    console.error('[VK]', e);
-                }
+    const loginWithVk = useCallback(async () => {
+        setLoginLoading(true);
+        try {
+            initVkId();
+            const payload = await VKID.Auth.login();
+            const accessToken = await exchangeVkCode(payload);
+            const result = await signIn('vk', {
+                data: JSON.stringify({ accessToken }),
+                redirect: false,
             });
+
+            if (result?.ok) {
+                router.push('/');
+                router.refresh();
+            } else {
+                toast.error('Не удалось войти через VK');
+            }
+        } catch (e) {
+            const code = (e as { code?: number }).code;
+            if (code !== VKID.AuthErrorCode.NewTabHasBeenClosed) {
+                toast.error('Не удалось войти через VK');
+            }
+        } finally {
+            setLoginLoading(false);
+        }
     }, [router]);
 
-    /** Use as useEffect on login page */
-    const initWidget = useCallback(() => {
-        renderWidget();
-    }, [renderWidget]);
-
-    /** Link VK to existing account (profile page) */
     const linkVk = useCallback(async () => {
         setLoading(true);
         try {
@@ -86,5 +71,5 @@ export function useVkAuth() {
         }
     }, [utils, linkProvider]);
 
-    return { initWidget, linkVk, unlinkVk, loading };
+    return { loginWithVk, loginLoading, linkVk, unlinkVk, loading };
 }
