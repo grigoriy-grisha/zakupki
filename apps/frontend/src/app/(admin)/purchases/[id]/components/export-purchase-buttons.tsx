@@ -46,9 +46,9 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
     return (
         <Button variant="outline" size="sm" disabled={loading} onClick={() => void handleExportOrders()}>
             {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
             ) : (
-                <Download className="mr-2 h-4 w-4" />
+                <Download className="size-4" />
             )}
             Выгрузить данные заказов
         </Button>

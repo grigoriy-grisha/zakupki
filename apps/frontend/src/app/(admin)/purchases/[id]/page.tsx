@@ -120,12 +120,13 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             <>
                                 <Button
                                     variant="outline"
+                                    size="sm"
                                     onClick={() => deleteDraftConfirm.requestStatusChange({ target: 'DRAFT' })}
                                 >
                                     <Trash2 className="size-4" />
                                     <span className="hidden sm:inline">Удалить</span>
                                 </Button>
-                                <Button variant="brand" onClick={() => setActivateOpen(true)}>
+                                <Button variant="brand" size="sm" onClick={() => setActivateOpen(true)}>
                                     <Rocket className="size-4" />
                                     <span className="hidden sm:inline">Активировать</span>
                                 </Button>
@@ -134,6 +135,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         {canComplete && (
                             <Button
                                 variant="destructive"
+                                size="sm"
                                 onClick={() => completeConfirm.requestStatusChange({ target: 'DONE' })}
                             >
                                 <CheckCircle2 className="size-4" />
