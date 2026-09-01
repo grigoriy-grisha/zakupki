@@ -19,7 +19,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="overflow-hidden rounded-md border bg-background">
+        <div className="overflow-hidden rounded-md border bg-bg-base">
             <Button
                 variant="ghost"
                 size="default"
@@ -45,7 +45,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
             </Button>
 
             {open && (
-                <div className="border-t bg-muted/20 px-3 py-2">
+                <div className="border-t border-border-low bg-bg-soft/40 px-3 py-2">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -58,7 +58,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                             {group.orders.map((order) => (
                                 <TableRow key={order.id}>
                                     <TableCell>
-                                        <p className="font-medium leading-tight">
+                                        <p className="text-14-semibold leading-tight">
                                             {order.purchaseItem?.product?.name ?? `Товар #${order.purchaseItemId}`}
                                         </p>
                                     </TableCell>
@@ -68,7 +68,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                                             ? (getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '')
                                             : ''}
                                     </TableCell>
-                                    <TableCell className="text-right font-medium">
+                                    <TableCell className="text-right text-14-semibold tabular-nums">
                                         {formatRub(Number(order.amountDue))}
                                     </TableCell>
                                 </TableRow>

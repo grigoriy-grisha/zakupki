@@ -146,13 +146,13 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
                 <div key={p.key} className="relative opacity-70">
                     <img src={p.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
                     {uploading && (
-                        <div className="absolute inset-0 flex items-center justify-center rounded-md bg-background/60">
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center rounded-md bg-bg-base/60">
+                            <Loader2 className="size-5 animate-spin" />
                         </div>
                     )}
                 </div>
             ))}
-            <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary">
+            <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed text-fg-secondary hover:border-primary hover:text-primary">
                 <input
                     type="file"
                     accept="image/*"
@@ -161,7 +161,7 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
                     onChange={handleFileUpload}
                     disabled={uploading}
                 />
-                {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                {uploading ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}
             </label>
         </div>
     );

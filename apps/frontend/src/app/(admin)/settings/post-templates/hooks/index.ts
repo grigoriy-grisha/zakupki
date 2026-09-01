@@ -1,6 +1,6 @@
 export {
-    usePostTemplateList,
     useCreatePostTemplate,
-    useUpdatePostTemplate,
     useDeletePostTemplate,
+    usePostTemplateList,
+    useUpdatePostTemplate,
 } from './use-post-templates';

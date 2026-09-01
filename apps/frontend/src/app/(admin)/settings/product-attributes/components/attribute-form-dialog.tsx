@@ -1,16 +1,18 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2,Pencil, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+
+import { type ProductAttributeFormValues,productAttributeSchema } from '@/app/(admin)/products/lib';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { productAttributeSchema, type ProductAttributeFormValues } from '@/app/(admin)/products/lib';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
 import { useCreateProductAttribute, useUpdateProductAttribute } from '../hooks';
 
 interface AttributeFormDialogProps {
@@ -99,12 +101,12 @@ export function AttributeFormDialog({
                     {trigger}
                 </span>
             ) : isEdit ? (
-                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setOpen(true)}>
-                    <Pencil className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="sm" className="size-8 p-0" onClick={() => setOpen(true)}>
+                    <Pencil className="size-4" />
                 </Button>
             ) : (
                 <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
-                    <Plus className="h-4 w-4" />
+                    <Plus className="size-4" />
                     Значение
                 </Button>
             )}
@@ -130,16 +132,16 @@ export function AttributeFormDialog({
                                 autoFocus
                                 {...register('name')}
                             />
-                            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                            {errors.name && <p className="text-12-regular text-error">{errors.name.message}</p>}
                         </div>
                         {isBrand && (
-                            <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <label className="flex cursor-pointer items-center gap-2 text-14-regular">
                                 <Checkbox checked={showInTitle} onCheckedChange={(v) => setShowInTitle(v === true)} />
                                 Включать в заголовок описания
                             </label>
                         )}
                         <Button type="submit" disabled={isPending} className="w-full">
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                             {isEdit ? 'Сохранить' : 'Создать'}
                         </Button>
                     </form>

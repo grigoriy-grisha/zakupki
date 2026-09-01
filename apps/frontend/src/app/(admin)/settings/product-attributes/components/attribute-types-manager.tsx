@@ -1,10 +1,12 @@
 'use client';
 
+import { FolderPlus, Layers, MoreVertical, Plus, Tag } from 'lucide-react';
 import { useMemo } from 'react';
+
 import { Button } from '@/components/ui/button';
-import { Plus, Layers, FolderPlus, MoreVertical, Tag } from 'lucide-react';
+
 import { useAttributeTypes } from '../hooks';
-import { AttributeTypeCard, type AttributeType, type TypeTreeNode } from './attribute-type-card';
+import { type AttributeType, AttributeTypeCard, type TypeTreeNode } from './attribute-type-card';
 import { CreateTypeDialog } from './create-type-dialog';
 
 function buildTypeTree(types: AttributeType[]): TypeTreeNode[] {
@@ -27,36 +29,36 @@ export function AttributeTypesManager() {
     return (
         <div className="space-y-4 pt-4">
             <div className="flex items-start gap-4">
-                <p className="max-w-2xl text-sm text-muted-foreground">
+                <p className="max-w-2xl text-14-regular text-fg-secondary">
                     Задайте структуру каталога одним деревом. Наведите на узел: подтип (
-                    <FolderPlus className="inline h-3.5 w-3.5" />
+                    <FolderPlus className="inline size-3.5" />
                     ), значение (
-                    <Plus className="inline h-3.5 w-3.5" />
-                    ), бренд (<Tag className="inline h-3.5 w-3.5" />
-                    ). В меню (<MoreVertical className="inline h-3.5 w-3.5" />) — порядок и флаги отображения.
+                    <Plus className="inline size-3.5" />
+                    ), бренд (<Tag className="inline size-3.5" />
+                    ). В меню (<MoreVertical className="inline size-3.5" />) — порядок и флаги отображения.
                 </p>
             </div>
 
             {isLoading ? (
-                <p className="py-8 text-center text-muted-foreground">Загрузка...</p>
+                <p className="py-8 text-center text-fg-secondary">Загрузка...</p>
             ) : tree.length === 0 ? (
                 <div className="flex flex-col items-center rounded-lg border border-dashed py-12 text-center">
-                    <Layers className="h-8 w-8 text-muted-foreground/40" />
-                    <p className="mt-3 text-sm font-medium">Нет типов атрибутов</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <Layers className="size-8 text-fg-secondary/40" />
+                    <p className="mt-3 text-14-semibold">Нет типов атрибутов</p>
+                    <p className="mt-1 text-14-regular text-fg-secondary">
                         Например: Производитель → Линейка → Форма → Размер.
                     </p>
                     <CreateTypeDialog
                         trigger={
                             <Button variant="outline" size="sm" className="mt-4">
-                                <Plus className="mr-2 h-4 w-4" />
+                                <Plus className="mr-2 size-4" />
                                 Добавить тип
                             </Button>
                         }
                     />
                 </div>
             ) : (
-                <div className="rounded-lg border p-2">
+                <div className="rounded-lg border border-border-low p-2">
                     {tree.map((node, i) => (
                         <AttributeTypeCard
                             key={node.type.id}
@@ -69,8 +71,8 @@ export function AttributeTypesManager() {
                     <div className="flex justify-end pt-1">
                         <CreateTypeDialog
                             trigger={
-                                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
-                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                <Button variant="ghost" size="sm" className="h-7 text-12-regular text-fg-secondary">
+                                    <Plus className="mr-1 size-3.5" />
                                     Тип
                                 </Button>
                             }

@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 
-import { trpc } from '@/lib/client/trpc';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingBag } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { trpc } from '@/lib/client/trpc';
 
-import { UserOrdersRow, UserProfileSheet, type UserListItem } from './components';
+import { type UserListItem,UserOrdersRow, UserProfileSheet } from './components';
 
 export default function UsersPage() {
     const { data: users, isLoading } = trpc.users.list.useQuery();
@@ -16,17 +16,10 @@ export default function UsersPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                    <ShoppingBag className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Участники</h1>
-                    <p className="text-sm text-muted-foreground">
-                        {users?.length ?? 0} участников · стрелка — закупки, имя — профиль
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                title="Участники"
+                description={`${users?.length ?? 0} участников · стрелка — закупки, имя — профиль`}
+            />
 
             {isLoading ? (
                 <div className="space-y-3">
@@ -35,7 +28,7 @@ export default function UsersPage() {
                     ))}
                 </div>
             ) : (
-                <Card>
+                <Card className="py-0">
                     <CardContent className="p-0 overflow-x-auto">
                         <Table>
                             <TableHeader>
@@ -49,7 +42,7 @@ export default function UsersPage() {
                             <TableBody>
                                 {users?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={4} className="h-24 text-center text-fg-secondary">
                                             Нет участников
                                         </TableCell>
                                     </TableRow>

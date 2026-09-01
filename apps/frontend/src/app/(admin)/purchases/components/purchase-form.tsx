@@ -46,14 +46,14 @@ export function PurchaseForm() {
             <div className="space-y-2">
                 <Label htmlFor="tag">Тег</Label>
                 <Input id="tag" placeholder="#СЗ10" {...register('tag')} />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-12-regular text-fg-secondary">
                     Уникальный идентификатор закупки (например #СЗ11). Нельзя повторить уже существующий тег.
                 </p>
-                {errors.tag && <p className="text-xs text-destructive">{errors.tag.message}</p>}
+                {errors.tag && <p className="text-12-regular text-error">{errors.tag.message}</p>}
             </div>
 
             <Button type="submit" disabled={createMutation.isPending} className="w-full">
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Создать закупку
             </Button>
         </form>

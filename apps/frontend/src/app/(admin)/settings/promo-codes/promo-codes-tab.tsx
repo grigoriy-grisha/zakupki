@@ -16,11 +16,11 @@ export function PromoCodesTab() {
     return (
         <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{promoCodes?.length ?? 0} промокодов</p>
+                <p className="text-14-regular text-fg-secondary">{promoCodes?.length ?? 0} промокодов</p>
                 {!isLoading && <PromoCodeDialog />}
             </div>
 
-            <div className="rounded-md border">
+            <div className="overflow-hidden rounded-2xl border border-border-low bg-bg-card">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -39,14 +39,14 @@ export function PromoCodesTab() {
                     <TableBody>
                         {isLoading && (
                             <TableRow>
-                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-fg-secondary">
                                     Загрузка...
                                 </TableCell>
                             </TableRow>
                         )}
                         {promoCodes?.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-fg-secondary">
                                     Промокодов пока нет
                                 </TableCell>
                             </TableRow>
@@ -65,7 +65,7 @@ export function PromoCodesTab() {
                 description={
                     <>
                         Удалить промокод{' '}
-                        <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">
+                        <code className="rounded bg-bg-soft px-1.5 py-0.5 font-mono text-14-semibold">
                             {deleteTarget?.code}
                         </code>
                         ?

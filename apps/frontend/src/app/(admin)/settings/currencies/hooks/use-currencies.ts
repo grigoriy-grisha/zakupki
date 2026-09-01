@@ -1,5 +1,6 @@
-import { createCrudHooks } from '../../shared/create-crud-hooks';
 import { trpc } from '@/lib/client/trpc';
+
+import { createCrudHooks } from '../../shared/create-crud-hooks';
 import { currencyMessages } from '../config';
 
 const hooks = createCrudHooks({

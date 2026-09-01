@@ -135,7 +135,7 @@ export function AttributeTreePicker({
         const hasContent = tree.topValues.length > 0 || tree.brands.length > 0;
 
         if (!hasContent) {
-            return <p className="px-2 py-1 text-xs italic text-muted-foreground/70">нет значений</p>;
+            return <p className="px-2 py-1 text-12-regular italic text-fg-secondary/70">нет значений</p>;
         }
 
         return (
@@ -188,7 +188,7 @@ export function AttributeTreePicker({
                             </div>
 
                             {brandOpen && brand.values.length > 0 && (
-                                <div className="ml-3 border-l-2 border-muted pl-2">
+                                <div className="ml-3 border-l-2 border-border-low pl-2">
                                     {brand.values.map((v) => (
                                         <SelectableRow
                                             key={v.id}
@@ -261,10 +261,10 @@ export function AttributeTreePicker({
                         variant="outline"
                         className="h-auto min-h-9 w-full justify-between whitespace-normal text-left font-normal"
                     >
-                        <span className={cn(summary.length === 0 && 'text-muted-foreground')}>
+                        <span className={cn(summary.length === 0 && 'text-fg-secondary')}>
                             {summary.length > 0 ? summary.join(' / ') : 'Выберите из дерева'}
                         </span>
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent

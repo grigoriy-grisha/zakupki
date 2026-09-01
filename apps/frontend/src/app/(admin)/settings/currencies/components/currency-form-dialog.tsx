@@ -1,8 +1,8 @@
 'use client';
 
 import { CrudFormDialog } from '../../shared/crud-form-dialog';
+import { currencyFields, type CurrencyFormValues,currencySchema } from '../config';
 import { useCreateCurrency, useUpdateCurrency } from '../hooks/use-currencies';
-import { currencyFields, currencySchema, type CurrencyFormValues } from '../config';
 
 interface CurrencyFormDialogProps {
     mode: 'create' | 'edit';

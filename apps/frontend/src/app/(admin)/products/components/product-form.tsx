@@ -1,10 +1,13 @@
 'use client';
 
-import { Loader2, Plus, X } from 'lucide-react';
 import { UNITS } from '@zakupki/types';
+import { Loader2, Plus, X } from 'lucide-react';
 import { Controller } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { FormFooter } from '@/components/ui/form-footer';
+import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -13,14 +16,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { FormField } from '@/components/ui/form-field';
-import { FormSection } from '@/components/ui/form-section';
-import { FormFooter } from '@/components/ui/form-footer';
 import { cn } from '@/lib/utils';
 
-import { useProductFormState, useProductFormSubmit, type ProductFormExisting } from '../hooks';
-import { PhotoUploader } from './photo-uploader';
+import { type ProductFormExisting,useProductFormState, useProductFormSubmit } from '../hooks';
 import { AttributeTreePicker } from './attribute-tree-picker';
+import { PhotoUploader } from './photo-uploader';
 import { ProductCharacteristicsFields } from './product-characteristics-fields';
 
 interface ProductFormProps {

@@ -1,11 +1,11 @@
 export {
     useAttributeTypes,
     useCreateAttributeType,
-    useUpdateAttributeType,
-    useMoveAttributeType,
-    useDeleteAttributeType,
-    useProductAttributeList,
     useCreateProductAttribute,
-    useUpdateProductAttribute,
+    useDeleteAttributeType,
     useDeleteProductAttribute,
+    useMoveAttributeType,
+    useProductAttributeList,
+    useUpdateAttributeType,
+    useUpdateProductAttribute,
 } from './use-product-attributes';

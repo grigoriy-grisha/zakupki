@@ -1,12 +1,14 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2 } from 'lucide-react';
+
 import { useCreateAttributeType } from '../hooks';
 
 interface CreateTypeDialogProps {
@@ -65,12 +67,12 @@ export function CreateTypeDialog({ parentId = null, parentName, trigger }: Creat
                             autoFocus
                         />
                     </div>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                    <label className="flex cursor-pointer items-center gap-2 text-14-regular text-fg-secondary">
                         <Checkbox checked={showInTitle} onCheckedChange={(v) => setShowInTitle(v === true)} />
                         Включать в заголовок описания
                     </label>
                     <Button onClick={handleCreate} disabled={!name.trim() || createType.isPending} className="w-full">
-                        {createType.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {createType.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                         Создать
                     </Button>
                 </div>

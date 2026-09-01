@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import type { FormFieldConfig } from '../shared/crud-form-dialog';
 
 export const characteristicSchema = z.object({

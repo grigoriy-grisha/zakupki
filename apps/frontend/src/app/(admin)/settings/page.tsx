@@ -1,15 +1,17 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, ListChecks, Tag, Layers, FileText, Percent, Truck, Coins } from 'lucide-react';
+import { Coins,FileText, Layers, ListChecks, Percent, Settings, Tag, Truck } from 'lucide-react';
+
 import { PageHeader } from '@/components/ui/page-header';
-import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
-import { PostTemplatesTab } from './post-templates/post-templates-tab';
-import { PromoCodesTab } from './promo-codes/promo-codes-tab';
-import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
-import { SuppliersTab } from './suppliers/suppliers-tab';
 import { CurrenciesTab } from './currencies/currencies-tab';
+import { PostTemplatesTab } from './post-templates/post-templates-tab';
+import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
+import { PromoCodesTab } from './promo-codes/promo-codes-tab';
+import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
+import { SuppliersTab } from './suppliers/suppliers-tab';
 
 export default function SettingsPage() {
     return (
@@ -25,38 +27,38 @@ export default function SettingsPage() {
             <Tabs defaultValue="attributes" className="gap-4">
                 <TabsList className="!h-fit w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto overflow-y-hidden p-1 sm:w-fit">
                     <TabsTrigger value="attributes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Layers className="h-4 w-4 shrink-0" />
+                        <Layers className="size-4 shrink-0" />
                         <span className="hidden lg:inline">Справочники товаров</span>
                         <span className="hidden sm:inline lg:hidden">Справочники</span>
                         <span className="sm:hidden">Справ.</span>
                     </TabsTrigger>
                     <TabsTrigger value="characteristics" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <ListChecks className="h-4 w-4 shrink-0" />
+                        <ListChecks className="size-4 shrink-0" />
                         <span className="hidden sm:inline">Характеристики</span>
                         <span className="sm:hidden">Хар-ки</span>
                     </TabsTrigger>
                     <TabsTrigger value="suppliers" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Truck className="h-4 w-4 shrink-0" />
+                        <Truck className="size-4 shrink-0" />
                         <span className="hidden sm:inline">Поставщики</span>
                         <span className="sm:hidden">Пост.</span>
                     </TabsTrigger>
                     <TabsTrigger value="currencies" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Coins className="h-4 w-4 shrink-0" />
+                        <Coins className="size-4 shrink-0" />
                         <span className="hidden sm:inline">Валюты</span>
                         <span className="sm:hidden">Вал.</span>
                     </TabsTrigger>
                     <TabsTrigger value="templates" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <FileText className="h-4 w-4 shrink-0" />
+                        <FileText className="size-4 shrink-0" />
                         <span className="hidden sm:inline">Шаблоны постов</span>
                         <span className="sm:hidden">Шаблоны</span>
                     </TabsTrigger>
                     <TabsTrigger value="promocodes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Tag className="h-4 w-4 shrink-0" />
+                        <Tag className="size-4 shrink-0" />
                         <span className="hidden sm:inline">Промокоды</span>
                         <span className="sm:hidden">Промо</span>
                     </TabsTrigger>
                     <TabsTrigger value="pricing" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
-                        <Percent className="h-4 w-4 shrink-0" />
+                        <Percent className="size-4 shrink-0" />
                         <span className="hidden sm:inline">Цены закупок</span>
                         <span className="sm:hidden">Цены</span>
                     </TabsTrigger>

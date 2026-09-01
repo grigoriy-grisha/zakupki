@@ -57,6 +57,6 @@ export function PurchaseFulfillmentStatusLabel({
 }) {
     if (!status) return null;
     return (
-        <span className={cn('text-sm text-muted-foreground', className)}>{PURCHASE_FULFILLMENT_LABELS[status]}</span>
+        <span className={cn('text-14-regular text-fg-secondary', className)}>{PURCHASE_FULFILLMENT_LABELS[status]}</span>
     );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { useCharacteristicList, useDeleteCharacteristic } from './hooks/use-characteristics';
-import { CharacteristicFormDialog } from './components/characteristic-form-dialog';
 import { SimpleCrudTable } from '../shared/simple-crud-table';
+import { CharacteristicFormDialog } from './components/characteristic-form-dialog';
+import { useCharacteristicList, useDeleteCharacteristic } from './hooks/use-characteristics';
 
 export function CharacteristicsTab() {
     const { data: items, isLoading } = useCharacteristicList();

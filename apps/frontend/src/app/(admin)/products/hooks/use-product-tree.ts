@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+
 import { buildAttributeTree, collectExpandableIds, productMatchesTreeNode } from '../lib/attribute-tree';
-import { useAttributeCatalog } from './use-attribute-catalog';
 import type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from '../lib/types';
+import { useAttributeCatalog } from './use-attribute-catalog';
 
 export function useProductTree<T extends AttrProduct>(products: T[] | undefined) {
     const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);

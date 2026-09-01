@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+import { type ReactNode,useState } from 'react';
+
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export interface ExtraColumn<T> {
     header: string;
@@ -39,17 +40,17 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
     const [deleteTarget, setDeleteTarget] = useState<T | null>(null);
 
     if (isLoading) {
-        return <div className="py-8 text-center text-muted-foreground">Загрузка...</div>;
+        return <div className="py-8 text-center text-fg-secondary">Загрузка...</div>;
     }
 
     return (
         <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between gap-4">
-                <p className="text-sm text-muted-foreground">{items?.length ?? 0} записей</p>
+                <p className="text-14-regular text-fg-secondary">{items?.length ?? 0} записей</p>
                 {renderCreate()}
             </div>
 
-            <div className="rounded-md border">
+            <div className="overflow-hidden rounded-2xl border border-border-low bg-bg-card">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -67,7 +68,7 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                             <TableRow>
                                 <TableCell
                                     colSpan={2 + (extraColumns?.length ?? 0)}
-                                    className="h-24 text-center text-muted-foreground"
+                                    className="h-24 text-center text-fg-secondary"
                                 >
                                     {emptyText}
                                 </TableCell>
@@ -75,7 +76,7 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                         )}
                         {items?.map((item) => (
                             <TableRow key={item.id}>
-                                <TableCell className="font-medium">{item.name}</TableCell>
+                                <TableCell className="text-14-semibold">{item.name}</TableCell>
                                 {extraColumns?.map((col) => (
                                     <TableCell key={col.header} className={col.className}>
                                         {col.render(item)}
@@ -87,10 +88,10 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                            className="size-8 p-0 text-error hover:text-error"
                                             onClick={() => setDeleteTarget(item)}
                                         >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2 className="size-4" />
                                         </Button>
                                     </div>
                                 </TableCell>

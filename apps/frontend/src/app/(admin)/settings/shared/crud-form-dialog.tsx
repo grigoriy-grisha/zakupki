@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { useForm, type FieldValues, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ZodSchema } from 'zod';
 import { Pencil, Plus } from 'lucide-react';
+import { type ReactNode,useEffect, useState } from 'react';
+import { type FieldValues, type Path,useForm } from 'react-hook-form';
+import type { ZodSchema } from 'zod';
+
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -96,12 +97,12 @@ export function CrudFormDialog<T extends FieldValues>({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             {isEdit ? (
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setOpen(true)}>
-                    <Pencil className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="size-8 p-0" onClick={() => setOpen(true)}>
+                    <Pencil className="size-4" />
                 </Button>
             ) : (
                 <Button size="sm" onClick={() => setOpen(true)}>
-                    <Plus className="h-4 w-4" />
+                    <Plus className="size-4" />
                     {createButtonLabel ?? 'Добавить'}
                 </Button>
             )}
@@ -120,13 +121,13 @@ export function CrudFormDialog<T extends FieldValues>({
                                 autoFocus
                             />
                             {errors[field.name as Path<T>] && (
-                                <p className="text-xs text-destructive">
+                                <p className="text-12-regular text-error">
                                     {String(errors[field.name as Path<T>]?.message ?? '')}
                                 </p>
                             )}
                         </div>
                     ))}
-                    {fields[0]?.hint && <p className="text-xs text-muted-foreground">{fields[0].hint}</p>}
+                    {fields[0]?.hint && <p className="text-12-regular text-fg-secondary">{fields[0].hint}</p>}
                     <Button type="submit" disabled={isPending} className="w-full">
                         {isPending && <span className="mr-2">⏳</span>}
                         {isEdit ? 'Сохранить' : 'Создать'}

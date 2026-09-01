@@ -1,5 +1,5 @@
+
 import { trpc } from '@/lib/client/trpc';
-import { toast } from 'sonner';
 
 export function useProductList(search?: string) {
     return trpc.products.list.useQuery({

@@ -1,17 +1,16 @@
+export { buildAttributeTree, collectExpandableIds, matchesPath, productMatchesTreeNode } from './attribute-tree';
+export type { PackageUnit, ProductAttributeFormValues,ProductCreateFormValues } from './schema';
+export { PACKAGE_UNITS,productAttributeSchema, productCreateSchema } from './schema';
+export type { AttributeTypeRow, AttrProduct, PathSegment, TreeNode } from './types';
 export {
-    getAttributeCharacteristicIds,
-    resolveProductCharacteristics,
+    type AttributeBrandNode,
+    type AttributeListItem,
+    type AttributesTreeForType,
     buildAttributesTreeByType,
     findAttributeDisplayName,
-    revokePendingFiles,
-    type AttributeListItem,
-    type ProductCharacteristicsSource,
-    type AttributeBrandNode,
-    type AttributesTreeForType,
+    getAttributeCharacteristicIds,
     type PendingFile,
+    type ProductCharacteristicsSource,
+    resolveProductCharacteristics,
+    revokePendingFiles,
 } from '@/lib/product-form-utils';
-
-export type { PathSegment, AttributeTypeRow, AttrProduct, TreeNode } from './types';
-export { buildAttributeTree, collectExpandableIds, matchesPath, productMatchesTreeNode } from './attribute-tree';
-export { productCreateSchema, productAttributeSchema, PACKAGE_UNITS } from './schema';
-export type { PackageUnit, ProductCreateFormValues, ProductAttributeFormValues } from './schema';

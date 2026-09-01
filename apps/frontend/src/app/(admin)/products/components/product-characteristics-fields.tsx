@@ -19,7 +19,7 @@ export function ProductCharacteristicsFields({ fields, values, onChange }: Produ
             <Label>Характеристики</Label>
             {fields.map((field) => (
                 <div key={field.id} className="flex flex-col gap-1.5">
-                    <Label htmlFor={`char-${field.id}`} className="text-muted-foreground">
+                    <Label htmlFor={`char-${field.id}`} className="text-fg-secondary">
                         {field.name}
                     </Label>
                     <Input

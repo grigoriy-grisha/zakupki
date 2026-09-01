@@ -97,16 +97,16 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                     <div className="flex items-center gap-4">
                         <UserAvatar src={avatarUrl} className="size-20" iconClassName="size-9" />
                         <div className="min-w-0">
-                            <p className="truncate text-xl font-semibold">{name}</p>
+                            <p className="truncate font-display text-24-semibold">{name}</p>
                             {user.username && (
-                                <p className="truncate text-sm text-muted-foreground">@{user.username}</p>
+                                <p className="truncate text-14-regular text-fg-secondary">@{user.username}</p>
                             )}
                             {user.telegramCredential && (
-                                <p className="truncate text-xs text-muted-foreground">
+                                <p className="truncate text-12-regular text-fg-secondary">
                                     TG ID: {user.telegramCredential.telegramId}
                                 </p>
                             )}
-                            <p className="mt-1 text-xs text-muted-foreground">
+                            <p className="mt-1 text-12-regular text-fg-secondary">
                                 с {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                             </p>
                         </div>
@@ -114,7 +114,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
 
                     {user.telegramCredential ? (
                         <section className="rounded-lg border p-4">
-                            <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                            <div className="mb-3 flex items-center gap-2 text-14-semibold">
                                 <TelegramIcon className="h-4 w-4 text-telegram" />
                                 Telegram
                             </div>
@@ -124,9 +124,9 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                     className="size-12"
                                     iconClassName="size-6"
                                 />
-                                <div className="min-w-0 space-y-1 text-sm">
-                                    {tgUsername && <p className="font-medium">@{tgUsername.replace(/^@/, '')}</p>}
-                                    <p className="text-muted-foreground">TG ID: {user.telegramCredential.telegramId}</p>
+                                <div className="min-w-0 space-y-1 text-14-regular">
+                                    {tgUsername && <p className="text-14-semibold">@{tgUsername.replace(/^@/, '')}</p>}
+                                    <p className="text-fg-secondary">TG ID: {user.telegramCredential.telegramId}</p>
                                     {tgLink && (
                                         <a
                                             href={tgLink}
@@ -142,14 +142,14 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                             </div>
                         </section>
                     ) : (
-                        <section className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        <section className="rounded-lg border border-dashed p-4 text-14-regular text-fg-secondary">
                             Telegram не привязан
                         </section>
                     )}
 
                     {user.vkCredential && (
                         <section className="rounded-lg border p-4">
-                            <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                            <div className="mb-3 flex items-center gap-2 text-14-semibold">
                                 <VkIcon className="h-4 w-4 text-vk" />
                                 VK
                             </div>
@@ -163,7 +163,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                     href={`https://vk.com/id${user.vkCredential.vkId}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-sm text-vk hover:underline"
+                                    className="inline-flex items-center gap-1 text-14-regular text-vk hover:underline"
                                 >
                                     id{user.vkCredential.vkId}
                                     <ExternalLink className="h-3 w-3" />
@@ -173,15 +173,15 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                     )}
 
                     {user.phone && (
-                        <p className="text-sm">
-                            <span className="text-muted-foreground">Телефон: </span>
+                        <p className="text-14-regular">
+                            <span className="text-fg-secondary">Телефон: </span>
                             {user.phone}
                         </p>
                     )}
 
                     <section>
                         <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-sm font-medium">Заказы</h3>
+                            <h3 className="text-14-semibold">Заказы</h3>
                             <Badge variant="secondary">{user.orderLines.length}</Badge>
                         </div>
                         {ordersLoading ? (
@@ -191,7 +191,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                 ))}
                             </div>
                         ) : !orders?.length ? (
-                            <p className="rounded-lg border border-dashed py-6 text-center text-sm text-muted-foreground">
+                            <p className="rounded-lg border border-dashed py-6 text-center text-14-regular text-fg-secondary">
                                 Нет заказов
                             </p>
                         ) : (
@@ -199,7 +199,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                 {purchaseGroups.map((group) => (
                                     <UserPurchaseGroupBlock key={group.purchaseId} group={group} />
                                 ))}
-                                <p className="pt-1 text-right text-sm font-medium">Итого: {formatRub(ordersTotal)}</p>
+                                <p className="pt-1 text-right text-14-semibold">Итого: {formatRub(ordersTotal)}</p>
                             </div>
                         )}
                     </section>

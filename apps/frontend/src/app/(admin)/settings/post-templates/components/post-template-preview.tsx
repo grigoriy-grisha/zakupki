@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
 import { Eye } from 'lucide-react';
-import { postTemplateEngine, type DescriptionFields } from '@/lib/product-description';
+import { useMemo } from 'react';
+
+import { type DescriptionFields,postTemplateEngine } from '@/lib/product-description';
 
 const SAMPLE_FIELDS: DescriptionFields = {
     name: 'Metallic Blue Iris',
@@ -33,18 +34,18 @@ export function PostTemplatePreview({ body }: { body: string }) {
 
     return (
         <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-12-regular text-fg-secondary">
                 <Eye className="size-3.5 shrink-0" />
                 Превью на примере товара
             </div>
-            <div className="min-h-40 flex-1 rounded-lg border bg-bg-soft/40 p-3 text-sm leading-relaxed">
+            <div className="min-h-40 flex-1 rounded-lg border bg-bg-soft/40 p-3 text-14-regular leading-relaxed">
                 {html ? (
                     <div
                         className="[&_p:not(:first-child)]:mt-2 [&_p]:min-h-4 [&_strong]:font-semibold [&_u]:underline"
                         dangerouslySetInnerHTML={{ __html: html }}
                     />
                 ) : (
-                    <p className="text-muted-foreground">Шаблон пуст</p>
+                    <p className="text-fg-secondary">Шаблон пуст</p>
                 )}
             </div>
         </div>

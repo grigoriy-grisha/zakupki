@@ -1,18 +1,20 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2,Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/client/trpc';
+
 import { useCreatePromoCode } from '../hooks';
-import { promoCodeSchema, type PromoCodeFormValues } from '../lib';
+import { type PromoCodeFormValues,promoCodeSchema } from '../lib';
 
 export function PromoCodeDialog() {
     const [open, setOpen] = useState(false);
@@ -66,7 +68,7 @@ export function PromoCodeDialog() {
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <Button size="sm" onClick={() => handleOpenChange(true)}>
-                <Plus className="h-4 w-4" />
+                <Plus className="size-4" />
                 Создать промокод
             </Button>
             <DialogContent className="sm:max-w-lg">
@@ -75,18 +77,18 @@ export function PromoCodeDialog() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     <div className="space-y-4">
-                        <p className="text-sm font-medium text-muted-foreground">Основное</p>
+                        <p className="text-14-semibold text-fg-secondary">Основное</p>
                         <div className="space-y-3">
                             <div className="space-y-2">
                                 <Label>Код промокода</Label>
                                 <Input
                                     placeholder="SALE10"
-                                    className="font-mono text-lg tracking-widest h-11"
+                                    className="font-mono text-18-semibold tracking-widest h-11"
                                     {...register('code', {
                                         onChange: (e) => (e.target.value = e.target.value.toUpperCase()),
                                     })}
                                 />
-                                {errors.code && <p className="text-xs text-destructive">{errors.code.message}</p>}
+                                {errors.code && <p className="text-12-regular text-error">{errors.code.message}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label>Описание</Label>
@@ -96,7 +98,7 @@ export function PromoCodeDialog() {
                     </div>
 
                     <div className="space-y-4">
-                        <p className="text-sm font-medium text-muted-foreground">Скидка</p>
+                        <p className="text-14-semibold text-fg-secondary">Скидка</p>
                         <div className="space-y-3">
                             <div className="flex gap-2">
                                 <Button
@@ -131,13 +133,13 @@ export function PromoCodeDialog() {
                                     className="h-11"
                                     {...register('value', { valueAsNumber: true })}
                                 />
-                                {errors.value && <p className="text-xs text-destructive">{errors.value.message}</p>}
+                                {errors.value && <p className="text-12-regular text-error">{errors.value.message}</p>}
                             </div>
                         </div>
                     </div>
 
                     <div className="space-y-4">
-                        <p className="text-sm font-medium text-muted-foreground">Ограничения</p>
+                        <p className="text-14-semibold text-fg-secondary">Ограничения</p>
                         <div className="space-y-3">
                             <div className="space-y-2">
                                 <Label>Закупка</Label>
@@ -193,7 +195,7 @@ export function PromoCodeDialog() {
                     </div>
 
                     <Button type="submit" size="lg" disabled={createMutation.isPending} className="w-full">
-                        {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {createMutation.isPending && <Loader2 className="size-4 animate-spin" />}
                         Создать промокод
                     </Button>
                 </form>

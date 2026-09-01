@@ -96,16 +96,16 @@ export function AttributeTypeCard({
 
     return (
         <div>
-            <div className="group flex items-center gap-1 rounded-md py-0.5 pr-1 hover:bg-accent/40">
-                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setExpanded((v) => !v)}>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+            <div className="group flex items-center gap-1 rounded-md py-0.5 pr-1 hover:bg-bg-soft/60">
+                <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => setExpanded((v) => !v)}>
+                    <ChevronRight className={`size-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
                 </Button>
                 <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onBlur={commitName}
                     onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                    className="h-7 flex-1 border-transparent bg-transparent px-1 font-medium shadow-none hover:border-input focus-visible:border-input"
+                    className="h-7 flex-1 border-transparent bg-transparent px-1 text-14-medium shadow-none hover:border-border focus-visible:border-border"
                 />
 
                 <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
@@ -113,8 +113,8 @@ export function AttributeTypeCard({
                         parentId={type.id}
                         parentName={type.name}
                         trigger={
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Добавить подтип">
-                                <FolderPlus className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="size-7" title="Добавить подтип">
+                                <FolderPlus className="size-4" />
                             </Button>
                         }
                     />
@@ -123,8 +123,8 @@ export function AttributeTypeCard({
                         typeName={type.name}
                         mode="create"
                         trigger={
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Добавить значение">
-                                <Plus className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="size-7" title="Добавить значение">
+                                <Plus className="size-4" />
                             </Button>
                         }
                     />
@@ -134,15 +134,15 @@ export function AttributeTypeCard({
                         mode="create"
                         isBrand
                         trigger={
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Добавить бренд">
-                                <Tag className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="size-7" title="Добавить бренд">
+                                <Tag className="size-4" />
                             </Button>
                         }
                     />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreVertical className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="size-7">
+                                <MoreVertical className="size-4" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
@@ -157,19 +157,19 @@ export function AttributeTypeCard({
                                 disabled={isFirst || moveType.isPending}
                                 onClick={() => moveType.mutate({ id: type.id, direction: 'up' })}
                             >
-                                <ChevronUp className="h-4 w-4" />
+                                <ChevronUp className="size-4" />
                                 Вверх
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 disabled={isLast || moveType.isPending}
                                 onClick={() => moveType.mutate({ id: type.id, direction: 'down' })}
                             >
-                                <ChevronDown className="h-4 w-4" />
+                                <ChevronDown className="size-4" />
                                 Вниз
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant="destructive" onClick={() => setDeleteTypeOpen(true)}>
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="size-4" />
                                 Удалить тип
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -178,7 +178,7 @@ export function AttributeTypeCard({
             </div>
 
             {expanded && (
-                <div className="ml-3 border-l-2 border-muted pl-2">
+                <div className="ml-3 border-l-2 border-border-low pl-2">
                     {valueList.map((item) => (
                         <ValueRow
                             key={item.id}

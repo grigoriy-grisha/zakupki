@@ -1,15 +1,17 @@
 'use client';
 
+import { Loader2,Plus } from 'lucide-react';
 import { useState } from 'react';
+
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { Plus, Loader2 } from 'lucide-react';
-import { useCreatePostTemplate, useDeletePostTemplate, usePostTemplateList } from './hooks';
-import { PostTemplateRow } from './components/post-template-row';
+
 import { PostTemplatePlaceholdersHint } from './components/post-template-placeholders-hint';
+import { PostTemplateRow } from './components/post-template-row';
+import { useCreatePostTemplate, useDeletePostTemplate, usePostTemplateList } from './hooks';
 
 export function PostTemplatesTab() {
     const { data: templates, isLoading } = usePostTemplateList();
@@ -34,14 +36,14 @@ export function PostTemplatesTab() {
     }
 
     if (isLoading) {
-        return <div className="py-8 text-center text-muted-foreground">Загрузка...</div>;
+        return <div className="py-8 text-center text-fg-secondary">Загрузка...</div>;
     }
 
     return (
         <div className="space-y-4 pt-4">
             <div className="flex justify-end">
                 <Button size="sm" onClick={() => setCreateOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
+                    <Plus className="mr-2 size-4" />
                     Добавить шаблон
                 </Button>
             </div>
@@ -49,7 +51,7 @@ export function PostTemplatesTab() {
             <PostTemplatePlaceholdersHint />
 
             {templates?.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed py-12 text-center text-14-regular text-fg-secondary">
                     Шаблонов пока нет
                 </div>
             ) : (
@@ -86,7 +88,7 @@ export function PostTemplatesTab() {
                             disabled={!newName.trim() || createMutation.isPending}
                             onClick={handleCreate}
                         >
-                            {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                             Создать
                         </Button>
                     </div>

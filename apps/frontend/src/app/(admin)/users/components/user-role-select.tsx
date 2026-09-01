@@ -31,7 +31,7 @@ export function UserRoleSelect({ userId, role }: UserRoleSelectProps) {
                 updateRole.mutate({ userId, role: value as UserRole });
             }}
         >
-            <SelectTrigger className="h-8 w-[140px] bg-background" onClick={(e) => e.stopPropagation()}>
+            <SelectTrigger className="h-8 w-[140px] bg-bg-base" onClick={(e) => e.stopPropagation()}>
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>

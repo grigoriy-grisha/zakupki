@@ -1,20 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableCell, TableRow } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
-import { resolveAvatarUrl, displayName } from '@/lib/utils/user';
+import { displayName,resolveAvatarUrl } from '@/lib/utils/user';
 
 import { countUniquePurchases, groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
 import { type UserListItem } from './user-profile-sheet';
-import { UserRoleSelect } from './user-role-select';
 import { UserPurchaseGroupBlock } from './user-purchase-group';
+import { UserRoleSelect } from './user-role-select';
 
 interface UserOrdersRowProps {
     user: UserListItem;
@@ -37,7 +37,7 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
 
     return (
         <>
-            <TableRow className="hover:bg-accent/50 transition-colors">
+            <TableRow className="hover:bg-bg-soft/70 transition-colors">
                 <TableCell>
                     <Button
                         variant="ghost"
@@ -80,9 +80,9 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
 
             {open && (
                 <TableRow>
-                    <TableCell colSpan={4} className="bg-muted/30 p-0">
+                    <TableCell colSpan={4} className="bg-bg-soft/50 p-0">
                         <div className="p-4">
-                            <p className="mb-3 text-sm font-medium text-muted-foreground">Закупки участника</p>
+                            <p className="mb-3 text-14-semibold text-fg-secondary">Закупки участника</p>
                             {ordersLoading ? (
                                 <div className="space-y-2">
                                     {Array.from({ length: 3 }).map((_, i) => (
@@ -90,7 +90,7 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                                     ))}
                                 </div>
                             ) : purchaseGroups.length === 0 ? (
-                                <p className="rounded-lg border border-dashed bg-background py-6 text-center text-sm text-muted-foreground">
+                                <p className="rounded-lg border border-dashed py-6 text-center text-14-regular text-fg-secondary">
                                     Нет закупок с заказами
                                 </p>
                             ) : (

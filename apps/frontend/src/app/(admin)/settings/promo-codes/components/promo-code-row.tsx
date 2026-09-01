@@ -37,22 +37,22 @@ export function PromoCodeRow({ promo, onDelete }: PromoCodeRowProps) {
     return (
         <TableRow key={promo.id}>
             <TableCell>
-                <code className="rounded bg-muted px-2 py-0.5 text-sm font-mono font-semibold">{promo.code}</code>
+                <code className="rounded bg-bg-soft px-2 py-0.5 font-mono text-14-semibold">{promo.code}</code>
             </TableCell>
-            <TableCell className="text-sm text-muted-foreground">{promo.label || '—'}</TableCell>
+            <TableCell className="text-14-regular text-fg-secondary">{promo.label || '—'}</TableCell>
             <TableCell>
                 <Badge variant="outline">{promo.type === 'PERCENT' ? 'Процент' : 'Фикс. сумма'}</Badge>
             </TableCell>
-            <TableCell className="font-medium">
+            <TableCell className="text-14-semibold">
                 {promo.type === 'PERCENT' ? `${Number(promo.value)}%` : `${formatRub(Number(promo.value))}`}
             </TableCell>
-            <TableCell className="text-sm">{purchase ? `${purchase.tag}` : 'Любая'}</TableCell>
-            <TableCell className="text-center text-sm">
+            <TableCell className="text-14-regular">{purchase ? `${purchase.tag}` : 'Любая'}</TableCell>
+            <TableCell className="text-center text-14-regular">
                 {promo.usedCount}
                 {promo.maxUses ? `/${promo.maxUses}` : ''}
             </TableCell>
-            <TableCell className="text-sm">{promo.minAmount ? `${formatRub(Number(promo.minAmount))}` : '—'}</TableCell>
-            <TableCell className="text-sm">
+            <TableCell className="text-14-regular">{promo.minAmount ? `${formatRub(Number(promo.minAmount))}` : '—'}</TableCell>
+            <TableCell className="text-14-regular">
                 {promo.expiresAt ? new Date(promo.expiresAt).toLocaleDateString('ru-RU') : 'Бессрочно'}
             </TableCell>
             <TableCell className="text-center">
@@ -64,21 +64,21 @@ export function PromoCodeRow({ promo, onDelete }: PromoCodeRowProps) {
                         variant="ghost"
                         size="sm"
                         className={cn(
-                            'h-8 w-8 p-0',
+                            'size-8 p-0',
                             promo.isActive ? 'text-error hover:bg-error-50' : 'text-success hover:bg-success-50',
                         )}
                         onClick={() => toggleMutation.mutate({ id: promo.id, isActive: !promo.isActive })}
                         disabled={toggleMutation.isPending}
                     >
-                        {promo.isActive ? <CircleX className="h-4 w-4" /> : <CircleCheck className="h-4 w-4" />}
+                        {promo.isActive ? <CircleX className="size-4" /> : <CircleCheck className="size-4" />}
                     </Button>
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        className="size-8 p-0 text-error hover:text-error"
                         onClick={() => onDelete({ id: promo.id, code: promo.code })}
                     >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="size-4" />
                     </Button>
                 </div>
             </TableCell>

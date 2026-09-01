@@ -1,8 +1,8 @@
 'use client';
 
 import { CrudFormDialog } from '../../shared/crud-form-dialog';
+import { characteristicFields, type CharacteristicFormValues,characteristicSchema } from '../config';
 import { useCreateCharacteristic, useUpdateCharacteristic } from '../hooks/use-characteristics';
-import { characteristicFields, characteristicSchema, type CharacteristicFormValues } from '../config';
 
 interface CharacteristicFormDialogProps {
     mode: 'create' | 'edit';

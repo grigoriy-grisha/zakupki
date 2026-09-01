@@ -1,8 +1,8 @@
 'use client';
 
 import { CrudFormDialog } from '../../shared/crud-form-dialog';
+import { supplierFields, type SupplierFormValues,supplierSchema } from '../config';
 import { useCreateSupplier, useUpdateSupplier } from '../hooks/use-suppliers';
-import { supplierFields, supplierSchema, type SupplierFormValues } from '../config';
 
 interface SupplierFormDialogProps {
     mode: 'create' | 'edit';

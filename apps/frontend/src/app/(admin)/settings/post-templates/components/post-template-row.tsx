@@ -48,23 +48,23 @@ export function PostTemplateRow({
     }
 
     return (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border border-border-low bg-bg-card">
             <div className="flex items-center gap-1 p-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setExpanded((v) => !v)}>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={() => setExpanded((v) => !v)}>
+                    <ChevronRight className={`size-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
                 </Button>
                 <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-8 flex-1 border-transparent bg-transparent font-medium shadow-none hover:border-input focus-visible:border-input"
+                    className="h-8 flex-1 border-transparent bg-transparent text-14-medium shadow-none hover:border-border focus-visible:border-border"
                 />
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    className="size-8 text-error hover:text-error"
                     onClick={onDelete}
                 >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="size-4" />
                 </Button>
             </div>
             {expanded && (
@@ -79,7 +79,7 @@ export function PostTemplateRow({
                         <PostTemplatePreview body={body} />
                     </div>
                     {unknownPlaceholders.length > 0 && (
-                        <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-2 text-xs text-yellow-700">
+                        <div className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-12-regular text-warning">
                             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                             <span>
                                 Неизвестные метки: {unknownPlaceholders.map((k) => `{{${k}}}`).join(', ')}. Они попадут
@@ -88,7 +88,7 @@ export function PostTemplateRow({
                         </div>
                     )}
                     <Button className="w-full sm:w-auto" disabled={!canSave || update.isPending} onClick={handleSave}>
-                        {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {update.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                         Сохранить шаблон
                     </Button>
                 </div>

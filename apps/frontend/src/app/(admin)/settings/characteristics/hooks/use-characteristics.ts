@@ -1,4 +1,5 @@
 import { trpc } from '@/lib/client/trpc';
+
 import { createCrudHooks } from '../../shared/create-crud-hooks';
 import { characteristicMessages } from '../config';
 
