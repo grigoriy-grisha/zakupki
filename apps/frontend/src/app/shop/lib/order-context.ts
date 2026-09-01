@@ -1,3 +1,4 @@
+import type { CurrencyRate, PackDiscountPricingInfo, PurchaseItem } from '@zakupki/types';
 import {
     buildOrderQtyOptions,
     computeAmountDueWithPackages,
@@ -13,7 +14,7 @@ import {
     OrderBook,
     toOrderLinesVO,
 } from '@zakupki/types';
-import type { CurrencyRate, PackDiscountPricingInfo, PurchaseFulfillmentStatus, PurchaseItem } from '@zakupki/types';
+
 import type { ShopPurchaseItem } from './types';
 
 export interface ItemOrderContextInput {

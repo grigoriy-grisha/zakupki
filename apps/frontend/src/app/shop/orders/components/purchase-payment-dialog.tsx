@@ -47,7 +47,7 @@ export function PurchasePaymentDialog({
                 Оплатить {formatRub(remaining)}
             </Button>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
-                <span className="rounded-md bg-background/90 px-2 py-1 text-center text-xs font-medium text-muted-foreground shadow-sm">
+                <span className="rounded-md bg-background/90 px-2 py-1 text-center text-12-medium text-fg-secondary shadow-sm">
                     Ждём начала оплаты
                 </span>
             </div>
@@ -83,7 +83,7 @@ export function PurchasePaymentDialog({
                 <DialogHeader>
                     <DialogTitle>Оплата — прикрепите чек</DialogTitle>
                 </DialogHeader>
-                <div className="rounded-lg bg-warning-50 p-3 flex items-center gap-2 text-warning text-sm">
+                <div className="rounded-lg bg-warning/10 p-3 flex items-center gap-2 text-warning text-13-regular">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>
                         Осталось оплатить: <strong>{formatRub(remaining)}</strong>
@@ -96,11 +96,11 @@ export function PurchasePaymentDialog({
                             Промокод
                         </Label>
                         {form.appliedPromo ? (
-                            <div className="flex items-center justify-between rounded-lg border border-success/30 bg-success-50 p-2">
+                            <div className="flex items-center justify-between rounded-lg border border-success/30 bg-success/10 p-2">
                                 <div className="flex items-center gap-2 text-success">
                                     <Tag className="h-4 w-4" />
-                                    <span className="text-sm font-medium">{form.appliedPromo.code}</span>
-                                    <span className="text-xs">−{formatRub(form.appliedPromo.discount)}</span>
+                                    <span className="text-13-medium">{form.appliedPromo.code}</span>
+                                    <span className="text-12-regular">−{formatRub(form.appliedPromo.discount)}</span>
                                 </div>
                                 <Button
                                     type="button"
@@ -138,7 +138,7 @@ export function PurchasePaymentDialog({
                                 </Button>
                             </div>
                         )}
-                        {form.promoError && <p className="text-xs text-destructive">{form.promoError}</p>}
+                        {form.promoError && <p className="text-12-regular text-error">{form.promoError}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -151,21 +151,21 @@ export function PurchasePaymentDialog({
                             onChange={(e) => form.setAmount(e.target.value)}
                             required
                         />
-                        {form.amountError && <p className="text-xs text-destructive">{form.amountError}</p>}
+                        {form.amountError && <p className="text-12-regular text-error">{form.amountError}</p>}
                         {form.appliedPromo && (
-                            <div className="rounded-lg border border-success/30 bg-success-50 p-2 space-y-1">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground">Сумма: {formatRub(form.numAmount)}</span>
+                            <div className="rounded-lg border border-success/30 bg-success/10 p-2 space-y-1">
+                                <div className="flex items-center justify-between text-12-regular">
+                                    <span className="text-fg-secondary">Сумма: {formatRub(form.numAmount)}</span>
                                     <span className="text-success">
                                         Скидка: −{formatRub(form.appliedPromo.discount)}
                                     </span>
                                 </div>
-                                <p className="text-xs font-medium text-success">
+                                <p className="text-12-medium text-success">
                                     К оплате: {formatRub(form.numAmount - form.appliedPromo.discount)}
                                 </p>
                             </div>
                         )}
-                        <p className="text-xs text-muted-foreground">Максимум: {formatRub(remaining)}</p>
+                        <p className="text-12-regular text-fg-secondary">Максимум: {formatRub(remaining)}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -180,16 +180,16 @@ export function PurchasePaymentDialog({
 
                     <div className="space-y-2">
                         <Label>
-                            Подтверждение оплаты <span className="text-destructive">*</span>
+                            Подтверждение оплаты <span className="text-error">*</span>
                         </Label>
                         {form.preview ? (
-                            <div className="relative rounded-lg border p-2 bg-muted/50">
+                            <div className="relative rounded-lg border-border-low p-2 bg-bg-card/70">
                                 {form.fileData?.mimeType.startsWith('image/') ? (
                                     <img src={form.preview} alt="Preview" className="max-h-40 rounded mx-auto" />
                                 ) : (
                                     <div className="flex items-center gap-2 p-2">
                                         <Upload className="h-4 w-4" />
-                                        <span className="text-sm">Файл прикреплён</span>
+                                        <span className="text-13-regular">Файл прикреплён</span>
                                     </div>
                                 )}
                                 <Button
@@ -206,11 +206,11 @@ export function PurchasePaymentDialog({
                         ) : (
                             <div
                                 onClick={() => form.fileRef.current?.click()}
-                                className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                                className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-fg-secondary hover:border-primary/50 hover:text-primary transition-colors"
                             >
                                 <Upload className="h-8 w-8" />
-                                <span className="text-sm font-medium">Загрузите скриншот или документ</span>
-                                <span className="text-xs">Обязательно · PNG, JPG, PDF до 5 МБ</span>
+                                <span className="text-13-medium">Загрузите скриншот или документ</span>
+                                <span className="text-12-regular">Обязательно · PNG, JPG, PDF до 5 МБ</span>
                             </div>
                         )}
                         <input
@@ -220,7 +220,7 @@ export function PurchasePaymentDialog({
                             onChange={form.handleFile}
                             className="hidden"
                         />
-                        {!form.fileData && <p className="text-xs text-destructive">Прикрепите подтверждение оплаты</p>}
+                        {!form.fileData && <p className="text-12-regular text-error">Прикрепите подтверждение оплаты</p>}
                     </div>
 
                     <Button

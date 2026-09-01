@@ -91,7 +91,7 @@ function NotificationsPageInner() {
         <div className="flex flex-col gap-5 sm:gap-6">
             <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="text-h1 text-fg-primary">Уведомления</h1>
+                    <h1 className="text-h1 text-secondary">Уведомления</h1>
                     {(unread ?? 0) > 0 && (
                         <Badge type="subtle" variant="accent">
                             {unread ?? 0} {pluralRu(unread ?? 0, ['непрочитанное', 'непрочитанных', 'непрочитанных'])}
@@ -115,11 +115,12 @@ function NotificationsPageInner() {
             {isLoading ? (
                 <NotificationsSkeleton />
             ) : page.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-bg-card">
+                <div className="rounded-2xl bg-bg-soft">
                     <EmptyState
+                        variant="plain"
                         icon={Bell}
-                        title="Нет уведомлений"
-                        description="Здесь появятся изменения по вашим заказам и закупкам"
+                        title="Нет новых уведомлений"
+                        description="Здесь будет актуальная информация по закупкам"
                     />
                 </div>
             ) : (

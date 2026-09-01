@@ -12,25 +12,26 @@ import {
     type PurchaseStatus,
 } from '@zakupki/types';
 import { Archive, ChevronRight, CircleCheck, ClipboardList, Package, Truck } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
+import { NotificationsPreviewCard } from '@/app/shop/orders/components/notifications-preview-card';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/lib/client/trpc';
 import { formatRub } from '@/lib/format/money';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import type { ProductLabelSource } from '@/lib/product-label';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
+
+type OrdersTab = 'active' | 'past';
 
 function OrdersEmptyState({
     title,
@@ -44,14 +45,60 @@ function OrdersEmptyState({
     const router = useAppRouter();
 
     return (
-        <div className="rounded-2xl border border-border bg-bg-card">
+        <div className="rounded-2xl bg-bg-soft">
             <EmptyState
+                variant="plain"
                 icon={ClipboardList}
                 title={title}
                 description={description}
                 actionLabel={showShopLink ? 'К закупкам' : undefined}
                 onAction={showShopLink ? () => router.push('/shop') : undefined}
             />
+        </div>
+    );
+}
+
+function OrdersSegmentedTabs({
+    tab,
+    onTabChange,
+    activeCount,
+    pastCount,
+}: {
+    tab: OrdersTab;
+    onTabChange: (tab: OrdersTab) => void;
+    activeCount: number;
+    pastCount: number;
+}) {
+    return (
+        <div className="inline-flex max-w-full overflow-hidden rounded-full border border-secondary" role="tablist">
+            <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'active'}
+                onClick={() => onTabChange('active')}
+                className={cn(
+                    'flex h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
+                    'text-12-bold transition-colors sm:h-11 sm:px-5 sm:text-14-bold',
+                    tab === 'active' ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
+                )}
+            >
+                Активные заказы
+                {activeCount > 0 && <span className="tabular-nums">{activeCount}</span>}
+            </button>
+            <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'past'}
+                onClick={() => onTabChange('past')}
+                className={cn(
+                    'flex h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
+                    'text-12-bold transition-colors sm:h-11 sm:px-5 sm:text-14-bold',
+                    tab === 'past' ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
+                )}
+            >
+                Прошлые заказы
+                {pastCount > 0 && <span className="tabular-nums">{pastCount}</span>}
+            </button>
         </div>
     );
 }
@@ -77,22 +124,17 @@ function PurchaseOrderCard({
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
     return (
-        <Card rounded="2xl" className="gap-0 py-0">
-            <div
-                className={cn(
-                    'flex flex-wrap items-start justify-between gap-x-3 gap-y-2',
-                    'border-b border-border-soft px-4 py-3.5 sm:px-5',
-                )}
-            >
+        <section className="rounded-2xl bg-bg-soft p-4 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                 <div className="min-w-0">
                     {group.orderNumber != null && (
-                        <p className="text-12-regular tabular-nums text-fg-tertiary">Заказ №{group.orderNumber}</p>
+                        <p className="text-12-regular text-fg-tertiary tabular-nums">Заказ №{group.orderNumber}</p>
                     )}
                     <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
                         <h3
                             className={cn(
-                                'text-16-semibold leading-tight text-fg-primary transition-colors',
-                                'group-hover/title:text-primary sm:text-18-semibold',
+                                'font-display text-24-bold leading-tight text-secondary transition-colors',
+                                'group-hover/title:text-primary sm:text-30-semibold',
                             )}
                         >
                             {group.tag}
@@ -123,7 +165,7 @@ function PurchaseOrderCard({
                 </div>
             </div>
 
-            <div className="divide-y divide-border-soft px-1.5 py-1.5 sm:px-2">
+            <div className="mt-3 divide-y divide-border-low">
                 {group.orders.map((order) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
@@ -138,11 +180,11 @@ function PurchaseOrderCard({
                             key={order.purchaseItemId}
                             href={`/shop/purchase/${group.id}/item/${order.purchaseItemId}`}
                             className={cn(
-                                'group flex items-center gap-3 rounded-xl px-2.5 py-2.5',
-                                'transition-colors hover:bg-bg-soft',
+                                'group flex items-center gap-3 rounded-xl px-1 py-2.5',
+                                'transition-colors hover:bg-bg-card/60',
                             )}
                         >
-                            <div className="size-10 shrink-0 overflow-hidden rounded-lg bg-bg-soft">
+                            <div className="size-14 shrink-0 overflow-hidden rounded-xl bg-bg-card sm:size-16">
                                 {photo ? (
                                     <img
                                         src={absoluteProductPhotoUrl(photo.id)}
@@ -161,8 +203,8 @@ function PurchaseOrderCard({
                                         product={product}
                                         className="min-w-0"
                                         primaryClassName={cn(
-                                            'block text-13-medium text-fg-primary transition-colors',
-                                            'group-hover:text-primary sm:text-14-medium',
+                                            'block font-display text-16-bold leading-tight text-fg-primary',
+                                            'transition-colors group-hover:text-secondary sm:text-18-bold',
                                         )}
                                         secondaryClassName={cn(
                                             'mt-0.5 block truncate text-11-regular text-fg-tertiary',
@@ -186,7 +228,11 @@ function PurchaseOrderCard({
                 })}
             </div>
 
-            <div className="flex flex-col gap-2.5 border-t border-border-soft px-4 py-3.5 sm:px-5">
+            <div className="mt-4 flex flex-col gap-3">
+                <p className="text-right font-display text-20-semibold text-primary sm:text-24-semibold">
+                    Итоговая сумма {formatRub(group.total)}
+                </p>
+
                 {purchasePayments.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                         <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">Ваши оплаты</p>
@@ -207,26 +253,13 @@ function PurchaseOrderCard({
                     orderCount={group.orders.length}
                 />
             </div>
-        </Card>
-    );
-}
-
-function OrdersTabCounter({ count }: { count: number }) {
-    if (count === 0) return null;
-    return (
-        <span
-            className={cn(
-                'ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full',
-                'bg-primary/10 px-1.5 text-11-medium text-primary tabular-nums',
-            )}
-        >
-            {count}
-        </span>
+        </section>
     );
 }
 
 export default function OrdersPage() {
     const router = useAppRouter();
+    const [tab, setTab] = useState<OrdersTab>('active');
     const { data: myOrders, isLoading } = trpc.orders.getMyOrders.useQuery();
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
 
@@ -240,24 +273,12 @@ export default function OrdersPage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col gap-5 sm:gap-6">
-                <Skeleton className="h-8 w-44 rounded-md" />
-                <Skeleton className="h-10 w-84 rounded-full" />
+            <div className="flex flex-col gap-6 sm:gap-8">
+                <Skeleton className="h-9 w-56 rounded-2xl sm:h-12 sm:w-72" />
+                <Skeleton className="h-28 rounded-2xl" />
+                <Skeleton className="h-10 w-72 rounded-full" />
                 {Array.from({ length: 2 }).map((_, i) => (
-                    <Card key={i} rounded="2xl" className="gap-0 py-0">
-                        <div className="flex flex-col gap-2.5 border-b border-border-soft px-4 py-4 sm:px-5">
-                            <Skeleton className="h-3.5 w-24 rounded-md" />
-                            <Skeleton className="h-6 w-48 rounded-md" />
-                        </div>
-                        <div className="flex flex-col gap-2 px-4 py-3 sm:px-5">
-                            {Array.from({ length: 3 }).map((_, j) => (
-                                <Skeleton key={j} className="h-12 w-full rounded-xl" />
-                            ))}
-                        </div>
-                        <div className="border-t border-border-soft px-4 py-4 sm:px-5">
-                            <Skeleton className="h-12 w-full rounded-xl" />
-                        </div>
-                    </Card>
+                    <Skeleton key={i} className="h-48 w-full rounded-2xl" />
                 ))}
             </div>
         );
@@ -265,35 +286,37 @@ export default function OrdersPage() {
 
     if (!myOrders?.length) {
         return (
-            <div className="rounded-2xl border border-border bg-bg-card">
-                <EmptyState
-                    icon={ClipboardList}
-                    title="Пока нет заказов"
-                    description="Перейдите в закупку, чтобы заказать товары"
-                    actionLabel="К закупкам"
-                    onAction={() => router.push('/shop')}
-                />
+            <div className="flex flex-col gap-6 sm:gap-8">
+                <h1 className="text-h1 text-secondary">Мои заказы</h1>
+                <div className="rounded-2xl bg-bg-soft">
+                    <EmptyState
+                        variant="plain"
+                        icon={ClipboardList}
+                        title="Пока нет заказов"
+                        description="Перейдите в закупку, чтобы заказать товары"
+                        actionLabel="К закупкам"
+                        onAction={() => router.push('/shop')}
+                    />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col gap-5 sm:gap-6">
-            <h1 className="text-h1 text-fg-primary">Мои заказы</h1>
+        <div className="flex flex-col gap-6 sm:gap-8">
+            <h1 className="text-h1 text-secondary">Мои заказы</h1>
 
-            <Tabs defaultValue="active">
-                <TabsList>
-                    <TabsTrigger value="active">
-                        Активные заказы
-                        <OrdersTabCounter count={activeGroups.length} />
-                    </TabsTrigger>
-                    <TabsTrigger value="past">
-                        Прошлые заказы
-                        <OrdersTabCounter count={pastGroups.length} />
-                    </TabsTrigger>
-                </TabsList>
+            <NotificationsPreviewCard />
 
-                <TabsContent value="active" className="mt-4 flex flex-col gap-4 sm:mt-5">
+            <OrdersSegmentedTabs
+                tab={tab}
+                onTabChange={setTab}
+                activeCount={activeGroups.length}
+                pastCount={pastGroups.length}
+            />
+
+            {tab === 'active' ? (
+                <div className="flex flex-col gap-4 sm:gap-5">
                     {activeGroups.length === 0 ? (
                         <OrdersEmptyState
                             title="Нет активных заказов"
@@ -305,9 +328,9 @@ export default function OrdersPage() {
                             <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast={false} />
                         ))
                     )}
-                </TabsContent>
-
-                <TabsContent value="past" className="mt-4 flex flex-col gap-4 sm:mt-5">
+                </div>
+            ) : (
+                <div className="flex flex-col gap-4 sm:gap-5">
                     {pastGroups.length === 0 ? (
                         <OrdersEmptyState
                             title="Нет прошлых заказов"
@@ -318,8 +341,8 @@ export default function OrdersPage() {
                             <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast />
                         ))
                     )}
-                </TabsContent>
-            </Tabs>
+                </div>
+            )}
         </div>
     );
 }

@@ -22,7 +22,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
     const status = payment.status;
     const statusCfg = SHOP_PAYMENT_STATUS[status] ?? {
         label: status,
-        className: 'text-muted-foreground',
+        className: 'text-fg-tertiary',
     };
     const hasProof = paymentHasProof(payment);
     const proofUrl = `/api/payment-proof/${payment.id}`;
@@ -42,7 +42,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
-                            <p className="text-muted-foreground">Сумма</p>
+                            <p className="text-13-regular text-fg-secondary">Сумма</p>
                             <p className="text-lg font-bold">{formatRub(total)}</p>
                             {childAmount > 0 && (
                                 <p className="text-xs text-success">
@@ -51,11 +51,11 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                             )}
                         </div>
                         <div>
-                            <p className="text-muted-foreground">Статус</p>
+                            <p className="text-13-regular text-fg-secondary">Статус</p>
                             <p className={`font-medium ${statusCfg.className}`}>{statusCfg.label}</p>
                         </div>
                         <div className="col-span-2">
-                            <p className="text-muted-foreground">Дата отправки</p>
+                            <p className="text-13-regular text-fg-secondary">Дата отправки</p>
                             <p>
                                 {new Date(payment.submittedAt).toLocaleString('ru-RU', {
                                     day: 'numeric',
@@ -70,21 +70,21 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
 
                     {payment.userComment ? (
                         <div>
-                            <p className="text-sm text-muted-foreground">Ваш комментарий</p>
+                            <p className="text-13-regular text-fg-secondary">Ваш комментарий</p>
                             <p className="mt-1 text-sm">{payment.userComment}</p>
                         </div>
                     ) : null}
 
                     {status === 'REJECTED' && payment.adminNote ? (
-                        <div className="rounded-lg bg-error-50 p-3 text-sm text-error">
-                            <p className="text-xs font-medium text-muted-foreground">Причина отклонения</p>
+                        <div className="rounded-lg bg-error/10 p-3 text-13-regular text-error">
+                            <p className="text-12-medium text-fg-secondary">Причина отклонения</p>
                             <p className="mt-1">{payment.adminNote}</p>
                         </div>
                     ) : null}
 
                     {hasProof ? (
                         <div>
-                            <p className="mb-2 text-sm text-muted-foreground">Отправленный чек</p>
+                            <p className="mb-2 text-13-regular text-fg-secondary">Отправленный чек</p>
                             {isImage ? (
                                 <a href={proofUrl} target="_blank" rel="noopener noreferrer">
                                     <img
@@ -95,7 +95,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                                 </a>
                             ) : (
                                 <div className="flex items-center gap-3 rounded-lg border p-4">
-                                    <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                                    <FileText className="h-8 w-8 shrink-0 text-fg-tertiary" />
                                     <div>
                                         <p className="text-sm font-medium">Документ</p>
                                         <a
@@ -111,7 +111,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                             )}
                         </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground">К этой оплате чек не прикреплён.</p>
+                        <p className="text-13-regular text-fg-secondary">К этой оплате чек не прикреплён.</p>
                     )}
                 </div>
             </DialogContent>
