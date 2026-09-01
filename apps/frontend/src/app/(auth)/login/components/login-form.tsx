@@ -55,12 +55,12 @@ export function LoginForm({
                         variant="secondary"
                         onClick={onVkLogin}
                         disabled={vkLoading}
-                        className="relative w-full text-14-bold sm:text-16-bold"
+                        className="w-full text-14-bold sm:text-16-bold"
                     >
                         {vkLoading ? (
-                            <Loader2 className="absolute left-[14px] top-1/2 size-4 -translate-y-1/2 animate-spin sm:left-[11px]" />
+                            <Loader2 className="size-5 animate-spin" />
                         ) : (
-                            <VkOutlineIcon className="absolute left-[14px] top-1/2 size-[25px] -translate-y-1/2 sm:left-[11px]" />
+                            <VkOutlineIcon className="size-[25px]" />
                         )}
                         {vkLoading ? 'Авторизация…' : 'Войти через VK'}
                     </Button>
@@ -70,12 +70,12 @@ export function LoginForm({
                     variant="outline-primary"
                     onClick={onTelegramLogin}
                     disabled={telegramLoading}
-                    className="relative w-full text-14-bold sm:text-16-bold"
+                    className="w-full text-14-bold sm:text-16-bold"
                 >
                     {telegramLoading ? (
-                        <Loader2 className="absolute left-[14px] top-1/2 size-4 -translate-y-1/2 animate-spin sm:left-[11px]" />
+                        <Loader2 className="size-5 animate-spin" />
                     ) : (
-                        <TelegramOutlineIcon className="absolute left-[14px] top-1/2 size-[23px] -translate-y-1/2 sm:left-[11px]" />
+                        <TelegramOutlineIcon className="size-[23px]" />
                     )}
                     {telegramLoading ? 'Авторизация…' : 'Войти через Telegram'}
                 </Button>
