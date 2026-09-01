@@ -1,8 +1,10 @@
 'use client';
 
 import { signOut,useSession } from 'next-auth/react';
+import { useState } from 'react';
 
 import { AppLink } from '@/components/app-link';
+
 import {
     BrandLogo,
     HeaderBellIcon,
@@ -11,6 +13,15 @@ import {
     HeaderProfileIcon,
 } from '@/components/icons';
 import { NotificationBell } from '@/components/shop/notification-bell';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { withPlatformPrefix } from '@/lib/app-path';
 import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
 import { usePlatform } from '@/lib/hooks/use-platform';
@@ -26,6 +37,15 @@ export function ShopHeader() {
     const platform = usePlatform();
     const isTelegramWebApp = useIsTelegramWebApp();
     const isAuthenticated = !!session?.user || isTelegramWebApp;
+    const [logoutOpen, setLogoutOpen] = useState(false);
+
+    const handleLogout = () => {
+        setLogoutOpen(false);
+        const base =
+            process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ?? window.location.origin;
+        const loginPath = platform ? withPlatformPrefix('/login', platform) : '/login';
+        void signOut({ callbackUrl: `${base}${loginPath}` });
+    };
 
     return (
         <header
@@ -58,15 +78,7 @@ export function ShopHeader() {
                             <button
                                 type="button"
                                 className={cn(navLinkClass, 'px-2.5 text-fg-primary sm:px-3')}
-                                onClick={() => {
-                                    const base =
-                                        process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
-                                        window.location.origin;
-                                    const loginPath = platform
-                                        ? withPlatformPrefix('/login', platform)
-                                        : '/login';
-                                    void signOut({ callbackUrl: `${base}${loginPath}` });
-                                }}
+                                onClick={() => setLogoutOpen(true)}
                                 aria-label="Выйти"
                             >
                                 <HeaderLogoutIcon className="size-5" />
@@ -83,6 +95,25 @@ export function ShopHeader() {
                     </AppLink>
                 )}
             </nav>
+
+            <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Выйти из аккаунта?</DialogTitle>
+                        <DialogDescription>
+                            Вы сможете снова войти через VK или Telegram.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" size="sm" onClick={() => setLogoutOpen(false)}>
+                            Отмена
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={handleLogout}>
+                            Выйти
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </header>
     );
 }
