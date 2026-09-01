@@ -27,7 +27,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
     return (
         <aside
             className={cn(
-                'sticky top-14 h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 flex-col',
+                'sticky top-14 h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 flex-col border-r-2 border-secondary',
                 'overflow-y-auto px-8 pb-10 pt-7',
                 className,
             )}
