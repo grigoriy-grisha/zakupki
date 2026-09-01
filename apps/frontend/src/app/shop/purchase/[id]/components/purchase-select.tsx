@@ -51,7 +51,7 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
                         <p className="font-display text-30-semibold leading-none text-primary">Закупки</p>
                     </SheetTitle>
                 </div>
-                <div className="flex flex-col items-stretch gap-1.5 px-4 pb-[max(2.25rem,env(safe-area-inset-bottom))] pt-4">
+                <div className="flex flex-col items-stretch gap-1.5 px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-4">
                     {purchases.map((purchase) => {
                         const isActive = purchase.id === currentPurchaseId;
                         const status = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
