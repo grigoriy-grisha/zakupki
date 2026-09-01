@@ -1,11 +1,10 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
-    /* === Fonts === */
-    --font-sans: var(--font-inter), system-ui, sans-serif;
+    /* === Fonts (Figma DS: Raleway — body, Cormorant Infant — headings) === */
+    --font-sans: var(--font-raleway), system-ui, sans-serif;
+    --font-display: var(--font-cormorant), Georgia, serif;
     --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
     /* === Surfaces & Foreground === */
@@ -30,9 +29,10 @@
     --color-border-strong: var(--border-strong);
     --color-skeleton: var(--skeleton);
 
-    /* === Brand & Intent (сохраняем claude-палитру) === */
+    /* === Brand & Intent (Figma DS palette) === */
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-primary-hover: var(--primary-hover);
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
     --color-accent: var(--accent);
@@ -52,6 +52,8 @@
     --color-error-50: var(--error-50);
     --color-accent-teal: var(--accent-teal);
     --color-info: var(--info);
+    --color-gold: var(--gold);
+    --color-sage: var(--sage);
     --color-vk: var(--vk);
     --color-vk-foreground: var(--vk-foreground);
     --color-telegram: var(--telegram);
@@ -82,27 +84,17 @@
     --color-chart-4: var(--chart-4);
     --color-chart-5: var(--chart-5);
 
-    /* === Claude palette (alias) === */
-    --color-claude-orange: var(--claude-orange);
-    --color-claude-terracotta: var(--claude-terracotta);
-    --color-claude-cream: var(--claude-cream);
-    --color-claude-purple: var(--claude-purple);
-    --color-claude-lavender: var(--claude-lavender);
-    --color-claude-sand: var(--claude-sand);
-    --color-claude-rose: var(--claude-rose);
-    --color-claude-warm: var(--claude-warm);
-
-    /* === Radius scale (иерархия «Claude-look») === */
+    /* === Radius scale === */
     --radius-sm: 0.375rem; /* 6px */
-    --radius-md: 0.5rem; /* 8px — buttons/inputs/tabs */
+    --radius-md: 0.5rem; /* 8px — inputs/cards */
     --radius-lg: 0.625rem; /* 10px — dialogs */
     --radius-xl: 0.875rem; /* 14px — cards */
     --radius-2xl: 1rem; /* 16px — dropdowns/sheets */
     --radius-3xl: 1.5rem; /* 24px — confirm dialog */
     --radius-4xl: 2rem; /* 32px — page content */
-    --radius: 0.75rem; /* 12px — база */
+    --radius: 0.75rem; /* 12px — база; кнопки/табы — pill (rounded-full) */
 
-    /* === Shadows (мягкие, ненавязчивые) === */
+    /* === Shadows (мягкие) + CTA (Figma DS: hover-тень кнопок) === */
     --shadow-2xs: 0 1px 2px 0 rgb(9 9 11 / 0.04);
     --shadow-xs: 0 1px 2px 0 rgb(9 9 11 / 0.05);
     --shadow-sm: 0 1px 3px 0 rgb(9 9 11 / 0.06), 0 1px 2px -1px rgb(9 9 11 / 0.04);
@@ -111,10 +103,12 @@
     --shadow-lg: 0 12px 24px -6px rgb(9 9 11 / 0.10), 0 4px 8px -4px rgb(9 9 11 / 0.04);
     --shadow-xl: 0 24px 48px -12px rgb(9 9 11 / 0.18);
     --shadow-2xl: 0 32px 64px -16px rgb(9 9 11 / 0.20);
+    --shadow-cta: 0 0 8px 0 rgb(0 0 0 / 0.8);
+    --shadow-cta-soft: 0 0 7px 0 rgb(0 0 0 / 0.5);
 
-    /* === Tracking (Claude-look) === */
-    --tracking-tighter: -0.03em;
-    --tracking-tight: -0.02em;
+    /* === Tracking === */
+    --tracking-tighter: -0.02em;
+    --tracking-tight: -0.01em;
     --tracking-normal: 0em;
     --tracking-wide: 0.025em;
     --tracking-wider: 0.05em;
@@ -125,163 +119,87 @@
     /* === Base radius === */
     --radius: 0.75rem;
 
-    /* === Surfaces (нейтральная шкала, score-lead style) === */
-    --bg-base: #fafafa;
-    --bg-card: #ffffff;
-    --bg-soft: rgb(9 9 11 / 0.04);
-    --bg-subtle: rgb(9 9 11 / 0.025);
-    --bg-surface: #ffffff;
+    /* === Surfaces (Figma DS: кремово-бежевая гамма) === */
+    --bg-base: #fffbf7;
+    --bg-card: #fdf6ea;
+    --bg-soft: #f7f2ec;
+    --bg-subtle: #faf6ef;
+    --bg-surface: #fdf6ea;
     --bg-surface-elevated: #ffffff;
-    --bg-backdrop: rgb(0 0 0 / 0.15);
-    --bg-inverse: #09090b;
+    --bg-backdrop: rgb(57 57 57 / 0.2);
+    --bg-inverse: #393939;
 
     /* === Foreground === */
-    --fg-primary: #09090b;
-    --fg-secondary: rgb(9 9 11 / 0.65);
-    --fg-tertiary: rgb(9 9 11 / 0.50);
-    --fg-disabled: rgb(9 9 11 / 0.20);
-    --fg-inverse: #ffffff;
+    --fg-primary: #393939;
+    --fg-secondary: #9f9f9f;
+    --fg-tertiary: rgb(159 159 159 / 0.75);
+    --fg-disabled: rgb(57 57 57 / 0.3);
+    --fg-inverse: #fdf6ea;
 
-    /* === Borders (тонкие, ненавязчивые) === */
-    --border: rgb(9 9 11 / 0.08);
-    --border-low: rgb(9 9 11 / 0.04);
-    --border-soft: rgb(9 9 11 / 0.06);
-    --border-strong: rgb(9 9 11 / 0.12);
-    --skeleton: rgb(9 9 11 / 0.05);
+    /* === Borders === */
+    --border: rgb(57 57 57 / 0.14);
+    --border-low: rgb(57 57 57 / 0.08);
+    --border-soft: #d9d9d9;
+    --border-strong: rgb(57 57 57 / 0.4);
+    --skeleton: #d9d9d9;
 
-    /* === Brand & accent (оставляем claude-палитру) === */
-    --claude-orange: oklch(0.7 0.16 50);
-    --claude-terracotta: oklch(0.6 0.14 43);
-    --claude-cream: oklch(0.98 0.01 95.1);
-    --claude-purple: oklch(0.69 0.16 290.41);
-    --claude-lavender: oklch(0.88 0.04 298.18);
-    --claude-sand: oklch(0.88 0.03 93.13);
-    --claude-rose: oklch(0.6 0.14 42.06);
-    --claude-warm: oklch(0.95 0.02 90);
+    /* === Brand (Figma DS) === */
+    --primary: #8c0f06;
+    --primary-hover: #6f0801;
+    --primary-foreground: #fdf6ea;
+    --secondary: #7c9cbe;
+    --secondary-foreground: #fdf6ea;
+    --gold: #cca05b;
+    --sage: #537266;
 
     /* === Semantic (compat с shadcn) === */
     --background: var(--bg-base);
     --foreground: var(--fg-primary);
     --card: var(--bg-card);
     --card-foreground: var(--fg-primary);
-    --popover: var(--bg-surface);
+    --popover: var(--bg-surface-elevated);
     --popover-foreground: var(--fg-primary);
-    --primary: var(--claude-orange);
-    --primary-foreground: #ffffff;
-    --secondary: rgb(9 9 11 / 0.05);
-    --secondary-foreground: var(--fg-primary);
-    --muted: rgb(9 9 11 / 0.05);
+    --muted: #f7f2ec;
     --muted-foreground: var(--fg-secondary);
-    --accent: rgb(9 9 11 / 0.05);
-    --accent-foreground: var(--fg-primary);
-    --destructive: oklch(0.55 0.2 25);
-    --destructive-foreground: #ffffff;
-    --input: rgb(9 9 11 / 0.12);
-    --ring: var(--claude-orange);
-    --chart-1: var(--claude-orange);
-    --chart-2: var(--claude-purple);
-    --chart-3: var(--claude-sand);
-    --chart-4: var(--claude-lavender);
-    --chart-5: var(--claude-rose);
+    --accent: #7c9cbe;
+    --accent-foreground: #fdf6ea;
+    --destructive: #8c0f06;
+    --destructive-foreground: #fdf6ea;
+    --input: rgb(57 57 57 / 0.16);
+    --ring: #8c0f06;
+    --chart-1: #8c0f06;
+    --chart-2: #7c9cbe;
+    --chart-3: #537266;
+    --chart-4: #cca05b;
+    --chart-5: #9f9f9f;
 
     /* === Sidebar === */
-    --sidebar: var(--bg-base);
-    --sidebar-foreground: var(--fg-secondary);
-    --sidebar-primary: var(--claude-orange);
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: var(--bg-soft);
-    --sidebar-accent-foreground: var(--fg-primary);
-    --sidebar-border: var(--border-soft);
-    --sidebar-ring: var(--claude-orange);
+    --sidebar: var(--bg-soft);
+    --sidebar-foreground: var(--fg-primary);
+    --sidebar-primary: #8c0f06;
+    --sidebar-primary-foreground: #fdf6ea;
+    --sidebar-accent: #7c9cbe;
+    --sidebar-accent-foreground: #fdf6ea;
+    --sidebar-border: var(--border-low);
+    --sidebar-ring: #8c0f06;
 
     /* === Intent === */
-    --success: oklch(0.63 0.15 150);
-    --success-foreground: #ffffff;
-    --success-50: rgb(34 134 73 / 0.08);
-    --warning: oklch(0.75 0.15 80);
-    --warning-foreground: oklch(0.25 0.05 85);
-    --warning-50: rgb(184 110 0 / 0.08);
-    --error: oklch(0.6 0.21 25);
-    --error-foreground: #ffffff;
-    --error-50: rgb(204 41 54 / 0.08);
-    --accent-teal: oklch(0.65 0.1 180);
-    --info: oklch(0.62 0.13 240);
+    --success: #537266;
+    --success-foreground: #fdf6ea;
+    --success-50: rgb(83 114 102 / 0.1);
+    --warning: #cca05b;
+    --warning-foreground: #393939;
+    --warning-50: rgb(204 160 91 / 0.12);
+    --error: #8c0f06;
+    --error-foreground: #fdf6ea;
+    --error-50: rgb(140 15 6 / 0.08);
+    --accent-teal: #537266;
+    --info: #7c9cbe;
 
     /* === Social brands === */
     --vk: #0077ff;
     --vk-foreground: #ffffff;
     --telegram: #26a5e4;
-    --telegram-foreground: #ffffff;
-}
-
-.dark {
-    --bg-base: #0f0f10;
-    --bg-card: #18181a;
-    --bg-soft: rgb(255 255 255 / 0.04);
-    --bg-subtle: rgb(255 255 255 / 0.025);
-    --bg-surface: #1c1c1e;
-    --bg-surface-elevated: #232326;
-    --bg-backdrop: rgb(0 0 0 / 0.4);
-    --bg-inverse: #fafafa;
-
-    --fg-primary: #fafafa;
-    --fg-secondary: rgb(250 250 250 / 0.65);
-    --fg-tertiary: rgb(250 250 250 / 0.50);
-    --fg-disabled: rgb(250 250 250 / 0.20);
-    --fg-inverse: #09090b;
-
-    --border: rgb(255 255 255 / 0.08);
-    --border-low: rgb(255 255 255 / 0.04);
-    --border-soft: rgb(255 255 255 / 0.06);
-    --border-strong: rgb(255 255 255 / 0.12);
-    --skeleton: rgb(255 255 255 / 0.05);
-
-    --claude-orange: oklch(0.75 0.15 50);
-    --claude-cream: oklch(0.27 0 106.64);
-    --claude-purple: oklch(0.7 0.16 290.41);
-    --claude-lavender: oklch(0.31 0.05 289.32);
-    --claude-sand: oklch(0.21 0.01 95.42);
-    --claude-warm: oklch(0.21 0.01 95.42);
-
-    --background: var(--bg-base);
-    --foreground: var(--fg-primary);
-    --card: var(--bg-card);
-    --card-foreground: var(--fg-primary);
-    --popover: var(--bg-surface);
-    --popover-foreground: var(--fg-primary);
-    --primary: var(--claude-orange);
-    --primary-foreground: #ffffff;
-    --secondary: rgb(255 255 255 / 0.06);
-    --secondary-foreground: var(--fg-primary);
-    --muted: rgb(255 255 255 / 0.05);
-    --muted-foreground: var(--fg-secondary);
-    --accent: rgb(255 255 255 / 0.06);
-    --accent-foreground: var(--fg-primary);
-    --destructive: oklch(0.7 0.21 25);
-    --destructive-foreground: #ffffff;
-    --input: rgb(255 255 255 / 0.14);
-    --ring: var(--claude-orange);
-
-    --sidebar: var(--bg-base);
-    --sidebar-foreground: var(--fg-secondary);
-    --sidebar-primary: var(--claude-orange);
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: var(--bg-soft);
-    --sidebar-accent-foreground: var(--fg-primary);
-    --sidebar-border: var(--border-soft);
-    --sidebar-ring: var(--claude-orange);
-
-    --success-50: rgb(34 134 73 / 0.16);
-    --warning-50: rgb(184 110 0 / 0.16);
-    --error-50: rgb(204 41 54 / 0.16);
-
-    /* === Intent (dark variants) === */
-    --info: oklch(0.7 0.13 240);
-
-    /* === Social brands (dark variants) === */
-    --vk: #2a86ff;
-    --vk-foreground: #ffffff;
-    --telegram: #3eb6ed;
     --telegram-foreground: #ffffff;
 }
 
@@ -293,26 +211,34 @@
         -webkit-text-size-adjust: 100%;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply text-foreground;
+        min-height: 100dvh;
+        background: linear-gradient(149deg, #fffbf7 0%, #fdf9f2 100%);
+        background-color: var(--bg-base);
         font-family: var(--font-sans);
-        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         letter-spacing: var(--tracking-normal);
     }
     h1, h2, h3, h4, h5, h6 {
-        letter-spacing: var(--tracking-tight);
-        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        font-family: var(--font-display);
+        font-weight: 700;
+        letter-spacing: 0;
     }
     button,
     [role='button'],
     a {
         cursor: pointer;
     }
-    /* Легкие иконки (Claude-look: stroke 1.5) */
+    /* Иконки (Figma DS: интерактивные 1.44px десктоп / 0.92px мобайл) */
     svg.lucide {
-        stroke-width: 1.5;
+        stroke-width: 1.44;
+    }
+    @media (width < 48rem) {
+        svg.lucide {
+            stroke-width: 0.92;
+        }
     }
     /* Кастомный scrollbar (subtle) */
     ::-webkit-scrollbar {
@@ -331,159 +257,208 @@
     }
 }
 
-/* === Типографика (Claude-look: tight, аккуратная) === */
+/* === Типографика (Figma DS: Raleway, line-height ×1.175) === */
+@utility text-10-medium {
+    font-size: 0.625rem;
+    line-height: 0.73125rem;
+    font-weight: 500;
+}
+@utility text-10-bold {
+    font-size: 0.625rem;
+    line-height: 0.73125rem;
+    font-weight: 700;
+}
 @utility text-11-regular {
     font-size: 0.6875rem;
-    line-height: 1rem;
+    line-height: 0.8125rem;
     font-weight: 400;
 }
 @utility text-11-medium {
     font-size: 0.6875rem;
-    line-height: 1rem;
+    line-height: 0.8125rem;
     font-weight: 500;
 }
 @utility text-11-semibold {
     font-size: 0.6875rem;
-    line-height: 1rem;
+    line-height: 0.8125rem;
     font-weight: 600;
 }
 @utility text-12-regular {
     font-size: 0.75rem;
-    line-height: 1rem;
+    line-height: 0.875rem;
     font-weight: 400;
 }
 @utility text-12-medium {
     font-size: 0.75rem;
-    line-height: 1rem;
+    line-height: 0.875rem;
     font-weight: 500;
 }
 @utility text-12-semibold {
     font-size: 0.75rem;
-    line-height: 1rem;
+    line-height: 0.875rem;
     font-weight: 600;
 }
 @utility text-12-bold {
     font-size: 0.75rem;
-    line-height: 1rem;
+    line-height: 0.875rem;
     font-weight: 700;
 }
 @utility text-13-regular {
     font-size: 0.8125rem;
-    line-height: 1.125rem;
+    line-height: 0.95rem;
     font-weight: 400;
 }
 @utility text-13-medium {
     font-size: 0.8125rem;
-    line-height: 1.125rem;
+    line-height: 0.95rem;
     font-weight: 500;
 }
 @utility text-13-semibold {
     font-size: 0.8125rem;
-    line-height: 1.125rem;
+    line-height: 0.95rem;
     font-weight: 600;
 }
 @utility text-14-regular {
     font-size: 0.875rem;
-    line-height: 1.25rem;
+    line-height: 1.025rem;
     font-weight: 400;
 }
 @utility text-14-medium {
     font-size: 0.875rem;
-    line-height: 1.25rem;
+    line-height: 1.025rem;
     font-weight: 500;
 }
 @utility text-14-semibold {
     font-size: 0.875rem;
-    line-height: 1.25rem;
+    line-height: 1.025rem;
     font-weight: 600;
 }
 @utility text-14-bold {
     font-size: 0.875rem;
-    line-height: 1.25rem;
+    line-height: 1.025rem;
     font-weight: 700;
 }
 @utility text-16-regular {
     font-size: 1rem;
-    line-height: 1.5rem;
+    line-height: 1.175rem;
     font-weight: 400;
 }
 @utility text-16-medium {
     font-size: 1rem;
-    line-height: 1.5rem;
+    line-height: 1.175rem;
     font-weight: 500;
 }
 @utility text-16-semibold {
     font-size: 1rem;
-    line-height: 1.5rem;
+    line-height: 1.175rem;
     font-weight: 600;
 }
 @utility text-16-bold {
     font-size: 1rem;
-    line-height: 1.5rem;
+    line-height: 1.175rem;
     font-weight: 700;
 }
 @utility text-18-regular {
     font-size: 1.125rem;
-    line-height: 1.625rem;
+    line-height: 1.3125rem;
     font-weight: 400;
 }
 @utility text-18-medium {
     font-size: 1.125rem;
-    line-height: 1.625rem;
+    line-height: 1.3125rem;
     font-weight: 500;
 }
 @utility text-18-semibold {
     font-size: 1.125rem;
-    line-height: 1.625rem;
+    line-height: 1.3125rem;
     font-weight: 600;
+}
+@utility text-18-bold {
+    font-size: 1.125rem;
+    line-height: 1.3125rem;
+    font-weight: 700;
 }
 @utility text-20-regular {
     font-size: 1.25rem;
-    line-height: 1.75rem;
+    line-height: 1.46875rem;
     font-weight: 400;
 }
 @utility text-20-medium {
     font-size: 1.25rem;
-    line-height: 1.75rem;
+    line-height: 1.46875rem;
     font-weight: 500;
 }
 @utility text-20-semibold {
     font-size: 1.25rem;
-    line-height: 1.75rem;
+    line-height: 1.46875rem;
     font-weight: 600;
+}
+@utility text-20-bold {
+    font-size: 1.25rem;
+    line-height: 1.46875rem;
+    font-weight: 700;
 }
 @utility text-24-regular {
     font-size: 1.5rem;
-    line-height: 2rem;
+    line-height: 1.8125rem;
     font-weight: 400;
 }
 @utility text-24-medium {
     font-size: 1.5rem;
-    line-height: 2rem;
+    line-height: 1.8125rem;
     font-weight: 500;
 }
 @utility text-24-semibold {
     font-size: 1.5rem;
-    line-height: 2rem;
+    line-height: 1.8125rem;
     font-weight: 600;
 }
 @utility text-30-semibold {
     font-size: 1.875rem;
-    line-height: 2.25rem;
+    line-height: 2.1875rem;
     font-weight: 600;
-    letter-spacing: var(--tracking-tight);
 }
 @utility text-36-semibold {
     font-size: 2.25rem;
-    line-height: 2.5rem;
+    line-height: 2.625rem;
     font-weight: 600;
-    letter-spacing: var(--tracking-tighter);
 }
 @utility text-48-semibold {
     font-size: 3rem;
-    line-height: 3.25rem;
+    line-height: 3.5rem;
     font-weight: 600;
-    letter-spacing: var(--tracking-tighter);
+}
+
+/* === Заголовки (Figma DS: Cormorant Infant 700, mobile-first → десктоп) === */
+@utility text-h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem; /* 24px mobile */
+    line-height: 1.81875rem; /* 29.1px */
+    @media (width >= 48rem) {
+        font-size: 3rem; /* 48px desktop */
+        line-height: 3.63125rem; /* 58.1px */
+    }
+}
+@utility text-h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem; /* 16px mobile */
+    line-height: 1.2125rem; /* 19.4px */
+    @media (width >= 48rem) {
+        font-size: 2.5rem; /* 40px desktop */
+        line-height: 3.025rem; /* 48.4px */
+    }
+}
+@utility text-h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.875rem; /* 14px mobile */
+    line-height: 1.0625rem; /* 17px */
+    @media (width >= 48rem) {
+        font-size: 2rem; /* 32px desktop */
+        line-height: 2.425rem; /* 38.8px */
+    }
 }
 
 /* === Modal/Sheet/Popover — гарантия непрозрачного фона (используется вместо inline-style fallback) === */
@@ -674,10 +649,6 @@
     color: inherit;
     padding: 0 0.15rem;
     border-radius: 2px;
-}
-.dark .novel-editor mark {
-    background: oklch(0.7 0.13 100);
-    color: var(--background);
 }
 .novel-editor ul[data-type='taskList'] {
     list-style: none;

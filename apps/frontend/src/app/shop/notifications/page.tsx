@@ -1,21 +1,21 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
-import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import {
     useMarkAllRead,
     useMarkRead,
     useNotifications,
     useUnreadCount,
 } from '@/app/shop/hooks/use-notifications';
+import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 30;
 
@@ -102,7 +102,7 @@ function NotificationsPageInner() {
         <div className="flex flex-col gap-5 sm:gap-6">
             <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="text-24-semibold tracking-tight text-fg-primary sm:text-30-semibold">
+                    <h1 className="text-h1 text-fg-primary">
                         Уведомления
                     </h1>
                     {(unread ?? 0) > 0 && (

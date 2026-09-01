@@ -1,33 +1,34 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Archive, ChevronRight, CircleCheck, ClipboardList, Package, Truck } from 'lucide-react';
-import { trpc } from '@/lib/client/trpc';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AppLink } from '@/components/app-link';
-import { EmptyState } from '@/components/ui/empty-state';
-import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
-import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import type { ProductLabelSource } from '@/lib/product-label';
-import { useAppRouter } from '@/lib/hooks/use-app-router';
-import { MyPaymentRow } from '@/components/shop/my-payment-row';
-import { summarizePurchasePayments, type ShopPaymentView } from '@/components/shop/payment-proof';
-import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
-import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import {
-    PURCHASE_FULFILLMENT_LABELS,
-    PURCHASE_STATUS_LABELS,
+    getUnitByCode,
     HANDOFF_STATUS_LABELS,
+    type HandoffStatus,
     isPurchaseCompleted,
     isPurchasePaymentOpen,
-    getUnitByCode,
-    type HandoffStatus,
+    PURCHASE_FULFILLMENT_LABELS,
+    PURCHASE_STATUS_LABELS,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
+import { Archive, ChevronRight, CircleCheck, ClipboardList, Package, Truck } from 'lucide-react';
+import { useMemo } from 'react';
+
+import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
+import { AppLink } from '@/components/app-link';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { MyPaymentRow } from '@/components/shop/my-payment-row';
+import { type ShopPaymentView,summarizePurchasePayments } from '@/components/shop/payment-proof';
+import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { trpc } from '@/lib/client/trpc';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
+import type { ProductLabelSource } from '@/lib/product-label';
+import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
 
 function OrdersEmptyState({
@@ -282,7 +283,7 @@ export default function OrdersPage() {
 
     return (
         <div className="flex flex-col gap-5 sm:gap-6">
-            <h1 className="text-24-semibold tracking-tight text-fg-primary sm:text-30-semibold">Мои заказы</h1>
+            <h1 className="text-h1 text-fg-primary">Мои заказы</h1>
 
             <Tabs defaultValue="active">
                 <TabsList>

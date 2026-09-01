@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { Link2, ShieldCheck, Unlink } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { TelegramIcon, VkIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/shared/user-avatar';
@@ -10,10 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
-import { cn } from '@/lib/utils';
-
 import { useTgAuth } from '@/lib/hooks/use-tg-auth';
 import { useVkAuth } from '@/lib/hooks/use-vk-auth';
+import { cn } from '@/lib/utils';
 
 interface AccountCardProps {
     title: string;
@@ -118,7 +117,7 @@ export default function ProfilePage() {
 
     return (
         <div className="flex flex-col gap-5 sm:gap-6">
-            <h1 className="text-24-semibold tracking-tight text-fg-primary sm:text-30-semibold">Профиль</h1>
+            <h1 className="text-h1 text-fg-primary">Профиль</h1>
 
             <Card rounded="2xl" className="gap-0 py-0">
                 <div className="flex flex-wrap items-center gap-4 p-5 sm:p-6">

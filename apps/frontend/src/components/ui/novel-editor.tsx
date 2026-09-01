@@ -1,23 +1,5 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useRef } from 'react';
-import {
-    EditorBubble,
-    EditorBubbleItem,
-    EditorContent,
-    EditorRoot,
-    HighlightExtension,
-    HorizontalRule,
-    Placeholder,
-    StarterKit,
-    TaskItem,
-    TaskList,
-    TiptapLink,
-    TiptapUnderline,
-    useEditor as useCurrentEditor,
-    type EditorInstance,
-    type JSONContent,
-} from 'novel';
 import {
     Bold,
     Code as CodeIcon,
@@ -39,9 +21,27 @@ import {
     Underline as UnderlineIcon,
     Undo,
 } from 'lucide-react';
+import {
+    EditorBubble,
+    EditorBubbleItem,
+    EditorContent,
+    type EditorInstance,
+    EditorRoot,
+    HighlightExtension,
+    HorizontalRule,
+    type JSONContent,
+    Placeholder,
+    StarterKit,
+    TaskItem,
+    TaskList,
+    TiptapLink,
+    TiptapUnderline,
+    useEditor as useCurrentEditor,
+} from 'novel';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 
-import { cn } from '@/lib/utils';
 import { normalizeNovelHtml } from '@/lib/product-description';
+import { cn } from '@/lib/utils';
 
 interface NovelEditorProps {
     value?: string;
@@ -119,7 +119,7 @@ export function NovelEditor({
             className={cn(
                 'rounded-md border border-input bg-transparent shadow-xs',
                 'focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50',
-                'transition-[color,box-shadow] dark:bg-input/30',
+                'transition-[color,box-shadow]',
                 className,
             )}
         >

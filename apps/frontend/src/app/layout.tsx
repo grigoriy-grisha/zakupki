@@ -1,16 +1,24 @@
 import './globals.css';
 
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Cormorant_Infant, JetBrains_Mono, Raleway } from 'next/font/google';
 import Script from 'next/script';
 
+import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/lib/auth-provider';
 import { TrpcProvider } from '@/lib/client/trpc-provider';
-import { Toaster } from '@/components/ui/sonner';
 
-const inter = Inter({
+const raleway = Raleway({
     subsets: ['latin', 'cyrillic'],
-    variable: '--font-inter',
+    variable: '--font-raleway',
+    display: 'swap',
+});
+
+const cormorantInfant = Cormorant_Infant({
+    subsets: ['latin', 'cyrillic'],
+    weight: ['600', '700'],
+    style: ['normal', 'italic'],
+    variable: '--font-cormorant',
     display: 'swap',
 });
 
@@ -27,7 +35,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html lang="ru" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+        <html
+            lang="ru"
+            suppressHydrationWarning
+            className={`${raleway.variable} ${cormorantInfant.variable} ${jetbrainsMono.variable}`}
+        >
             <body className="antialiased" suppressHydrationWarning>
                 <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
                 <Script src="https://telegram.org/js/telegram-widget.js" strategy="lazyOnload" />

@@ -1,38 +1,38 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Package, PackageSearch } from 'lucide-react';
 import {
-    PURCHASE_FULFILLMENT_LABELS,
     computeUnitPriceRubNewModel,
+    type CurrencyRate,
     isSupplementPhase,
     mapToPurchaseItem,
-    type CurrencyRate,
+    PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
+import { ArrowLeft, Package, PackageSearch } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { use, useMemo, useState } from 'react';
 
 import { AppLink } from '@/components/app-link';
-import { trpc } from '@/lib/client/trpc';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 
 import { aggregateByItem } from '../../lib/order-aggregation';
-import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
-import { usePurchasePaymentDetail } from './hooks';
 import {
     CatalogToolbar,
+    pluralProducts,
     ProductGrid,
     PurchaseGridSkeleton,
     PurchaseStepper,
-    pluralProducts,
     type SortMode,
 } from './components';
 import type { ProductGridItem } from './components/product-grid';
+import { usePurchasePaymentDetail } from './hooks';
+import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 
 function getSortPriceRub(
     item: ProductGridItem,
@@ -246,7 +246,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             {totalCount} {pluralProducts(totalCount)}
                         </Badge>
                     </div>
-                    <h1 className="truncate text-20-semibold leading-tight text-fg-primary sm:text-30-semibold">
+                    <h1 className="truncate text-h1 text-fg-primary">
                         {purchase.tag}
                     </h1>
                     <p

@@ -1,8 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Tabs as TabsPrimitive } from 'radix-ui';
+import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -23,8 +23,8 @@ const tabsListVariants = cva(
     {
         variants: {
             variant: {
-                // Pill-вариант: активный — белый pill, неактивные — прозрачные.
-                default: 'gap-1 rounded-full bg-bg-soft p-1',
+                // Pill-вариант (Figma DS): активный — синяя заливка, неактивные — синий текст.
+                default: 'gap-2 rounded-full bg-transparent p-1',
                 // Line-вариант: классический underline-индикатор.
                 line: 'gap-0 bg-transparent border-b border-border',
             },
@@ -59,9 +59,9 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
                 "relative inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-13-medium transition-all",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50",
                 "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-3.5",
-                // По умолчанию (pill-вариант)
-                "text-fg-secondary hover:text-fg-primary",
-                "data-[state=active]:bg-bg-card data-[state=active]:text-fg-primary data-[state=active]:shadow-xs",
+                // Pill-вариант (Figma DS): неактивный — синий текст, активный — синяя заливка
+                "text-secondary hover:text-secondary/80",
+                "data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground",
                 // Line-вариант: без pill-фона, underline снизу
                 "group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:bg-transparent",
                 "group-data-[variant=line]/tabs-list:px-4 group-data-[variant=line]/tabs-list:py-2 group-data-[variant=line]/tabs-list:h-10",
@@ -81,4 +81,4 @@ function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPr
     return <TabsPrimitive.Content data-slot="tabs-content" className={cn('flex-1 outline-none', className)} {...props} />;
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants };
+export { Tabs, TabsContent, TabsList, tabsListVariants,TabsTrigger };

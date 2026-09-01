@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { NovelEditor } from '@/components/ui/novel-editor';
 import { AlertCircle, ChevronRight, Loader2, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NovelEditor } from '@/components/ui/novel-editor';
 import { postTemplateEngine } from '@/lib/product-description';
+
 import { useUpdatePostTemplate } from '../hooks';
 import { PostTemplatePreview } from './post-template-preview';
 
@@ -77,7 +79,7 @@ export function PostTemplateRow({
                         <PostTemplatePreview body={body} />
                     </div>
                     {unknownPlaceholders.length > 0 && (
-                        <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+                        <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-2 text-xs text-yellow-700">
                             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                             <span>
                                 Неизвестные метки: {unknownPlaceholders.map((k) => `{{${k}}}`).join(', ')}. Они попадут в

@@ -15,7 +15,7 @@ export function LoginForm({ onTelegramLogin, telegramLoading, autoLoginFailed }:
     return (
         <div className="flex w-full flex-col">
             <div className="flex flex-col items-center text-center animate-fade-in-up">
-                <h2 className="mt-5 text-24-semibold tracking-tight text-fg-primary">
+                <h2 className="mt-5 text-h1 text-fg-primary">
                     С возвращением!
                 </h2>
             </div>

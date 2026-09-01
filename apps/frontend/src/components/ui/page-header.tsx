@@ -39,7 +39,7 @@ function PageHeader({
                     )}
                     <div className="min-w-0 flex-1">
                         {badge && <div className="mb-2">{badge}</div>}
-                        <h1 className="text-24-semibold text-fg-primary sm:text-30-semibold">{title}</h1>
+                        <h1 className="text-h1 text-fg-primary">{title}</h1>
                         {descriptionMobile ? (
                             <>
                                 <p className="mt-1 hidden text-14-regular text-fg-secondary sm:block">
@@ -65,7 +65,7 @@ function PageHeader({
         <div className={cn('mb-6 flex items-start justify-between gap-4 sm:mb-8', className)}>
             <div className="min-w-0 flex-1">
                 {badge && <div className="mb-2">{badge}</div>}
-                <h1 className="text-24-semibold text-fg-primary sm:text-30-semibold">{title}</h1>
+                <h1 className="text-h1 text-fg-primary">{title}</h1>
                 {description && <p className="mt-1 text-14-regular text-fg-secondary">{description}</p>}
             </div>
             {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
