@@ -13,7 +13,10 @@ import { formatQty,type ItemOrderControls } from './item-ctx';
 export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: string | null }) {
     const price = ctx.unitPriceRub ?? ctx.price;
     const packInfo = ctx.packDiscountInfo;
-    const soldOutNoOrder = ctx.isSoldOut && !ctx.hasOrder;
+    // Packages bypass the supplement pool (whole packs, limited only by
+    // supplierLimit), so "Разобрано" applies only when packages are off too.
+    const packagesOrderable = ctx.showPackageButtons && ctx.canAddPackage;
+    const soldOutNoOrder = ctx.isSoldOut && !ctx.hasOrder && !packagesOrderable;
     const orderingClosedNoOrder = ctx.orderingClosed && !ctx.hasOrder;
 
     return (
@@ -89,7 +92,13 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         wrapClassName="hidden lg:flex"
                         value={
                             <>
-                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                                {ctx.currentQuantity > 0
+                                    ? `${formatQty(ctx.currentQuantity)} ${ctx.shortName}`
+                                    : ''}
+                                {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0
+                                    ? ' + '
+                                    : ''}
+                                {ctx.currentPackageCount > 0 ? `${ctx.currentPackageCount} упак.` : ''}
                             </>
                         }
                         onRemove={ctx.handleRemove}

@@ -35,6 +35,8 @@ export function ProductCardControls({
         return <InCartControls ctx={ctx} stop={stop} />;
     }
 
+    // Pool exhausted but packages still orderable: loose qty button stays disabled
+    // (canAdd is false), the package button keeps working.
     return (
         <div className="flex flex-col gap-1.5">
             <Button
@@ -98,7 +100,9 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                     )}
                 >
                     <span className="truncate">
-                        {ctx.currentQuantity} {ctx.shortName}
+                        {ctx.currentQuantity > 0 ? `${ctx.currentQuantity} ${ctx.shortName}` : ''}
+                        {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0 ? ' + ' : ''}
+                        {ctx.currentPackageCount > 0 ? `${ctx.currentPackageCount} упак.` : ''}
                     </span>
                 </div>
                 <button

@@ -84,7 +84,10 @@ function ProductCardImpl({
     );
 
     const hasOrder = ctx.hasOrder;
-    const isSoldOutNoOrder = ctx.isSoldOut && !hasOrder;
+    // Packages are whole packs and bypass the supplement pool (backend checks only
+    // supplierLimit), so the card is fully sold out only when packages are off too.
+    const packagesOrderable = ctx.showPackageButtons && ctx.canAddPackage;
+    const isSoldOutNoOrder = ctx.isSoldOut && !hasOrder && !packagesOrderable;
     const showPackHint = packInfo != null && (hasOrder ? ctx.fullPacks > 0 : true);
     const showMinHint = minHint != null && !hasOrder;
 
