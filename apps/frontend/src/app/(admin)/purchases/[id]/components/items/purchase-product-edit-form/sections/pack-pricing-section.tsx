@@ -8,19 +8,13 @@ import {
     solvePricePerPackFromUnitRub,
 } from '@zakupki/types';
 
+import { PACKAGE_UNITS } from '@/app/(admin)/products/lib';
+import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { PackageUnitSelect } from '@/components/shared/package-unit-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
-import { PACKAGE_UNITS } from '../../../../../../products/lib';
 import {
     formatUnitRub,
     formatWholeRub,
@@ -195,15 +189,12 @@ export function PackPricingSection({
                 </div>
                 <div>
                     <label className="mb-1 block text-12-regular text-fg-tertiary">
-                        С оргсбором, ₽
-                        <span className="ml-1 opacity-70">+{effOrgFee}%</span>
+                        С оргсбором, ₽<span className="ml-1 opacity-70">+{effOrgFee}%</span>
                     </label>
                     <InlineCell
                         value={packOrgRub}
                         disabled={!rubEditable}
-                        onCommit={(v) =>
-                            onPriceChange(solvePricePerPackFromPackOrgRub(v, rateToRub, effOrgFee))
-                        }
+                        onCommit={(v) => onPriceChange(solvePricePerPackFromPackOrgRub(v, rateToRub, effOrgFee))}
                         min={0}
                         ariaLabel="Цена за упаковку с оргсбором в рублях"
                         placeholder="—"
@@ -217,9 +208,7 @@ export function PackPricingSection({
                         value={unitRub}
                         disabled={!unitEditable}
                         onCommit={(v) =>
-                            onPriceChange(
-                                solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount),
-                            )
+                            onPriceChange(solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount))
                         }
                         min={0}
                         ariaLabel="Цена за 1 единицу в рублях"
@@ -262,10 +251,7 @@ export function PackPricingSection({
             {/* Оргсбор % */}
             <div className="mt-3">
                 <label className="mb-1 block text-12-regular text-fg-tertiary">
-                    Оргсбор, %
-                    <span className="ml-1 opacity-70">
-                        (по умолчанию {orgFeeDefaultPercent}%)
-                    </span>
+                    Оргсбор, %<span className="ml-1 opacity-70">(по умолчанию {orgFeeDefaultPercent}%)</span>
                 </label>
                 <Input
                     type="number"
@@ -283,8 +269,8 @@ export function PackPricingSection({
                     aria-label="Оргсбор процент"
                 />
                 <p className="mt-1.5 text-12-regular text-fg-tertiary">
-                    Поля связаны: введи цену в валюте или в любой рублёвой — остальные
-                    пересчитаются. Курс валюты задаётся в панели «Валюты закупки».
+                    Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты
+                    задаётся в панели «Валюты закупки».
                 </p>
             </div>
         </FormSection>

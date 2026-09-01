@@ -2,10 +2,11 @@
 
 import { CircleCheck, Clock, CreditCard } from 'lucide-react';
 
-import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { Button } from '@/components/ui/button';
 import { formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
+
+import { PurchasePaymentDialog } from './purchase-payment-dialog';
 
 interface PaymentStatusBlockProps {
     total: number;

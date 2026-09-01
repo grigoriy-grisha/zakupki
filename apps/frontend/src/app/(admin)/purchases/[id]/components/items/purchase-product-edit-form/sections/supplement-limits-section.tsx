@@ -1,12 +1,12 @@
 'use client';
 
+import { PACKAGE_UNITS } from '@/app/(admin)/products/lib';
 import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { FormField } from '@/components/ui/form-field';
 import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
 
-import { PackageEditor } from '../../../../../../products/components/package-fields';
-import { PACKAGE_UNITS } from '../../../../../../products/lib';
+import { PackageEditor } from './package-fields';
 
 interface SupplementLimitsSectionProps {
     minPackageAmount: number | null;

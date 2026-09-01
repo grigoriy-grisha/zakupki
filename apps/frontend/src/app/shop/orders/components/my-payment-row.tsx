@@ -3,11 +3,12 @@
 import { CircleCheck, CircleX, Clock, Eye } from 'lucide-react';
 import { useState } from 'react';
 
-import { MyPaymentProofDialog } from '@/components/shop/my-payment-proof-dialog';
 import { paymentHasProof, SHOP_PAYMENT_STATUS, type ShopPaymentView } from '@/components/shop/payment-proof';
 import { formatRub } from '@/lib/format/money';
 import { paymentTotal } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
+
+import { MyPaymentProofDialog } from './my-payment-proof-dialog';
 
 type MyPaymentRowProps = {
     payment: ShopPaymentView;

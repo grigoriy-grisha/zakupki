@@ -1,23 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { EyeOff, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react';
 import {
     solvePricePerPackFromPackOrgRub,
     solvePricePerPackFromPackRub,
     solvePricePerPackFromUnitRub,
 } from '@zakupki/types';
+import { EyeOff, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
+import { Highlight } from '@/components/shared/highlight';
+import { PackageUnitSelect } from '@/components/shared/package-unit-select';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,27 +21,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
-import { PackageUnitSelect } from '@/components/shared/package-unit-select';
-import { Highlight } from '@/components/shared/highlight';
-import { TruncatedText } from '@/components/shared/truncated-text';
 import { trpc } from '@/lib/client/trpc';
-import { cn } from '@/lib/utils';
 import type { ProductLabelSource } from '@/lib/product-label';
-import {
-    formatUnitRub,
-    formatWholeRub,
-    getRateToRub,
-} from '../../lib/items-table-pricing';
+import { cn } from '@/lib/utils';
+
+import { formatUnitRub, formatWholeRub, getRateToRub } from '../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef, PurchaseItem } from '../../lib/types';
+import { TruncatedText } from '../truncated-text';
 import { InlineCell } from './inline-cell';
 
 /** Вычисленные значения колонок новой модели цен (считаются в items-tab). */
@@ -93,12 +78,7 @@ interface ItemsTableRowProps {
     onToggleSelect: (id: number, v: boolean) => void;
     onEdit: (id: number) => void;
     onPublish: (id: number) => void;
-    onDelete: (target: {
-        id: number;
-        product: ProductLabelSource;
-        orderCount: number;
-        published: boolean;
-    }) => void;
+    onDelete: (target: { id: number; product: ProductLabelSource; orderCount: number; published: boolean }) => void;
     /** Тихий inline-коммит одного/нескольких полей позиции. */
     onCommit: (patch: ItemPatch) => void;
     /** Удалить пост в Telegram, оставив товар в закупке. */
@@ -153,9 +133,7 @@ function CommentCell({
                 aria-label="Редактировать комментарий"
             >
                 <Pencil className="size-3 shrink-0 text-fg-tertiary" />
-                <span className="truncate">
-                    {value ? <Highlight text={value} query={query} /> : '—'}
-                </span>
+                <span className="truncate">{value ? <Highlight text={value} query={query} /> : '—'}</span>
             </button>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
@@ -248,15 +226,10 @@ export function ItemsTableRow({
                             >
                                 <Highlight text={item.product.name ?? ''} query={searchQuery} />
                             </TruncatedText>
-                            {item.hidden && (
-                                <EyeOff className="size-3 shrink-0 text-fg-tertiary" />
-                            )}
+                            {item.hidden && <EyeOff className="size-3 shrink-0 text-fg-tertiary" />}
                         </div>
                         {item.supplier && (
-                            <TruncatedText
-                                fullText={item.supplier.name}
-                                className="text-11-regular text-fg-tertiary"
-                            >
+                            <TruncatedText fullText={item.supplier.name} className="text-11-regular text-fg-tertiary">
                                 {item.supplier.name}
                             </TruncatedText>
                         )}
@@ -311,9 +284,7 @@ export function ItemsTableRow({
                             aria-label="Валюта цены"
                             className="h-7 w-[76px] shrink-0 rounded-md border-border bg-bg-card px-1.5 text-11-medium text-fg-primary shadow-xs hover:border-ring"
                         >
-                            <span className="truncate">
-                                {item.currency?.name ?? '—'}
-                            </span>
+                            <span className="truncate">{item.currency?.name ?? '—'}</span>
                         </SelectTrigger>
                         <SelectContent align="end" position="popper" className="min-w-[8rem]">
                             <SelectItem value="none">—</SelectItem>
@@ -346,11 +317,7 @@ export function ItemsTableRow({
                     <InlineCell
                         value={packPriceWithOrgFeeRub}
                         disabled={!rubEditable}
-                        onCommit={(v) =>
-                            commitRubPrice(
-                                solvePricePerPackFromPackOrgRub(v, rateToRub, orgFeePercent),
-                            )
-                        }
+                        onCommit={(v) => commitRubPrice(solvePricePerPackFromPackOrgRub(v, rateToRub, orgFeePercent))}
                         min={0}
                         ariaLabel="Цена за упаковку с оргсбором в рублях"
                         align="right"
@@ -358,9 +325,7 @@ export function ItemsTableRow({
                         format={formatWholeRub}
                         className="w-full"
                     />
-                    <span className="w-9 shrink-0 text-11-regular text-fg-tertiary">
-                        +{orgFeePercent}%
-                    </span>
+                    <span className="w-9 shrink-0 text-11-regular text-fg-tertiary">+{orgFeePercent}%</span>
                 </div>
             </TableCell>
 
@@ -370,14 +335,7 @@ export function ItemsTableRow({
                         value={unitPriceRub}
                         disabled={!unitEditable}
                         onCommit={(v) =>
-                            commitRubPrice(
-                                solvePricePerPackFromUnitRub(
-                                    v,
-                                    rateToRub,
-                                    orgFeePercent,
-                                    packSize,
-                                ),
-                            )
+                            commitRubPrice(solvePricePerPackFromUnitRub(v, rateToRub, orgFeePercent, packSize))
                         }
                         min={0}
                         ariaLabel="Цена за 1 единицу в рублях"
@@ -386,9 +344,7 @@ export function ItemsTableRow({
                         format={formatUnitRub}
                         className="w-full"
                     />
-                    <span className="w-9 shrink-0 text-11-regular text-fg-tertiary">
-                        /{unit || 'ед'}
-                    </span>
+                    <span className="w-9 shrink-0 text-11-regular text-fg-tertiary">/{unit || 'ед'}</span>
                 </div>
             </TableCell>
 
@@ -495,12 +451,8 @@ export function ItemsTableRow({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-48">
-                        <DropdownMenuItem onClick={() => onEdit(item.id)}>
-                            Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={() => onCommit({ hidden: !item.hidden })}
-                        >
+                        <DropdownMenuItem onClick={() => onEdit(item.id)}>Редактировать</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onCommit({ hidden: !item.hidden })}>
                             <EyeOff className="size-3.5" />
                             {item.hidden ? 'Показать' : 'Скрыть'}
                         </DropdownMenuItem>
@@ -525,9 +477,7 @@ export function ItemsTableRow({
                                 onDelete({
                                     id: item.id,
                                     product: item.product,
-                                    orderCount: item.orderLines.filter(
-                                        (l) => l.status !== 'CANCELLED',
-                                    ).length,
+                                    orderCount: item.orderLines.filter((l) => l.status !== 'CANCELLED').length,
                                     published,
                                 })
                             }

@@ -15,11 +15,11 @@ import { Archive, ChevronRight, CircleCheck, ClipboardList, Package, Truck } fro
 import { useMemo } from 'react';
 
 import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
+import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
+import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { MyPaymentRow } from '@/components/shop/my-payment-row';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
-import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';

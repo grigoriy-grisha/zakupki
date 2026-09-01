@@ -1,14 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useRef, useState } from 'react';
 
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface TruncatedTextProps {
@@ -31,12 +26,7 @@ interface TruncatedTextProps {
  * Важно: родительский контейнер должен иметь `min-w-0` (или flex-shrink), чтобы
  * `truncate` сработал внутри фиксированной колонки таблицы.
  */
-export function TruncatedText({
-    children,
-    fullText,
-    className,
-    tooltipMaxWidth = 'max-w-xs',
-}: TruncatedTextProps) {
+export function TruncatedText({ children, fullText, className, tooltipMaxWidth = 'max-w-xs' }: TruncatedTextProps) {
     const ref = useRef<HTMLSpanElement>(null);
     const [open, setOpen] = useState(false);
 
@@ -61,9 +51,7 @@ export function TruncatedText({
                         {children}
                     </span>
                 </TooltipTrigger>
-                <TooltipContent className={tooltipMaxWidth}>
-                    {fullText ?? extractText(children)}
-                </TooltipContent>
+                <TooltipContent className={tooltipMaxWidth}>{fullText ?? extractText(children)}</TooltipContent>
             </Tooltip>
         </TooltipProvider>
     );

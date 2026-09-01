@@ -2,6 +2,7 @@
 
 import { Plus, X } from 'lucide-react';
 
+import { PACKAGE_UNITS } from '@/app/(admin)/products/lib';
 import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
@@ -9,8 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-
-import { PACKAGE_UNITS } from '../lib';
 
 /** Пустое поле вместо 0 — удобнее вводить цену с нуля. */
 function numInputValue(n: number, emptyWhenZero = true): string | number {
