@@ -94,7 +94,7 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
                                 <span
                                     aria-hidden
                                     className={cn(
-                                        'mx-2 h-px w-6 shrink-0 sm:mx-3 sm:h-0.5 sm:w-auto sm:flex-1',
+                                        'mx-2 h-px w-6 shrink-0 sm:mx-3 sm:mt-[17px] sm:h-0.5 sm:w-auto sm:flex-1 sm:self-start',
                                         isCompleted
                                             ? 'bg-secondary'
                                             : 'bg-fg-secondary/40 sm:bg-fg-secondary',
