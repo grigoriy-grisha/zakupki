@@ -14,7 +14,6 @@ import { NotificationBell } from '@/components/shop/notification-bell';
 import { withPlatformPrefix } from '@/lib/app-path';
 import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
 import { usePlatform } from '@/lib/hooks/use-platform';
-import { useUserRole } from '@/lib/hooks/use-user-role';
 import { cn } from '@/lib/utils';
 
 const navLinkClass = cn(
@@ -25,7 +24,6 @@ const navLinkClass = cn(
 export function ShopHeader() {
     const { data: session } = useSession();
     const platform = usePlatform();
-    const { isAdmin } = useUserRole();
     const isTelegramWebApp = useIsTelegramWebApp();
     const isAuthenticated = !!session?.user || isTelegramWebApp;
 
@@ -37,7 +35,7 @@ export function ShopHeader() {
             )}
         >
             <AppLink
-                href={isAdmin ? '/' : '/shop'}
+                href="/shop"
                 aria-label="На главную"
                 className="flex items-center transition-opacity hover:opacity-80"
             >
