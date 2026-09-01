@@ -315,7 +315,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             sideOffset={8}
                             className={cn(
                                 'w-72 max-w-[calc(100vw-2rem)] rounded-2xl border-0 p-3',
-                                'bg-white/85 shadow-lg ring-1 ring-black/5 backdrop-blur-md',
+                                'bg-white/95 shadow-lg ring-1 ring-black/5 backdrop-blur-md',
                             )}
                         >
                             <FilterTree
