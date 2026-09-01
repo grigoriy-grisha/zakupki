@@ -1,5 +1,6 @@
-import type { OrderLineRef } from '../../lib/types';
 import type { ProductLabelSource } from '@/lib/product-label';
+
+import type { OrderLineRef } from '../../lib/types';
 
 /**
  * Форма позиции закупки из trpc.purchases.getById (для ручного редактирования).

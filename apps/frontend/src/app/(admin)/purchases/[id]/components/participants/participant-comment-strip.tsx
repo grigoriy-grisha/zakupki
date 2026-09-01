@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Loader2, MessageSquare, Pencil, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -72,7 +72,7 @@ export function ParticipantCommentStrip({
 
     return (
         <div
-            className="rounded-2xl border border-border bg-bg-card p-3"
+            className="rounded-2xl bg-bg-soft p-3"
             aria-label={`Комментарий к участнику ${participantName}`}
         >
             {mode === 'read' ? (
@@ -81,7 +81,7 @@ export function ParticipantCommentStrip({
                         className={cn(
                             'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
                             hasComment
-                                ? 'bg-primary/10 text-primary'
+                                ? 'bg-secondary/10 text-secondary'
                                 : 'bg-bg-soft text-fg-tertiary',
                         )}
                         aria-hidden
@@ -146,7 +146,7 @@ export function ParticipantCommentStrip({
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <span
-                            className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary"
                             aria-hidden
                         >
                             <MessageSquare className="size-3.5" />

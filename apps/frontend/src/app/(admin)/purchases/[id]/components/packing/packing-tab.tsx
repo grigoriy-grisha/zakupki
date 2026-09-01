@@ -1,7 +1,7 @@
 'use client';
 
-import { PackingItemCard } from './packing-item-card';
 import type { PurchaseItem } from '../../lib/types';
+import { PackingItemCard } from './packing-item-card';
 
 interface PackingTabProps {
     purchaseId: number;

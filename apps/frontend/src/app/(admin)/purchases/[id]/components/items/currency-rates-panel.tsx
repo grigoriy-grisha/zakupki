@@ -164,7 +164,7 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
                         <div key={d.currencyId} className="flex items-center gap-2">
                             <div className="w-48">
                                 <Label className="sr-only">Валюта</Label>
-                                <div className="flex h-9 items-center rounded-md border border-input bg-background px-3 text-13-regular">
+                                <div className="flex h-9 items-center rounded-md border border-border bg-bg-card px-3 text-13-regular">
                                     {currencyName(d.currencyId)}
                                 </div>
                             </div>
@@ -183,10 +183,10 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-9 w-9 p-0 text-fg-tertiary hover:text-destructive"
+                                className="h-9 w-9 p-0 text-fg-tertiary hover:text-error"
                                 onClick={() => removeRate(index)}
                             >
-                                <X className="h-4 w-4" />
+                                <X className="size-4" />
                             </Button>
                         </div>
                     ))}

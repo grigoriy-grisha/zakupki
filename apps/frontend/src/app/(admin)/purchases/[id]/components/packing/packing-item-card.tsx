@@ -1,14 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
 import { isWeightUnit, normalizeUnitShortName } from '@zakupki/types';
+import { useMemo } from 'react';
 
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { useLocalStorageState } from '@/lib/client/use-local-storage-state';
+import { computePacks, type PackRow } from '@/lib/packing/compute-packs';
 import { cn } from '@/lib/utils';
 
-import { computePacks, type PackRow } from '@/lib/packing/compute-packs';
 import type { PurchaseItem } from '../../lib/types';
 import { PackingRow } from './packing-row';
 
@@ -82,7 +82,7 @@ export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
     };
 
     return (
-        <div className="rounded-2xl border border-border bg-bg-card">
+        <div className="rounded-2xl bg-bg-soft">
             <div className="flex flex-wrap items-start gap-3 border-b border-border-soft p-3 sm:p-4">
                 <ProductPhotoPreview
                     photoId={product.photos?.[0]?.id}

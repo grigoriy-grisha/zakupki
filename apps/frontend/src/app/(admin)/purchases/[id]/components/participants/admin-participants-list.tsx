@@ -53,7 +53,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                     description="Заказы и оплаты участников закупки."
                     actions={<AddParticipantDialog purchaseId={purchaseId} existingUserIds={new Set(data.userIds)} />}
                 />
-                <div className="rounded-2xl border border-border bg-bg-card">
+                <div className="rounded-2xl bg-bg-soft">
                     <EmptyState
                         icon={UsersIcon}
                         title="Заказов пока нет"
@@ -213,7 +213,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                         label={HANDOFF_STATUS_LABELS.SENT}
                         count={handoffCounts.SENT}
                         active={handoffFilter === 'SENT'}
-                        activeClass="border-primary/40 bg-primary/10 text-primary"
+                        activeClass="border-secondary/40 bg-secondary/10 text-secondary"
                         onClick={() => setHandoffFilter('SENT')}
                     />
                     <StatusChip
@@ -236,7 +236,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                 </div>
 
                 {filteredUserIds.length === 0 && (
-                    <div className="rounded-2xl border border-border bg-bg-card">
+                    <div className="rounded-2xl bg-bg-soft">
                         <EmptyState
                             icon={search.trim() ? SearchX : UsersIcon}
                             title={
@@ -343,7 +343,7 @@ function StatusChip({
             aria-pressed={active}
             className={cn(
                 'h-7 gap-1.5 rounded-full px-3 text-12-medium',
-                active ? (activeClass ?? 'border-primary/40 bg-primary/10 text-primary') : 'text-fg-secondary',
+                active ? (activeClass ?? 'border-secondary/40 bg-secondary/10 text-secondary') : 'text-fg-secondary',
             )}
         >
             {label}

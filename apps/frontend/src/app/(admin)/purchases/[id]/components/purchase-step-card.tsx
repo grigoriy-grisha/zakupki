@@ -1,29 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowRightIcon, SendIcon, Settings2Icon, ShieldCheckIcon } from 'lucide-react';
 import {
     PURCHASE_FULFILLMENT_LABELS,
     PURCHASE_FULFILLMENT_STATUSES,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
+import { ArrowRightIcon, Settings2Icon, ShieldCheckIcon } from 'lucide-react';
+import { useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { usePurchaseActions } from '../hooks';
-import { PublishToTgDialog } from './publish-to-tg-dialog';
-import { STEP_DESCRIPTIONS } from '../lib/step-descriptions';
 import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
+import { Button } from '@/components/ui/button';
+
+import { usePurchaseActions } from '../hooks';
+import { STEP_DESCRIPTIONS } from '../lib/step-descriptions';
+import { PublishToTgDialog } from './publish-to-tg-dialog';
 
 interface PurchaseStepCardProps {
     purchaseId: number;
     status: PurchaseFulfillmentStatus;
-    /** Кол-во отмеченных товаров для bulk-publish. */
     selectedForPublishCount: number;
-    /** Сбросить выделение после публикации. */
     onClearPublishSelection?: () => void;
-    /** Открыть диалог остатков для добора. */
     onOpenRemainderDialog?: () => void;
-    /** Тег закупки (для текста подтверждения). */
     purchaseTag?: string;
     canClose?: boolean;
 }
@@ -46,10 +43,6 @@ function nextStatus(s: PurchaseFulfillmentStatus): PurchaseFulfillmentStatus | n
     return PURCHASE_FULFILLMENT_STATUSES[idx + 1];
 }
 
-/**
- * Карточка-пояснение текущего этапа закупки. Содержит иконку, описание, и кнопки действий,
- * зависящие от этапа (publish-tg / remainder / advance / close).
- */
 export function PurchaseStepCard({
     purchaseId,
     status,
@@ -66,7 +59,6 @@ export function PurchaseStepCard({
     const next = nextStatus(status);
     const nextLabel = next ? (NEXT_STATUS_LABEL[status] ?? `→ ${PURCHASE_FULFILLMENT_LABELS[next]}`) : null;
 
-    // Shared-хук: подтверждение перед переключением этапа.
     const advanceConfirm = useStatusChangeConfirm<PurchaseFulfillmentStatus>({
         onConfirm: () => {
             if (next) actions.updateFulfillmentStatus.mutate({ id: purchaseId, fulfillmentStatus: next });
@@ -119,17 +111,17 @@ export function PurchaseStepCard({
     }
 
     return (
-        <div className="rounded-2xl border border-border bg-bg-card p-4 sm:p-5">
+        <div className="rounded-2xl bg-bg-soft p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                         <Icon className="size-5" />
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
                             <h2 className="text-18-semibold text-fg-primary">{desc.title}</h2>
                             {desc.hint && (
-                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-12-medium text-primary">
+                                <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-12-medium text-secondary">
                                     {desc.hint}
                                 </span>
                             )}
@@ -140,12 +132,7 @@ export function PurchaseStepCard({
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {desc.actions.includes('remainder') && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full"
-                            onClick={onOpenRemainderDialog}
-                        >
+                        <Button variant="outline" size="sm" onClick={onOpenRemainderDialog}>
                             <Settings2Icon className="size-3.5" />
                             Остатки для добора
                         </Button>
@@ -154,7 +141,6 @@ export function PurchaseStepCard({
                         <Button
                             variant="brand"
                             size="sm"
-                            className="rounded-full"
                             onClick={handleAdvance}
                             disabled={actions.updateFulfillmentStatus.isPending}
                         >
@@ -166,7 +152,6 @@ export function PurchaseStepCard({
                         <Button
                             variant="brand"
                             size="sm"
-                            className="rounded-full"
                             onClick={() => closeConfirm.requestStatusChange({ target: 'DONE' })}
                             disabled={actions.complete.isPending}
                         >

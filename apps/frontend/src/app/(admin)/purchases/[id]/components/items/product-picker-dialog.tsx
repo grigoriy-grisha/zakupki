@@ -173,7 +173,7 @@ function ProductPickerRow({ product, onOpenDetail }: { product: PickerProduct; o
                 'hover:border-border-strong hover:bg-bg-soft',
             )}
         >
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-bg-soft">
                 {photoId ? (
                     <img src={`/api/photos/${photoId}`} alt="" className="h-full w-full object-cover" />
                 ) : (

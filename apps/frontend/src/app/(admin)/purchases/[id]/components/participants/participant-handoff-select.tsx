@@ -1,7 +1,7 @@
 'use client';
 
-import { Archive, Check, ChevronDown, Clock, PackageCheck, Truck } from 'lucide-react';
 import { HANDOFF_DEFAULT_LABEL, HANDOFF_STATUS_LABELS, type HandoffStatus } from '@zakupki/types';
+import { Archive, Check, ChevronDown, Clock, PackageCheck, Truck } from 'lucide-react';
 
 import {
     DropdownMenu,
@@ -25,14 +25,14 @@ const OPTIONS: HandoffOption[] = [
         label: HANDOFF_DEFAULT_LABEL,
         icon: Clock,
         itemClass: 'text-fg-secondary',
-        triggerClass: 'border-border bg-bg-soft text-fg-secondary',
+        triggerClass: 'border-border bg-bg-card text-fg-secondary',
     },
     {
         value: 'SENT',
         label: HANDOFF_STATUS_LABELS.SENT,
         icon: Truck,
-        itemClass: 'text-primary',
-        triggerClass: 'border-primary/30 bg-primary/10 text-primary',
+        itemClass: 'text-secondary',
+        triggerClass: 'border-secondary/30 bg-secondary/10 text-secondary',
     },
     {
         value: 'RECEIVED',

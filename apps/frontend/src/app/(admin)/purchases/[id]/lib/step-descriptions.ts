@@ -1,3 +1,4 @@
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 import type { LucideIcon } from 'lucide-react';
 import {
     BoxIcon,
@@ -10,7 +11,6 @@ import {
     TruckIcon,
     WalletIcon,
 } from 'lucide-react';
-import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 export type StepActionId = 'publish-tg' | 'remainder' | 'advance' | 'close';
 

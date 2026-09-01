@@ -1,21 +1,18 @@
 'use client';
 
+import { Boxes,CheckCircle2, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
 import { use, useMemo, useState } from 'react';
-import { CheckCircle2, Loader2, Package, Rocket, Trash2, Users, Boxes } from 'lucide-react';
+
+import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { trpc } from '@/lib/client/trpc';
-import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
 
-import { usePurchaseActions, usePurchaseDetail } from './hooks';
-import { useParticipantsData } from './hooks/use-participants-data';
 import { STATUS_LABELS } from '../../lib/constants';
-import type { PurchaseItem } from './lib/types';
 import { ExportPurchaseButtons } from './components/export-purchase-buttons';
 import { ItemsTab } from './components/items/items-tab';
 import { PackingTab } from './components/packing/packing-tab';
@@ -24,6 +21,8 @@ import { PurchaseStats } from './components/purchase-stats';
 import { PurchaseStepCard } from './components/purchase-step-card';
 import { PurchaseStepper } from './components/purchase-stepper';
 import { SupplementDialog } from './components/supplements/supplement-dialog';
+import { usePurchaseActions, usePurchaseDetail } from './hooks';
+import { useParticipantsData } from './hooks/use-participants-data';
 
 type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'DONE' | 'CLOSED' | 'ARRIVED';
 type TabId = 'items' | 'packing' | 'participants';
@@ -54,12 +53,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
     const items = useMemo(() => purchase?.items ?? [], [purchase]);
 
-    // Shared-хуки для безопасной смены статуса (требуют явного подтверждения).
-    // ВАЖНО: вызываются ДО early-return, чтобы не нарушить Rules of Hooks.
     const purchaseTag = (purchase as { tag?: string } | undefined)?.tag ?? '';
 
     const deleteDraftConfirm = useStatusChangeConfirm<PurchaseStatus>({
-        onConfirm: () => actions.deleteDraft.mutate({ id } as never),  // eslint-disable-line @typescript-eslint/no-explicit-any
+        onConfirm: () => actions.deleteDraft.mutate({ id } as never),   
         buildMessage: () => ({
             title: 'Удалить черновик?',
             description: `Черновик «${purchaseTag}» будет удалён безвозвратно. Это действие нельзя отменить.`,
@@ -95,7 +92,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
     if (!purchase) {
         return (
-            <div className="rounded-2xl border border-border bg-bg-card p-10 text-center text-14-regular text-fg-secondary">
+            <div className="rounded-2xl bg-bg-soft p-10 text-center text-14-regular text-fg-secondary">
                 Закупка не найдена
             </div>
         );
@@ -123,17 +120,12 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             <>
                                 <Button
                                     variant="outline"
-                                    className="rounded-full"
                                     onClick={() => deleteDraftConfirm.requestStatusChange({ target: 'DRAFT' })}
                                 >
                                     <Trash2 className="size-4" />
                                     <span className="hidden sm:inline">Удалить</span>
                                 </Button>
-                                <Button
-                                    variant="brand"
-                                    className="rounded-full"
-                                    onClick={() => setActivateOpen(true)}
-                                >
+                                <Button variant="brand" onClick={() => setActivateOpen(true)}>
                                     <Rocket className="size-4" />
                                     <span className="hidden sm:inline">Активировать</span>
                                 </Button>
@@ -142,7 +134,6 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         {canComplete && (
                             <Button
                                 variant="destructive"
-                                className="rounded-full"
                                 onClick={() => completeConfirm.requestStatusChange({ target: 'DONE' })}
                             >
                                 <CheckCircle2 className="size-4" />
@@ -168,7 +159,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
             )}
 
             {isDraft && (
-                <div className="rounded-2xl border border-border bg-bg-card p-4">
+                <div className="rounded-2xl bg-bg-soft p-4">
                     <SectionHeader
                         title="Этап закупки"
                         description="Черновик не имеет этапа. Активируйте закупку, чтобы участники могли делать заказы."
@@ -186,25 +177,21 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
             />
 
             <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="gap-4">
-                <TabsList variant="line" className="w-full justify-start gap-0">
+                <TabsList>
                     <TabsTrigger value="items">
                         <Package className="size-3.5" />
                         Товары
-                        <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
-                            {items.length}
-                        </span>
+                        <span className="ml-1 text-12-medium tabular-nums opacity-80">{items.length}</span>
                     </TabsTrigger>
                     <TabsTrigger value="packing">
                         <Boxes className="size-3.5" />
                         Этикетки
-                        <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
-                            {items.length}
-                        </span>
+                        <span className="ml-1 text-12-medium tabular-nums opacity-80">{items.length}</span>
                     </TabsTrigger>
                     <TabsTrigger value="participants">
                         <Users className="size-3.5" />
                         Участники
-                        <span className="ml-1 rounded-full bg-bg-soft px-1.5 text-12-medium text-fg-tertiary">
+                        <span className="ml-1 text-12-medium tabular-nums opacity-80">
                             {participantsData.userIds.length}
                         </span>
                     </TabsTrigger>
@@ -235,21 +222,16 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     <DialogHeader>
                         <DialogTitle>Активировать закупку?</DialogTitle>
                     </DialogHeader>
-                    <p className="text-sm text-fg-secondary">
+                    <p className="text-14-regular text-fg-secondary">
                         Закупка станет доступна участникам для заказов. Публикация в Telegram выполняется
                         отдельно кнопкой «Опубликовать в TG».
                     </p>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            className="rounded-full"
-                            onClick={() => setActivateOpen(false)}
-                        >
+                        <Button variant="outline" onClick={() => setActivateOpen(false)}>
                             Отмена
                         </Button>
                         <Button
                             variant="brand"
-                            className="rounded-full"
                             disabled={actions.activate.isPending}
                             onClick={() =>
                                 actions.activate.mutate(

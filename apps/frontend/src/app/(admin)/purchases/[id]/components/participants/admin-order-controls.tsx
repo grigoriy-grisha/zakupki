@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { Check, Minus, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
@@ -16,8 +16,8 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import type { ProductLabelSource } from '@/lib/product-label';
+import { cn } from '@/lib/utils';
 
 // ── helpers ──────────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ function PositionOption({
                     </p>
                 )}
             </div>
-            {selected && <Check className="size-4 shrink-0 text-primary" />}
+            {selected && <Check className="size-4 shrink-0 text-secondary" />}
         </button>
     );
 }

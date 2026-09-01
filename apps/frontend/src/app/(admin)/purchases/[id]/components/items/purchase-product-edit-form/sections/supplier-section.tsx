@@ -1,15 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-
-import { FormSection } from '@/components/ui/form-section';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FormSection } from '@/components/ui/form-section';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 
@@ -87,7 +86,7 @@ export function SupplierSection({ supplierId, onChange }: SupplierSectionProps) 
             {current && (
                 <p className="text-12-regular text-fg-tertiary">
                     Выбран: <strong>{current.name}</strong>. Будет использован в плейсхолдере{' '}
-                    <code className="rounded bg-muted px-1 text-11-medium">{`{{поставщик}}`}</code>.
+                    <code className="rounded bg-bg-soft px-1 text-11-medium">{`{{поставщик}}`}</code>.
                 </p>
             )}
             <p className="text-12-regular text-fg-tertiary">

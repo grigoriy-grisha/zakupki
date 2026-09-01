@@ -137,7 +137,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
 
             <TooltipProvider delayDuration={150}>
                 {filtered.length === 0 ? (
-                    <div className="rounded-2xl border border-border bg-bg-card">
+                    <div className="rounded-2xl bg-bg-soft">
                         <EmptyState
                             icon={search.trim() ? SearchX : ClipboardList}
                             title={search.trim() ? 'Ничего не найдено' : 'Нет товаров в закупке'}
@@ -149,7 +149,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                         />
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
+                    <div className="overflow-hidden rounded-2xl border border-border-low bg-bg-card">
                         <Table className="table-fixed min-w-[2200px]">
                             <ItemsTableHeader
                                 selectableCount={selectableIds.length}
