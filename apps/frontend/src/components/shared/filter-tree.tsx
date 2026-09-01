@@ -14,6 +14,8 @@ export interface FilterTreeProps {
     onToggle: (id: string) => void;
     totalCount: number;
     onClear: () => void;
+    /** Truncate long labels instead of wrapping — for narrow columns. */
+    compact?: boolean;
 }
 
 export function FilterTree({
@@ -24,6 +26,7 @@ export function FilterTree({
     onToggle,
     totalCount,
     onClear,
+    compact = false,
 }: FilterTreeProps) {
     return (
         <div className="space-y-0.5">
@@ -37,8 +40,8 @@ export function FilterTree({
                 )}
             >
                 <Package className="size-4" />
-                Все товары
-                <span className="ml-auto rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary">
+                <span className={cn('min-w-0 flex-1 text-left', compact ? 'truncate' : undefined)}>Все товары</span>
+                <span className="ml-auto shrink-0 rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary">
                     {totalCount}
                 </span>
             </Button>
@@ -49,6 +52,7 @@ export function FilterTree({
                 onSelect={onSelect}
                 expandedIds={expandedIds}
                 onToggle={onToggle}
+                compact={compact}
             />
         </div>
     );
@@ -61,6 +65,7 @@ function FilterTreeNode({
     expandedIds,
     onToggle,
     depth = 0,
+    compact,
 }: Omit<FilterTreeProps, 'totalCount' | 'onClear'> & { depth?: number }) {
     return (
         <div className="space-y-0.5">
@@ -87,7 +92,7 @@ function FilterTreeNode({
                                         e.stopPropagation();
                                         onToggle(node.id);
                                     }}
-                                    className="flex h-5 w-5 items-center justify-center"
+                                    className="flex h-5 w-5 shrink-0 items-center justify-center"
                                 >
                                     {isExpanded ? (
                                         <ChevronDown className="size-3.5" />
@@ -96,7 +101,7 @@ function FilterTreeNode({
                                     )}
                                 </span>
                             ) : (
-                                <span className="w-5" />
+                                <span className="w-5 shrink-0" />
                             )}
                             {node.isBrandFolder ? (
                                 <Tag className="size-3.5 shrink-0 text-fg-tertiary" />
@@ -108,8 +113,20 @@ function FilterTreeNode({
                                     )}
                                 />
                             )}
-                            <span className="min-w-0 flex-1 text-left break-words">{node.label}</span>
-                            <span className="ml-auto rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary">
+                            <span
+                                className={cn(
+                                    'min-w-0 flex-1 text-left',
+                                    compact ? 'truncate' : 'break-words',
+                                )}
+                            >
+                                {node.label}
+                            </span>
+                            <span
+                                className={cn(
+                                    'rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary',
+                                    compact ? 'shrink-0' : 'ml-auto',
+                                )}
+                            >
                                 {node.count}
                             </span>
                         </Button>
@@ -121,6 +138,7 @@ function FilterTreeNode({
                                 expandedIds={expandedIds}
                                 onToggle={onToggle}
                                 depth={depth + 1}
+                                compact={compact}
                             />
                         )}
                     </div>

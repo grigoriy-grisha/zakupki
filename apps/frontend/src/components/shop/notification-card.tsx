@@ -25,7 +25,7 @@ interface NotificationCardProps {
     highlighted?: boolean;
 }
 
-function formatRelative(iso: Date | string): string {
+export function formatRelative(iso: Date | string): string {
     const date = typeof iso === 'string' ? new Date(iso) : iso;
     const diffMs = Date.now() - date.getTime();
     const min = Math.floor(diffMs / 60_000);
@@ -63,12 +63,11 @@ export function NotificationCard({ notification, density, onActivate, highlighte
     return (
         <div
             className={cn(
-                'flex rounded-xl border bg-bg-card transition-colors',
+                'flex rounded-2xl bg-bg-soft transition-colors',
                 density === 'compact' ? 'gap-2.5 p-3' : 'gap-3 p-4',
-                toneBorderClass(visual.tone),
+                !readAt ? 'border-2 border-gold/70' : cn('border', toneBorderClass(visual.tone)),
                 highlighted && 'ring-2 ring-primary/50',
-                !readAt && !highlighted && 'ring-1 ring-primary/20',
-                density === 'compact' && onActivate && 'cursor-pointer hover:bg-bg-soft',
+                density === 'compact' && onActivate && 'cursor-pointer hover:bg-bg-card',
             )}
             onClick={density === 'compact' ? onActivate : undefined}
         >

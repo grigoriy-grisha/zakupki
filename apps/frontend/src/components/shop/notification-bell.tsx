@@ -107,7 +107,7 @@ export function NotificationBell() {
                         >
                             <Bell className="size-4" />
                         </div>
-                        <p className="text-13-regular text-fg-tertiary">Нет уведомлений</p>
+                        <p className="text-13-regular text-fg-tertiary">Нет новых уведомлений</p>
                     </div>
                 )}
 

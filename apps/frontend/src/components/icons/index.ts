@@ -1,4 +1,9 @@
+export { BrandLogo } from './brand-logo';
+export { InstagramIcon } from './instagram-icon';
+export { PinterestIcon } from './pinterest-icon';
+export { TelegramCircleIcon } from './telegram-circle-icon';
 export { TelegramIcon } from './telegram-icon';
 export { TelegramOutlineIcon } from './telegram-outline-icon';
+export { VkCircleIcon } from './vk-circle-icon';
 export { VkIcon } from './vk-icon';
 export { VkOutlineIcon } from './vk-outline-icon';

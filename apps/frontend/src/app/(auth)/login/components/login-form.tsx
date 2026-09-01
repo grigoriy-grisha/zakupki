@@ -2,10 +2,8 @@
 
 import { Loader2 } from 'lucide-react';
 
-import { TelegramOutlineIcon, VkOutlineIcon } from '@/components/icons';
+import { BrandLogo, TelegramOutlineIcon, VkOutlineIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-
-import { BrandLogo } from './brand-logo';
 
 type LoginFormProps = {
     onTelegramLogin: () => void;

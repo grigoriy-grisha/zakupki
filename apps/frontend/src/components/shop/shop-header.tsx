@@ -1,55 +1,59 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
-import { ShoppingCart, LogIn, LogOut, User, ClipboardList } from 'lucide-react';
+import { FileText, LogIn, LogOut, ShoppingCart, User } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
 
 import { AppLink } from '@/components/app-link';
 import { NotificationBell } from '@/components/shop/notification-bell';
-import { Button } from '@/components/ui/button';
 import { withPlatformPrefix } from '@/lib/app-path';
 import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
 import { usePlatform } from '@/lib/hooks/use-platform';
 import { useUserRole } from '@/lib/hooks/use-user-role';
+import { cn } from '@/lib/utils';
+
+const navLinkClass = cn(
+    'flex h-10 items-center gap-2 rounded-full px-2.5 text-14-medium text-fg-primary',
+    'transition-colors hover:bg-bg-soft sm:px-3.5',
+);
 
 export function ShopHeader() {
     const { data: session } = useSession();
     const platform = usePlatform();
     const { isAdmin } = useUserRole();
-    // Inside a Telegram Mini App the user is always authenticated via initData,
-    // even when the next-auth cookie is missing. Hide login/logout there.
     const isTelegramWebApp = useIsTelegramWebApp();
     const isAuthenticated = !!session?.user || isTelegramWebApp;
 
     return (
-        <header className="flex h-14 shrink-0 items-center justify-between bg-bg-card px-4">
-            <AppLink href={isAdmin ? '/' : '/shop'} className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-                    <ShoppingCart className="h-4 w-4" />
-                </div>
-                <span className="text-18-semibold tracking-tight text-fg-primary">Закупки</span>
+        <header
+            className={cn(
+                'sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border-low',
+                'bg-bg-base px-4 sm:px-8',
+            )}
+        >
+            <AppLink
+                href={isAdmin ? '/' : '/shop'}
+                className="flex items-center gap-2.5 text-fg-primary transition-colors hover:text-primary"
+            >
+                <ShoppingCart className="size-5" />
+                <span className="text-16-medium sm:text-18-medium">Закупки</span>
             </AppLink>
 
-            <div className="flex items-center gap-1">
+            <nav className="flex items-center gap-1 sm:gap-2">
                 {isAuthenticated ? (
                     <>
-                        <AppLink href="/shop/profile">
-                            <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
-                                <User className="h-4 w-4" />
-                                <span className="hidden sm:inline">Профиль</span>
-                            </Button>
+                        <AppLink href="/shop/profile" className={navLinkClass}>
+                            <User className="size-[18px]" />
+                            <span className="hidden sm:inline">Профиль</span>
                         </AppLink>
-                        <AppLink href="/shop/orders">
-                            <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
-                                <ClipboardList className="h-4 w-4" />
-                                <span className="hidden sm:inline">Заказы</span>
-                            </Button>
+                        <AppLink href="/shop/orders" className={navLinkClass}>
+                            <FileText className="size-[18px]" />
+                            <span className="hidden sm:inline">Заказы</span>
                         </AppLink>
                         <NotificationBell />
                         {!isTelegramWebApp && (
-                            <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="rounded-full text-fg-secondary"
+                            <button
+                                type="button"
+                                className={cn(navLinkClass, 'px-2.5 text-fg-secondary sm:px-3')}
                                 onClick={() => {
                                     const base =
                                         process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
@@ -61,19 +65,20 @@ export function ShopHeader() {
                                 }}
                                 aria-label="Выйти"
                             >
-                                <LogOut className="h-4 w-4" />
-                            </Button>
+                                <LogOut className="size-[18px]" />
+                            </button>
                         )}
                     </>
                 ) : (
-                    <AppLink href={platform ? withPlatformPrefix('/login', platform) : '/login'}>
-                        <Button variant="outline" size="sm" className="rounded-full">
-                            <LogIn className="mr-2 h-4 w-4" />
-                            Войти
-                        </Button>
+                    <AppLink
+                        href={platform ? withPlatformPrefix('/login', platform) : '/login'}
+                        className={navLinkClass}
+                    >
+                        <LogIn className="size-[18px]" />
+                        Войти
                     </AppLink>
                 )}
-            </div>
+            </nav>
         </header>
     );
 }
