@@ -38,6 +38,10 @@ export function useSidebarSlotContent(render: () => ReactNode) {
     useEffect(() => {
         store?.set(render());
     });
+
+    useEffect(() => {
+        return () => store?.set(null);
+    }, [store]);
 }
 
 export function SidebarSlot() {

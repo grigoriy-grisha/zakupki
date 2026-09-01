@@ -123,7 +123,7 @@ function ProductCardImpl({
                         className="min-w-0 overflow-hidden"
                         primaryClassName={cn(
                             'block font-display text-18-bold leading-tight text-fg-primary line-clamp-2',
-                            'transition-colors group-hover:text-secondary sm:text-24-bold',
+                            'transition-colors group-hover:text-secondary sm:text-20-bold',
                         )}
                         secondaryClassName="mt-1 block line-clamp-2 text-11-regular text-fg-tertiary sm:text-12-regular"
                     />
@@ -136,7 +136,7 @@ function ProductCardImpl({
                 )}
 
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1.5">
-                    <span className="whitespace-nowrap font-display text-18-semibold text-fg-primary tabular-nums sm:text-24-semibold">
+                    <span className="whitespace-nowrap font-display text-18-semibold text-fg-primary tabular-nums sm:text-20-semibold">
                         {formatPriceRub(hasOrder ? ctx.total : ctx.price)}
                         <span className="ml-1 font-sans text-11-regular font-normal text-fg-tertiary sm:text-12-regular">
                             /{ctx.shortName}
