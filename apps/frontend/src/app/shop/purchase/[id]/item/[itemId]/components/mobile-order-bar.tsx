@@ -1,0 +1,59 @@
+'use client';
+
+import { Plus } from 'lucide-react';
+
+import { QuantityStepper } from '@/components/shared/quantity-stepper';
+import { Button } from '@/components/ui/button';
+import { formatPriceRub } from '@/lib/format/money';
+import { cn } from '@/lib/utils';
+
+import { type ItemOrderControls, formatQty } from './item-ctx';
+
+export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
+    return (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg-card/95 backdrop-blur lg:hidden">
+            <div
+                className={cn(
+                    'mx-auto flex w-full max-w-6xl items-center gap-3 px-4 pt-2.5',
+                    'pb-[calc(0.625rem+env(safe-area-inset-bottom))]',
+                )}
+            >
+                <div className="min-w-0 flex-1">
+                    <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">
+                        {ctx.hasOrder ? 'В корзине' : `Цена за ${ctx.shortName}`}
+                    </p>
+                    <p className="truncate text-16-semibold tabular-nums text-fg-primary">
+                        {ctx.hasOrder
+                            ? formatPriceRub(ctx.total)
+                            : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
+                    </p>
+                </div>
+                {ctx.hasOrder ? (
+                    <QuantityStepper
+                        size="md"
+                        wrapClassName="shrink-0"
+                        value={
+                            <>
+                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                            </>
+                        }
+                        onRemove={ctx.handleRemove}
+                        onAdd={ctx.handleAdd}
+                        canRemove={ctx.canDecrease}
+                        canAdd={ctx.canAdd}
+                    />
+                ) : (
+                    <Button
+                        variant="brand"
+                        className="h-10 shrink-0 rounded-xl px-5"
+                        onClick={ctx.handleAdd}
+                        disabled={!ctx.canAdd || ctx.isPending}
+                    >
+                        <Plus className="size-4" />
+                        Добавить
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}

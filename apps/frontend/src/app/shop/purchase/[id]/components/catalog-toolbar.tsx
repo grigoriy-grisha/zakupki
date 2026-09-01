@@ -1,37 +1,16 @@
 'use client';
 
-import {
-    ArrowUpDown,
-    Check,
-    ChevronDown,
-    ChevronRight,
-    Filter as FilterIcon,
-    Search,
-    ShoppingBag,
-    X,
-} from 'lucide-react';
+import { ChevronRight, Search, ShoppingBag, X } from 'lucide-react';
 
 import type { TreeNode } from '@/app/(admin)/products/lib/types';
-import { FilterTree } from '@/components/shared/filter-tree';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
-export type SortMode = 'default' | 'price-asc' | 'price-desc' | 'name-asc';
+import type { SortMode } from './catalog-toolbar-parts';
+import { CatalogFilterPopover, CatalogSortMenu } from './catalog-toolbar-parts';
 
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-    { value: 'default', label: 'По умолчанию' },
-    { value: 'price-asc', label: 'Сначала дешевле' },
-    { value: 'price-desc', label: 'Сначала дороже' },
-    { value: 'name-asc', label: 'По названию' },
-];
+export type { SortMode } from './catalog-toolbar-parts';
 
 interface CatalogToolbarProps {
     query: string;
@@ -80,7 +59,6 @@ export function CatalogToolbar({
     const hasActive = hasQuery || hasTreeFilter || onlyMine;
     const activeFilterCount = [hasQuery, hasTreeFilter, onlyMine].filter(Boolean).length;
     const showResetAll = activeFilterCount >= 2;
-    const sortLabel = SORT_OPTIONS.find((option) => option.value === sortMode)?.label ?? '';
     const counter = hasActive
         ? `${filteredCount} из ${totalCount}`
         : `${totalCount} ${pluralRu(totalCount, ['товар', 'товара', 'товаров'])}`;
@@ -133,94 +111,20 @@ export function CatalogToolbar({
                     </div>
 
                     {hasTree && (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(
-                                        'h-9 shrink-0 rounded-xl px-0 md:rounded-full md:px-4',
-                                        hasTreeFilter &&
-                                            'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15',
-                                    )}
-                                    aria-label="Фильтр товаров"
-                                >
-                                    <FilterIcon className="size-4" />
-                                    <span className="hidden md:inline">Фильтр</span>
-                                    {hasTreeFilter && (
-                                        <span className="hidden size-1.5 rounded-full bg-primary md:inline" />
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                align="start"
-                                sideOffset={8}
-                                className={cn(
-                                    'w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl',
-                                    'border border-border bg-bg-card p-0 shadow-xl ring-1 ring-black/5',
-                                )}
-                            >
-                                <div
-                                    className={cn(
-                                        'flex items-center justify-between border-b border-border-soft',
-                                        'bg-bg-card px-3 py-2',
-                                    )}
-                                >
-                                    <span className="text-12-medium text-fg-secondary">
-                                        {filteredCount} из {totalCount}
-                                    </span>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 rounded-full px-2 text-12-medium"
-                                        onClick={onClearTree}
-                                        disabled={!hasTreeFilter}
-                                    >
-                                        Сбросить
-                                    </Button>
-                                </div>
-                                <div className="max-h-[60dvh] overflow-y-auto bg-bg-card p-1.5">
-                                    <FilterTree
-                                        nodes={tree}
-                                        selectedId={selectedId}
-                                        onSelect={onSelectNode}
-                                        expandedIds={expandedIds}
-                                        onToggle={onToggle}
-                                        totalCount={totalCount}
-                                        onClear={onClearTree}
-                                    />
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        <CatalogFilterPopover
+                            tree={tree}
+                            selectedId={selectedId}
+                            onSelectNode={onSelectNode}
+                            expandedIds={expandedIds}
+                            onToggle={onToggle}
+                            onClearTree={onClearTree}
+                            totalCount={totalCount}
+                            filteredCount={filteredCount}
+                        />
                     )}
                 </div>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 shrink-0 rounded-xl md:rounded-full"
-                            aria-label="Сортировка товаров"
-                        >
-                            <ArrowUpDown className="size-4" />
-                            <span className="max-w-32 truncate">{sortLabel}</span>
-                            <ChevronDown className="size-3 opacity-60" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="rounded-xl p-1">
-                        {SORT_OPTIONS.map((option) => (
-                            <DropdownMenuItem
-                                key={option.value}
-                                onClick={() => onSortModeChange(option.value)}
-                                className="rounded-lg text-13-medium"
-                            >
-                                <span className="flex-1">{option.label}</span>
-                                {sortMode === option.value && <Check className="size-3.5 text-primary" />}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <CatalogSortMenu sortMode={sortMode} onSortModeChange={onSortModeChange} />
 
                 {showOnlyMine && (
                     <Button
@@ -241,100 +145,138 @@ export function CatalogToolbar({
             </div>
 
             {hasActive && (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {hasQuery && (
+                <ActiveFilterChips
+                    query={query}
+                    onQueryChange={onQueryChange}
+                    hasTreeFilter={hasTreeFilter}
+                    ancestorPath={ancestorPath}
+                    selectedFolderLabel={selectedFolderLabel}
+                    onClearTree={onClearTree}
+                    onlyMine={onlyMine}
+                    onOnlyMineToggle={onOnlyMineToggle}
+                    showResetAll={showResetAll}
+                    onResetAll={onResetAll}
+                />
+            )}
+        </div>
+    );
+}
+
+function ActiveFilterChips({
+    query,
+    onQueryChange,
+    hasTreeFilter,
+    ancestorPath,
+    selectedFolderLabel,
+    onClearTree,
+    onlyMine,
+    onOnlyMineToggle,
+    showResetAll,
+    onResetAll,
+}: {
+    query: string;
+    onQueryChange: (value: string) => void;
+    hasTreeFilter: boolean;
+    ancestorPath: { typeId: number; typeName: string; name: string }[];
+    selectedFolderLabel: string | null;
+    onClearTree: () => void;
+    onlyMine: boolean;
+    onOnlyMineToggle: () => void;
+    showResetAll: boolean;
+    onResetAll: () => void;
+}) {
+    const hasQuery = query.trim() !== '';
+
+    return (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {hasQuery && (
+                <span
+                    className={cn(
+                        'inline-flex items-center gap-1 rounded-full bg-bg-soft py-1 pr-1 pl-2.5',
+                        'text-12-medium text-fg-secondary',
+                    )}
+                >
+                    <span className="max-w-40 truncate">«{query.trim()}»</span>
+                    <button
+                        type="button"
+                        onClick={() => onQueryChange('')}
+                        aria-label="Сбросить поисковый запрос"
+                        className={cn(
+                            'flex size-5 items-center justify-center rounded-full text-fg-tertiary',
+                            'transition-colors hover:bg-border-soft hover:text-fg-primary',
+                        )}
+                    >
+                        <X className="size-3" />
+                    </button>
+                </span>
+            )}
+
+            {hasTreeFilter && (
+                <>
+                    {ancestorPath.map((segment, i) => (
                         <span
-                            className={cn(
-                                'inline-flex items-center gap-1 rounded-full bg-bg-soft py-1 pr-1 pl-2.5',
-                                'text-12-medium text-fg-secondary',
-                            )}
+                            key={`${segment.typeId}:${segment.name}`}
+                            className="flex items-center gap-1.5 text-fg-tertiary"
                         >
-                            <span className="max-w-40 truncate">«{query.trim()}»</span>
-                            <button
-                                type="button"
-                                onClick={() => onQueryChange('')}
-                                aria-label="Сбросить поисковый запрос"
-                                className={cn(
-                                    'flex size-5 items-center justify-center rounded-full text-fg-tertiary',
-                                    'transition-colors hover:bg-border-soft hover:text-fg-primary',
-                                )}
-                            >
-                                <X className="size-3" />
-                            </button>
+                            {i > 0 && <ChevronRight className="h-3 w-3" />}
+                            <span className="text-12-medium">
+                                {segment.typeName}: {segment.name}
+                            </span>
+                        </span>
+                    ))}
+                    {selectedFolderLabel != null && (
+                        <span className="flex items-center gap-1.5 text-fg-secondary">
+                            {ancestorPath.length > 0 && <ChevronRight className="h-3 w-3" />}
+                            <span className="text-12-medium">{selectedFolderLabel}</span>
                         </span>
                     )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                            'h-6 rounded-full px-2 text-12-medium text-fg-secondary',
+                            'hover:text-fg-primary',
+                        )}
+                        onClick={onClearTree}
+                        aria-label="Сбросить фильтр"
+                    >
+                        <X className="size-3" />
+                        Сбросить
+                    </Button>
+                </>
+            )}
 
-                    {hasTreeFilter && (
-                        <>
-                            {ancestorPath.map((segment, i) => (
-                                <span
-                                    key={`${segment.typeId}:${segment.name}`}
-                                    className="flex items-center gap-1.5 text-fg-tertiary"
-                                >
-                                    {i > 0 && <ChevronRight className="h-3 w-3" />}
-                                    <span className="text-12-medium">
-                                        {segment.typeName}: {segment.name}
-                                    </span>
-                                </span>
-                            ))}
-                            {selectedFolderLabel != null && (
-                                <span className="flex items-center gap-1.5 text-fg-secondary">
-                                    {ancestorPath.length > 0 && <ChevronRight className="h-3 w-3" />}
-                                    <span className="text-12-medium">{selectedFolderLabel}</span>
-                                </span>
-                            )}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                    'h-6 rounded-full px-2 text-12-medium text-fg-secondary',
-                                    'hover:text-fg-primary',
-                                )}
-                                onClick={onClearTree}
-                                aria-label="Сбросить фильтр"
-                            >
-                                <X className="size-3" />
-                                Сбросить
-                            </Button>
-                        </>
+            {onlyMine && (
+                <span
+                    className={cn(
+                        'inline-flex items-center gap-1 rounded-full bg-primary/10 py-1 pr-1 pl-2.5',
+                        'text-12-medium text-primary',
                     )}
+                >
+                    В заказе
+                    <button
+                        type="button"
+                        onClick={onOnlyMineToggle}
+                        aria-label="Показать все товары"
+                        className={cn(
+                            'flex size-5 items-center justify-center rounded-full text-primary/70',
+                            'transition-colors hover:bg-primary/15 hover:text-primary',
+                        )}
+                    >
+                        <X className="size-3" />
+                    </button>
+                </span>
+            )}
 
-                    {onlyMine && (
-                        <span
-                            className={cn(
-                                'inline-flex items-center gap-1 rounded-full bg-primary/10 py-1 pr-1 pl-2.5',
-                                'text-12-medium text-primary',
-                            )}
-                        >
-                            В заказе
-                            <button
-                                type="button"
-                                onClick={onOnlyMineToggle}
-                                aria-label="Показать все товары"
-                                className={cn(
-                                    'flex size-5 items-center justify-center rounded-full text-primary/70',
-                                    'transition-colors hover:bg-primary/15 hover:text-primary',
-                                )}
-                            >
-                                <X className="size-3" />
-                            </button>
-                        </span>
-                    )}
-
-                    {showResetAll && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                                'h-6 rounded-full px-2 text-12-medium text-fg-secondary',
-                                'hover:text-fg-primary',
-                            )}
-                            onClick={onResetAll}
-                        >
-                            Сбросить всё
-                        </Button>
-                    )}
-                </div>
+            {showResetAll && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn('h-6 rounded-full px-2 text-12-medium text-fg-secondary', 'hover:text-fg-primary')}
+                    onClick={onResetAll}
+                >
+                    Сбросить всё
+                </Button>
             )}
         </div>
     );

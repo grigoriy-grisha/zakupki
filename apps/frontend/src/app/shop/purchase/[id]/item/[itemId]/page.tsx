@@ -1,44 +1,36 @@
 'use client';
 
 import type { CurrencyRate } from '@zakupki/types';
-import { ArrowLeft, Ban, Building2, Package, PackageSearch, Percent, Plus } from 'lucide-react';
+import { ArrowLeft, Building2, PackageSearch } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
-import { use, useMemo, useState } from 'react';
+import { use, useMemo } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import type { ShopPurchaseItem } from '@/app/shop/lib/types';
 import { AppLink } from '@/components/app-link';
-import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { QuantityStepper } from '@/components/shared/quantity-stepper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
-import { formatPriceRub } from '@/lib/format/money';
-import { pluralRu } from '@/lib/format/plural';
 import {
     buildShopItemDescriptionRows,
     type ProductCatalogCardSource,
     type ProductLabelSource,
 } from '@/lib/product-label';
-import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
 
 import { aggregateUserLines } from '../../../../lib/order-aggregation';
-
-type ItemOrderControls = ReturnType<typeof useItemOrderControls>;
+import { ItemBuyPanel } from './components/item-buy-panel';
+import { ItemGallery } from './components/item-gallery';
+import { MobileOrderBar } from './components/mobile-order-bar';
+import { SectionCard } from './components/section-card';
 
 interface ItemDetailProduct extends ProductLabelSource {
     photos?: { id: number }[];
-}
-
-function formatQty(amount: number): string {
-    return amount % 1 === 0 ? String(amount) : amount.toFixed(3).replace(/\.?0+$/, '');
 }
 
 export default function ItemDetailPage({ params }: { params: Promise<{ id: string; itemId: string }> }) {
@@ -278,220 +270,6 @@ function ItemDetailLoaded({
 
             {showMobileBar && <MobileOrderBar ctx={ctx} />}
             {showMobileBar && <div className="h-20 shrink-0 lg:hidden" aria-hidden />}
-        </div>
-    );
-}
-
-function ItemGallery({ photoIds, alt }: { photoIds: number[]; alt: string }) {
-    const [activeIndex, setActiveIndex] = useState(0);
-    const activePhotoId = photoIds[activeIndex] ?? null;
-
-    return (
-        <div className="min-w-0">
-            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border bg-bg-soft">
-                {activePhotoId != null ? (
-                    <ProductPhotoPreview photoId={activePhotoId} photoIds={photoIds} alt={alt} fill zoomSize="lg" />
-                ) : (
-                    <div className="flex size-full items-center justify-center">
-                        <Package className="size-12 text-fg-disabled" />
-                    </div>
-                )}
-            </div>
-            {photoIds.length > 1 && (
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                    {photoIds.map((photoId, index) => (
-                        <button
-                            key={photoId}
-                            type="button"
-                            onClick={() => setActiveIndex(index)}
-                            className={cn(
-                                'size-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all sm:size-20',
-                                index === activeIndex
-                                    ? 'border-primary opacity-100'
-                                    : 'border-transparent opacity-60 hover:opacity-100',
-                            )}
-                            aria-label={`Фото ${index + 1}`}
-                            aria-current={index === activeIndex}
-                        >
-                            <img
-                                src={absoluteProductPhotoUrl(photoId)}
-                                alt=""
-                                loading="lazy"
-                                draggable={false}
-                                className="size-full object-cover"
-                            />
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
-    return (
-        <section className="overflow-hidden rounded-2xl border border-border bg-bg-card">
-            <h2 className="border-b border-border-soft px-4 py-3 text-14-semibold text-fg-primary sm:px-5">{title}</h2>
-            {children}
-        </section>
-    );
-}
-
-function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: string | null }) {
-    const price = ctx.unitPriceRub ?? ctx.price;
-    const packInfo = ctx.packDiscountInfo;
-    const soldOutNoOrder = ctx.isSoldOut && !ctx.hasOrder;
-    const orderingClosedNoOrder = ctx.orderingClosed && !ctx.hasOrder;
-
-    return (
-        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-bg-card p-4 shadow-xs sm:p-5">
-            {price > 0 && (
-                <div>
-                    <div className="flex flex-wrap items-baseline gap-x-1.5">
-                        <span className="text-24-semibold tabular-nums text-fg-primary">{formatPriceRub(price)}</span>
-                        <span className="text-13-regular text-fg-tertiary">/ {ctx.shortName}</span>
-                    </div>
-                    {packInfo && (
-                        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-success/10 px-2.5 py-2">
-                            <Percent className="size-3.5 shrink-0 text-success" />
-                            <p className="min-w-0 flex-1 text-12-medium text-fg-secondary">
-                                Пачка {formatQty(packInfo.packSize)} {ctx.shortName} —{' '}
-                                <span className="line-through text-fg-tertiary">
-                                    {formatPriceRub(packInfo.packPrice)}
-                                </span>{' '}
-                                <span className="text-13-semibold text-success tabular-nums">
-                                    {formatPriceRub(packInfo.discountedPackPrice)}
-                                </span>
-                            </p>
-                            <Badge type="subtle" variant="success" size="sm">
-                                −{packInfo.discountPercent}%
-                            </Badge>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {ctx.hasOrder && (
-                <div className="rounded-xl bg-bg-soft/60 p-3.5">
-                    <div className="flex items-center justify-between gap-2">
-                        <span className="text-12-medium text-fg-secondary">В заказе</span>
-                        <span className="text-14-semibold text-fg-primary tabular-nums">
-                            {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                            {ctx.currentPackageCount > 0 && (
-                                <span className="text-fg-secondary"> + {ctx.currentPackageCount} упак.</span>
-                            )}
-                        </span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-soft pt-2">
-                        <span className="text-12-medium text-fg-secondary">Итого</span>
-                        <span className="text-20-semibold text-primary tabular-nums">{formatPriceRub(ctx.total)}</span>
-                    </div>
-                    {ctx.fullPacks > 0 && (
-                        <p className="mt-1.5 flex items-center gap-1 text-12-medium text-success">
-                            <Percent className="size-3 shrink-0" />
-                            Скидка за {ctx.fullPacks} {pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])} применена
-                        </p>
-                    )}
-                </div>
-            )}
-
-            {soldOutNoOrder ? (
-                <Button variant="secondary" className="h-11 w-full rounded-xl" disabled>
-                    <Package className="size-4" />
-                    Разобрано
-                </Button>
-            ) : orderingClosedNoOrder ? (
-                <Button variant="secondary" className="h-11 w-full rounded-xl" disabled>
-                    <Ban className="size-4" />
-                    Приём заказов завершён
-                </Button>
-            ) : (
-                <div className="flex flex-col gap-2">
-                    <QuantityStepper
-                        size="lg"
-                        wrapClassName="hidden lg:flex"
-                        value={
-                            <>
-                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                            </>
-                        }
-                        onRemove={ctx.handleRemove}
-                        onAdd={ctx.handleAdd}
-                        canRemove={ctx.canDecrease}
-                        canAdd={ctx.canAdd}
-                    />
-                    {ctx.showPackageButtons && ctx.packSize != null && (
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                className="h-10 min-w-0 flex-1 rounded-xl text-13-medium"
-                                onClick={ctx.handleRemovePackage}
-                                disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
-                            >
-                                − 1 упак.
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="h-10 min-w-0 flex-1 rounded-xl text-13-medium"
-                                onClick={ctx.handleAddPackage}
-                                disabled={!ctx.canAddPackage || ctx.isPending}
-                            >
-                                + 1 упак. ({formatQty(ctx.packSize)} {ctx.shortName})
-                            </Button>
-                        </div>
-                    )}
-                    {minHint && <p className="text-center text-12-regular text-fg-tertiary">{minHint}</p>}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
-    return (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg-card/95 backdrop-blur lg:hidden">
-            <div
-                className={cn(
-                    'mx-auto flex w-full max-w-6xl items-center gap-3 px-4 pt-2.5',
-                    'pb-[calc(0.625rem+env(safe-area-inset-bottom))]',
-                )}
-            >
-                <div className="min-w-0 flex-1">
-                    <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">
-                        {ctx.hasOrder ? 'В корзине' : `Цена за ${ctx.shortName}`}
-                    </p>
-                    <p className="truncate text-16-semibold tabular-nums text-fg-primary">
-                        {ctx.hasOrder
-                            ? formatPriceRub(ctx.total)
-                            : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
-                    </p>
-                </div>
-                {ctx.hasOrder ? (
-                    <QuantityStepper
-                        size="md"
-                        wrapClassName="shrink-0"
-                        value={
-                            <>
-                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                            </>
-                        }
-                        onRemove={ctx.handleRemove}
-                        onAdd={ctx.handleAdd}
-                        canRemove={ctx.canDecrease}
-                        canAdd={ctx.canAdd}
-                    />
-                ) : (
-                    <Button
-                        variant="brand"
-                        className="h-10 shrink-0 rounded-xl px-5"
-                        onClick={ctx.handleAdd}
-                        disabled={!ctx.canAdd || ctx.isPending}
-                    >
-                        <Plus className="size-4" />
-                        Добавить
-                    </Button>
-                )}
-            </div>
         </div>
     );
 }
