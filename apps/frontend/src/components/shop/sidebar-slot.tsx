@@ -1,31 +1,52 @@
 'use client';
 
-import { createContext, type ReactNode,useContext, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
 
-interface SidebarSlotValue {
-    node: ReactNode;
-    setNode: (node: ReactNode) => void;
+interface SidebarSlotStore {
+    get: () => ReactNode;
+    set: (node: ReactNode) => void;
+    subscribe: (listener: () => void) => () => void;
 }
 
-const SidebarSlotContext = createContext<SidebarSlotValue | null>(null);
+const SidebarSlotContext = createContext<SidebarSlotStore | null>(null);
+
+function createSlotStore(): SidebarSlotStore {
+    let content: ReactNode = null;
+    const listeners = new Set<() => void>();
+    return {
+        get: () => content,
+        set: (node) => {
+            content = node;
+            listeners.forEach((listener) => listener());
+        },
+        subscribe: (listener) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+    };
+}
 
 export function SidebarSlotProvider({ children }: { children: ReactNode }) {
-    const [node, setNode] = useState<ReactNode>(null);
+    const store = useMemo(createSlotStore, []);
 
-    return <SidebarSlotContext.Provider value={{ node, setNode }}>{children}</SidebarSlotContext.Provider>;
+    return <SidebarSlotContext.Provider value={store}>{children}</SidebarSlotContext.Provider>;
 }
 
-export function useSidebarSlotContent(render: () => ReactNode, deps: unknown[]) {
-    const { setNode } = useContext(SidebarSlotContext) ?? {};
+export function useSidebarSlotContent(render: () => ReactNode) {
+    const store = useContext(SidebarSlotContext);
 
     useEffect(() => {
-        setNode?.(render());
-        return () => setNode?.(null);
-    }, [setNode, ...deps]);
+        store?.set(render());
+    });
 }
 
 export function SidebarSlot() {
-    const { node } = useContext(SidebarSlotContext) ?? { node: null };
+    const store = useContext(SidebarSlotContext);
+    const content = useSyncExternalStore(
+        store?.subscribe ?? ((listener: () => void) => () => void listener),
+        store?.get ?? (() => null),
+        () => null,
+    );
 
-    return <>{node}</>;
+    return <>{content}</>;
 }

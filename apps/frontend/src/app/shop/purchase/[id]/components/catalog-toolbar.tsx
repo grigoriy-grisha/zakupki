@@ -38,6 +38,7 @@ interface CatalogToolbarProps {
     onClearTree: () => void;
     onResetAll: () => void;
     hasTreeFilter: boolean;
+    mobileFilterSlot?: React.ReactNode;
 }
 
 export function CatalogToolbar({
@@ -55,6 +56,7 @@ export function CatalogToolbar({
     onClearTree,
     onResetAll,
     hasTreeFilter,
+    mobileFilterSlot,
 }: CatalogToolbarProps) {
     const hasQuery = query.trim() !== '';
     const hasActive = hasQuery || hasTreeFilter || onlyMine;
@@ -65,9 +67,8 @@ export function CatalogToolbar({
         : `${totalCount} ${pluralRu(totalCount, ['товар', 'товара', 'товаров'])}`;
 
     return (
-        <div className="flex flex-col gap-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <div className="relative w-full shrink-0 sm:w-64">
                     <Search
                         className={cn(
                             'pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2',
@@ -100,29 +101,34 @@ export function CatalogToolbar({
                             <X className="size-3.5" />
                         </button>
                     )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 sm:flex-1 sm:justify-end">
+                <div className="flex min-w-0 items-center gap-2">
+                    <SortMenu sortMode={sortMode} onSortModeChange={onSortModeChange} />
+
+                    {mobileFilterSlot && <div className="md:hidden">{mobileFilterSlot}</div>}
+
+                    {showOnlyMine && (
+                        <button
+                            type="button"
+                            onClick={onOnlyMineToggle}
+                            aria-pressed={onlyMine}
+                            className={cn(
+                                'flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4',
+                                'text-13-medium transition-colors',
+                                onlyMine
+                                    ? 'border-secondary bg-secondary text-primary-foreground'
+                                    : 'border-secondary/50 text-secondary hover:bg-secondary/10',
+                            )}
+                        >
+                            <ShoppingBag className="size-4" />
+                            <span className="hidden sm:inline">В заказе</span>
+                        </button>
+                    )}
                 </div>
 
-                <SortMenu sortMode={sortMode} onSortModeChange={onSortModeChange} />
-
-                {showOnlyMine && (
-                    <button
-                        type="button"
-                        onClick={onOnlyMineToggle}
-                        aria-pressed={onlyMine}
-                        className={cn(
-                            'flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4',
-                            'text-13-medium transition-colors',
-                            onlyMine
-                                ? 'border-secondary bg-secondary text-primary-foreground'
-                                : 'border-secondary/50 text-secondary hover:bg-secondary/10',
-                        )}
-                    >
-                        <ShoppingBag className="size-4" />
-                        В заказе
-                    </button>
-                )}
-
-                <span className="ml-auto shrink-0 text-14-medium text-secondary tabular-nums">{counter}</span>
+                <span className="shrink-0 text-14-medium text-secondary tabular-nums">{counter}</span>
             </div>
 
             {hasActive && (

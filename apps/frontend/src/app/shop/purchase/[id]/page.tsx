@@ -8,13 +8,15 @@ import {
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
-import { ChevronDown, Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
+import { Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 
 import { BrandLogo } from '@/components/icons';
+import { FilterTree } from '@/components/shared/filter-tree';
 import { useSidebarSlotContent } from '@/components/shop/sidebar-slot';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
@@ -67,7 +69,6 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const [query, setQuery] = useState('');
     const [sortMode, setSortMode] = useState<SortMode>('default');
     const [onlyMine, setOnlyMine] = useState(false);
-    const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
     const fulfillmentStatus = (purchase?.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
 
@@ -189,12 +190,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 />
             </div>
         ),
-        [tree, selectedId, expandedIds, totalCount, visibleItems.length, handleSelectNode, handleToggle, clearSelection],
     );
-
-    useEffect(() => {
-        setMobileFilterOpen(false);
-    }, [selectedId]);
 
     if (isLoading) {
         return (
@@ -252,36 +248,6 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 <PurchaseSelect currentPurchaseId={id} />
             </div>
 
-            <div className="md:hidden">
-                <button
-                    type="button"
-                    onClick={() => setMobileFilterOpen((open) => !open)}
-                    aria-expanded={mobileFilterOpen}
-                    className="flex items-center gap-2 text-14-medium text-fg-primary"
-                >
-                    <SlidersHorizontal className="size-4" />
-                    Фильтр
-                    <ChevronDown
-                        className={cn('size-4 text-fg-tertiary transition-transform', mobileFilterOpen && 'rotate-180')}
-                    />
-                </button>
-                {mobileFilterOpen && (
-                    <div className="mt-4">
-                        <CatalogFilterBlock
-                            tree={tree}
-                            selectedId={selectedId}
-                            onSelectNode={handleSelectNode}
-                            expandedIds={expandedIds}
-                            onToggle={handleToggle}
-                            onClearTree={clearSelection}
-                            totalCount={totalCount}
-                            filteredCount={visibleItems.length}
-                            className="w-full"
-                        />
-                    </div>
-                )}
-            </div>
-
             <CatalogToolbar
                 query={query}
                 onQueryChange={setQuery}
@@ -297,6 +263,47 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 onClearTree={clearSelection}
                 onResetAll={resetAllFilters}
                 hasTreeFilter={selectedId != null}
+                mobileFilterSlot={
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="Фильтр товаров"
+                                className={cn(
+                                    'flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4',
+                                    'text-13-medium transition-colors',
+                                    selectedId != null
+                                        ? 'border-secondary bg-secondary text-primary-foreground'
+                                        : 'border-border-low text-fg-primary hover:border-secondary hover:text-secondary',
+                                )}
+                            >
+                                <SlidersHorizontal className="size-4" />
+                                Фильтр
+                                {selectedId != null && (
+                                    <span className="text-12-medium tabular-nums">
+                                        {visibleItems.length} из {totalCount}
+                                    </span>
+                                )}
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            align="start"
+                            sideOffset={8}
+                            className="w-72 max-w-[calc(100vw-2rem)] rounded-2xl border-0 bg-bg-card p-3 shadow-xl ring-1 ring-black/5"
+                        >
+                            <FilterTree
+                                compact
+                                nodes={tree}
+                                selectedId={selectedId}
+                                onSelect={handleSelectNode}
+                                expandedIds={expandedIds}
+                                onToggle={handleToggle}
+                                totalCount={totalCount}
+                                onClear={clearSelection}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                }
             />
 
             {visibleItems.length === 0 && hasActiveFilters ? (

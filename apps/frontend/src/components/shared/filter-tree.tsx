@@ -36,7 +36,7 @@ export function FilterTree({
                 onClick={onClear}
                 className={cn(
                     'h-auto w-full justify-start gap-2 rounded-full px-3 py-2 text-13-medium',
-                    selectedId === null ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-secondary',
+                    selectedId === null ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-primary',
                 )}
             >
                 <Package className="size-4" />
@@ -81,8 +81,7 @@ function FilterTreeNode({
                             onClick={() => onSelect(node)}
                             className={cn(
                                 'h-auto w-full justify-start gap-1.5 rounded-full px-3 py-1.5 text-13-medium',
-                                isSelected ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-secondary',
-                                node.isTypeFolder && !isSelected && 'text-fg-tertiary',
+                                isSelected ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-primary',
                             )}
                             style={{ paddingLeft: `${depth * 14 + 12}px` }}
                         >
@@ -123,7 +122,7 @@ function FilterTreeNode({
                             </span>
                             <span
                                 className={cn(
-                                    'rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-tertiary',
+                                    'rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-secondary',
                                     compact ? 'shrink-0' : 'ml-auto',
                                 )}
                             >
