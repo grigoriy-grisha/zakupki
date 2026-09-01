@@ -2,6 +2,8 @@
 
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
+import { useEffect, useRef } from 'react';
+
 import { cn } from '@/lib/utils';
 
 interface PurchaseStepperProps {
@@ -42,20 +44,28 @@ function getStepIndex(status: PurchaseFulfillmentStatus): number {
 
 export function PurchaseStepper({ currentStatus, className }: PurchaseStepperProps) {
     const currentIndex = getStepIndex(currentStatus);
+    const currentRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        currentRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    }, [currentIndex]);
 
     return (
         <div
             className={cn('rounded-full bg-bg-soft/60 px-4 py-4 sm:px-8', className)}
             aria-label="Прогресс закупки"
         >
-            <ol className="flex items-center">
+            <ol className="flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:overflow-visible">
                 {STEPS.map((step, idx) => {
                     const isCompleted = idx < currentIndex;
                     const isCurrent = idx === currentIndex;
 
                     return (
-                        <li key={step.key} className="flex flex-1 items-center last:flex-none">
-                            <div className="flex shrink-0 flex-col items-center gap-1.5">
+                        <li key={step.key} className="flex items-center sm:flex-1 sm:last:flex-none">
+                            <div
+                                ref={isCurrent ? currentRef : undefined}
+                                className="flex shrink-0 items-center gap-1.5 sm:flex-col"
+                            >
                                 <span
                                     aria-current={isCurrent ? 'step' : undefined}
                                     className={cn(
@@ -67,8 +77,8 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
                                 />
                                 <span
                                     className={cn(
-                                        'hidden whitespace-nowrap text-12-regular sm:block',
-                                        isCurrent ? 'text-secondary' : 'text-fg-secondary',
+                                        'whitespace-nowrap',
+                                        isCurrent ? 'text-12-medium text-secondary' : 'text-12-regular text-fg-secondary',
                                     )}
                                 >
                                     {step.label}
@@ -78,7 +88,7 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
                                 <span
                                     aria-hidden
                                     className={cn(
-                                        'mx-2 h-px flex-1 sm:mx-3',
+                                        'mx-2 h-px w-6 shrink-0 sm:mx-3 sm:w-auto sm:flex-1',
                                         isCompleted ? 'bg-secondary' : 'bg-fg-secondary/40',
                                     )}
                                 />
