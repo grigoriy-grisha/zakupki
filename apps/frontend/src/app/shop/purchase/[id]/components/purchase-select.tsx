@@ -8,6 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 
+import { getPurchaseStageLabel } from './purchase-stepper';
+
 export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: number }) {
     const { data: purchases } = trpc.purchases.list.useQuery({ statuses: ['ACTIVE'] });
 
@@ -21,15 +23,19 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
             <PopoverTrigger asChild>
                 <button
                     type="button"
-                    className="flex h-12 w-full items-center gap-2 rounded-full bg-bg-soft px-5 text-left"
+                    className="flex h-12 w-full items-center justify-between gap-3 rounded-full bg-bg-soft px-5 text-left"
                 >
                     <span className="font-display text-18-semibold leading-none text-secondary">
                         {current?.tag ?? '#…'}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-12-regular text-fg-tertiary">
-                        {current ? PURCHASE_FULFILLMENT_LABELS[currentStatus] : ''}
+                    <span className="flex min-w-0 items-center gap-2">
+                        {current && (
+                            <span className="inline-flex h-7 items-center rounded-full border border-secondary px-3.5 text-12-medium text-secondary">
+                                {getPurchaseStageLabel(currentStatus)}
+                            </span>
+                        )}
+                        <ChevronDown className="size-4 shrink-0 text-fg-secondary" />
                     </span>
-                    <ChevronDown className="size-4 shrink-0 text-fg-secondary" />
                 </button>
             </PopoverTrigger>
             <PopoverContent

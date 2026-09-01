@@ -224,7 +224,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     return (
         <div className="flex flex-col gap-6 sm:gap-8">
-            <div className="flex flex-col items-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
+            <div className="hidden sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
                 <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 sm:order-1 sm:flex sm:flex-col sm:items-start sm:gap-4">
                     <span
                         className={cn(

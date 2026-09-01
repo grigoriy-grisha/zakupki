@@ -38,12 +38,10 @@ export function ShopHeader() {
         >
             <AppLink
                 href={isAdmin ? '/' : '/shop'}
-                className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
+                aria-label="На главную"
+                className="flex items-center transition-opacity hover:opacity-80"
             >
                 <BrandLogo className="h-9 w-auto text-primary" />
-                <span className="font-display text-20-semibold uppercase leading-none text-primary">
-                    Закупки
-                </span>
             </AppLink>
 
             <nav className="flex items-center gap-1 sm:gap-2">
