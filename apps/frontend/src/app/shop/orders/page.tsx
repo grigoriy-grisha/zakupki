@@ -16,6 +16,7 @@ import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
+import { BrandLogo } from '@/components/icons';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
@@ -39,16 +40,14 @@ function OrdersEmptyState({
     const router = useAppRouter();
 
     return (
-        <div className="py-4">
-            <EmptyState
-                variant="plain"
-                icon={ClipboardList}
-                title={title}
-                description={description}
-                actionLabel={showShopLink ? 'К закупкам' : undefined}
-                onAction={showShopLink ? () => router.push('/shop') : undefined}
-            />
-        </div>
+        <EmptyState
+            variant="plain"
+            icon={ClipboardList}
+            title={title}
+            description={description}
+            actionLabel={showShopLink ? 'К закупкам' : undefined}
+            onAction={showShopLink ? () => router.push('/shop') : undefined}
+        />
     );
 }
 
@@ -65,7 +64,7 @@ function OrdersSegmentedTabs({
 }) {
     return (
         <div
-            className="inline-flex w-fit max-w-full self-start overflow-hidden rounded-full border-2 border-secondary"
+            className="inline-flex w-fit max-w-full self-center overflow-hidden rounded-full border-2 border-secondary sm:self-start"
             role="tablist"
         >
             <button
@@ -254,9 +253,10 @@ export default function OrdersPage() {
 
     if (!myOrders?.length) {
         return (
-            <div className="flex flex-col gap-6 sm:gap-8">
-                <h1 className="text-h1 text-secondary">Мои заказы</h1>
-                <div className="rounded-[20px] bg-bg-soft">
+            <div className="flex flex-col gap-5 sm:gap-8">
+                <BrandLogo className="mx-auto w-[124px] text-primary sm:hidden" />
+                <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
+                <div className="rounded-[10px] bg-bg-soft sm:rounded-[20px]">
                     <EmptyState
                         variant="plain"
                         icon={ClipboardList}
@@ -271,10 +271,11 @@ export default function OrdersPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 sm:gap-8">
-            <h1 className="text-h1 text-secondary">Мои заказы</h1>
+        <div className="flex flex-col gap-5 sm:gap-8">
+            <BrandLogo className="mx-auto w-[124px] text-primary sm:hidden" />
+            <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
 
-            <div className="rounded-[20px] bg-bg-soft p-4 sm:p-8">
+            <div className="rounded-[10px] bg-bg-soft p-4 sm:rounded-[20px] sm:p-8">
                 <OrdersSegmentedTabs
                     tab={tab}
                     onTabChange={setTab}
