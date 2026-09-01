@@ -35,7 +35,7 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
             <PopoverContent
                 align="start"
                 sideOffset={8}
-                className="w-[calc(100vw-2rem)] max-w-sm rounded-2xl border-0 bg-bg-card p-2 shadow-xl ring-1 ring-black/5"
+                className="w-[calc(100vw-2rem)] max-w-sm rounded-2xl border-0 bg-white/80 p-2 shadow-xl ring-1 ring-black/5 backdrop-blur-xl"
             >
                 <div className="flex flex-col items-stretch gap-1">
                     {purchases.map((purchase) => {

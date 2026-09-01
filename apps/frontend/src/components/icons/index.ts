@@ -1,4 +1,9 @@
 export { BrandLogo } from './brand-logo';
+export { HeaderBellIcon } from './header-icons';
+export { HeaderCartIcon } from './header-icons';
+export { HeaderLogoutIcon } from './header-icons';
+export { HeaderOrdersIcon } from './header-icons';
+export { HeaderProfileIcon } from './header-icons';
 export { InstagramIcon } from './instagram-icon';
 export { PinterestIcon } from './pinterest-icon';
 export { TelegramCircleIcon } from './telegram-circle-icon';

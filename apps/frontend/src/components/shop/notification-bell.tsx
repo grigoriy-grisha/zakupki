@@ -2,7 +2,7 @@
 
 import { Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { type ComponentType,useState } from 'react';
 
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
 import { AppLink } from '@/components/app-link';
@@ -14,7 +14,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
-export function NotificationBell() {
+export function NotificationBell({
+    icon: BellGlyph = Bell,
+    iconClassName,
+}: {
+    icon?: ComponentType<{ className?: string }>;
+    iconClassName?: string;
+} = {}) {
     const [open, setOpen] = useState(false);
     const router = useRouter();
     const { data: count, isLoading: countLoading } = useUnreadCount();
@@ -38,7 +44,7 @@ export function NotificationBell() {
                     className="relative rounded-full text-fg-secondary"
                     aria-label="Уведомления"
                 >
-                    <Bell className="size-4" />
+                    <BellGlyph className={cn('size-5', iconClassName)} />
                     {!countLoading && unread > 0 && (
                         <span
                             className={cn(
@@ -55,8 +61,7 @@ export function NotificationBell() {
             <PopoverContent
                 align="end"
                 className={cn(
-                    'w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl',
-                    'border border-border bg-bg-card p-0 shadow-xl ring-1 ring-black/5',
+                    'w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-0 p-0 shadow-xl ring-1 ring-black/5',
                 )}
             >
                 <div className="flex items-center justify-between gap-2 border-b border-border-soft px-3 py-2.5">
@@ -105,7 +110,7 @@ export function NotificationBell() {
                                 'bg-bg-soft text-fg-tertiary',
                             )}
                         >
-                            <Bell className="size-4" />
+                            <BellGlyph className={cn('size-5', iconClassName)} />
                         </div>
                         <p className="text-13-regular text-fg-tertiary">Нет новых уведомлений</p>
                     </div>

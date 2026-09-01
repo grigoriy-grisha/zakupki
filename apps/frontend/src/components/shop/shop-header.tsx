@@ -1,9 +1,15 @@
 'use client';
 
-import { FileText, LogIn, LogOut, ShoppingCart, User } from 'lucide-react';
-import { signOut, useSession } from 'next-auth/react';
+import { signOut,useSession } from 'next-auth/react';
 
 import { AppLink } from '@/components/app-link';
+import {
+    HeaderBellIcon,
+    HeaderCartIcon,
+    HeaderLogoutIcon,
+    HeaderOrdersIcon,
+    HeaderProfileIcon,
+} from '@/components/icons';
 import { NotificationBell } from '@/components/shop/notification-bell';
 import { withPlatformPrefix } from '@/lib/app-path';
 import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
@@ -34,7 +40,7 @@ export function ShopHeader() {
                 href={isAdmin ? '/' : '/shop'}
                 className="flex items-center gap-2.5 text-fg-primary transition-colors hover:text-primary"
             >
-                <ShoppingCart className="size-5" />
+                <HeaderCartIcon className="size-5" />
                 <span className="text-16-medium sm:text-18-medium">Закупки</span>
             </AppLink>
 
@@ -42,18 +48,18 @@ export function ShopHeader() {
                 {isAuthenticated ? (
                     <>
                         <AppLink href="/shop/profile" className={navLinkClass}>
-                            <User className="size-[18px]" />
+                            <HeaderProfileIcon className="size-5" />
                             <span className="hidden sm:inline">Профиль</span>
                         </AppLink>
                         <AppLink href="/shop/orders" className={navLinkClass}>
-                            <FileText className="size-[18px]" />
+                            <HeaderOrdersIcon className="size-5" />
                             <span className="hidden sm:inline">Заказы</span>
                         </AppLink>
-                        <NotificationBell />
+                        <NotificationBell icon={HeaderBellIcon} iconClassName="size-5 text-fg-primary" />
                         {!isTelegramWebApp && (
                             <button
                                 type="button"
-                                className={cn(navLinkClass, 'px-2.5 text-fg-secondary sm:px-3')}
+                                className={cn(navLinkClass, 'px-2.5 text-fg-primary sm:px-3')}
                                 onClick={() => {
                                     const base =
                                         process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ??
@@ -65,7 +71,7 @@ export function ShopHeader() {
                                 }}
                                 aria-label="Выйти"
                             >
-                                <LogOut className="size-[18px]" />
+                                <HeaderLogoutIcon className="size-5" />
                             </button>
                         )}
                     </>
@@ -74,7 +80,7 @@ export function ShopHeader() {
                         href={platform ? withPlatformPrefix('/login', platform) : '/login'}
                         className={navLinkClass}
                     >
-                        <LogIn className="size-[18px]" />
+                        <HeaderLogoutIcon className="size-5" />
                         Войти
                     </AppLink>
                 )}
