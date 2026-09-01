@@ -15,6 +15,7 @@ import { getUnitPriceRub } from '../../lib/items-table-pricing';
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { defaultUnitField } from '../../lib/unit-defaults';
+import { gramsOrDefault, mergeTemplateIntoDescription, toNum } from './purchase-product-edit-form/form-utils';
 import { DescriptionSection } from './purchase-product-edit-form/sections/description-section';
 import {
     GRAM_DEFAULT_MIN_PACKAGE,
@@ -90,46 +91,6 @@ interface PurchaseProductEditFormProps {
      * `false` — пустая форма. Используется при **создании нового**.
      */
     loadSavedDescription?: boolean;
-}
-
-/** Нормализация Decimal/строки в number | null. */
-function toNum(v: string | number | null | undefined): number | null {
-    if (v == null || v === '') return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-}
-
-/**
- * Для граммовых позиций — дефолт для мин. фасовки / шага добора, если значение
- * не было явно сохранено. Грамм — bulk-единица, дефолт 1 почти всегда бессмысленен
- * (никто не заказывает 1 грамм чая). Для всех остальных единиц возвращаем null
- * (тогда в UI показывается стандартный placeholder «По умолчанию (1)»).
- *
- * Важно: если в БД лежит явное значение — отдаём его как есть, не перезатираем.
- */
-function gramsOrDefault(
-    saved: string | number | null | undefined,
-    unit: string | null | undefined,
-    gramDefault: number,
-): number | null {
-    const num = toNum(saved);
-    if (num != null) return num;
-    return unit === GRAM_UNIT ? gramDefault : null;
-}
-
-function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
-    if (!prevAuto) return nextAuto;
-    const normCurrent = normalizeNovelHtml(current);
-    const normPrev = normalizeNovelHtml(prevAuto);
-    const normNext = normalizeNovelHtml(nextAuto);
-    if (normCurrent === normPrev) return nextAuto;
-    if (normCurrent.startsWith(normPrev)) {
-        return nextAuto + current.slice(prevAuto.length);
-    }
-    if (normCurrent !== normNext) {
-        return current;
-    }
-    return nextAuto;
 }
 
 /**
