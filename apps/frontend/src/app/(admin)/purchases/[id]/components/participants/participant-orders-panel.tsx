@@ -50,7 +50,7 @@ export function ParticipantOrdersPanel({
     const merged = mergeParticipantOrders(orders);
 
     return (
-        <div className="rounded-2xl bg-bg-soft">
+        <div className="overflow-hidden rounded-2xl bg-bg-soft">
             <div className="flex items-center justify-between gap-2 border-b border-border-soft px-3 py-2">
                 <span className="text-12-medium uppercase tracking-wide text-fg-tertiary">
                     {purchaseOrderId != null
@@ -147,7 +147,7 @@ export function ParticipantOrdersPanel({
                         </div>
                     );
                 })}
-                <div className="flex items-center justify-between bg-bg-soft px-3 py-2">
+                <div className="flex items-center justify-between px-3 py-2">
                     <span className="text-12-semibold uppercase tracking-wide text-fg-tertiary">Итого</span>
                     <span className="text-14-semibold tabular-nums text-fg-primary">{formatRub(due)}</span>
                 </div>
