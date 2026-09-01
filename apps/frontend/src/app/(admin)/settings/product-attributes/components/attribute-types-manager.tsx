@@ -58,7 +58,7 @@ export function AttributeTypesManager() {
                     />
                 </div>
             ) : (
-                <div className="rounded-lg border border-border-low p-2">
+                <div className="rounded-lg bg-bg-soft/60 p-2">
                     {tree.map((node, i) => (
                         <AttributeTypeCard
                             key={node.type.id}

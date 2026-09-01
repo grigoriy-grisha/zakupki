@@ -17,7 +17,7 @@ export function ItemsTableHeader({
     return (
         <TableHeader>
             <TableRow>
-                <TableHead className="sticky left-0 z-10 w-[200px] bg-bg-card">Товар</TableHead>
+                <TableHead className="sticky left-0 z-10 w-[200px] bg-bg-soft">Товар</TableHead>
                 <TableHead className="w-[140px] px-3 text-right">Вес упаковки</TableHead>
                 <TableHead className="w-[160px] px-3 text-right">Цена за упаковку</TableHead>
                 <TableHead className="w-[150px] px-3 text-right">Цена за упаковку ₽</TableHead>
@@ -43,7 +43,7 @@ export function ItemsTableHeader({
                         'TG'
                     )}
                 </TableHead>
-                <TableHead className="sticky right-0 z-10 w-[56px] bg-bg-card" />
+                <TableHead className="sticky right-0 z-10 w-[56px] bg-bg-soft" />
             </TableRow>
         </TableHeader>
     );

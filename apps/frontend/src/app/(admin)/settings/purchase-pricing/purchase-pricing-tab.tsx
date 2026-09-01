@@ -52,7 +52,7 @@ export function PurchasePricingTab() {
                 </p>
             </div>
 
-            <div className="space-y-4 rounded-lg border border-border-low bg-bg-card p-4">
+            <div className="space-y-4 rounded-2xl bg-bg-soft p-4">
                 <div className="space-y-2">
                     <Label htmlFor="org-fee-percent">Орг. сбор по умолчанию, %</Label>
                     <p className="text-14-regular text-fg-secondary">

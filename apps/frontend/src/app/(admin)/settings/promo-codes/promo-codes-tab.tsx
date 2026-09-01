@@ -20,7 +20,7 @@ export function PromoCodesTab() {
                 {!isLoading && <PromoCodeDialog />}
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border-low bg-bg-card">
+            <div className="overflow-hidden rounded-2xl bg-bg-soft">
                 <Table>
                     <TableHeader>
                         <TableRow>

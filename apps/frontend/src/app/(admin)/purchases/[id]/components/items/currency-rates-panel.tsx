@@ -124,7 +124,7 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
     };
 
     return (
-        <div className="rounded-2xl border border-border bg-bg-card p-4">
+        <div className="rounded-2xl bg-bg-soft p-4">
             <div className="mb-3 flex items-center justify-between">
                 <div>
                     <h3 className="text-14-medium">Валюты закупки</h3>

@@ -98,7 +98,7 @@ export function ItemsTableRow({
 
     return (
         <TableRow
-            className="group hover:bg-bg-soft"
+            className="group hover:bg-bg-card"
             data-published={published || undefined}
             data-hidden={item.hidden || undefined}
         >

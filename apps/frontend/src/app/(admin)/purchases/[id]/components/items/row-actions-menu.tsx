@@ -41,7 +41,7 @@ export function RowActionsCell({
     onRegenerate?: (target: { itemId: number }) => void;
 }) {
     return (
-        <TableCell className="sticky right-0 z-10 bg-bg-card">
+        <TableCell className="sticky right-0 z-10 bg-bg-soft group-hover:bg-bg-card">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button

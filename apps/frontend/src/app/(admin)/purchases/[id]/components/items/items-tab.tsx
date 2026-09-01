@@ -149,7 +149,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                         />
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-2xl border border-border-low bg-bg-card">
+                    <div className="overflow-hidden rounded-2xl bg-bg-soft">
                         <Table className="table-fixed min-w-[2200px]">
                             <ItemsTableHeader
                                 selectableCount={selectableIds.length}

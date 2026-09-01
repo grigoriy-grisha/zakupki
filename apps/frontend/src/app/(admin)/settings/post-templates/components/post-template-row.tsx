@@ -48,7 +48,7 @@ export function PostTemplateRow({
     }
 
     return (
-        <div className="rounded-lg border border-border-low bg-bg-card">
+        <div className="rounded-lg bg-bg-soft">
             <div className="flex items-center gap-1 p-2">
                 <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={() => setExpanded((v) => !v)}>
                     <ChevronRight className={`size-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />

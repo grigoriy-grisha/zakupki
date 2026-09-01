@@ -29,7 +29,7 @@ export function ProductCell({
     searchQuery: string;
 }) {
     return (
-        <TableCell className="sticky left-0 z-10 overflow-hidden bg-bg-card">
+        <TableCell className="sticky left-0 z-10 overflow-hidden bg-bg-soft group-hover:bg-bg-card">
             <div className={cn('flex items-center gap-2', item.hidden && 'opacity-50')}>
                 <ProductPhotoPreview
                     photoId={item.product.photos?.[0]?.id}

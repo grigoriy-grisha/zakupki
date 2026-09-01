@@ -50,7 +50,7 @@ export function SimpleCrudTable<T extends { id: number; name: string }>({
                 {renderCreate()}
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-border-low bg-bg-card">
+            <div className="overflow-hidden rounded-2xl bg-bg-soft">
                 <Table>
                     <TableHeader>
                         <TableRow>
