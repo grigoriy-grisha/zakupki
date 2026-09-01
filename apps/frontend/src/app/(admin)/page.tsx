@@ -23,7 +23,7 @@ export default function DashboardPage() {
                 title="Dashboard"
                 description="Обзор ваших закупок"
                 actions={
-                    <Button asChild variant="brand" className="rounded-full">
+                    <Button asChild variant="brand" size="sm">
                         <AppLink href="/purchases">
                             <PlusIcon className="size-4" />
                             Новая закупка

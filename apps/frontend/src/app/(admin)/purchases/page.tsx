@@ -23,7 +23,7 @@ export default function PurchasesPage() {
             <PageHeader
                 title="Закупки"
                 actions={
-                    <Button onClick={() => setNewOpen(true)}>
+                    <Button size="sm" onClick={() => setNewOpen(true)}>
                         <Plus className="size-4" />
                         Новая закупка
                     </Button>

@@ -41,6 +41,7 @@ export default function ProductsPage() {
                     description={`${filteredProducts.length} товаров`}
                 />
                 <Button
+                    size="sm"
                     className="w-full sm:w-auto"
                     variant="brand"
                     onClick={() => {
