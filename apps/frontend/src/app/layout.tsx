@@ -29,8 +29,30 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-    title: 'Закупки',
-    description: 'Система совместных закупок',
+    title: {
+        default: 'Щеглов — совместные закупки',
+        template: '%s | Щеглов',
+    },
+    description:
+        'Совместные закупки японского и чешского бисера, фурнитуры и инструментов для творчества премиального качества.',
+    icons: {
+        icon: [
+            { url: '/favicon.ico', sizes: '48x48' },
+            { url: '/favicon.svg', type: 'image/svg+xml' },
+            { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+        ],
+        apple: '/apple-touch-icon.png',
+    },
+    manifest: '/site.webmanifest',
+    openGraph: {
+        type: 'website',
+        locale: 'ru_RU',
+        siteName: 'Щеглов — совместные закупки',
+        title: 'Щеглов — совместные закупки',
+        description:
+            'Японский и чешский бисер, фурнитура и инструменты для творчества по совместным закупкам.',
+        images: [{ url: '/web-app-manifest-512x512.png', width: 512, height: 512, alt: 'Щеглов' }],
+    },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
