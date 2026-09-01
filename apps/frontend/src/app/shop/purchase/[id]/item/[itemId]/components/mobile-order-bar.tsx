@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { formatPriceRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
 
-import { type ItemOrderControls, formatQty } from './item-ctx';
+import { formatQty,type ItemOrderControls } from './item-ctx';
 
 export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
     return (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg-card/95 backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-low bg-bg-base/95 backdrop-blur lg:hidden">
             <div
                 className={cn(
                     'mx-auto flex w-full max-w-6xl items-center gap-3 px-4 pt-2.5',
@@ -22,7 +22,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                     <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">
                         {ctx.hasOrder ? 'В корзине' : `Цена за ${ctx.shortName}`}
                     </p>
-                    <p className="truncate text-16-semibold tabular-nums text-fg-primary">
+                    <p className="truncate font-display text-16-semibold tabular-nums text-fg-primary">
                         {ctx.hasOrder
                             ? formatPriceRub(ctx.total)
                             : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
@@ -45,7 +45,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                 ) : (
                     <Button
                         variant="brand"
-                        className="h-10 shrink-0 rounded-xl px-5"
+                        className="h-10 shrink-0 rounded-full px-5"
                         onClick={ctx.handleAdd}
                         disabled={!ctx.canAdd || ctx.isPending}
                     >

@@ -13,7 +13,7 @@ export function ItemGallery({ photoIds, alt }: { photoIds: number[]; alt: string
 
     return (
         <div className="min-w-0">
-            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border bg-bg-soft">
+            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border-low bg-bg-soft">
                 {activePhotoId != null ? (
                     <ProductPhotoPreview photoId={activePhotoId} photoIds={photoIds} alt={alt} fill zoomSize="lg" />
                 ) : (
@@ -32,7 +32,7 @@ export function ItemGallery({ photoIds, alt }: { photoIds: number[]; alt: string
                             className={cn(
                                 'size-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all sm:size-20',
                                 index === activeIndex
-                                    ? 'border-primary opacity-100'
+                                    ? 'border-secondary opacity-100'
                                     : 'border-transparent opacity-60 hover:opacity-100',
                             )}
                             aria-label={`Фото ${index + 1}`}

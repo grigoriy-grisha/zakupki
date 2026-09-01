@@ -1,14 +1,12 @@
 'use client';
 
 import type { CurrencyRate } from '@zakupki/types';
-import { Percent } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { memo, useCallback } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { Card } from '@/components/ui/card';
 import { formatPriceRub } from '@/lib/format/money';
 import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
@@ -64,8 +62,6 @@ function ProductCardImpl({
     const photoIds = product.photos?.map((p: { id: number }) => p.id);
     const detailHref = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
 
-    const supplierName = item.supplier?.name as string | undefined;
-
     const goToDetail = useCallback(() => {
         router.push(detailHref);
     }, [router, detailHref]);
@@ -89,8 +85,7 @@ function ProductCardImpl({
 
     const hasOrder = ctx.hasOrder;
     const isSoldOutNoOrder = ctx.isSoldOut && !hasOrder;
-    const showPackHint = packInfo != null && !hasOrder && !isSoldOutNoOrder;
-    const showInCartDiscount = packInfo != null && hasOrder && ctx.fullPacks > 0;
+    const showPackHint = packInfo != null && (hasOrder ? ctx.fullPacks > 0 : true);
     const showMinHint = minHint != null && !hasOrder;
 
     const orderSubtitle = hasOrder
@@ -100,12 +95,11 @@ function ProductCardImpl({
         : null;
 
     return (
-        <Card
-            rounded="2xl"
+        <div
             className={cn(
-                'group relative flex h-full flex-col overflow-hidden border py-0 transition-all duration-200 ease-out',
-                'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg',
-                hasOrder && 'border-primary/50 bg-primary/[0.04] shadow-md shadow-primary/5',
+                'group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 bg-bg-soft',
+                'transition-all duration-200 ease-out hover:shadow-lg max-sm:flex-row',
+                hasOrder ? 'border-gold' : 'border-transparent',
                 isSoldOutNoOrder && 'opacity-80',
             )}
         >
@@ -114,16 +108,10 @@ function ProductCardImpl({
                 photoId={photo?.id}
                 photoIds={photoIds}
                 goToDetail={goToDetail}
-                showPackHint={showPackHint}
-                discountPercent={packInfo?.discountPercent}
-                hasOrder={hasOrder}
-                isSoldOut={ctx.isSoldOut}
                 isSoldOutNoOrder={isSoldOutNoOrder}
-                currentQuantity={ctx.currentQuantity}
-                currentPackageCount={ctx.currentPackageCount}
             />
 
-            <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 sm:gap-1.5 sm:p-4">
                 <button
                     type="button"
                     onClick={goToDetail}
@@ -134,63 +122,52 @@ function ProductCardImpl({
                         product={product}
                         className="min-w-0 overflow-hidden"
                         primaryClassName={cn(
-                            'block text-13-semibold leading-snug text-fg-primary line-clamp-2',
-                            'transition-colors group-hover:text-primary sm:text-14-semibold',
+                            'block font-display text-18-bold leading-tight text-fg-primary line-clamp-2',
+                            'transition-colors group-hover:text-secondary sm:text-24-bold',
                         )}
-                        secondaryClassName="mt-0.5 block truncate text-11-regular text-fg-tertiary sm:text-12-regular"
+                        secondaryClassName="mt-1 block line-clamp-2 text-11-regular text-fg-tertiary sm:text-12-regular"
                     />
                 </button>
 
-                {supplierName && (
-                    <p
-                        className="-mt-0.5 block truncate text-11-regular text-fg-tertiary sm:text-12-regular"
-                        title={supplierName}
-                    >
-                        {supplierName}
-                    </p>
-                )}
-
                 {showMinHint && <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>}
 
-                {ctx.freeRemainderLabel && <p className="text-12-medium text-warning">{ctx.freeRemainderLabel}</p>}
+                {ctx.freeRemainderLabel && (
+                    <p className="text-12-bold text-secondary sm:text-14-bold">{ctx.freeRemainderLabel}</p>
+                )}
 
-                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                    {hasOrder ? (
-                        <span className="text-16-semibold text-fg-primary tabular-nums sm:text-18-semibold">
-                            {formatPriceRub(ctx.total)}
+                <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
+                    <span className="whitespace-nowrap font-display text-18-semibold text-fg-primary tabular-nums sm:text-24-semibold">
+                        {formatPriceRub(hasOrder ? ctx.total : ctx.price)}
+                        <span className="ml-1 font-sans text-11-regular font-normal text-fg-tertiary sm:text-12-regular">
+                            /{ctx.shortName}
                         </span>
-                    ) : (
-                        <>
-                            <span className="text-16-semibold text-fg-primary tabular-nums sm:text-18-semibold">
-                                {formatPriceRub(ctx.price)}
-                            </span>
-                            <span className="text-11-regular text-fg-tertiary sm:text-12-regular">
-                                / {ctx.shortName}
-                            </span>
-                        </>
-                    )}
-                    {showInCartDiscount && (
+                    </span>
+                    {showPackHint && (
                         <span
                             className={cn(
-                                'inline-flex items-center gap-0.5 rounded bg-success/10 px-1 py-0.5',
-                                'text-12-semibold text-success tabular-nums',
+                                'inline-flex items-center rounded-full bg-secondary px-2.5 py-1',
+                                'text-10-bold text-primary-foreground sm:text-12-bold',
                             )}
                         >
-                            <Percent className="size-2.5" />−{packInfo.discountPercent}% · {ctx.fullPacks}{' '}
-                            {pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])}
+                            −{packInfo.discountPercent}% ·{' '}
+                            {ctx.hasOrder
+                                ? `${ctx.fullPacks} ${pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])}`
+                                : '1 пачку'}
                         </span>
                     )}
                 </div>
 
                 {hasOrder && orderSubtitle && (
-                    <p className="-mt-1 text-12-regular text-fg-secondary tabular-nums">{orderSubtitle}</p>
+                    <p className="text-11-regular text-fg-secondary tabular-nums sm:text-12-regular">
+                        В заказе: {orderSubtitle}
+                    </p>
                 )}
 
-                <div className="mt-auto pt-1.5" onClick={stop} onPointerDown={stop}>
+                <div className="mt-1.5" onClick={stop} onPointerDown={stop}>
                     <ProductCardControls ctx={ctx} isSoldOutNoOrder={isSoldOutNoOrder} stop={stop} />
                 </div>
             </div>
-        </Card>
+        </div>
     );
 }
 

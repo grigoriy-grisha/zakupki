@@ -8,22 +8,28 @@ import {
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
-import { ArrowLeft, Package, PackageSearch } from 'lucide-react';
+import { ChevronDown, Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 
-import { AppLink } from '@/components/app-link';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/icons';
+import { useSidebarSlotContent } from '@/components/shop/sidebar-slot';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
-import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
 import { aggregateByItem } from '../../lib/order-aggregation';
-import { CatalogToolbar, ProductGrid, PurchaseGridSkeleton, PurchaseStepper, type SortMode } from './components';
+import {
+    CatalogFilterBlock,
+    CatalogToolbar,
+    ProductGrid,
+    PurchaseGridSkeleton,
+    PurchaseSelect,
+    PurchaseStepper,
+    type SortMode,
+} from './components';
 import type { ProductGridItem } from './components/product-grid';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
@@ -61,6 +67,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     const [query, setQuery] = useState('');
     const [sortMode, setSortMode] = useState<SortMode>('default');
     const [onlyMine, setOnlyMine] = useState(false);
+    const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
     const fulfillmentStatus = (purchase?.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
 
@@ -158,24 +165,47 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         packDiscountPercent,
     ]);
 
-    const supplierCount = useMemo(
-        () => new Set(items.map((item) => item.supplier?.name).filter(Boolean)).size,
-        [items],
+    const hasActiveFilters = query.trim() !== '' || selectedId != null || onlyMine;
+    const showOnlyMine = aggregatedByItem.size > 0;
+
+    const resetAllFilters = () => {
+        setQuery('');
+        setOnlyMine(false);
+        clearSelection();
+    };
+
+    useSidebarSlotContent(
+        () => (
+            <div className="mt-8 border-t border-secondary/40 pt-6">
+                <CatalogFilterBlock
+                    tree={tree}
+                    selectedId={selectedId}
+                    onSelectNode={handleSelectNode}
+                    expandedIds={expandedIds}
+                    onToggle={handleToggle}
+                    onClearTree={clearSelection}
+                    totalCount={totalCount}
+                    filteredCount={visibleItems.length}
+                />
+            </div>
+        ),
+        [tree, selectedId, expandedIds, totalCount, visibleItems.length, handleSelectNode, handleToggle, clearSelection],
     );
+
+    useEffect(() => {
+        setMobileFilterOpen(false);
+    }, [selectedId]);
 
     if (isLoading) {
         return (
-            <div className="flex flex-col gap-5 sm:gap-6">
-                <div className="flex items-start gap-3">
-                    <Skeleton className="size-8 shrink-0 rounded-xl" />
-                    <div className="flex flex-col gap-2">
-                        <Skeleton className="h-5 w-28 rounded-full" />
-                        <Skeleton className="h-7 w-56 rounded-md" />
-                        <Skeleton className="h-4 w-72 rounded-md" />
-                    </div>
+            <div className="flex flex-col gap-6 sm:gap-8">
+                <div className="flex flex-col items-center gap-5">
+                    <Skeleton className="h-24 w-[124px] rounded-2xl sm:h-40 sm:w-[224px]" />
+                    <Skeleton className="h-9 w-32 rounded-full" />
+                    <Skeleton className="h-9 w-48" />
                 </div>
-                <Skeleton className="h-24 rounded-2xl" />
-                <Skeleton className="h-14 rounded-xl md:h-12 md:rounded-2xl" />
+                <Skeleton className="h-16 rounded-full sm:h-[68px]" />
+                <Skeleton className="h-10 w-full rounded-full" />
                 <PurchaseGridSkeleton />
             </div>
         );
@@ -183,7 +213,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     if (!purchase) {
         return (
-            <div className="rounded-2xl border border-border bg-bg-card">
+            <div className="rounded-2xl bg-bg-soft">
                 <EmptyState
                     icon={Package}
                     title="Закупка не найдена"
@@ -197,77 +227,64 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
 
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fulfillmentStatus];
     const isSupplement = isSupplementPhase(fulfillmentStatus);
-    const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
-
-    const hasActiveFilters = query.trim() !== '' || selectedId != null || onlyMine;
-    const showOnlyMine = aggregatedByItem.size > 0;
-
-    const resetAllFilters = () => {
-        setQuery('');
-        setOnlyMine(false);
-        clearSelection();
-    };
 
     return (
-        <div className="flex flex-col gap-5 sm:gap-6">
-            <header className="flex items-start gap-2 sm:gap-3">
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="mt-0.5 shrink-0 rounded-xl"
-                    asChild
-                    aria-label="Назад к закупкам"
-                >
-                    <AppLink href="/shop">
-                        <ArrowLeft className="size-4" />
-                    </AppLink>
-                </Button>
-                <div className="flex min-w-0 flex-col gap-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge type="subtle" variant={isSupplement ? 'warning' : 'success'}>
-                            {isSupplement ? 'Добор' : 'Активна'}
-                        </Badge>
-                        <Badge type="subtle" variant="neutral">
-                            {totalCount} {pluralRu(totalCount, ['товар', 'товара', 'товаров'])}
-                        </Badge>
-                    </div>
-                    <h1 className="truncate text-h1 text-fg-primary">{purchase.tag}</h1>
-                    <p
+        <div className="flex flex-col gap-6 sm:gap-8">
+            <div className="flex flex-col items-center gap-5 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
+                <div className="flex flex-col items-center gap-3 sm:order-1 sm:items-start sm:gap-4">
+                    <span
                         className={cn(
-                            'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-13-regular text-fg-secondary',
-                            'sm:text-14-regular',
+                            'inline-flex h-9 items-center rounded-full border border-secondary px-5',
+                            'text-13-medium text-secondary sm:text-14-medium',
                         )}
                     >
-                        <span className="inline-flex items-center gap-1.5">
-                            <Package className="size-3.5 text-fg-tertiary" />
-                            {fulfillmentLabel}
-                        </span>
-                        {supplierCount > 0 && (
-                            <>
-                                <span aria-hidden className="text-fg-tertiary">
-                                    ·
-                                </span>
-                                <span>
-                                    {supplierCount}{' '}
-                                    {pluralRu(supplierCount, ['поставщик', 'поставщика', 'поставщиков'])}
-                                </span>
-                            </>
-                        )}
-                    </p>
+                        {isSupplement ? 'Добор' : fulfillmentLabel}
+                    </span>
+                    <h1 className="text-h1 text-secondary">{purchase.tag}</h1>
                 </div>
-            </header>
+
+                <BrandLogo className="order-first w-[124px] animate-fade-in-up text-primary sm:order-2 sm:w-[224px]" />
+            </div>
 
             <PurchaseStepper currentStatus={fulfillmentStatus} />
+
+            <div className="md:hidden">
+                <PurchaseSelect currentPurchaseId={id} />
+            </div>
+
+            <div className="md:hidden">
+                <button
+                    type="button"
+                    onClick={() => setMobileFilterOpen((open) => !open)}
+                    aria-expanded={mobileFilterOpen}
+                    className="flex items-center gap-2 text-14-medium text-fg-primary"
+                >
+                    <SlidersHorizontal className="size-4" />
+                    Фильтр
+                    <ChevronDown
+                        className={cn('size-4 text-fg-tertiary transition-transform', mobileFilterOpen && 'rotate-180')}
+                    />
+                </button>
+                {mobileFilterOpen && (
+                    <div className="mt-4">
+                        <CatalogFilterBlock
+                            tree={tree}
+                            selectedId={selectedId}
+                            onSelectNode={handleSelectNode}
+                            expandedIds={expandedIds}
+                            onToggle={handleToggle}
+                            onClearTree={clearSelection}
+                            totalCount={totalCount}
+                            filteredCount={visibleItems.length}
+                            className="w-full"
+                        />
+                    </div>
+                )}
+            </div>
 
             <CatalogToolbar
                 query={query}
                 onQueryChange={setQuery}
-                tree={tree}
-                selectedId={selectedId}
-                onSelectNode={handleSelectNode}
-                expandedIds={expandedIds}
-                onToggle={handleToggle}
-                onClearTree={clearSelection}
                 onlyMine={onlyMine}
                 onOnlyMineToggle={() => setOnlyMine((value) => !value)}
                 showOnlyMine={showOnlyMine}
@@ -277,11 +294,13 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                 filteredCount={visibleItems.length}
                 ancestorPath={ancestorPath}
                 selectedFolderLabel={selectedFolderLabel}
+                onClearTree={clearSelection}
                 onResetAll={resetAllFilters}
+                hasTreeFilter={selectedId != null}
             />
 
             {visibleItems.length === 0 && hasActiveFilters ? (
-                <div className="rounded-2xl border border-border bg-bg-card">
+                <div className="rounded-2xl bg-bg-soft">
                     <EmptyState
                         icon={PackageSearch}
                         title="Ничего не найдено"
@@ -299,7 +318,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     orgFeeDefaultPercent={orgFeeDefaultPercent}
                     currencyRates={currencyRates}
                     isSupplement={isSupplement}
-                    canAddPackage={canAddPackage}
+                    canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
                     fulfillmentStatus={fulfillmentStatus}
                 />
             )}

@@ -1,31 +1,22 @@
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 
 export function PurchaseGridSkeleton() {
     return (
         <div
-            className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
             role="list"
             aria-busy="true"
             aria-label="Загрузка товаров"
         >
-            {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                    key={i}
-                    role="listitem"
-                    className={cn(
-                        'flex flex-col gap-1.5 overflow-hidden rounded-2xl border border-border',
-                        'bg-bg-card p-2.5 sm:gap-2 sm:p-3.5',
-                    )}
-                >
-                    <Skeleton className="aspect-square w-full rounded-xl" />
+            {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} role="listitem" className="flex flex-col gap-2 overflow-hidden rounded-2xl bg-bg-soft p-3 sm:p-4">
+                    <Skeleton className="aspect-[6/5] w-full rounded-xl max-sm:aspect-[4/5]" />
                     <Skeleton className="mt-2 h-4 w-4/5 rounded-md" />
                     <Skeleton className="h-3 w-1/2 rounded-md" />
                     <Skeleton className="mt-1 h-5 w-2/5 rounded-md" />
-                    <Skeleton className="mt-2 h-3 w-1/3 rounded-md" />
-                    <Skeleton className="mt-auto h-8 w-full rounded-lg sm:h-9" />
+                    <Skeleton className="mt-2 h-10 w-full rounded-full sm:h-12" />
                 </div>
             ))}
         </div>

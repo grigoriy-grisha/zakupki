@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatPriceRub } from '@/lib/format/money';
 import { pluralRu } from '@/lib/format/plural';
 
-import { type ItemOrderControls, formatQty } from './item-ctx';
+import { formatQty,type ItemOrderControls } from './item-ctx';
 
 export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: string | null }) {
     const price = ctx.unitPriceRub ?? ctx.price;
@@ -17,26 +17,28 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
     const orderingClosedNoOrder = ctx.orderingClosed && !ctx.hasOrder;
 
     return (
-        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-bg-card p-4 shadow-xs sm:p-5">
+        <div className="flex flex-col gap-4 rounded-2xl bg-bg-soft p-4 sm:p-5">
             {price > 0 && (
                 <div>
                     <div className="flex flex-wrap items-baseline gap-x-1.5">
-                        <span className="text-24-semibold tabular-nums text-fg-primary">{formatPriceRub(price)}</span>
+                        <span className="font-display text-24-semibold tabular-nums text-fg-primary sm:text-30-semibold">
+                            {formatPriceRub(price)}
+                        </span>
                         <span className="text-13-regular text-fg-tertiary">/ {ctx.shortName}</span>
                     </div>
                     {packInfo && (
-                        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-success/10 px-2.5 py-2">
-                            <Percent className="size-3.5 shrink-0 text-success" />
+                        <div className="mt-2.5 flex items-center gap-2 rounded-full bg-secondary/10 px-3.5 py-2">
+                            <Percent className="size-3.5 shrink-0 text-secondary" />
                             <p className="min-w-0 flex-1 text-12-medium text-fg-secondary">
                                 Пачка {formatQty(packInfo.packSize)} {ctx.shortName} —{' '}
                                 <span className="line-through text-fg-tertiary">
                                     {formatPriceRub(packInfo.packPrice)}
                                 </span>{' '}
-                                <span className="text-13-semibold text-success tabular-nums">
+                                <span className="text-13-semibold text-secondary tabular-nums">
                                     {formatPriceRub(packInfo.discountedPackPrice)}
                                 </span>
                             </p>
-                            <Badge type="subtle" variant="success" size="sm">
+                            <Badge type="subtle" variant="accent" size="sm">
                                 −{packInfo.discountPercent}%
                             </Badge>
                         </div>
@@ -45,7 +47,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
             )}
 
             {ctx.hasOrder && (
-                <div className="rounded-xl bg-bg-soft/60 p-3.5">
+                <div className="rounded-2xl bg-bg-card/70 p-3.5">
                     <div className="flex items-center justify-between gap-2">
                         <span className="text-12-medium text-fg-secondary">В заказе</span>
                         <span className="text-14-semibold text-fg-primary tabular-nums">
@@ -55,12 +57,14 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                             )}
                         </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-soft pt-2">
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-low pt-2">
                         <span className="text-12-medium text-fg-secondary">Итого</span>
-                        <span className="text-20-semibold text-primary tabular-nums">{formatPriceRub(ctx.total)}</span>
+                        <span className="font-display text-20-semibold text-primary tabular-nums">
+                            {formatPriceRub(ctx.total)}
+                        </span>
                     </div>
                     {ctx.fullPacks > 0 && (
-                        <p className="mt-1.5 flex items-center gap-1 text-12-medium text-success">
+                        <p className="mt-1.5 flex items-center gap-1 text-12-medium text-secondary">
                             <Percent className="size-3 shrink-0" />
                             Скидка за {ctx.fullPacks} {pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])} применена
                         </p>
@@ -69,12 +73,12 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
             )}
 
             {soldOutNoOrder ? (
-                <Button variant="secondary" className="h-11 w-full rounded-xl" disabled>
+                <Button variant="secondary" className="h-11 w-full rounded-full" disabled>
                     <Package className="size-4" />
                     Разобрано
                 </Button>
             ) : orderingClosedNoOrder ? (
-                <Button variant="secondary" className="h-11 w-full rounded-xl" disabled>
+                <Button variant="secondary" className="h-11 w-full rounded-full" disabled>
                     <Ban className="size-4" />
                     Приём заказов завершён
                 </Button>
@@ -97,7 +101,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
-                                className="h-10 min-w-0 flex-1 rounded-xl text-13-medium"
+                                className="h-10 min-w-0 flex-1 rounded-full border-border-low text-13-medium"
                                 onClick={ctx.handleRemovePackage}
                                 disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
                             >
@@ -105,7 +109,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                             </Button>
                             <Button
                                 variant="outline"
-                                className="h-10 min-w-0 flex-1 rounded-xl text-13-medium"
+                                className="h-10 min-w-0 flex-1 rounded-full border-border-low text-13-medium"
                                 onClick={ctx.handleAddPackage}
                                 disabled={!ctx.canAddPackage || ctx.isPending}
                             >

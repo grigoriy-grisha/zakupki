@@ -1,7 +1,5 @@
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
-import { Boxes, Check, ClipboardList, CreditCard, PackageCheck, RefreshCw, Truck } from 'lucide-react';
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 import { cn } from '@/lib/utils';
@@ -11,19 +9,13 @@ interface PurchaseStepperProps {
     className?: string;
 }
 
-interface Step {
-    key: string;
-    label: string;
-    icon: LucideIcon;
-}
-
-const STEPS: Step[] = [
-    { key: 'COLLECTION', label: 'Сбор', icon: ClipboardList },
-    { key: 'REORDER', label: 'Добор', icon: RefreshCw },
-    { key: 'PAYMENT', label: 'Оплата', icon: CreditCard },
-    { key: 'SUPPLIER_ASSEMBLY', label: 'Комплектация', icon: Boxes },
-    { key: 'TRANSIT', label: 'Доставка', icon: Truck },
-    { key: 'READY', label: 'Выдача', icon: PackageCheck },
+const STEPS: { key: string; label: string }[] = [
+    { key: 'COLLECTION', label: 'Сбор' },
+    { key: 'REORDER', label: 'Добор' },
+    { key: 'PAYMENT', label: 'Оплата' },
+    { key: 'SUPPLIER_ASSEMBLY', label: 'Комплектация' },
+    { key: 'TRANSIT', label: 'Доставка' },
+    { key: 'READY', label: 'Выдача' },
 ];
 
 function getStepIndex(status: PurchaseFulfillmentStatus): number {
@@ -53,82 +45,48 @@ export function PurchaseStepper({ currentStatus, className }: PurchaseStepperPro
 
     return (
         <div
-            className={cn('rounded-2xl border border-border bg-bg-card px-4 py-3 sm:px-5', className)}
+            className={cn('rounded-full bg-bg-soft/60 px-4 py-4 sm:px-8', className)}
             aria-label="Прогресс закупки"
         >
-            <div className="flex items-center justify-between gap-3">
-                <span className="text-11-medium uppercase tracking-wide text-fg-tertiary">
-                    Этап закупки
-                </span>
-                <span className="text-12-regular tabular-nums text-fg-tertiary">
-                    Шаг {currentIndex + 1} из {STEPS.length}
-                </span>
-            </div>
-            <div className="overflow-x-auto py-1.5">
-                <ol className="flex w-full min-w-[30rem] items-start sm:min-w-0">
-                    {STEPS.map((step, idx) => {
-                        const isCompleted = idx < currentIndex;
-                        const isCurrent = idx === currentIndex;
-                        const isReached = idx <= currentIndex;
-                        const isFirst = idx === 0;
-                        const isLast = idx === STEPS.length - 1;
-                        const StepIcon = step.icon;
-                        const leftTone = isFirst ? 'bg-transparent' : isReached ? 'bg-primary/50' : 'bg-border-soft';
-                        const rightTone = isLast ? 'bg-transparent' : isCompleted ? 'bg-primary/50' : 'bg-border-soft';
+            <ol className="flex items-center">
+                {STEPS.map((step, idx) => {
+                    const isCompleted = idx < currentIndex;
+                    const isCurrent = idx === currentIndex;
 
-                        return (
-                            <li
-                                key={step.key}
-                                className="flex min-w-16 flex-1 flex-col items-center"
-                                aria-current={isCurrent ? 'step' : undefined}
-                            >
-                                <div className="flex w-full items-center self-stretch">
-                                    <div className={cn('h-[2px] flex-1 rounded-full transition-colors', leftTone)} />
-                                    <div
-                                        className={cn(
-                                            'relative flex size-7 shrink-0 items-center justify-center',
-                                            'rounded-full transition-colors',
-                                            isCompleted && 'bg-primary/15 text-primary',
-                                            isCurrent &&
-                                                'bg-primary text-primary-foreground ring-[3px] ring-primary/15',
-                                            !isCompleted &&
-                                                !isCurrent &&
-                                                'border-[1.5px] border-border-soft bg-bg-card text-fg-tertiary',
-                                        )}
-                                    >
-                                        {isCurrent && (
-                                            <span
-                                                className={cn(
-                                                    'absolute -inset-1 animate-pulse rounded-full',
-                                                    'bg-primary/20 motion-reduce:animate-none',
-                                                )}
-                                                aria-hidden
-                                            />
-                                        )}
-                                        {isCompleted ? (
-                                            <Check className="relative size-3.5" strokeWidth={3} />
-                                        ) : (
-                                            <StepIcon className="relative size-3.5" />
-                                        )}
-                                    </div>
-                                    <div className={cn('h-[2px] flex-1 rounded-full transition-colors', rightTone)} />
-                                </div>
+                    return (
+                        <li key={step.key} className="flex flex-1 items-center last:flex-none">
+                            <div className="flex shrink-0 flex-col items-center gap-1.5">
+                                <span
+                                    aria-current={isCurrent ? 'step' : undefined}
+                                    className={cn(
+                                        'size-5 rounded-full transition-colors sm:size-9',
+                                        isCompleted && 'bg-secondary',
+                                        isCurrent && 'border-2 border-secondary',
+                                        !isCompleted && !isCurrent && 'bg-fg-secondary',
+                                    )}
+                                />
                                 <span
                                     className={cn(
-                                        'mt-1.5 whitespace-nowrap px-1 text-center text-11-medium leading-tight',
-                                        'sm:text-12-medium',
-                                        isCurrent && 'font-semibold text-fg-primary',
-                                        isCompleted && 'text-fg-secondary',
-                                        !isCompleted && !isCurrent && 'text-fg-tertiary',
+                                        'hidden whitespace-nowrap text-12-regular sm:block',
+                                        isCurrent ? 'text-secondary' : 'text-fg-secondary',
                                     )}
                                 >
                                     {step.label}
                                 </span>
-                            </li>
-                        );
-                    })}
-                </ol>
-            </div>
+                            </div>
+                            {idx < STEPS.length - 1 && (
+                                <span
+                                    aria-hidden
+                                    className={cn(
+                                        'mx-2 h-px flex-1 sm:mx-3',
+                                        isCompleted ? 'bg-secondary' : 'bg-fg-secondary/40',
+                                    )}
+                                />
+                            )}
+                        </li>
+                    );
+                })}
+            </ol>
         </div>
     );
 }

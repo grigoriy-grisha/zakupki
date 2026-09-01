@@ -8,7 +8,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import type { AggregatedForUser } from '../../../lib/order-aggregation';
 import { ProductCard } from './product-card';
 
-/** Минимум, что нужно карточке от PurchaseItem. */
 export interface ProductGridItem {
     id: number;
     purchaseItemId?: number;
@@ -28,7 +27,6 @@ interface ProductGridProps {
     isSupplement: boolean;
     canAddPackage: boolean;
     fulfillmentStatus: string;
-    /** Сообщение для пустого состояния, когда items пуст. */
     emptyTitle?: string;
     emptyDescription?: string;
 }
@@ -48,7 +46,7 @@ export function ProductGrid({
 }: ProductGridProps) {
     if (items.length === 0) {
         return (
-            <div className="rounded-2xl border border-border bg-bg-card">
+            <div className="rounded-2xl bg-bg-soft">
                 <EmptyState icon={Package} title={emptyTitle} description={emptyDescription} />
             </div>
         );
@@ -56,7 +54,7 @@ export function ProductGrid({
 
     return (
         <div
-            className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
             role="list"
             aria-label="Товары закупки"
         >

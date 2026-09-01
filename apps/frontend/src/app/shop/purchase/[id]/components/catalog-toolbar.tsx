@@ -1,26 +1,31 @@
 'use client';
 
-import { ChevronRight, Search, ShoppingBag, X } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, ChevronRight, Search, ShoppingBag, X } from 'lucide-react';
 
-import type { TreeNode } from '@/app/(admin)/products/lib/types';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
-import type { SortMode } from './catalog-toolbar-parts';
-import { CatalogFilterPopover, CatalogSortMenu } from './catalog-toolbar-parts';
+export type SortMode = 'default' | 'price-asc' | 'price-desc' | 'name-asc';
 
-export type { SortMode } from './catalog-toolbar-parts';
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+    { value: 'default', label: 'По умолчанию' },
+    { value: 'price-asc', label: 'Сначала дешевле' },
+    { value: 'price-desc', label: 'Сначала дороже' },
+    { value: 'name-asc', label: 'По названию' },
+];
+
+const SORT_LABELS = Object.fromEntries(SORT_OPTIONS.map((o) => [o.value, o.label])) as Record<SortMode, string>;
 
 interface CatalogToolbarProps {
     query: string;
     onQueryChange: (value: string) => void;
-    tree: TreeNode[];
-    selectedId: string | null;
-    onSelectNode: (node: TreeNode) => void;
-    expandedIds: Set<string>;
-    onToggle: (id: string) => void;
-    onClearTree: () => void;
     onlyMine: boolean;
     onOnlyMineToggle: () => void;
     showOnlyMine: boolean;
@@ -30,18 +35,14 @@ interface CatalogToolbarProps {
     filteredCount: number;
     ancestorPath: { typeId: number; typeName: string; name: string }[];
     selectedFolderLabel: string | null;
+    onClearTree: () => void;
     onResetAll: () => void;
+    hasTreeFilter: boolean;
 }
 
 export function CatalogToolbar({
     query,
     onQueryChange,
-    tree,
-    selectedId,
-    onSelectNode,
-    expandedIds,
-    onToggle,
-    onClearTree,
     onlyMine,
     onOnlyMineToggle,
     showOnlyMine,
@@ -51,10 +52,10 @@ export function CatalogToolbar({
     filteredCount,
     ancestorPath,
     selectedFolderLabel,
+    onClearTree,
     onResetAll,
+    hasTreeFilter,
 }: CatalogToolbarProps) {
-    const hasTree = tree.length > 0;
-    const hasTreeFilter = selectedId != null;
     const hasQuery = query.trim() !== '';
     const hasActive = hasQuery || hasTreeFilter || onlyMine;
     const activeFilterCount = [hasQuery, hasTreeFilter, onlyMine].filter(Boolean).length;
@@ -64,84 +65,64 @@ export function CatalogToolbar({
         : `${totalCount} ${pluralRu(totalCount, ['товар', 'товара', 'товаров'])}`;
 
     return (
-        <div
-            className={cn(
-                'sticky top-0 z-20 -mx-4 border-b border-border-soft bg-bg-base/95 px-4 py-2 backdrop-blur',
-                'supports-[backdrop-filter]:bg-bg-base/75',
-                'md:top-2 md:mx-0 md:rounded-2xl md:border md:border-border md:bg-bg-card/95 md:px-3 md:shadow-xs',
-                'md:supports-[backdrop-filter]:bg-bg-card/85',
-            )}
-        >
+        <div className="flex flex-col gap-2.5">
             <div className="flex flex-wrap items-center gap-2">
-                <div className="flex w-full min-w-0 gap-2 md:w-auto">
-                    <div className="relative min-w-0 flex-1 md:w-64 md:flex-none">
-                        <Search
-                            className={cn(
-                                'pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2',
-                                'text-fg-tertiary',
-                            )}
-                        />
-                        <input
-                            type="text"
-                            value={query}
-                            onChange={(event) => onQueryChange(event.target.value)}
-                            placeholder="Поиск по товарам"
-                            aria-label="Поиск по товарам"
-                            className={cn(
-                                'h-9 w-full rounded-xl border border-border bg-bg-card pr-8 pl-9',
-                                'text-13-regular text-fg-primary outline-none transition-colors',
-                                'placeholder:text-fg-tertiary focus:border-primary/50',
-                                'focus:ring-2 focus:ring-primary/15',
-                            )}
-                        />
-                        {hasQuery && (
-                            <button
-                                type="button"
-                                onClick={() => onQueryChange('')}
-                                aria-label="Очистить поиск"
-                                className={cn(
-                                    'absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center',
-                                    'justify-center rounded-full text-fg-tertiary transition-colors',
-                                    'hover:bg-bg-soft hover:text-fg-primary',
-                                )}
-                            >
-                                <X className="size-3.5" />
-                            </button>
+                <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+                    <Search
+                        className={cn(
+                            'pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2',
+                            'text-fg-tertiary',
                         )}
-                    </div>
-
-                    {hasTree && (
-                        <CatalogFilterPopover
-                            tree={tree}
-                            selectedId={selectedId}
-                            onSelectNode={onSelectNode}
-                            expandedIds={expandedIds}
-                            onToggle={onToggle}
-                            onClearTree={onClearTree}
-                            totalCount={totalCount}
-                            filteredCount={filteredCount}
-                        />
+                    />
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(event) => onQueryChange(event.target.value)}
+                        placeholder="Поиск по товарам"
+                        aria-label="Поиск по товарам"
+                        className={cn(
+                            'h-10 w-full rounded-full border border-border-low bg-transparent pr-9 pl-10',
+                            'text-13-regular text-fg-primary outline-none transition-colors',
+                            'placeholder:text-fg-tertiary focus:border-secondary',
+                        )}
+                    />
+                    {hasQuery && (
+                        <button
+                            type="button"
+                            onClick={() => onQueryChange('')}
+                            aria-label="Очистить поиск"
+                            className={cn(
+                                'absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center',
+                                'justify-center rounded-full text-fg-tertiary transition-colors',
+                                'hover:bg-bg-soft hover:text-fg-primary',
+                            )}
+                        >
+                            <X className="size-3.5" />
+                        </button>
                     )}
                 </div>
 
-                <CatalogSortMenu sortMode={sortMode} onSortModeChange={onSortModeChange} />
+                <SortMenu sortMode={sortMode} onSortModeChange={onSortModeChange} />
 
                 {showOnlyMine && (
-                    <Button
-                        variant="outline"
-                        size="sm"
+                    <button
+                        type="button"
                         onClick={onOnlyMineToggle}
                         aria-pressed={onlyMine}
                         className={cn(
-                            'h-9 shrink-0 rounded-xl md:rounded-full',
-                            onlyMine && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15',
+                            'flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4',
+                            'text-13-medium transition-colors',
+                            onlyMine
+                                ? 'border-secondary bg-secondary text-primary-foreground'
+                                : 'border-secondary/50 text-secondary hover:bg-secondary/10',
                         )}
                     >
-                        <ShoppingBag className="size-4" />В заказе
-                    </Button>
+                        <ShoppingBag className="size-4" />
+                        В заказе
+                    </button>
                 )}
 
-                <span className="ml-auto shrink-0 text-12-regular text-fg-secondary tabular-nums">{counter}</span>
+                <span className="ml-auto shrink-0 text-14-medium text-secondary tabular-nums">{counter}</span>
             </div>
 
             {hasActive && (
@@ -159,6 +140,41 @@ export function CatalogToolbar({
                 />
             )}
         </div>
+    );
+}
+
+function SortMenu({ sortMode, onSortModeChange }: { sortMode: SortMode; onSortModeChange: (mode: SortMode) => void }) {
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button
+                    type="button"
+                    aria-label="Сортировка товаров"
+                    className={cn(
+                        'flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border-low',
+                        'px-4 text-13-medium text-fg-primary transition-colors hover:border-secondary hover:text-secondary',
+                    )}
+                >
+                    <ArrowUpDown className="size-4" />
+                    <span className="hidden max-w-32 truncate sm:inline">
+                        {SORT_LABELS[sortMode]}
+                    </span>
+                    <ChevronDown className="size-3 opacity-60" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="rounded-xl p-1">
+                {SORT_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => onSortModeChange(option.value)}
+                        className="rounded-lg text-13-medium"
+                    >
+                        <span className="flex-1">{option.label}</span>
+                        {sortMode === option.value && <Check className="size-3.5 text-secondary" />}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -188,7 +204,7 @@ function ActiveFilterChips({
     const hasQuery = query.trim() !== '';
 
     return (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             {hasQuery && (
                 <span
                     className={cn(
@@ -249,8 +265,8 @@ function ActiveFilterChips({
             {onlyMine && (
                 <span
                     className={cn(
-                        'inline-flex items-center gap-1 rounded-full bg-primary/10 py-1 pr-1 pl-2.5',
-                        'text-12-medium text-primary',
+                        'inline-flex items-center gap-1 rounded-full bg-bg-soft py-1 pr-1 pl-2.5',
+                        'text-12-medium text-secondary',
                     )}
                 >
                     В заказе
@@ -259,8 +275,8 @@ function ActiveFilterChips({
                         onClick={onOnlyMineToggle}
                         aria-label="Показать все товары"
                         className={cn(
-                            'flex size-5 items-center justify-center rounded-full text-primary/70',
-                            'transition-colors hover:bg-primary/15 hover:text-primary',
+                            'flex size-5 items-center justify-center rounded-full text-secondary/70',
+                            'transition-colors hover:bg-secondary/15 hover:text-secondary',
                         )}
                     >
                         <X className="size-3" />

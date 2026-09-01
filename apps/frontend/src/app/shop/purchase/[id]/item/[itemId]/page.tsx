@@ -115,7 +115,7 @@ function ItemDetailContent({
 
     if (!item || !product) {
         return (
-            <div className="rounded-2xl border border-border bg-bg-card">
+            <div className="rounded-2xl bg-bg-soft">
                 <EmptyState
                     icon={PackageSearch}
                     title="Товар не найден"
@@ -223,7 +223,7 @@ function ItemDetailLoaded({
                                         key={row.label}
                                         className={cn(
                                             'flex items-baseline justify-between gap-4 py-2.5',
-                                            index < descriptionRows.length - 1 && 'border-b border-border-soft',
+                                            index < descriptionRows.length - 1 && 'border-b border-border-low',
                                         )}
                                     >
                                         <dt className="shrink-0 text-13-regular text-fg-secondary">{row.label}</dt>
@@ -242,7 +242,7 @@ function ItemDetailLoaded({
                         <PurchaseProductLabel
                             product={product}
                             className="min-w-0"
-                            primaryClassName="block text-18-semibold leading-tight text-fg-primary sm:text-24-semibold"
+                            primaryClassName="block font-display text-20-bold leading-tight text-fg-primary sm:text-24-bold"
                             secondaryClassName="mt-1 block text-13-regular text-fg-tertiary"
                         />
                         {(supplierName || ctx.freeRemainderLabel) && (
@@ -262,7 +262,7 @@ function ItemDetailLoaded({
                         )}
                     </div>
 
-                    <div className="order-3 lg:sticky lg:top-6">
+                    <div className="order-3 lg:sticky lg:top-20">
                         <ItemBuyPanel ctx={ctx} minHint={minHint} />
                     </div>
                 </div>

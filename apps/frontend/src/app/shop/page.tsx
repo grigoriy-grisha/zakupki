@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import { ShoppingCartIcon } from 'lucide-react';
+import { useEffect } from 'react';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
