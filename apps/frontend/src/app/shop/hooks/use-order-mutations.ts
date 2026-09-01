@@ -1,30 +1,19 @@
 'use client';
 
 import { trpc } from '@/lib/client/trpc';
-import { toast } from 'sonner';
+import { mutationOptions } from '@/lib/query/mutation-options';
 
-/**
- * Мутации adjustQuantity и adjustPackageCount с автоматическим
- * инвалидированием кэша. Один экземпляр на purchaseItem.
- */
-export function useOrderMutations(purchaseId: number, purchaseItemId: number) {
+export function useOrderMutations(purchaseId: number, _purchaseItemId: number) {
     const utils = trpc.useUtils();
 
-    const adjust = trpc.orders.adjustQuantity.useMutation({
-        onSuccess: () => {
-            void utils.orders.getMyOrders.invalidate();
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const invalidate = () => {
+        void utils.orders.getMyOrders.invalidate();
+        void utils.purchases.getById.invalidate({ id: purchaseId });
+    };
 
-    const adjustPackage = trpc.orders.adjustPackageCount.useMutation({
-        onSuccess: () => {
-            void utils.orders.getMyOrders.invalidate();
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const adjust = trpc.orders.adjustQuantity.useMutation(mutationOptions({ invalidate }));
+
+    const adjustPackage = trpc.orders.adjustPackageCount.useMutation(mutationOptions({ invalidate }));
 
     return {
         adjust,

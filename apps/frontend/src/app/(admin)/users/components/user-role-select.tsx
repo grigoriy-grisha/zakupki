@@ -1,9 +1,9 @@
 'use client';
 
-import { toast } from 'sonner';
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { trpc } from '@/lib/client/trpc';
+import { mutationOptions } from '@/lib/query/mutation-options';
+
 import { USER_ROLE_LABELS } from '../../lib/constants';
 
 type UserRole = 'ADMIN' | 'CLIENT';
@@ -15,13 +15,12 @@ interface UserRoleSelectProps {
 
 export function UserRoleSelect({ userId, role }: UserRoleSelectProps) {
     const utils = trpc.useUtils();
-    const updateRole = trpc.users.updateRole.useMutation({
-        onSuccess: () => {
-            void utils.users.list.invalidate();
-            toast.success('Роль обновлена');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const updateRole = trpc.users.updateRole.useMutation(
+        mutationOptions({
+            invalidate: () => void utils.users.list.invalidate(),
+            success: 'Роль обновлена',
+        }),
+    );
 
     return (
         <Select

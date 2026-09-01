@@ -1,18 +1,8 @@
 'use client';
 
-import { toast } from 'sonner';
-
 import { trpc } from '@/lib/client/trpc';
+import { mutationOptions } from '@/lib/query/mutation-options';
 
-/**
- * Мутации ручного управления позициями участника (admin override).
- * Действия идут в обход stage-правил/пула/лимита поставщика —
- * серверный OrderService.admin* делегирует в OrderBook.admin*.
- *
- * После каждого успеха инвалидируем orders.getAllByPurchase (карточки
- * участников, суммы due/paid/pending) и purchases.getById (статистика
- * закупки, остатки в items-вкладке).
- */
 export function useParticipantOrderActions(purchaseId: number) {
     const utils = trpc.useUtils();
 
@@ -22,77 +12,41 @@ export function useParticipantOrderActions(purchaseId: number) {
         void utils.purchases.getById.invalidate({ id: purchaseId });
     };
 
-    const adminAdjust = trpc.orders.adminAdjust.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Количество обновлено');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const adminAdjust = trpc.orders.adminAdjust.useMutation(
+        mutationOptions({ invalidate, success: 'Количество обновлено' }),
+    );
 
-    const adminSetQuantity = trpc.orders.adminSetQuantity.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Количество обновлено');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const adminSetQuantity = trpc.orders.adminSetQuantity.useMutation(
+        mutationOptions({ invalidate, success: 'Количество обновлено' }),
+    );
 
-    const adminAdjustPackage = trpc.orders.adminAdjustPackageCount.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Упаковки обновлены');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const adminAdjustPackage = trpc.orders.adminAdjustPackageCount.useMutation(
+        mutationOptions({ invalidate, success: 'Упаковки обновлены' }),
+    );
 
-    const deleteOrderLine = trpc.orders.deleteOrder.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Позиция удалена');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const deleteOrderLine = trpc.orders.deleteOrder.useMutation(
+        mutationOptions({ invalidate, success: 'Позиция удалена' }),
+    );
 
-    const removeParticipant = trpc.orders.removeAllByUserFromPurchase.useMutation({
-        onSuccess: (result) => {
-            invalidate();
-            toast.success(`Удалено заказов: ${result.count}`);
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const removeParticipant = trpc.orders.removeAllByUserFromPurchase.useMutation(
+        mutationOptions({ invalidate, success: (result) => `Удалено заказов: ${result.count}` }),
+    );
 
-    const deleteAllByUserItem = trpc.orders.deleteAllByUserItem.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Товар удалён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const deleteAllByUserItem = trpc.orders.deleteAllByUserItem.useMutation(
+        mutationOptions({ invalidate, success: 'Товар удалён' }),
+    );
 
-    const setOrderComment = trpc.purchases.setOrderComment.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Комментарий сохранён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const setOrderComment = trpc.purchases.setOrderComment.useMutation(
+        mutationOptions({ invalidate, success: 'Комментарий сохранён' }),
+    );
 
-    const addParticipant = trpc.orders.addParticipant.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Участник добавлен');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const addParticipant = trpc.orders.addParticipant.useMutation(
+        mutationOptions({ invalidate, success: 'Участник добавлен' }),
+    );
 
-    const setHandoffStatus = trpc.orders.setHandoffStatus.useMutation({
-        onSuccess: () => {
-            invalidate();
-            toast.success('Статус выдачи обновлён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const setHandoffStatus = trpc.orders.setHandoffStatus.useMutation(
+        mutationOptions({ invalidate, success: 'Статус выдачи обновлён' }),
+    );
 
     return {
         adminAdjust,

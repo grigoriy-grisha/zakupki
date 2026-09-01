@@ -1,36 +1,32 @@
 'use client';
 
-import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
+
+import { trpc } from '@/lib/client/trpc';
+import { mutationOptions } from '@/lib/query/mutation-options';
 
 export function usePurchaseActions(purchaseId: number) {
     const utils = trpc.useUtils();
 
-    const activate = trpc.purchases.activate.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            void utils.purchases.list.invalidate();
-            toast.success('Закупка активирована');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const invalidatePurchase = () => {
+        void utils.purchases.getById.invalidate({ id: purchaseId });
+        void utils.purchases.list.invalidate();
+    };
 
-    const complete = trpc.purchases.complete.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            void utils.purchases.list.invalidate();
-            toast.success('Закупка завершена');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const activate = trpc.purchases.activate.useMutation(
+        mutationOptions({ invalidate: invalidatePurchase, success: 'Закупка активирована' }),
+    );
 
-    const deleteDraft = trpc.purchases.deleteDraft.useMutation({
-        onSuccess: () => {
-            void utils.purchases.list.invalidate();
-            toast.success('Черновик удалён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const complete = trpc.purchases.complete.useMutation(
+        mutationOptions({ invalidate: invalidatePurchase, success: 'Закупка завершена' }),
+    );
+
+    const deleteDraft = trpc.purchases.deleteDraft.useMutation(
+        mutationOptions({
+            invalidate: () => void utils.purchases.list.invalidate(),
+            success: 'Черновик удалён',
+        }),
+    );
 
     const publishAll = trpc.purchases.publishToTelegram.useMutation({
         onSuccess: (data) => {
@@ -50,22 +46,16 @@ export function usePurchaseActions(purchaseId: number) {
         onError: (err) => toast.error(err.message),
     });
 
-    const updateFulfillmentStatus = trpc.purchases.updateFulfillmentStatus.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            void utils.purchases.list.invalidate();
-            toast.success('Этап закупки обновлён');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const updateFulfillmentStatus = trpc.purchases.updateFulfillmentStatus.useMutation(
+        mutationOptions({ invalidate: invalidatePurchase, success: 'Этап закупки обновлён' }),
+    );
 
-    const setAvailableQuantities = trpc.purchases.setAvailableQuantities.useMutation({
-        onSuccess: () => {
-            void utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('Остатки обновлены');
-        },
-        onError: (err) => toast.error(err.message),
-    });
+    const setAvailableQuantities = trpc.purchases.setAvailableQuantities.useMutation(
+        mutationOptions({
+            invalidate: () => void utils.purchases.getById.invalidate({ id: purchaseId }),
+            success: 'Остатки обновлены',
+        }),
+    );
 
     return {
         activate,
