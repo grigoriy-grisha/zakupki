@@ -145,8 +145,8 @@ function ProductCardImpl({
                     {showPackHint && (
                         <span
                             className={cn(
-                                'inline-flex items-center rounded-full bg-secondary px-2.5 py-1',
-                                'text-10-bold text-primary-foreground sm:text-12-bold',
+                                'inline-flex items-center rounded-full bg-secondary/10 px-2 py-0.5',
+                                'text-11-semibold text-secondary sm:text-12-semibold',
                             )}
                         >
                             −{packInfo.discountPercent}% ·{' '}

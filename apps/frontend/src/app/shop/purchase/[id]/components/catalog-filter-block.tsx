@@ -56,20 +56,27 @@ export function CatalogFilterBlock({
                 </span>
             </button>
 
-            {!collapsed && (
-                <div className="mt-4">
-                    <FilterTree
-                        compact
-                        nodes={tree}
-                        selectedId={selectedId}
-                        onSelect={onSelectNode}
-                        expandedIds={expandedIds}
-                        onToggle={onToggle}
-                        totalCount={totalCount}
-                        onClear={onClearTree}
-                    />
+            <div
+                className={cn(
+                    'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+                    collapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100',
+                )}
+            >
+                <div className="overflow-hidden">
+                    <div className="mt-4">
+                        <FilterTree
+                            compact
+                            nodes={tree}
+                            selectedId={selectedId}
+                            onSelect={onSelectNode}
+                            expandedIds={expandedIds}
+                            onToggle={onToggle}
+                            totalCount={totalCount}
+                            onClear={onClearTree}
+                        />
+                    </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

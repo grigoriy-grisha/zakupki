@@ -289,7 +289,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         <PopoverContent
                             align="start"
                             sideOffset={8}
-                            className="w-72 max-w-[calc(100vw-2rem)] rounded-2xl border-0 bg-bg-card p-3 shadow-xl ring-1 ring-black/5"
+                            className={cn(
+                                'w-72 max-w-[calc(100vw-2rem)] rounded-2xl border-0 p-3',
+                                'bg-white/75 shadow-xl ring-1 ring-black/5 backdrop-blur-xl',
+                            )}
                         >
                             <FilterTree
                                 compact
