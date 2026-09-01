@@ -72,8 +72,8 @@ function OrdersSegmentedTabs({
                 aria-selected={tab === 'active'}
                 onClick={() => onTabChange('active')}
                 className={cn(
-                    'flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
-                    'text-12-bold transition-colors sm:h-10 sm:px-5 sm:text-14-medium',
+                    'flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3',
+                    'text-12-bold transition-colors sm:h-9 sm:px-4 sm:text-13-medium',
                     tab === 'active' ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
                 )}
             >
@@ -86,8 +86,8 @@ function OrdersSegmentedTabs({
                 aria-selected={tab === 'past'}
                 onClick={() => onTabChange('past')}
                 className={cn(
-                    'flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
-                    'text-12-bold transition-colors sm:h-10 sm:px-5 sm:text-14-medium',
+                    'flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3',
+                    'text-12-bold transition-colors sm:h-9 sm:px-4 sm:text-13-medium',
                     tab === 'past' ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
                 )}
             >
