@@ -119,7 +119,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 </div>
             )}
 
-            <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-3">
+            <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto pb-3 pl-2 pr-4">
                 {items.map((item) => {
                     const active = isNavActive(appPathname, item.href);
                     const Icon = item.icon;
