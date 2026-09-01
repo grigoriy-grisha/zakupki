@@ -41,8 +41,6 @@ function ProductCardImpl({
     currentQuantity = 0,
     currentPackageCount = 0,
     baseQuantity: baseQuantityProp,
-    isSupplement,
-    canAddPackage,
     fulfillmentStatus,
 }: ShopPurchaseItemProductCardProps) {
     const router = useRouter();
