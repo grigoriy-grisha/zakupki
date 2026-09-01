@@ -1,6 +1,6 @@
 'use client';
 
-import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 import { ChevronDown } from 'lucide-react';
 
 import { AppLink } from '@/components/app-link';
@@ -53,24 +53,22 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
                                 key={purchase.id}
                                 href={`/shop/purchase/${purchase.id}`}
                                 className={cn(
-                                    'block px-4 py-3 transition-colors',
+                                    'flex w-full items-center justify-between gap-2 px-4 py-3 transition-colors',
                                     isActive
                                         ? 'rounded-xl border-2 border-gold bg-white/70'
                                         : 'rounded-xl hover:bg-bg-soft',
                                 )}
                             >
-                                <span className="flex min-w-0 items-baseline gap-2">
-                                    <span
-                                        className={cn(
-                                            'font-display leading-tight',
-                                            isActive ? 'text-24-semibold text-secondary' : 'text-18-semibold text-fg-primary',
-                                        )}
-                                    >
-                                        {purchase.tag}
-                                    </span>
-                                    <span className="min-w-0 truncate text-12-regular text-fg-tertiary">
-                                        {PURCHASE_FULFILLMENT_LABELS[status]}
-                                    </span>
+                                <span
+                                    className={cn(
+                                        'min-w-0 truncate font-display leading-tight',
+                                        isActive ? 'text-24-semibold text-secondary' : 'text-18-semibold text-fg-primary',
+                                    )}
+                                >
+                                    {purchase.tag}
+                                </span>
+                                <span className="inline-flex h-7 shrink-0 items-center rounded-full border border-secondary px-3.5 text-12-medium text-secondary">
+                                    {getPurchaseStageLabel(status)}
                                 </span>
                             </AppLink>
                         );
