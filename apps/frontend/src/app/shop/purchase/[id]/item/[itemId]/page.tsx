@@ -43,13 +43,13 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
 
     if (isLoading || !purchase) {
         return (
-            <div className="flex flex-col gap-5 sm:gap-6">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 sm:gap-6">
                 <Skeleton className="h-8 w-44 rounded-lg" />
                 <div
                     className={cn(
                         'flex flex-col gap-5 sm:gap-6',
                         'lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6',
-                        'xl:grid-cols-[minmax(0,1fr)_24rem] xl:gap-8',
+                        'xl:grid-cols-[minmax(0,28rem)_24rem] xl:gap-8',
                     )}
                 >
                     <div className="flex flex-col gap-5 sm:gap-6">
@@ -192,7 +192,7 @@ function ItemDetailLoaded({
     const showMobileBar = !ctx.isSoldOut || ctx.hasOrder;
 
     return (
-        <div className="flex flex-col gap-4 sm:gap-5">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 sm:gap-5">
             <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
                 <AppLink href={`/shop/purchase/${purchaseId}`}>
                     <ArrowLeft className="size-4" />
@@ -204,7 +204,7 @@ function ItemDetailLoaded({
                 className={cn(
                     'flex flex-col gap-5 sm:gap-6',
                     'lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6',
-                    'xl:grid-cols-[minmax(0,1fr)_24rem] xl:gap-8',
+                    'xl:grid-cols-[minmax(0,28rem)_24rem] xl:gap-8',
                 )}
             >
                 <div
