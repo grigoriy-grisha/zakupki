@@ -1,20 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import { Package, Plus, Search } from 'lucide-react';
+import { useState } from 'react';
 
-import { trpc } from '@/lib/client/trpc';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-
-import { useAddPurchaseItems } from '../../hooks';
+import { Input } from '@/components/ui/input';
+import { trpc } from '@/lib/client/trpc';
 import { formatProductAttributesLine, getProductPhotoId, type ProductLabelSource } from '@/lib/product-label';
+import { cn } from '@/lib/utils';
+
 import { ProductSheet } from '../../../../products/components';
+import { useAddPurchaseItems } from '../../hooks';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { PurchaseProductEditForm, type PurchaseProductSaveData } from './purchase-product-edit-form';
-import { cn } from '@/lib/utils';
 
 interface ProductPickerDialogProps {
     purchaseId: number;

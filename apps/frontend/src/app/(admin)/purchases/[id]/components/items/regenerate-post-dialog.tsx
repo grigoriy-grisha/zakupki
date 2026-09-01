@@ -57,8 +57,8 @@ export function RegeneratePostDialog({
                 <DialogHeader>
                     <DialogTitle>Обновить пост в Telegram</DialogTitle>
                     <DialogDescription>
-                        Описание будет перегенерировано с актуальными данными товара. Пост в канале
-                        обновится автоматически.
+                        Описание будет перегенерировано с актуальными данными товара. Пост в канале обновится
+                        автоматически.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

@@ -1,53 +1,31 @@
 'use client';
 
+import { canAddItemsAtStage } from '@zakupki/types';
+import { ClipboardList, SearchX } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Search, SearchX, Send } from 'lucide-react';
-import { canAddItemsAtStage, getUnitByCode, resolveOrgFeePercent } from '@zakupki/types';
 
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { TooltipProvider } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { cn } from '@/lib/utils';
-
+import { EmptyState } from '@/components/ui/empty-state';
+import { Table, TableBody } from '@/components/ui/table';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
-import {
-    getCollectedQty,
-    getPackPriceRub,
-    getPackPriceWithOrgFeeRub,
-    getRemainderQty,
-    getUnitPriceRub,
-} from '../../lib/items-table-pricing';
-import {
-    useDeleteItemPost,
-    useInlineUpdateItem,
-    usePurchaseActions,
-    useRemovePurchaseItem,
-} from '../../hooks';
+import type { ProductLabelSource } from '@/lib/product-label';
+
+import { useDeleteItemPost, useInlineUpdateItem, usePurchaseActions, useRemovePurchaseItem } from '../../hooks';
 import { usePurchaseDetail } from '../../hooks/use-purchase-detail';
 import type { PurchaseDetail } from '../../lib/types';
-import type { ProductLabelSource } from '@/lib/product-label';
-import { CurrencyRatesPanel } from './currency-rates-panel';
-import { ItemEditSheet } from './item-edit-sheet';
-import { ItemsTableRow, type ItemsTableRowDerived } from './items-table-row';
-import { ProductPickerDialog } from './product-picker-dialog';
-import { RegeneratePostDialog } from './regenerate-post-dialog';
 import { PublishToTgDialog } from '../publish-to-tg-dialog';
+import { CurrencyRatesPanel } from './currency-rates-panel';
+import { deriveRow } from './derive-row';
+import { ItemEditSheet } from './item-edit-sheet';
+import { ItemsTableHeader } from './items-table-header';
+import { ItemsTableRow } from './items-table-row';
+import { ItemsToolbar, type PublishedFilter } from './items-toolbar';
+import { RegeneratePostDialog } from './regenerate-post-dialog';
 
 interface ItemsTabProps {
     purchaseId: number;
-    /** Колбэк для прокидывания выбранных TG id в PurchaseStepCard (для счётчика bulk-publish). */
     onSelectionChange?: (count: number) => void;
 }
 
@@ -60,7 +38,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const deletePost = useDeleteItemPost(purchaseId);
 
     const [search, setSearch] = useState('');
-    const [publishedFilter, setPublishedFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+    const [publishedFilter, setPublishedFilter] = useState<PublishedFilter>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [editItemId, setEditItemId] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{
@@ -70,20 +48,19 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
         published: boolean;
     } | null>(null);
     const [publishOpen, setPublishOpen] = useState(false);
-    const [regenerateTarget, setRegenerateTarget] = useState<{ itemId: number; productId: number } | null>(
-        null,
-    );
+    const [regenerateTarget, setRegenerateTarget] = useState<{ itemId: number; productId: number } | null>(null);
 
-    if (isLoading || !purchase) {
-        return <div className="h-64 animate-pulse rounded-2xl bg-bg-soft" />;
-    }
+    useEffect(() => {
+        onSelectionChange?.(selectedIds.size);
+    }, [selectedIds, onSelectionChange]);
 
-    const typedPurchase = purchase as PurchaseDetail;
-    const items = typedPurchase.items;
-    const currencyRates = typedPurchase.currencyRates ?? [];
-    const canAddItems = typedPurchase.status !== 'DONE' && canAddItemsAtStage(typedPurchase.fulfillmentStatus);
-    const isActive = typedPurchase.status === 'ACTIVE';
-    const isDone = typedPurchase.status === 'DONE';
+    const typedPurchase = purchase as PurchaseDetail | undefined;
+    const items = useMemo(() => typedPurchase?.items ?? [], [typedPurchase]);
+    const currencyRates = typedPurchase?.currencyRates ?? [];
+    const canAddItems =
+        typedPurchase != null && typedPurchase.status !== 'DONE' && canAddItemsAtStage(typedPurchase.fulfillmentStatus);
+    const isActive = typedPurchase?.status === 'ACTIVE';
+    const isDone = typedPurchase?.status === 'DONE';
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -96,17 +73,6 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
         });
     }, [items, search, publishedFilter]);
 
-    function toggleSelect(id: number, v: boolean) {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (v) next.add(id);
-            else next.delete(id);
-            return next;
-        });
-    }
-
-    // Selectable-строки в текущей выборке: не опубликованы, не скрыты и закупка не
-    // завершена (совпадает с условием disabled чекбокса в ItemsTableRow).
     const selectableIds = useMemo(
         () => filtered.filter((it) => !it.tgMessageId && !it.hidden && !isDone).map((it) => it.id),
         [filtered, isDone],
@@ -117,6 +83,21 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     );
     const allSelected = selectableIds.length > 0 && selectedSelectableCount === selectableIds.length;
     const someSelected = selectedSelectableCount > 0 && !allSelected;
+
+    if (isLoading || !purchase) {
+        return <div className="h-64 animate-pulse rounded-2xl bg-bg-soft" />;
+    }
+
+    const detail = purchase as PurchaseDetail;
+
+    function toggleSelect(id: number, v: boolean) {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (v) next.add(id);
+            else next.delete(id);
+            return next;
+        });
+    }
 
     function toggleAll(v: boolean) {
         setSelectedIds((prev) => {
@@ -130,81 +111,29 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
         });
     }
 
-    // Сообщаем родителю (PurchaseDetailPage) кол-во выбранных для публикации.
-    useEffect(() => {
-        onSelectionChange?.(selectedIds.size);
-    }, [selectedIds, onSelectionChange]);
-
-    const publishCount = selectedIds.size;
-
-    /** Тихий inline-коммит полей позиции (без toast на успех). */
     function handleInlineCommit(purchaseItemId: number, patch: Record<string, unknown>) {
         inlineUpdate.mutate({ purchaseItemId, product: patch });
     }
+
+    const publishCount = selectedIds.size;
 
     return (
         <div className="space-y-3">
             <CurrencyRatesPanel purchaseId={purchaseId} rates={currencyRates} />
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-1 items-center gap-2">
-                    <div className="relative max-w-xs flex-1">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-tertiary" />
-                        <Input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Поиск: название, бренд или комментарий…"
-                            className="rounded-full pl-9 text-13-regular"
-                        />
-                    </div>
-                    <div className="hidden items-center gap-1 rounded-full bg-bg-soft p-1 sm:flex">
-                        {(
-                            [
-                                { id: 'all', label: 'Все' },
-                                { id: 'published', label: 'Опубл.' },
-                                { id: 'unpublished', label: 'Не опубл.' },
-                            ] as const
-                        ).map((opt) => (
-                            <Button
-                                key={opt.id}
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setPublishedFilter(opt.id)}
-                                className={cn(
-                                    'h-7 rounded-full px-3 text-12-medium',
-                                    publishedFilter === opt.id
-                                        ? 'bg-bg-card text-fg-primary shadow-xs hover:bg-bg-card'
-                                        : 'text-fg-tertiary',
-                                )}
-                            >
-                                {opt.label}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {isActive && publishCount > 0 && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full"
-                            onClick={() => setPublishOpen(true)}
-                        >
-                            <Send className="size-3.5" />
-                            <span className="sm:hidden">В TG ({publishCount})</span>
-                            <span className="hidden sm:inline">Опубликовать в TG ({publishCount})</span>
-                        </Button>
-                    )}
-                    {canAddItems && (
-                        <ProductPickerDialog
-                            purchaseId={purchaseId}
-                            purchaseTag={typedPurchase.tag}
-                            currencyRates={currencyRates}
-                        />
-                    )}
-                </div>
-            </div>
+            <ItemsToolbar
+                search={search}
+                onSearchChange={setSearch}
+                publishedFilter={publishedFilter}
+                onPublishedFilterChange={setPublishedFilter}
+                showPublishButton={isActive && publishCount > 0}
+                publishCount={publishCount}
+                onPublishClick={() => setPublishOpen(true)}
+                canAddItems={canAddItems}
+                purchaseId={purchaseId}
+                purchaseTag={detail.tag}
+                currencyRates={currencyRates}
+            />
 
             <TooltipProvider delayDuration={150}>
                 {filtered.length === 0 ? (
@@ -220,111 +149,54 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                         />
                     </div>
                 ) : (
-                <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
-                    <Table className="table-fixed min-w-[2200px]">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="sticky left-0 z-10 w-[200px] bg-bg-card">
-                                    Товар
-                                </TableHead>
-                                <TableHead className="w-[140px] px-3 text-right">Вес упаковки</TableHead>
-                                <TableHead className="w-[160px] px-3 text-right">Цена за упаковку</TableHead>
-                                <TableHead className="w-[150px] px-3 text-right">Цена за упаковку ₽</TableHead>
-                                <TableHead className="w-[170px] px-3 text-right">Цена за упаковку + орг</TableHead>
-                                <TableHead className="w-[150px] px-3 text-right">Цена за 1 единицу ₽</TableHead>
-                                <TableHead className="w-[130px] px-3 text-right">Собрано</TableHead>
-                                <TableHead className="w-[120px] px-3 text-right">Заказано</TableHead>
-                                <TableHead className="w-[140px] px-3 text-right">Скомплектовано</TableHead>
-                                <TableHead className="w-[130px] px-3 text-right">Дозаказано</TableHead>
-                                <TableHead className="w-[120px] px-3 text-right">Остаток</TableHead>
-                                <TableHead className="w-[120px] px-3">Комментарий</TableHead>
-                                <TableHead className="w-[72px] px-2 text-center">
-                                    {selectableIds.length > 0 ? (
-                                        <div className="flex items-center justify-center gap-1">
-                                            <Checkbox
-                                                checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                                                aria-label="Выбрать все для публикации в Telegram"
-                                                onCheckedChange={(v) => toggleAll(v === true)}
-                                            />
-                                            <span className="text-11-medium text-fg-tertiary">TG</span>
-                                        </div>
-                                    ) : (
-                                        'TG'
-                                    )}
-                                </TableHead>
-                                <TableHead className="sticky right-0 z-10 w-[56px] bg-bg-card" />
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filtered.map((item) => {
-                                    // Скрытый товар = «не опубликован» в UI, даже если tgMessageId
-                                    // ещё не обнулён воркером (он обнулит его через ~7с в ITEM_CHANGED).
-                                    // Иначе после «Скрыть» чекбокс зависает в состоянии «Опубликовано».
-                                    const published = !!item.tgMessageId && !item.hidden;
-                                    const orgFeePercent = resolveOrgFeePercent(
-                                        item.orgFeePercentOverride != null
-                                            ? Number(item.orgFeePercentOverride)
-                                            : null,
-                                        orgFeeDefaultPercent,
-                                    );
-                                    const derived: ItemsTableRowDerived = {
-                                        shortName: getUnitByCode(item.product.unitCode)?.shortName ?? '',
-                                        published,
-                                        packPriceRub: getPackPriceRub(item, currencyRates),
-                                        packPriceWithOrgFeeRub: getPackPriceWithOrgFeeRub(
+                    <div className="overflow-hidden rounded-2xl border border-border bg-bg-card">
+                        <Table className="table-fixed min-w-[2200px]">
+                            <ItemsTableHeader
+                                selectableCount={selectableIds.length}
+                                allSelected={allSelected}
+                                someSelected={someSelected}
+                                onToggleAll={toggleAll}
+                            />
+                            <TableBody>
+                                {filtered.map((item) => (
+                                    <ItemsTableRow
+                                        key={item.id}
+                                        item={item}
+                                        derived={deriveRow(
                                             item,
                                             currencyRates,
                                             orgFeeDefaultPercent,
-                                        ),
-                                        unitPriceRub: getUnitPriceRub(
-                                            item,
-                                            currencyRates,
-                                            orgFeeDefaultPercent,
-                                        ),
-                                        collectedQty: getCollectedQty(item),
-                                        remainderQty: getRemainderQty(
-                                            item,
-                                            typedPurchase.fulfillmentStatus,
-                                        ),
-                                        orgFeePercent,
-                                        isDone: typedPurchase.status === 'DONE',
-                                        isActive,
-                                    };
-                                        return (
-                                            <ItemsTableRow
-                                                key={item.id}
-                                                item={item}
-                                                derived={derived}
-                                                currencyRates={currencyRates}
-                                                selected={selectedIds.has(item.id)}
-                                                searchQuery={search}
-                                            onToggleSelect={toggleSelect}
-                                            onEdit={setEditItemId}
-                                            onPublish={(id) => {
-                                                setSelectedIds((prev) => {
-                                                    const next = new Set(prev);
-                                                    next.add(id);
-                                                    return next;
-                                                });
-                                                setPublishOpen(true);
-                                            }}
-                                            onDelete={setDeleteTarget}
-                                            onCommit={(patch) => handleInlineCommit(item.id, patch)}
-                                            onDeletePost={(itemId) =>
-                                                deletePost.mutate({ purchaseItemId: itemId })
-                                            }
-                                            onRegenerate={(target) =>
-                                                setRegenerateTarget({
-                                                    itemId: target.itemId,
-                                                    productId: item.productId,
-                                                })
+                                            detail.fulfillmentStatus,
+                                            detail.status,
+                                            isActive,
+                                        )}
+                                        currencyRates={currencyRates}
+                                        selected={selectedIds.has(item.id)}
+                                        searchQuery={search}
+                                        onToggleSelect={toggleSelect}
+                                        onEdit={setEditItemId}
+                                        onPublish={(id) => {
+                                            setSelectedIds((prev) => {
+                                                const next = new Set(prev);
+                                                next.add(id);
+                                                return next;
+                                            });
+                                            setPublishOpen(true);
+                                        }}
+                                        onDelete={setDeleteTarget}
+                                        onCommit={(patch) => handleInlineCommit(item.id, patch)}
+                                        onDeletePost={(itemId) => deletePost.mutate({ purchaseItemId: itemId })}
+                                        onRegenerate={(target) =>
+                                            setRegenerateTarget({
+                                                itemId: target.itemId,
+                                                productId: item.productId,
+                                            })
                                         }
                                     />
-                                    );
-                                })}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 )}
             </TooltipProvider>
 
@@ -361,10 +233,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                 loading={removeItem.isPending}
                 onConfirm={() => {
                     if (!deleteTarget) return;
-                    removeItem.mutate(
-                        { purchaseItemId: deleteTarget.id },
-                        { onSuccess: () => setDeleteTarget(null) },
-                    );
+                    removeItem.mutate({ purchaseItemId: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
                 }}
             />
 

@@ -1,25 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { getUnitByCode } from '@zakupki/types';
+import { Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { trpc } from '@/lib/client/trpc';
-import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { FormFooter } from '@/components/ui/form-footer';
-
+import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
+import { trpc } from '@/lib/client/trpc';
+import { normalizeNovelHtml, postTemplateEngine, productDescriptionBuilder } from '@/lib/product-description';
 import { buildShowInTitleByTypeId, type ProductLabelSource } from '@/lib/product-label';
-import {
-    normalizeNovelHtml,
-    postTemplateEngine,
-    productDescriptionBuilder,
-} from '@/lib/product-description';
 
-import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import { getUnitPriceRub } from '../../lib/items-table-pricing';
-import { defaultUnitField } from '../../lib/unit-defaults';
+import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
+import { defaultUnitField } from '../../lib/unit-defaults';
 import { DescriptionSection } from './purchase-product-edit-form/sections/description-section';
 import {
     GRAM_DEFAULT_MIN_PACKAGE,
@@ -122,11 +117,7 @@ function gramsOrDefault(
     return unit === GRAM_UNIT ? gramDefault : null;
 }
 
-function mergeTemplateIntoDescription(
-    current: string,
-    prevAuto: string | null,
-    nextAuto: string,
-): string {
+function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {
     if (!prevAuto) return nextAuto;
     const normCurrent = normalizeNovelHtml(current);
     const normPrev = normalizeNovelHtml(prevAuto);
@@ -168,18 +159,14 @@ export function PurchaseProductEditForm({
     const f = initialPurchaseFields ?? {};
 
     // Новая модель цен:
-    const [pricePerPackCurrency, setPricePerPackCurrency] = useState<number | null>(
-        toNum(f.pricePerPackCurrency),
-    );
+    const [pricePerPackCurrency, setPricePerPackCurrency] = useState<number | null>(toNum(f.pricePerPackCurrency));
     const [currencyId, setCurrencyId] = useState<number | null>(f.currencyId ?? null);
     const [packAmount, setPackAmount] = useState<number | null>(toNum(f.packAmount));
     // Дефолт единицы для всех трёх unit-полей: сохранённое значение → unit товара → null.
     const [packUnit, setPackUnit] = useState<string | null>(
         defaultUnitField(f.packUnit, getUnitByCode(product.unitCode)?.shortName),
     );
-    const [orgFeePercentOverride, setOrgFeePercentOverride] = useState<number | null>(
-        toNum(f.orgFeePercentOverride),
-    );
+    const [orgFeePercentOverride, setOrgFeePercentOverride] = useState<number | null>(toNum(f.orgFeePercentOverride));
     // Добор и лимиты. Для граммовых позиций предзаполняем 5/10 (см. gramsOrDefault).
     // Юнит для дефолта берём из сохранённого packUnit, иначе из единицы продукта.
     const fallbackUnit = getUnitByCode(product.unitCode)?.shortName ?? null;
@@ -187,9 +174,7 @@ export function PurchaseProductEditForm({
     const [minPkgAmount, setMinPkgAmount] = useState<number | null>(
         gramsOrDefault(f.minPackageAmount, initialUnit, GRAM_DEFAULT_MIN_PACKAGE),
     );
-    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(
-        defaultUnitField(f.minPackageUnit, fallbackUnit),
-    );
+    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(defaultUnitField(f.minPackageUnit, fallbackUnit));
     const [supplementStep, setSupplementStep] = useState<number | null>(
         gramsOrDefault(f.supplementStep, initialUnit, GRAM_DEFAULT_SUPPLEMENT_STEP),
     );
@@ -248,13 +233,9 @@ export function PurchaseProductEditForm({
     const userPickedTemplateRef = useRef(false);
     const lastAppliedSignatureRef = useRef<string | null>(null);
     const lastAutoDescriptionRef = useRef<string | null>(
-        loadSavedDescription && !!normalizeNovelHtml(f.description ?? '')
-            ? f.description ?? ''
-            : null,
+        loadSavedDescription && !!normalizeNovelHtml(f.description ?? '') ? (f.description ?? '') : null,
     );
-    const preserveSavedDescriptionRef = useRef(
-        loadSavedDescription && !!normalizeNovelHtml(f.description ?? ''),
-    );
+    const preserveSavedDescriptionRef = useRef(loadSavedDescription && !!normalizeNovelHtml(f.description ?? ''));
 
     // Сброс при смене товара.
     useEffect(() => {
@@ -276,11 +257,8 @@ export function PurchaseProductEditForm({
         setDescription(nextF.description ?? '');
 
         userPickedTemplateRef.current = false;
-        preserveSavedDescriptionRef.current =
-            loadSavedDescription && !!normalizeNovelHtml(nextF.description ?? '');
-        lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current
-            ? nextF.description ?? ''
-            : null;
+        preserveSavedDescriptionRef.current = loadSavedDescription && !!normalizeNovelHtml(nextF.description ?? '');
+        lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current ? (nextF.description ?? '') : null;
         setTemplateId('none');
         setDescriptionRevision(0);
         lastAppliedSignatureRef.current = null;
@@ -309,7 +287,12 @@ export function PurchaseProductEditForm({
 
     const descriptionFields = useMemo(
         () => ({
-            ...productDescriptionBuilder.fromProduct(product, showInTitleByTypeId, attributeTypes, characteristicsCatalog),
+            ...productDescriptionBuilder.fromProduct(
+                product,
+                showInTitleByTypeId,
+                attributeTypes,
+                characteristicsCatalog,
+            ),
             name: product.name,
             pricePerPackCurrency,
             currencyName: currencyName ?? undefined,
@@ -349,8 +332,7 @@ export function PurchaseProductEditForm({
         [postTemplates],
     );
 
-    const selectedTemplateBody =
-        templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
+    const selectedTemplateBody = templateId === 'none' ? '' : (getTemplateBody(templateId)?.trim() ?? '');
 
     const catalogReady = characteristicsCatalog != null;
 
@@ -512,12 +494,7 @@ export function PurchaseProductEditForm({
                         Отмена
                     </Button>
                 )}
-                <Button
-                    type="button"
-                    className="rounded-full"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                >
+                <Button type="button" className="rounded-full" onClick={handleSave} disabled={isSaving}>
                     {isSaving && <Loader2 className="size-4 animate-spin" />}
                     {submitLabel}
                 </Button>

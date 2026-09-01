@@ -1,19 +1,14 @@
 'use client';
 
+import { Loader2,Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { trpc } from '@/lib/client/trpc';
-import { toast } from 'sonner';
 
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 
