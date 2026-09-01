@@ -105,7 +105,7 @@ export function CatalogToolbar({
                             )}
                         >
                             <ShoppingBag className="size-4" />
-                            <span className="hidden sm:inline">В заказе</span>
+                            <span>В заказе</span>
                         </button>
                     )}
                 </div>
@@ -121,8 +121,6 @@ export function CatalogToolbar({
                     ancestorPath={ancestorPath}
                     selectedFolderLabel={selectedFolderLabel}
                     onClearTree={onClearTree}
-                    onlyMine={onlyMine}
-                    onOnlyMineToggle={onOnlyMineToggle}
                     showResetAll={showResetAll}
                     onResetAll={onResetAll}
                 />
@@ -138,8 +136,6 @@ function ActiveFilterChips({
     ancestorPath,
     selectedFolderLabel,
     onClearTree,
-    onlyMine,
-    onOnlyMineToggle,
     showResetAll,
     onResetAll,
 }: {
@@ -149,8 +145,6 @@ function ActiveFilterChips({
     ancestorPath: { typeId: number; typeName: string; name: string }[];
     selectedFolderLabel: string | null;
     onClearTree: () => void;
-    onlyMine: boolean;
-    onOnlyMineToggle: () => void;
     showResetAll: boolean;
     onResetAll: () => void;
 }) {
@@ -210,28 +204,6 @@ function ActiveFilterChips({
                         Сбросить
                     </Button>
                 </>
-            )}
-
-            {onlyMine && (
-                <span
-                    className={cn(
-                        'inline-flex items-center gap-1 rounded-full bg-bg-soft py-1 pr-1 pl-2.5',
-                        'text-12-medium text-secondary',
-                    )}
-                >
-                    В заказе
-                    <button
-                        type="button"
-                        onClick={onOnlyMineToggle}
-                        aria-label="Показать все товары"
-                        className={cn(
-                            'flex size-5 items-center justify-center rounded-full text-secondary/70',
-                            'transition-colors hover:bg-secondary/15 hover:text-secondary',
-                        )}
-                    >
-                        <X className="size-3" />
-                    </button>
-                </span>
             )}
 
             {showResetAll && (
