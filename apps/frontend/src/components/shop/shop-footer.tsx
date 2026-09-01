@@ -12,7 +12,7 @@ const FOOTER_LINKS = ['японский и чешский бисер', 'фурн
 export function ShopFooter() {
     return (
         <footer className="mt-12">
-            <div className="flex flex-col items-center gap-7 px-4 pb-9">
+            <div className="flex flex-col items-center gap-7 px-6 pb-9 sm:px-10">
                 <div className="flex items-center gap-4">
                     {SOCIALS.map(({ label, href, Icon }) => (
                         <a
