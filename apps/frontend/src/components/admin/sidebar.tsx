@@ -59,7 +59,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
             onMouseLeave={() => setHovered(false)}
             className={cn(
                 'group relative flex h-full shrink-0 flex-col bg-bg-base transition-[width] duration-200 ease-in-out',
-                collapsed ? 'w-[52px]' : 'w-[220px]',
+                collapsed ? 'w-[64px]' : 'w-[220px]',
                 className,
             )}
         >
@@ -69,7 +69,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                 {collapsed ? (
                     <Link
                         href="/"
-                        className="flex h-9 w-9 items-center justify-center"
+                        className="mx-auto flex h-11 w-11 items-center justify-center"
                         onClick={() => {
                             onNavigate?.();
                             closeMobile();
@@ -134,7 +134,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                             title={collapsed ? item.label : undefined}
                             className={cn(
                                 'flex h-9 items-center rounded-full transition-colors',
-                                collapsed ? 'w-9 justify-center px-0' : 'gap-2 px-3',
+                                collapsed ? 'w-11 justify-center px-0' : 'gap-2 px-3',
                                 active
                                     ? 'bg-secondary text-secondary-foreground'
                                     : 'text-fg-secondary hover:bg-secondary/10 hover:text-secondary',
