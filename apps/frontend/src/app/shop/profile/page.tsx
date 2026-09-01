@@ -136,42 +136,44 @@ export default function ProfilePage() {
                     </div>
                 </section>
 
-                <AccountPanel
-                    icon={<VkIcon className="size-4" />}
-                    tone="secondary"
-                    linked={!!user.vkCredential}
-                    avatarUrl={user.vkCredential?.avatarUrl}
-                    details={
-                        <span className="tabular-nums">VK ID: {user.vkCredential?.vkId}</span>
-                    }
-                    onLink={vk.linkVk}
-                    linkLabel="Привязать VK"
-                    onUnlink={vk.unlinkVk}
-                    canUnlink={canUnlinkVk}
-                    loading={vk.loading}
-                />
+                <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+                    <AccountPanel
+                        icon={<VkIcon className="size-4" />}
+                        tone="secondary"
+                        linked={!!user.vkCredential}
+                        avatarUrl={user.vkCredential?.avatarUrl}
+                        details={
+                            <span className="tabular-nums">VK ID: {user.vkCredential?.vkId}</span>
+                        }
+                        onLink={vk.linkVk}
+                        linkLabel="Привязать VK"
+                        onUnlink={vk.unlinkVk}
+                        canUnlink={canUnlinkVk}
+                        loading={vk.loading}
+                    />
 
-                <AccountPanel
-                    icon={<TelegramIcon className="size-4" />}
-                    tone="primary"
-                    linked={!!user.telegramCredential}
-                    avatarUrl={user.telegramCredential?.avatarUrl}
-                    details={
-                        <>
-                            {(user.telegramCredential?.username ?? user.username) && (
-                                <span className="truncate">
-                                    @{user.telegramCredential?.username ?? user.username}
-                                </span>
-                            )}
-                            <span className="tabular-nums">TG ID: {user.telegramCredential?.telegramId}</span>
-                        </>
-                    }
-                    onLink={tg.linkTg}
-                    linkLabel="Привязать Telegram"
-                    onUnlink={tg.unlinkTg}
-                    canUnlink={canUnlinkTg}
-                    loading={tg.loading}
-                />
+                    <AccountPanel
+                        icon={<TelegramIcon className="size-4" />}
+                        tone="primary"
+                        linked={!!user.telegramCredential}
+                        avatarUrl={user.telegramCredential?.avatarUrl}
+                        details={
+                            <>
+                                {(user.telegramCredential?.username ?? user.username) && (
+                                    <span className="truncate">
+                                        @{user.telegramCredential?.username ?? user.username}
+                                    </span>
+                                )}
+                                <span className="tabular-nums">TG ID: {user.telegramCredential?.telegramId}</span>
+                            </>
+                        }
+                        onLink={tg.linkTg}
+                        linkLabel="Привязать Telegram"
+                        onUnlink={tg.unlinkTg}
+                        canUnlink={canUnlinkTg}
+                        loading={tg.loading}
+                    />
+                </div>
             </div>
         </div>
     );
