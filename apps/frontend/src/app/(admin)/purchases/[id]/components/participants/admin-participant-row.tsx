@@ -101,7 +101,7 @@ export function AdminParticipantRow({
     const showMatchStrips = q !== '' && !nameMatched && !usernameMatched && (commentMatched || matchedItems.length > 0);
 
     return (
-        <div className="overflow-hidden rounded-2xl bg-bg-soft">
+        <div className="overflow-hidden rounded-2xl border-2 border-primary/15 bg-bg-soft">
             {/* Header (всегда виден) */}
             <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
                 <Button
@@ -223,58 +223,66 @@ export function AdminParticipantRow({
             )}
 
             {/* Раскрытая панель: комментарий + 2 ListView-секции (заказы / оплаты) */}
-            {open && (
-                <div className="space-y-3 border-t border-border-soft bg-bg-base p-3 sm:p-4">
-                    {canComment && (
-                        <ParticipantCommentStrip
-                            purchaseOrderId={purchaseOrderId}
-                            participantName={name}
-                            initialComment={orderComment?.comment ?? null}
-                            initialCommentAt={orderComment?.commentAt ?? null}
-                            initialCommentAuthor={orderComment?.commentAuthor ?? null}
-                            isPending={orderActions.setOrderComment.isPending}
-                            onSave={(comment) => {
-                                orderActions.setOrderComment.mutate({ id: purchaseOrderId, comment });
-                            }}
-                        />
-                    )}
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                        <ParticipantOrdersPanel
-                            userId={userId}
-                            purchaseOrderId={purchaseOrderId}
-                            orders={orders}
-                            purchaseItems={purchaseItems}
-                            due={due}
-                            orderActions={{
-                                adminAdjust: ({ purchaseItemId, delta, userId: uid }) =>
-                                    orderActions.adminAdjust.mutate({ purchaseItemId, userId: uid, delta }),
-                                adminSetQuantity: ({ purchaseItemId, qty, userId: uid }) =>
-                                    orderActions.adminSetQuantity.mutate({
-                                        purchaseItemId,
-                                        userId: uid,
-                                        qty,
-                                    }),
-                                adminAdjustPackage: ({ purchaseItemId, delta, userId: uid }) =>
-                                    orderActions.adminAdjustPackage.mutate({
-                                        purchaseItemId,
-                                        userId: uid,
-                                        delta,
-                                    }),
-                                deleteAllByUserItem: orderActions.deleteAllByUserItem,
-                                adminAdjustIsPending: actionPending,
-                            }}
-                            onSetDeleteLineTarget={setDeleteLineTarget}
-                        />
-                        <ParticipantPaymentsPanel
-                            userId={userId}
-                            purchaseId={purchaseId}
-                            payments={payments}
-                            due={due}
-                            onPaymentClick={onPaymentClick}
-                        />
+            <div
+                className={cn(
+                    'grid transition-all duration-300 ease-in-out',
+                    open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                )}
+                inert={!open}
+            >
+                <div className="min-h-0 overflow-hidden">
+                    <div className="space-y-3 border-t border-border-soft bg-bg-base p-3 sm:p-4">
+                        {canComment && (
+                            <ParticipantCommentStrip
+                                purchaseOrderId={purchaseOrderId}
+                                participantName={name}
+                                initialComment={orderComment?.comment ?? null}
+                                initialCommentAt={orderComment?.commentAt ?? null}
+                                initialCommentAuthor={orderComment?.commentAuthor ?? null}
+                                isPending={orderActions.setOrderComment.isPending}
+                                onSave={(comment) => {
+                                    orderActions.setOrderComment.mutate({ id: purchaseOrderId, comment });
+                                }}
+                            />
+                        )}
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                            <ParticipantOrdersPanel
+                                userId={userId}
+                                purchaseOrderId={purchaseOrderId}
+                                orders={orders}
+                                purchaseItems={purchaseItems}
+                                due={due}
+                                orderActions={{
+                                    adminAdjust: ({ purchaseItemId, delta, userId: uid }) =>
+                                        orderActions.adminAdjust.mutate({ purchaseItemId, userId: uid, delta }),
+                                    adminSetQuantity: ({ purchaseItemId, qty, userId: uid }) =>
+                                        orderActions.adminSetQuantity.mutate({
+                                            purchaseItemId,
+                                            userId: uid,
+                                            qty,
+                                        }),
+                                    adminAdjustPackage: ({ purchaseItemId, delta, userId: uid }) =>
+                                        orderActions.adminAdjustPackage.mutate({
+                                            purchaseItemId,
+                                            delta,
+                                            userId: uid,
+                                        }),
+                                    deleteAllByUserItem: orderActions.deleteAllByUserItem,
+                                    adminAdjustIsPending: actionPending,
+                                }}
+                                onSetDeleteLineTarget={setDeleteLineTarget}
+                            />
+                            <ParticipantPaymentsPanel
+                                userId={userId}
+                                purchaseId={purchaseId}
+                                payments={payments}
+                                due={due}
+                                onPaymentClick={onPaymentClick}
+                            />
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
 
             <ConfirmDialog
                 open={deleteOpen}
