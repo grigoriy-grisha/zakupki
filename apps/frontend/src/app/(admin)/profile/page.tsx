@@ -67,7 +67,7 @@ export default function ProfilePage() {
                         <Button
                             onClick={vk.linkVk}
                             disabled={vk.loading}
-                            className="h-11 w-full sm:mx-auto sm:w-72"
+                            className="h-10 w-full sm:mx-auto sm:w-72"
                         >
                             <Link2 className="size-4" />
                             Привязать VK
@@ -120,7 +120,7 @@ export default function ProfilePage() {
                         <Button
                             onClick={tg.linkTg}
                             disabled={tg.loading}
-                            className="h-11 w-full sm:mx-auto sm:w-72"
+                            className="h-10 w-full sm:mx-auto sm:w-72"
                         >
                             <Link2 className="size-4" />
                             Привязать Telegram

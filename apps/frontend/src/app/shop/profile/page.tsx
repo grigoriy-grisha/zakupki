@@ -81,7 +81,7 @@ function AccountPanel({
                     </Button>
                 </div>
             ) : (
-                <Button className="h-11 w-full rounded-full sm:mx-auto sm:w-72" onClick={onLink} disabled={loading}>
+                <Button className="h-10 w-full rounded-full sm:mx-auto sm:w-72" onClick={onLink} disabled={loading}>
                     <Paperclip className="size-4" />
                     {linkLabel}
                 </Button>

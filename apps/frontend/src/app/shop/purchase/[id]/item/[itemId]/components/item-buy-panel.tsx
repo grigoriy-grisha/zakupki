@@ -73,12 +73,12 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
             )}
 
             {soldOutNoOrder ? (
-                <Button variant="secondary" className="h-11 w-full rounded-full" disabled>
+                <Button variant="secondary" className="h-10 w-full rounded-full" disabled>
                     <Package className="size-4" />
                     Разобрано
                 </Button>
             ) : orderingClosedNoOrder ? (
-                <Button variant="secondary" className="h-11 w-full rounded-full" disabled>
+                <Button variant="secondary" className="h-10 w-full rounded-full" disabled>
                     <Ban className="size-4" />
                     Приём заказов завершён
                 </Button>
