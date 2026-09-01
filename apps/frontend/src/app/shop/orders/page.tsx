@@ -69,15 +69,18 @@ function OrdersSegmentedTabs({
     pastCount: number;
 }) {
     return (
-        <div className="inline-flex max-w-full overflow-hidden rounded-full border border-secondary" role="tablist">
+        <div
+            className="inline-flex w-fit max-w-full self-start overflow-hidden rounded-full border-2 border-secondary"
+            role="tablist"
+        >
             <button
                 type="button"
                 role="tab"
                 aria-selected={tab === 'active'}
                 onClick={() => onTabChange('active')}
                 className={cn(
-                    'flex h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
-                    'text-12-bold transition-colors sm:h-11 sm:px-5 sm:text-14-bold',
+                    'flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
+                    'text-12-bold transition-colors sm:h-12 sm:px-7 sm:text-16-medium',
                     tab === 'active' ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
                 )}
             >
@@ -90,8 +93,8 @@ function OrdersSegmentedTabs({
                 aria-selected={tab === 'past'}
                 onClick={() => onTabChange('past')}
                 className={cn(
-                    'flex h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
-                    'text-12-bold transition-colors sm:h-11 sm:px-5 sm:text-14-bold',
+                    'flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4',
+                    'text-12-bold transition-colors sm:h-12 sm:px-7 sm:text-16-medium',
                     tab === 'past' ? 'bg-secondary text-primary-foreground' : 'text-secondary hover:bg-secondary/10',
                 )}
             >
