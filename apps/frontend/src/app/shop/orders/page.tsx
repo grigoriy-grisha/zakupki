@@ -2,16 +2,12 @@
 
 import {
     getUnitByCode,
-    HANDOFF_STATUS_LABELS,
-    type HandoffStatus,
     isPurchaseCompleted,
     isPurchasePaymentOpen,
-    PURCHASE_FULFILLMENT_LABELS,
-    PURCHASE_STATUS_LABELS,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
-import { Archive, ChevronRight, CircleCheck, ClipboardList, Package, Truck } from 'lucide-react';
+import { ChevronRight, ClipboardList, Package } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
@@ -20,7 +16,6 @@ import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
-import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
@@ -44,7 +39,7 @@ function OrdersEmptyState({
     const router = useAppRouter();
 
     return (
-        <div className="rounded-2xl bg-bg-soft">
+        <div className="py-4">
             <EmptyState
                 variant="plain"
                 icon={ClipboardList}
@@ -115,10 +110,8 @@ function PurchaseOrderCard({
     isPast: boolean;
 }) {
     const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
-    const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[fs];
     const purchaseStatus = group.status as PurchaseStatus;
     const completed = isPurchaseCompleted(purchaseStatus);
-    const handoff = group.handoffStatus as HandoffStatus | null | undefined;
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
     const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
@@ -126,48 +119,21 @@ function PurchaseOrderCard({
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
     return (
-        <section className="rounded-2xl bg-bg-soft p-4 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                <div className="min-w-0">
-                    {group.orderNumber != null && (
-                        <p className="text-12-regular text-fg-tertiary tabular-nums">Заказ №{group.orderNumber}</p>
-                    )}
-                    <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
-                        <h3
-                            className={cn(
-                                'font-display text-24-bold leading-tight text-secondary transition-colors',
-                                'group-hover/title:text-primary sm:text-30-semibold',
-                            )}
-                        >
-                            {group.tag}
-                        </h3>
-                    </AppLink>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    {handoff != null && (
-                        <Badge
-                            type="subtle"
-                            variant={handoff === 'RECEIVED' ? 'success' : handoff === 'SENT' ? 'accent' : 'warning'}
-                        >
-                            {handoff === 'RECEIVED' && <CircleCheck className="size-3" />}
-                            {handoff === 'SENT' && <Truck className="size-3" />}
-                            {handoff === 'STORED' && <Archive className="size-3" />}
-                            {HANDOFF_STATUS_LABELS[handoff]}
-                        </Badge>
-                    )}
-                    {completed ? (
-                        <Badge type="subtle" variant="neutral">
-                            {PURCHASE_STATUS_LABELS.DONE}
-                        </Badge>
-                    ) : (
-                        <Badge type="subtle" variant="accent">
-                            {fulfillmentLabel}
-                        </Badge>
-                    )}
-                </div>
+        <section className="py-5 first:pt-0 last:pb-0 sm:py-9">
+            <div className="min-w-0">
+                {group.orderNumber != null && (
+                    <p className="text-14-regular text-fg-secondary tabular-nums sm:text-20-regular">
+                        Заказ №{group.orderNumber}
+                    </p>
+                )}
+                <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
+                    <h3 className="text-h1 text-secondary transition-colors group-hover/title:text-primary">
+                        {group.tag}
+                    </h3>
+                </AppLink>
             </div>
 
-            <div className="mt-3 divide-y divide-border-low">
+            <div className="mt-5 divide-y divide-border-low sm:mt-8">
                 {group.orders.map((order) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
@@ -182,11 +148,11 @@ function PurchaseOrderCard({
                             key={order.purchaseItemId}
                             href={`/shop/purchase/${group.id}/item/${order.purchaseItemId}`}
                             className={cn(
-                                'group flex items-center gap-3 rounded-xl px-1 py-2.5',
+                                'group flex items-center gap-3 rounded-xl px-1 py-2.5 sm:gap-5 sm:py-3',
                                 'transition-colors hover:bg-bg-card/60',
                             )}
                         >
-                            <div className="size-14 shrink-0 overflow-hidden rounded-xl bg-bg-card sm:size-16">
+                            <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-bg-card sm:size-[147px] sm:rounded-[20px]">
                                 {photo ? (
                                     <img
                                         src={absoluteProductPhotoUrl(photo.id)}
@@ -195,7 +161,7 @@ function PurchaseOrderCard({
                                     />
                                 ) : (
                                     <div className="flex h-full items-center justify-center text-fg-tertiary">
-                                        <Package className="size-4" />
+                                        <Package className="size-4 sm:size-6" />
                                     </div>
                                 )}
                             </div>
@@ -205,16 +171,16 @@ function PurchaseOrderCard({
                                         product={product}
                                         className="min-w-0"
                                         primaryClassName={cn(
-                                            'block font-display text-16-bold leading-tight text-fg-primary',
-                                            'transition-colors group-hover:text-secondary sm:text-18-bold',
+                                            'block font-display text-18-semibold leading-tight text-fg-primary',
+                                            'transition-colors group-hover:text-secondary sm:text-30-semibold',
                                         )}
                                         secondaryClassName={cn(
-                                            'mt-0.5 block truncate text-11-regular text-fg-tertiary',
-                                            'sm:text-12-regular',
+                                            'mt-0.5 block truncate font-display text-14-regular text-fg-secondary',
+                                            'sm:mt-1 sm:text-24-regular',
                                         )}
                                     />
                                 )}
-                                <p className="mt-0.5 text-12-regular text-fg-secondary tabular-nums">
+                                <p className="mt-0.5 font-display text-14-semibold text-fg-primary tabular-nums sm:mt-1 sm:text-24-semibold">
                                     {qty} {shortName}
                                     {pkgLabel} · {formatRub(amount)}
                                 </p>
@@ -230,8 +196,8 @@ function PurchaseOrderCard({
                 })}
             </div>
 
-            <div className="mt-4 flex flex-col gap-3">
-                <p className="text-right font-display text-20-semibold text-primary sm:text-24-semibold">
+            <div className="mt-5 flex flex-col gap-3 sm:mt-9 sm:gap-4">
+                <p className="text-right font-display text-24-semibold text-primary sm:text-30-semibold">
                     Итоговая сумма {formatRub(group.total)}
                 </p>
 
@@ -290,7 +256,7 @@ export default function OrdersPage() {
         return (
             <div className="flex flex-col gap-6 sm:gap-8">
                 <h1 className="text-h1 text-secondary">Мои заказы</h1>
-                <div className="rounded-2xl bg-bg-soft">
+                <div className="rounded-[20px] bg-bg-soft">
                     <EmptyState
                         variant="plain"
                         icon={ClipboardList}
@@ -308,41 +274,52 @@ export default function OrdersPage() {
         <div className="flex flex-col gap-6 sm:gap-8">
             <h1 className="text-h1 text-secondary">Мои заказы</h1>
 
-            <OrdersSegmentedTabs
-                tab={tab}
-                onTabChange={setTab}
-                activeCount={activeGroups.length}
-                pastCount={pastGroups.length}
-            />
+            <div className="rounded-[20px] bg-bg-soft p-4 sm:p-8">
+                <OrdersSegmentedTabs
+                    tab={tab}
+                    onTabChange={setTab}
+                    activeCount={activeGroups.length}
+                    pastCount={pastGroups.length}
+                />
 
-            {tab === 'active' ? (
-                <div className="flex flex-col gap-4 sm:gap-5">
-                    {activeGroups.length === 0 ? (
-                        <OrdersEmptyState
-                            title="Нет активных заказов"
-                            description="Здесь закупки, в которых вы ещё можете заказывать или оплачивать."
-                            showShopLink
-                        />
-                    ) : (
-                        activeGroups.map((group) => (
-                            <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast={false} />
-                        ))
-                    )}
-                </div>
-            ) : (
-                <div className="flex flex-col gap-4 sm:gap-5">
-                    {pastGroups.length === 0 ? (
-                        <OrdersEmptyState
-                            title="Нет прошлых заказов"
-                            description="Сюда попадают заказы из завершённых закупок."
-                        />
-                    ) : (
-                        pastGroups.map((group) => (
-                            <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast />
-                        ))
-                    )}
-                </div>
-            )}
+                {tab === 'active' ? (
+                    <div className="mt-5 sm:mt-12">
+                        {activeGroups.length === 0 ? (
+                            <OrdersEmptyState
+                                title="Нет активных заказов"
+                                description="Здесь закупки, в которых вы ещё можете заказывать или оплачивать."
+                                showShopLink
+                            />
+                        ) : (
+                            <div className="divide-y divide-border-low">
+                                {activeGroups.map((group) => (
+                                    <PurchaseOrderCard
+                                        key={group.id}
+                                        group={group}
+                                        myPayments={myPayments}
+                                        isPast={false}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="mt-5 sm:mt-12">
+                        {pastGroups.length === 0 ? (
+                            <OrdersEmptyState
+                                title="Нет прошлых заказов"
+                                description="Сюда попадают заказы из завершённых закупок."
+                            />
+                        ) : (
+                            <div className="divide-y divide-border-low">
+                                {pastGroups.map((group) => (
+                                    <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
