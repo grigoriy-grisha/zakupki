@@ -1,10 +1,13 @@
 'use client';
 
+import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+
 import { AppLink } from '@/components/app-link';
 import { Badge } from '@/components/ui/badge';
-import type { PurchaseFulfillmentStatus } from '@zakupki/types';
-import { usePurchaseActions } from '../[id]/hooks/use-purchase-actions';
+import { formatRub } from '@/lib/format/money';
+
 import { STATUS_LABELS, STATUS_VARIANT } from '../../lib/constants';
+import { usePurchaseActions } from '../[id]/hooks/use-purchase-actions';
 import { PurchaseFulfillmentStatusSelect } from './purchase-fulfillment-status-select';
 
 interface AdminPurchaseListCardProps {
@@ -35,14 +38,8 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     href={`/purchases/${purchase.id}`}
                     className="flex min-w-0 flex-1 items-center gap-2 leading-tight"
                 >
-                    <span className="truncate text-16-semibold text-fg-primary tracking-tight">
-                        {purchase.tag}
-                    </span>
-                    <Badge
-                        variant={STATUS_VARIANT[purchase.status] ?? 'secondary'}
-                        type="subtle"
-                        size="sm"
-                    >
+                    <span className="truncate text-16-semibold text-fg-primary tracking-tight">{purchase.tag}</span>
+                    <Badge variant={STATUS_VARIANT[purchase.status] ?? 'secondary'} type="subtle" size="sm">
                         {STATUS_LABELS[purchase.status] ?? purchase.status}
                     </Badge>
                 </AppLink>
@@ -54,18 +51,12 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     <span className="text-fg-disabled">·</span>
                     <span className="tabular-nums">{totalOrders} заказ.</span>
                     <span className="text-fg-disabled">·</span>
-                    <span className="font-semibold text-fg-primary tabular-nums">
-                        {totalAmount.toLocaleString('ru-RU')} ₽
-                    </span>
+                    <span className="font-semibold text-fg-primary tabular-nums">{formatRub(totalAmount)}</span>
                 </div>
             </AppLink>
 
             {!isDraft && (
-                <div
-                    className="pt-1"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                >
+                <div className="pt-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <PurchaseFulfillmentStatusSelect
                         value={purchase.fulfillmentStatus}
                         disabled={updateFulfillmentStatus.isPending}

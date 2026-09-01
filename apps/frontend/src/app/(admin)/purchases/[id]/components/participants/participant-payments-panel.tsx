@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { formatRub } from '@/lib/format/money';
 import { paymentTotal } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
@@ -74,7 +75,7 @@ export function ParticipantPaymentsPanel({
                             >
                                 <div className="min-w-0">
                                     <span className="text-14-semibold tabular-nums text-fg-primary">
-                                        {total.toLocaleString('ru-RU')} ₽
+                                        {formatRub(total)}
                                     </span>
                                     {childAmount > 0 && (
                                         <p className="truncate text-12-regular text-fg-tertiary">
@@ -176,7 +177,7 @@ function AddPaymentDialog({ userId, purchaseId, due }: AddPaymentDialogProps) {
                                     className="h-auto px-2 py-0.5 text-12-medium text-fg-secondary"
                                     onClick={() => setAmountStr(String(due))}
                                 >
-                                    Оплатить всё: {due.toLocaleString('ru-RU')} ₽
+                                    Оплатить всё: {formatRub(due)}
                                 </Button>
                             )}
                         </div>

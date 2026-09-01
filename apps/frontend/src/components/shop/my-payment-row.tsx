@@ -1,11 +1,13 @@
 'use client';
 
+import { CircleCheck, CircleX, Clock, Eye } from 'lucide-react';
 import { useState } from 'react';
-import { CircleCheck, Clock, CircleX, Eye } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
 import { MyPaymentProofDialog } from '@/components/shop/my-payment-proof-dialog';
 import { paymentHasProof, SHOP_PAYMENT_STATUS, type ShopPaymentView } from '@/components/shop/payment-proof';
+import { formatRub } from '@/lib/format/money';
 import { paymentTotal } from '@/lib/payment-utils';
+import { cn } from '@/lib/utils';
 
 type MyPaymentRowProps = {
     payment: ShopPaymentView;
@@ -51,9 +53,7 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                     <StatusIcon className={cn('size-4 shrink-0', iconCls)} />
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span className="text-14-semibold text-fg-primary tabular-nums">
-                                {total.toLocaleString('ru-RU')} ₽
-                            </span>
+                            <span className="text-14-semibold text-fg-primary tabular-nums">{formatRub(total)}</span>
                             <span className={cn('text-12-medium', iconCls)}>{statusCfg.label}</span>
                             {hasProof ? (
                                 <span className="inline-flex items-center gap-0.5 text-12-regular text-fg-tertiary">
@@ -64,10 +64,10 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                         </div>
                         {childAmount > 0 && (
                             <p className="mt-0.5 text-12-regular text-fg-tertiary tabular-nums">
-                                Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽
+                                Оплачено {formatRub(Number(payment.amount))}
                                 <span className="text-success">
                                     {' '}
-                                    + промокод {promoCode?.code ?? ''} {childAmount.toLocaleString('ru-RU')} ₽
+                                    + промокод {promoCode?.code ?? ''} {formatRub(childAmount)}
                                 </span>
                             </p>
                         )}

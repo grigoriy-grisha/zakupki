@@ -1,8 +1,10 @@
 'use client';
 
 import { CircleCheck, Clock, CreditCard } from 'lucide-react';
+
 import { PurchasePaymentDialog } from '@/components/shop/purchase-payment-dialog';
 import { Button } from '@/components/ui/button';
+import { formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
 
 interface PaymentStatusBlockProps {
@@ -44,7 +46,7 @@ export function PaymentStatusBlock({
                         <CircleCheck className={compact ? 'size-3.5' : 'size-4'} />
                         <span className={labelCls}>Оплачено</span>
                     </div>
-                    <span className={amountCls}>{total.toLocaleString('ru-RU')} ₽</span>
+                    <span className={amountCls}>{formatRub(total)}</span>
                 </div>
             </div>
         );
@@ -58,7 +60,7 @@ export function PaymentStatusBlock({
                         <Clock className={compact ? 'size-3.5' : 'size-4'} />
                         <span className={labelCls}>Ожидает подтверждения</span>
                     </div>
-                    <span className={amountCls}>{total.toLocaleString('ru-RU')} ₽</span>
+                    <span className={amountCls}>{formatRub(total)}</span>
                 </div>
             </div>
         );
@@ -69,11 +71,9 @@ export function PaymentStatusBlock({
             <div className={wrapCls}>
                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                     <span className="text-fg-secondary">
-                        Итого: <span className={amountCls}>{total.toLocaleString('ru-RU')} ₽</span>
+                        Итого: <span className={amountCls}>{formatRub(total)}</span>
                     </span>
-                    {remaining > 0 && (
-                        <span className={hintCls}>К оплате было {remaining.toLocaleString('ru-RU')} ₽</span>
-                    )}
+                    {remaining > 0 && <span className={hintCls}>К оплате было {formatRub(remaining)}</span>}
                 </div>
             </div>
         );
@@ -84,7 +84,7 @@ export function PaymentStatusBlock({
             <div className={wrapCls}>
                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                     <span className="text-fg-secondary">
-                        К оплате: <span className={amountCls}>{remaining.toLocaleString('ru-RU')} ₽</span>
+                        К оплате: <span className={amountCls}>{formatRub(remaining)}</span>
                     </span>
                     <PurchasePaymentDialog
                         purchaseId={purchaseId}
@@ -103,7 +103,7 @@ export function PaymentStatusBlock({
             <div className={wrapCls}>
                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                     <span className="text-fg-secondary">
-                        Итого: <span className={amountCls}>{total.toLocaleString('ru-RU')} ₽</span>
+                        Итого: <span className={amountCls}>{formatRub(total)}</span>
                     </span>
                     {orderCount != null && (
                         <span className={hintCls}>
@@ -118,7 +118,7 @@ export function PaymentStatusBlock({
     return (
         <div className={wrapCls}>
             <div className="flex flex-col gap-1.5">
-                <span className={amountCls}>{total.toLocaleString('ru-RU')} ₽</span>
+                <span className={amountCls}>{formatRub(total)}</span>
                 <Button
                     variant="secondary"
                     size="sm"

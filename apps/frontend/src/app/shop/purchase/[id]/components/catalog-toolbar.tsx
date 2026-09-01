@@ -11,6 +11,7 @@ import {
     X,
 } from 'lucide-react';
 
+import type { TreeNode } from '@/app/(admin)/products/lib/types';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -19,10 +20,10 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
 import { FilterTree } from './filter-tree';
-import type { TreeNode } from '@/app/(admin)/products/lib/types';
 
 export type SortMode = 'default' | 'price-asc' | 'price-desc' | 'name-asc';
 
@@ -32,14 +33,6 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
     { value: 'price-desc', label: 'Сначала дороже' },
     { value: 'name-asc', label: 'По названию' },
 ];
-
-export function pluralProducts(n: number): string {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'товар';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'товара';
-    return 'товаров';
-}
 
 interface CatalogToolbarProps {
     query: string;
@@ -91,7 +84,7 @@ export function CatalogToolbar({
     const sortLabel = SORT_OPTIONS.find((option) => option.value === sortMode)?.label ?? '';
     const counter = hasActive
         ? `${filteredCount} из ${totalCount}`
-        : `${totalCount} ${pluralProducts(totalCount)}`;
+        : `${totalCount} ${pluralRu(totalCount, ['товар', 'товара', 'товаров'])}`;
 
     return (
         <div
@@ -241,8 +234,7 @@ export function CatalogToolbar({
                             onlyMine && 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15',
                         )}
                     >
-                        <ShoppingBag className="size-4" />
-                        В заказе
+                        <ShoppingBag className="size-4" />В заказе
                     </Button>
                 )}
 

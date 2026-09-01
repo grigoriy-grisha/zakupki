@@ -19,17 +19,11 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
+import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
 import { aggregateByItem } from '../../lib/order-aggregation';
-import {
-    CatalogToolbar,
-    pluralProducts,
-    ProductGrid,
-    PurchaseGridSkeleton,
-    PurchaseStepper,
-    type SortMode,
-} from './components';
+import { CatalogToolbar, ProductGrid, PurchaseGridSkeleton, PurchaseStepper, type SortMode } from './components';
 import type { ProductGridItem } from './components/product-grid';
 import { usePurchasePaymentDetail } from './hooks';
 import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
@@ -41,11 +35,10 @@ function getSortPriceRub(
     orgFeeDefaultPercent: number,
     currencyRates: CurrencyRate[],
 ): number | null {
-    const purchaseItem = mapToPurchaseItem(
-        { ...item, purchase: { fulfillmentStatus } },
-        packDiscountPercent,
-        { orgFeeDefaultPercent, currencyRates },
-    );
+    const purchaseItem = mapToPurchaseItem({ ...item, purchase: { fulfillmentStatus } }, packDiscountPercent, {
+        orgFeeDefaultPercent,
+        currencyRates,
+    });
     return computeUnitPriceRubNewModel(purchaseItem);
 }
 
@@ -54,14 +47,6 @@ function comparePrices(a: number | null, b: number | null): number {
     if (a == null) return 1;
     if (b == null) return -1;
     return a - b;
-}
-
-function pluralSuppliers(n: number): string {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'поставщик';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'поставщика';
-    return 'поставщиков';
 }
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
@@ -243,12 +228,10 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                             {isSupplement ? 'Добор' : 'Активна'}
                         </Badge>
                         <Badge type="subtle" variant="neutral">
-                            {totalCount} {pluralProducts(totalCount)}
+                            {totalCount} {pluralRu(totalCount, ['товар', 'товара', 'товаров'])}
                         </Badge>
                     </div>
-                    <h1 className="truncate text-h1 text-fg-primary">
-                        {purchase.tag}
-                    </h1>
+                    <h1 className="truncate text-h1 text-fg-primary">{purchase.tag}</h1>
                     <p
                         className={cn(
                             'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-13-regular text-fg-secondary',
@@ -265,7 +248,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                                     ·
                                 </span>
                                 <span>
-                                    {supplierCount} {pluralSuppliers(supplierCount)}
+                                    {supplierCount}{' '}
+                                    {pluralRu(supplierCount, ['поставщик', 'поставщика', 'поставщиков'])}
                                 </span>
                             </>
                         )}

@@ -18,7 +18,7 @@ import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/o
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { MyPaymentRow } from '@/components/shop/my-payment-row';
-import { type ShopPaymentView,summarizePurchasePayments } from '@/components/shop/payment-proof';
+import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { PaymentStatusBlock } from '@/components/shop/payment-status-block';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -26,6 +26,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/lib/client/trpc';
+import { formatRub } from '@/lib/format/money';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import type { ProductLabelSource } from '@/lib/product-label';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
@@ -61,9 +62,7 @@ function PurchaseOrderCard({
     isPast,
 }: {
     group: OrderPurchaseGroup;
-    myPayments:
-        | { purchaseId: number; status: string; amount: unknown; children?: { amount: unknown }[] }[]
-        | undefined;
+    myPayments: { purchaseId: number; status: string; amount: unknown; children?: { amount: unknown }[] }[] | undefined;
     isPast: boolean;
 }) {
     const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
@@ -87,9 +86,7 @@ function PurchaseOrderCard({
             >
                 <div className="min-w-0">
                     {group.orderNumber != null && (
-                        <p className="text-12-regular tabular-nums text-fg-tertiary">
-                            Заказ №{group.orderNumber}
-                        </p>
+                        <p className="text-12-regular tabular-nums text-fg-tertiary">Заказ №{group.orderNumber}</p>
                     )}
                     <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
                         <h3
@@ -128,9 +125,8 @@ function PurchaseOrderCard({
 
             <div className="divide-y divide-border-soft px-1.5 py-1.5 sm:px-2">
                 {group.orders.map((order) => {
-                    const product:
-                        | (ProductLabelSource & { photos: { id: number }[]; unitCode: string })
-                        | undefined = order.source.purchaseItem?.product;
+                    const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
+                        order.source.purchaseItem?.product;
                     const shortName = product?.unitCode ? (getUnitByCode(product.unitCode)?.shortName ?? '') : '';
                     const photo = product?.photos?.[0];
                     const qty = order.quantity;
@@ -176,7 +172,7 @@ function PurchaseOrderCard({
                                 )}
                                 <p className="mt-0.5 text-12-regular text-fg-secondary tabular-nums">
                                     {qty} {shortName}
-                                    {pkgLabel} · {amount.toLocaleString('ru-RU')} ₽
+                                    {pkgLabel} · {formatRub(amount)}
                                 </p>
                             </div>
                             <ChevronRight

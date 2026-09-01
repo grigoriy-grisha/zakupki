@@ -1,10 +1,10 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Ban, Building2, Minus, Package, PackageSearch, Percent, Plus } from 'lucide-react';
 import type { CurrencyRate } from '@zakupki/types';
+import { ArrowLeft, Ban, Building2, Minus, Package, PackageSearch, Percent, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
+import { use, useMemo, useState } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
@@ -18,6 +18,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
+import { formatPriceRub } from '@/lib/format/money';
+import { pluralRu } from '@/lib/format/plural';
 import {
     buildShopItemDescriptionRows,
     type ProductCatalogCardSource,
@@ -34,20 +36,8 @@ interface ItemDetailProduct extends ProductLabelSource {
     photos?: { id: number }[];
 }
 
-function formatRubles(value: number): string {
-    return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
-}
-
 function formatQty(amount: number): string {
     return amount % 1 === 0 ? String(amount) : amount.toFixed(3).replace(/\.?0+$/, '');
-}
-
-function pluralPacks(n: number): string {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'пачку';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'пачки';
-    return 'пачек';
 }
 
 export default function ItemDetailPage({ params }: { params: Promise<{ id: string; itemId: string }> }) {
@@ -340,9 +330,7 @@ function ItemGallery({ photoIds, alt }: { photoIds: number[]; alt: string }) {
 function SectionCard({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className="overflow-hidden rounded-2xl border border-border bg-bg-card">
-            <h2 className="border-b border-border-soft px-4 py-3 text-14-semibold text-fg-primary sm:px-5">
-                {title}
-            </h2>
+            <h2 className="border-b border-border-soft px-4 py-3 text-14-semibold text-fg-primary sm:px-5">{title}</h2>
             {children}
         </section>
     );
@@ -359,7 +347,7 @@ function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: strin
             {price > 0 && (
                 <div>
                     <div className="flex flex-wrap items-baseline gap-x-1.5">
-                        <span className="text-24-semibold tabular-nums text-fg-primary">{formatRubles(price)}</span>
+                        <span className="text-24-semibold tabular-nums text-fg-primary">{formatPriceRub(price)}</span>
                         <span className="text-13-regular text-fg-tertiary">/ {ctx.shortName}</span>
                     </div>
                     {packInfo && (
@@ -368,10 +356,10 @@ function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: strin
                             <p className="min-w-0 flex-1 text-12-medium text-fg-secondary">
                                 Пачка {formatQty(packInfo.packSize)} {ctx.shortName} —{' '}
                                 <span className="line-through text-fg-tertiary">
-                                    {formatRubles(packInfo.packPrice)}
+                                    {formatPriceRub(packInfo.packPrice)}
                                 </span>{' '}
                                 <span className="text-13-semibold text-success tabular-nums">
-                                    {formatRubles(packInfo.discountedPackPrice)}
+                                    {formatPriceRub(packInfo.discountedPackPrice)}
                                 </span>
                             </p>
                             <Badge type="subtle" variant="success" size="sm">
@@ -395,12 +383,12 @@ function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: strin
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-soft pt-2">
                         <span className="text-12-medium text-fg-secondary">Итого</span>
-                        <span className="text-20-semibold text-primary tabular-nums">{formatRubles(ctx.total)}</span>
+                        <span className="text-20-semibold text-primary tabular-nums">{formatPriceRub(ctx.total)}</span>
                     </div>
                     {ctx.fullPacks > 0 && (
                         <p className="mt-1.5 flex items-center gap-1 text-12-medium text-success">
                             <Percent className="size-3 shrink-0" />
-                            Скидка за {ctx.fullPacks} {pluralPacks(ctx.fullPacks)} применена
+                            Скидка за {ctx.fullPacks} {pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])} применена
                         </p>
                     )}
                 </div>
@@ -490,8 +478,8 @@ function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                     </p>
                     <p className="truncate text-16-semibold tabular-nums text-fg-primary">
                         {ctx.hasOrder
-                            ? formatRubles(ctx.total)
-                            : `${formatRubles(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
+                            ? formatPriceRub(ctx.total)
+                            : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
                     </p>
                 </div>
                 {ctx.hasOrder ? (

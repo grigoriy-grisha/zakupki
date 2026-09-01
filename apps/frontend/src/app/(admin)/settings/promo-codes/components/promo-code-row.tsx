@@ -1,10 +1,13 @@
 'use client';
 
+import { CircleCheck, CircleX, Trash2 } from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { CircleCheck, CircleX, Trash2 } from 'lucide-react';
+import { formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
+
 import { useTogglePromoCode } from '../hooks';
 import { getPromoStatus } from '../lib';
 interface PromoCodeRowProps {
@@ -39,18 +42,14 @@ export function PromoCodeRow({ promo, onDelete }: PromoCodeRowProps) {
                 <Badge variant="outline">{promo.type === 'PERCENT' ? 'Процент' : 'Фикс. сумма'}</Badge>
             </TableCell>
             <TableCell className="font-medium">
-                {promo.type === 'PERCENT'
-                    ? `${Number(promo.value)}%`
-                    : `${Number(promo.value).toLocaleString('ru-RU')} ₽`}
+                {promo.type === 'PERCENT' ? `${Number(promo.value)}%` : `${formatRub(Number(promo.value))}`}
             </TableCell>
             <TableCell className="text-sm">{purchase ? `${purchase.tag}` : 'Любая'}</TableCell>
             <TableCell className="text-center text-sm">
                 {promo.usedCount}
                 {promo.maxUses ? `/${promo.maxUses}` : ''}
             </TableCell>
-            <TableCell className="text-sm">
-                {promo.minAmount ? `${Number(promo.minAmount).toLocaleString('ru-RU')} ₽` : '—'}
-            </TableCell>
+            <TableCell className="text-sm">{promo.minAmount ? `${formatRub(Number(promo.minAmount))}` : '—'}</TableCell>
             <TableCell className="text-sm">
                 {promo.expiresAt ? new Date(promo.expiresAt).toLocaleDateString('ru-RU') : 'Бессрочно'}
             </TableCell>

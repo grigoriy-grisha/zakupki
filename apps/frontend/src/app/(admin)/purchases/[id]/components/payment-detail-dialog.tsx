@@ -1,13 +1,16 @@
 'use client';
 
+import { Check, Loader2, Package, X } from 'lucide-react';
 import { useState } from 'react';
-import { Loader2, Check, X, Package } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
+
 import { PAYMENT_STATUS } from '../../../lib/constants';
 import { useConfirmPayment, useRejectPayment } from '../hooks';
 import type { PaymentRef } from '../lib/types';
@@ -79,11 +82,11 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Сумма</p>
-                            <p className="text-xl font-bold">{totalAmount.toLocaleString('ru-RU')} ₽</p>
+                            <p className="text-xl font-bold">{formatRub(totalAmount)}</p>
                             {childAmount > 0 && (
                                 <p className="text-xs text-success">
-                                    Оплачено {Number(payment.amount).toLocaleString('ru-RU')} ₽ + промокод{' '}
-                                    {promoCode?.code} {childAmount.toLocaleString('ru-RU')} ₽
+                                    Оплачено {formatRub(Number(payment.amount))} + промокод {promoCode?.code}{' '}
+                                    {formatRub(childAmount)}
                                 </p>
                             )}
                         </div>

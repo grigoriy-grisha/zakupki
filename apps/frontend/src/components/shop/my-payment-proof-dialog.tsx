@@ -1,13 +1,15 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileText } from 'lucide-react';
+
 import {
     paymentHasProof,
     paymentProofIsImage,
     SHOP_PAYMENT_STATUS,
     type ShopPaymentView,
 } from '@/components/shop/payment-proof';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { formatRub } from '@/lib/format/money';
 import { paymentTotal } from '@/lib/payment-utils';
 
 type MyPaymentProofDialogProps = {
@@ -41,10 +43,10 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                     <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
                             <p className="text-muted-foreground">Сумма</p>
-                            <p className="text-lg font-bold">{total.toLocaleString('ru-RU')} ₽</p>
+                            <p className="text-lg font-bold">{formatRub(total)}</p>
                             {childAmount > 0 && (
                                 <p className="text-xs text-success">
-                                    {Number(payment.amount).toLocaleString('ru-RU')} ₽ + промокод {promoCode?.code}
+                                    {formatRub(Number(payment.amount))} + промокод {promoCode?.code}
                                 </p>
                             )}
                         </div>

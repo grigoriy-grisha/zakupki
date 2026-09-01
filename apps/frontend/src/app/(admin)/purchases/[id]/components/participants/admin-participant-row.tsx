@@ -1,23 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import type { HandoffStatus } from '@zakupki/types';
 import { ChevronDown, ChevronRight, CircleCheck, CircleX, Clock, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Highlight } from '@/components/shared/highlight';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
+
 import { getPaymentStatus } from '../../../lib/payment-status';
 import { useParticipantOrderActions } from '../../hooks';
+import type { OrderComment } from '../../hooks/use-participants-data';
+import type { PaymentRef } from '../../lib/types';
 import { type PurchaseItemOption } from './admin-order-controls';
 import { ParticipantCommentStrip } from './participant-comment-strip';
 import { ParticipantHandoffSelect } from './participant-handoff-select';
 import { ParticipantOrdersPanel } from './participant-orders-panel';
 import { ParticipantPaymentsPanel } from './participant-payments-panel';
-import type { HandoffStatus } from '@zakupki/types';
-import type { PaymentRef } from '../../lib/types';
-import type { OrderComment } from '../../hooks/use-participants-data';
 import type { ParticipantOrder } from './types';
 
 interface AdminParticipantRowProps {
@@ -94,9 +96,7 @@ export function AdminParticipantRow({
     const participantComment = orderComment?.comment ?? '';
     const commentMatched = q !== '' && participantComment.toLowerCase().includes(q);
     const matchedItems =
-        q === ''
-            ? []
-            : orders.filter((o) => (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q));
+        q === '' ? [] : orders.filter((o) => (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q));
     // Пояснительные строки нужны только когда заголовок сам не объясняет совпадение.
     const showMatchStrips = q !== '' && !nameMatched && !usernameMatched && (commentMatched || matchedItems.length > 0);
 
@@ -153,13 +153,13 @@ export function AdminParticipantRow({
 
                 <div className="hidden w-[100px] shrink-0 text-right sm:block">
                     <span className="text-12-regular text-fg-tertiary">К оплате</span>
-                    <p className="text-14-semibold tabular-nums text-fg-primary">{due.toLocaleString('ru-RU')} ₽</p>
+                    <p className="text-14-semibold tabular-nums text-fg-primary">{formatRub(due)}</p>
                 </div>
 
                 <div className="hidden w-[100px] shrink-0 text-right sm:block">
                     <span className="text-12-regular text-fg-tertiary">Покрыто</span>
                     <p className={cn('text-14-semibold tabular-nums', isPaid ? 'text-success' : 'text-fg-primary')}>
-                        {paid > 0 ? `${paid.toLocaleString('ru-RU')} ₽` : '—'}
+                        {paid > 0 ? `${formatRub(paid)}` : '—'}
                     </p>
                 </div>
 
@@ -214,10 +214,7 @@ export function AdminParticipantRow({
                         </p>
                     )}
                     {matchedItems.slice(0, 3).map((o) => (
-                        <p
-                            key={o.id}
-                            className="line-clamp-2 text-12-regular text-fg-secondary"
-                        >
+                        <p key={o.id} className="line-clamp-2 text-12-regular text-fg-secondary">
                             <span className="text-fg-tertiary">{o.purchaseItem?.product?.name ?? 'Товар'}: </span>
                             <Highlight text={o.purchaseItem?.adminComment ?? ''} query={searchQuery} />
                         </p>
@@ -288,7 +285,7 @@ export function AdminParticipantRow({
                         {name} будет удалён из закупки
                         {purchaseOrderId != null ? ` (заказ №${purchaseOrderId})` : ''} со всеми позициями (
                         {orders.length}).
-                        {due > 0 && <> К оплате было {due.toLocaleString('ru-RU')} ₽.</>}
+                        {due > 0 && <> К оплате было {formatRub(due)}.</>}
                     </>
                 }
                 loading={orderActions.removeParticipant.isPending}
@@ -311,8 +308,8 @@ export function AdminParticipantRow({
                 description={
                     deleteLineTarget ? (
                         <>
-                            «{deleteLineTarget.name}» будет удалён из заказа {name} целиком (сбор, добор и
-                            упаковки). Действие нельзя отменить.
+                            «{deleteLineTarget.name}» будет удалён из заказа {name} целиком (сбор, добор и упаковки).
+                            Действие нельзя отменить.
                         </>
                     ) : null
                 }

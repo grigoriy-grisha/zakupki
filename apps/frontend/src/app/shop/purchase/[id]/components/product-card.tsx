@@ -1,18 +1,21 @@
 'use client';
 
-import { memo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Ban, Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
 import { type CurrencyRate } from '@zakupki/types';
+import { Ban, Minus, Package, Percent, Plus, ShoppingCart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { memo, useCallback } from 'react';
 
+import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
+import { buildStepHint } from '@/app/shop/lib/format-step-hint';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
-import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
-import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
-import { buildStepHint } from '@/app/shop/lib/format-step-hint';
+import { formatPriceRub } from '@/lib/format/money';
+import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
+
 import type { ProductGridItem } from './product-grid';
 
 interface ShopPurchaseItemProductCardProps {
@@ -28,18 +31,6 @@ interface ShopPurchaseItemProductCardProps {
     canAddPackage: boolean;
     fulfillmentStatus: string;
     onOrderChange?: () => void;
-}
-
-function formatRubles(value: number): string {
-    return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
-}
-
-function pluralPacks(n: number): string {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'пачку';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'пачки';
-    return 'пачек';
 }
 
 function ProductCardImpl({
@@ -155,12 +146,7 @@ function ProductCardImpl({
                                 'group-hover:scale-105',
                             )}
                         >
-                            <ProductPhotoPreview
-                                photoId={photo?.id}
-                                photoIds={photoIds}
-                                alt={product.name}
-                                fill
-                            />
+                            <ProductPhotoPreview photoId={photo?.id} photoIds={photoIds} alt={product.name} fill />
                         </div>
                     </div>
 
@@ -267,9 +253,7 @@ function ProductCardImpl({
                 )}
 
                 {/* Мин. фасовка (подсказка) — подсказка рядом с ценой в одной строке */}
-                {showMinHint && (
-                    <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>
-                )}
+                {showMinHint && <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>}
 
                 {/* Добор */}
                 {ctx.freeRemainderLabel && <p className="text-12-medium text-warning">{ctx.freeRemainderLabel}</p>}
@@ -278,12 +262,12 @@ function ProductCardImpl({
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                     {hasOrder ? (
                         <span className="text-16-semibold text-fg-primary tabular-nums sm:text-18-semibold">
-                            {formatRubles(ctx.total)}
+                            {formatPriceRub(ctx.total)}
                         </span>
                     ) : (
                         <>
                             <span className="text-16-semibold text-fg-primary tabular-nums sm:text-18-semibold">
-                                {formatRubles(ctx.price)}
+                                {formatPriceRub(ctx.price)}
                             </span>
                             <span className="text-11-regular text-fg-tertiary sm:text-12-regular">
                                 / {ctx.shortName}
@@ -298,7 +282,7 @@ function ProductCardImpl({
                             )}
                         >
                             <Percent className="size-2.5" />−{packInfo.discountPercent}% · {ctx.fullPacks}{' '}
-                            {pluralPacks(ctx.fullPacks)}
+                            {pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])}
                         </span>
                     )}
                 </div>

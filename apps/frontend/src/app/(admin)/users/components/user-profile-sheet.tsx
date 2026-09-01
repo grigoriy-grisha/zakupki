@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
 import { ExternalLink } from 'lucide-react';
+import { useMemo } from 'react';
 
 import { TelegramIcon, VkIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/shared/user-avatar';
@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
-import { resolveAvatarUrl, displayName } from '@/lib/utils/user';
+import { formatRub } from '@/lib/format/money';
+import { displayName, resolveAvatarUrl } from '@/lib/utils/user';
 
 import { groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
 import { UserPurchaseGroupBlock } from './user-purchase-group';
@@ -198,9 +199,7 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                                 {purchaseGroups.map((group) => (
                                     <UserPurchaseGroupBlock key={group.purchaseId} group={group} />
                                 ))}
-                                <p className="pt-1 text-right text-sm font-medium">
-                                    Итого: {ordersTotal.toLocaleString('ru-RU')} ₽
-                                </p>
+                                <p className="pt-1 text-right text-sm font-medium">Итого: {formatRub(ordersTotal)}</p>
                             </div>
                         )}
                     </section>

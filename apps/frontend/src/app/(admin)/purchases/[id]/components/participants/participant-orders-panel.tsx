@@ -1,14 +1,16 @@
 'use client';
 
 import { buildOrderQtyOptions, getOrderQuantityStep } from '@zakupki/types';
+
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { formatRub } from '@/lib/format/money';
 import { safeNumber } from '@/lib/utils';
 
+import type { PurchaseItemOption } from './admin-order-controls';
 import { AddPositionDialog, AdminOrderLineEditor } from './admin-order-controls';
 import { mergeParticipantOrders } from './merge-participant-orders';
 import { QuantityDisplay } from './quantity-display';
-import type { PurchaseItemOption } from './admin-order-controls';
 import type { ParticipantOrder } from './types';
 
 export interface ParticipantOrdersActions {
@@ -58,9 +60,7 @@ export function ParticipantOrdersPanel({
                 <AddPositionDialog
                     purchaseItems={purchaseItems}
                     pending={orderActions.adminAdjustIsPending}
-                    onAdd={(purchaseItemId, qty) =>
-                        orderActions.adminAdjust({ purchaseItemId, userId, delta: qty })
-                    }
+                    onAdd={(purchaseItemId, qty) => orderActions.adminAdjust({ purchaseItemId, userId, delta: qty })}
                 />
             </div>
             <div className="divide-y divide-border-soft">
@@ -73,9 +73,7 @@ export function ParticipantOrdersPanel({
                         buildOrderQtyOptions({
                             multiplicity: Number(product?.multiplicity) || 1,
                             minPackageAmount:
-                                sourceItem?.minPackageAmount != null
-                                    ? Number(sourceItem.minPackageAmount)
-                                    : null,
+                                sourceItem?.minPackageAmount != null ? Number(sourceItem.minPackageAmount) : null,
                             minPackageUnit: null,
                             unitCode: product?.unitCode ?? null,
                         }),
@@ -144,18 +142,14 @@ export function ParticipantOrdersPanel({
                                 }
                             />
                             <div className="w-[90px] text-right text-13-semibold tabular-nums text-fg-primary">
-                                {safeNumber(group.amountDue).toLocaleString('ru-RU')} ₽
+                                {formatRub(safeNumber(group.amountDue))}
                             </div>
                         </div>
                     );
                 })}
                 <div className="flex items-center justify-between bg-bg-soft px-3 py-2">
-                    <span className="text-12-semibold uppercase tracking-wide text-fg-tertiary">
-                        Итого
-                    </span>
-                    <span className="text-14-semibold tabular-nums text-fg-primary">
-                        {due.toLocaleString('ru-RU')} ₽
-                    </span>
+                    <span className="text-12-semibold uppercase tracking-wide text-fg-tertiary">Итого</span>
+                    <span className="text-14-semibold tabular-nums text-fg-primary">{formatRub(due)}</span>
                 </div>
             </div>
         </div>

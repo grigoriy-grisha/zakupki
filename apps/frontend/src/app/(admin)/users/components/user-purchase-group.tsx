@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { getUnitByCode } from '@zakupki/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getUnitByCode } from '@zakupki/types';
-import { cn } from '@/lib/utils';
+import { formatRub } from '@/lib/format/money';
 
 import type { UserPurchaseGroup } from '../lib/group-orders-by-purchase';
 
@@ -32,9 +32,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                 </span>
                 <div className="min-w-0 flex-1">
                     {group.orderNumber != null && (
-                        <p className="text-12-medium tabular-nums text-fg-tertiary">
-                            Заказ №{group.orderNumber}
-                        </p>
+                        <p className="text-12-medium tabular-nums text-fg-tertiary">Заказ №{group.orderNumber}</p>
                     )}
                     <p className="text-14-medium leading-tight text-fg-primary">{group.tag}</p>
                 </div>
@@ -42,7 +40,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                     {group.orders.length} поз.
                 </Badge>
                 <span className="shrink-0 text-14-medium tabular-nums text-fg-primary">
-                    {group.totalDue.toLocaleString('ru-RU')} ₽
+                    {formatRub(group.totalDue)}
                 </span>
             </Button>
 
@@ -71,7 +69,7 @@ export function UserPurchaseGroupBlock({ group }: UserPurchaseGroupProps) {
                                             : ''}
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
-                                        {Number(order.amountDue).toLocaleString('ru-RU')} ₽
+                                        {formatRub(Number(order.amountDue))}
                                     </TableCell>
                                 </TableRow>
                             ))}

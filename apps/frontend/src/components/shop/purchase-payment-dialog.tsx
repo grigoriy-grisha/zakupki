@@ -1,12 +1,14 @@
 'use client';
 
+import { AlertCircle, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
+
+import { usePaymentForm } from '@/app/shop/hooks/use-payment-form';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CreditCard, Upload, Loader2, X, AlertCircle, Tag } from 'lucide-react';
-import { usePaymentForm } from '@/app/shop/hooks/use-payment-form';
+import { formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
 
 export type PurchasePaymentDialogProps = {
@@ -31,13 +33,18 @@ export function PurchasePaymentDialog({
 }: PurchasePaymentDialogProps) {
     const form = usePaymentForm(purchaseId, remaining);
 
-    const payLabel = hasPending ? 'Ожидает подтверждения' : `Оплатить ${remaining.toLocaleString('ru-RU')} ₽`;
+    const payLabel = hasPending ? 'Ожидает подтверждения' : `Оплатить ${formatRub(remaining)}`;
 
     const payButton = !paymentOpen ? (
         <div className={cn('relative w-full', buttonClassName)}>
-            <Button variant="brand" size={buttonSize} disabled className="w-full blur-[3px] opacity-50 pointer-events-none">
+            <Button
+                variant="brand"
+                size={buttonSize}
+                disabled
+                className="w-full blur-[3px] opacity-50 pointer-events-none"
+            >
                 <CreditCard className="h-4 w-4" />
-                Оплатить {remaining.toLocaleString('ru-RU')} ₽
+                Оплатить {formatRub(remaining)}
             </Button>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
                 <span className="rounded-md bg-background/90 px-2 py-1 text-center text-xs font-medium text-muted-foreground shadow-sm">
@@ -79,7 +86,7 @@ export function PurchasePaymentDialog({
                 <div className="rounded-lg bg-warning-50 p-3 flex items-center gap-2 text-warning text-sm">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>
-                        Осталось оплатить: <strong>{remaining.toLocaleString('ru-RU')} ₽</strong>
+                        Осталось оплатить: <strong>{formatRub(remaining)}</strong>
                     </span>
                 </div>
                 <form onSubmit={form.handleSubmit} className="space-y-4">
@@ -93,9 +100,7 @@ export function PurchasePaymentDialog({
                                 <div className="flex items-center gap-2 text-success">
                                     <Tag className="h-4 w-4" />
                                     <span className="text-sm font-medium">{form.appliedPromo.code}</span>
-                                    <span className="text-xs">
-                                        −{form.appliedPromo.discount.toLocaleString('ru-RU')} ₽
-                                    </span>
+                                    <span className="text-xs">−{formatRub(form.appliedPromo.discount)}</span>
                                 </div>
                                 <Button
                                     type="button"
@@ -150,19 +155,17 @@ export function PurchasePaymentDialog({
                         {form.appliedPromo && (
                             <div className="rounded-lg border border-success/30 bg-success-50 p-2 space-y-1">
                                 <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground">
-                                        Сумма: {form.numAmount.toLocaleString('ru-RU')} ₽
-                                    </span>
+                                    <span className="text-muted-foreground">Сумма: {formatRub(form.numAmount)}</span>
                                     <span className="text-success">
-                                        Скидка: −{form.appliedPromo.discount.toLocaleString('ru-RU')} ₽
+                                        Скидка: −{formatRub(form.appliedPromo.discount)}
                                     </span>
                                 </div>
                                 <p className="text-xs font-medium text-success">
-                                    К оплате: {(form.numAmount - form.appliedPromo.discount).toLocaleString('ru-RU')} ₽
+                                    К оплате: {formatRub(form.numAmount - form.appliedPromo.discount)}
                                 </p>
                             </div>
                         )}
-                        <p className="text-xs text-muted-foreground">Максимум: {remaining.toLocaleString('ru-RU')} ₽</p>
+                        <p className="text-xs text-muted-foreground">Максимум: {formatRub(remaining)}</p>
                     </div>
 
                     <div className="space-y-2">

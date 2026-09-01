@@ -1,6 +1,7 @@
 import { PackageIcon, ShoppingCartIcon, UsersIcon, WalletIcon } from 'lucide-react';
 
 import { StatCard } from '@/components/ui/stat-card';
+import { formatRub } from '@/lib/format/money';
 
 interface PurchaseStatsProps {
     itemsCount: number;
@@ -22,31 +23,17 @@ export function PurchaseStats({
     const remaining = Math.max(0, totalDue - totalPaid);
     return (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <StatCard icon={PackageIcon} value={itemsCount} label="Товаров" hint="в закупке" />
+            <StatCard icon={ShoppingCartIcon} value={totalOrders} label="Заказов" hint="всего" />
+            <StatCard icon={WalletIcon} value={`${formatRub(totalDue)}`} label="К оплате" />
             <StatCard
-                icon={PackageIcon}
-                value={itemsCount}
-                label="Товаров"
-                hint="в закупке"
-            />
-            <StatCard
-                icon={ShoppingCartIcon}
-                value={totalOrders}
-                label="Заказов"
-                hint="всего"
-            />
-            <StatCard
-                icon={WalletIcon}
-                value={`${totalDue.toLocaleString('ru-RU')} ₽`}
-                label="К оплате"
-            />
-            <StatCard
-                value={`${totalPaid.toLocaleString('ru-RU')} ₽`}
+                value={`${formatRub(totalPaid)}`}
                 label="Покрыто"
                 accent={totalPaid >= totalDue && totalDue > 0 ? 'success' : 'neutral'}
                 hint={totalDue > 0 ? `${Math.round((totalPaid / totalDue) * 100)}%` : undefined}
             />
             <StatCard
-                value={`${remaining.toLocaleString('ru-RU')} ₽`}
+                value={`${formatRub(remaining)}`}
                 label="Осталось"
                 accent={remaining > 0 ? 'warning' : 'success'}
             />
@@ -54,7 +41,7 @@ export function PurchaseStats({
                 icon={UsersIcon}
                 value={participantsCount}
                 label="Участников"
-                hint={totalPending > 0 ? `${totalPending.toLocaleString('ru-RU')} ₽ ждёт` : undefined}
+                hint={totalPending > 0 ? `${formatRub(totalPending)} ждёт` : undefined}
             />
         </div>
     );

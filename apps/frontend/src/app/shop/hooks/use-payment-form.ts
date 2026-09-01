@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { trpc } from '@/lib/client/trpc';
 import { toast } from 'sonner';
+
+import { trpc } from '@/lib/client/trpc';
+import { formatRub } from '@/lib/format/money';
 
 export type AppliedPromo = {
     id: number;
@@ -40,7 +42,7 @@ export function usePaymentForm(purchaseId: number, remaining: number) {
     });
 
     const numAmount = Number(amount);
-    const amountError = numAmount > remaining ? `Максимум ${remaining.toLocaleString('ru-RU')} ₽` : '';
+    const amountError = numAmount > remaining ? `Максимум ${formatRub(remaining)}` : '';
     const canSubmit = fileData && numAmount > 0 && numAmount <= remaining;
 
     async function applyPromo() {

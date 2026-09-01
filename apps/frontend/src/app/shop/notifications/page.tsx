@@ -4,27 +4,16 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
-import {
-    useMarkAllRead,
-    useMarkRead,
-    useNotifications,
-    useUnreadCount,
-} from '@/app/shop/hooks/use-notifications';
+import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
 import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 30;
-
-function pluralUnread(n: number): string {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'непрочитанное';
-    return 'непрочитанных';
-}
 
 function NotificationsSkeleton() {
     return (
@@ -102,12 +91,10 @@ function NotificationsPageInner() {
         <div className="flex flex-col gap-5 sm:gap-6">
             <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <h1 className="text-h1 text-fg-primary">
-                        Уведомления
-                    </h1>
+                    <h1 className="text-h1 text-fg-primary">Уведомления</h1>
                     {(unread ?? 0) > 0 && (
                         <Badge type="subtle" variant="accent">
-                            {(unread ?? 0)} {pluralUnread(unread ?? 0)}
+                            {unread ?? 0} {pluralRu(unread ?? 0, ['непрочитанное', 'непрочитанных', 'непрочитанных'])}
                         </Badge>
                     )}
                 </div>

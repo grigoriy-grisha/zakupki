@@ -4,26 +4,15 @@ import { Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
 import { AppLink } from '@/components/app-link';
 import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { pluralRu } from '@/lib/format/plural';
 import { cn } from '@/lib/utils';
-import {
-    useMarkAllRead,
-    useMarkRead,
-    useNotifications,
-    useUnreadCount,
-} from '@/app/shop/hooks/use-notifications';
-
-function pluralUnread(n: number): string {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'непрочитанное';
-    return 'непрочитанных';
-}
 
 export function NotificationBell() {
     const [open, setOpen] = useState(false);
@@ -75,7 +64,7 @@ export function NotificationBell() {
                         <span className="text-14-semibold text-fg-primary">Уведомления</span>
                         {unread > 0 && (
                             <Badge type="subtle" variant="accent" size="sm">
-                                {unread} {pluralUnread(unread)}
+                                {unread} {pluralRu(unread, ['непрочитанное', 'непрочитанных', 'непрочитанных'])}
                             </Badge>
                         )}
                     </div>

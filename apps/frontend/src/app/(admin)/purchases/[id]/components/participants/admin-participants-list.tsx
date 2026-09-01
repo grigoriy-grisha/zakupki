@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Search, SearchX, UsersIcon } from 'lucide-react';
 import { HANDOFF_DEFAULT_LABEL, HANDOFF_STATUS_LABELS, type HandoffStatus } from '@zakupki/types';
+import { Search, SearchX, UsersIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { UserProfileSheet } from '@/app/(admin)/users/components';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { SectionHeader } from '@/components/ui/section-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { formatRub } from '@/lib/format/money';
 import { cn, safeNumber } from '@/lib/utils';
+
 import { getPaymentStatus, type PaymentStatus } from '../../../lib/payment-status';
 import { useParticipantsData, usePurchaseDetail } from '../../hooks';
 import type { PaymentRef } from '../../lib/types';
@@ -106,10 +108,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
 
     // Счётчики для фильтра-статуса (по всем участникам, без текстового поиска).
     const statusCounts = useMemo(() => {
-        const counts = { all: data.userIds.length, paid: 0, partial: 0, unpaid: 0 } as Record<
-            StatusFilter,
-            number
-        >;
+        const counts = { all: data.userIds.length, paid: 0, partial: 0, unpaid: 0 } as Record<StatusFilter, number>;
         for (const uid of data.userIds) {
             const userOrdersList = data.userOrders.get(uid) ?? [];
             const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
@@ -120,7 +119,13 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     }, [data.userIds, data.userOrders, data.paidByUser]);
 
     const handoffCounts = useMemo(() => {
-        const counts: Record<HandoffFilter, number> = { all: data.userIds.length, none: 0, SENT: 0, RECEIVED: 0, STORED: 0 };
+        const counts: Record<HandoffFilter, number> = {
+            all: data.userIds.length,
+            none: 0,
+            SENT: 0,
+            RECEIVED: 0,
+            STORED: 0,
+        };
         for (const uid of data.userIds) {
             const handoff = data.handoffByUser.get(uid) ?? null;
             if (handoff == null) counts.none += 1;
@@ -140,27 +145,15 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
             />
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <StatCard icon={UsersIcon} value={data.userIds.length} label="Участников" hint="чел." />
+                <StatCard value={`${formatRub(data.totalDue)}`} label="К оплате" />
                 <StatCard
-                    icon={UsersIcon}
-                    value={data.userIds.length}
-                    label="Участников"
-                    hint="чел."
-                />
-                <StatCard
-                    value={`${data.totalDue.toLocaleString('ru-RU')} ₽`}
-                    label="К оплате"
-                />
-                <StatCard
-                    value={`${data.totalPaid.toLocaleString('ru-RU')} ₽`}
+                    value={`${formatRub(data.totalPaid)}`}
                     label="Покрыто"
                     accent={data.totalPaid >= data.totalDue && data.totalDue > 0 ? 'success' : 'neutral'}
                 />
                 {data.totalPending > 0 && (
-                    <StatCard
-                        value={`${data.totalPending.toLocaleString('ru-RU')} ₽`}
-                        label="Ожидает"
-                        accent="warning"
-                    />
+                    <StatCard value={`${formatRub(data.totalPending)}`} label="Ожидает" accent="warning" />
                 )}
             </div>
 
@@ -266,10 +259,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
 
                 {filteredUserIds.map((userId) => {
                     const userOrdersList = data.userOrders.get(userId) ?? [];
-                    const due = userOrdersList.reduce(
-                        (sum, o) => sum + safeNumber(o.amountDue),
-                        0,
-                    );
+                    const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
                     const paid = data.paidByUser.get(userId) ?? 0;
                     const pending = data.pendingByUser.get(userId) ?? 0;
                     const info = data.userMap.get(userId);
