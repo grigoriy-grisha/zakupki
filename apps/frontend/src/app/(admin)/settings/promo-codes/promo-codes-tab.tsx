@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { usePromoCodesList, useDeletePromoCode } from './hooks';
-import { PromoCodeDialog, PromoCodeRow } from './components';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { type PromoCodeData,PromoCodeDialog, PromoCodeRow } from './components';
+import { useDeletePromoCode,usePromoCodesList } from './hooks';
 
 export function PromoCodesTab() {
     const { data: promoCodes, isLoading } = usePromoCodesList();
@@ -49,7 +51,7 @@ export function PromoCodesTab() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {promoCodes?.map((promo) => (
+                        {promoCodes?.map((promo: PromoCodeData) => (
                             <PromoCodeRow key={promo.id} promo={promo} onDelete={setDeleteTarget} />
                         ))}
                     </TableBody>

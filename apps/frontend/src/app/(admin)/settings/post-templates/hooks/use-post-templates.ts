@@ -1,31 +1,18 @@
 import { trpc } from '@/lib/client/trpc';
-import { toast } from 'sonner';
-import { invalidateAndToast } from '../../../lib/use-crud-mutation';
 
-function postTemplateMutationOptions(utils: ReturnType<typeof trpc.useUtils>, successMessage: string) {
-    return {
-        onSuccess: () => invalidateAndToast(utils, [['postTemplates', 'list']], successMessage),
-        onError: (err: { message: string }) => {
-            toast.error(err.message);
-        },
-    };
-}
+import { createCrudHooks } from '../../shared/create-crud-hooks';
 
-export function usePostTemplateList() {
-    return trpc.postTemplates.list.useQuery();
-}
+const hooks = createCrudHooks({
+    router: trpc.postTemplates,
+    queryKeys: [['postTemplates', 'list']],
+    messages: {
+        createSuccess: 'Шаблон создан',
+        updateSuccess: 'Шаблон сохранён',
+        deleteSuccess: 'Шаблон удалён',
+    },
+});
 
-export function useCreatePostTemplate() {
-    const utils = trpc.useUtils();
-    return trpc.postTemplates.create.useMutation(postTemplateMutationOptions(utils, 'Шаблон создан'));
-}
-
-export function useUpdatePostTemplate() {
-    const utils = trpc.useUtils();
-    return trpc.postTemplates.update.useMutation(postTemplateMutationOptions(utils, 'Шаблон сохранён'));
-}
-
-export function useDeletePostTemplate() {
-    const utils = trpc.useUtils();
-    return trpc.postTemplates.delete.useMutation(postTemplateMutationOptions(utils, 'Шаблон удалён'));
-}
+export const usePostTemplateList = hooks.useList;
+export const useCreatePostTemplate = hooks.useCreate;
+export const useUpdatePostTemplate = hooks.useUpdate;
+export const useDeletePostTemplate = hooks.useDelete;

@@ -39,7 +39,7 @@ export function PostTemplateRow({
         update.mutate(
             { id: template.id, name: trimmedName, body },
             {
-                onSuccess: (saved) => {
+                onSuccess: (saved: { name: string; body: string }) => {
                     setName(saved.name);
                     setBody(saved.body);
                 },
@@ -82,8 +82,8 @@ export function PostTemplateRow({
                         <div className="flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-2 text-xs text-yellow-700">
                             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                             <span>
-                                Неизвестные метки: {unknownPlaceholders.map((k) => `{{${k}}}`).join(', ')}. Они попадут в
-                                пост как обычный текст. Доступные метки — см. подсказку выше.
+                                Неизвестные метки: {unknownPlaceholders.map((k) => `{{${k}}}`).join(', ')}. Они попадут
+                                в пост как обычный текст. Доступные метки — см. подсказку выше.
                             </span>
                         </div>
                     )}

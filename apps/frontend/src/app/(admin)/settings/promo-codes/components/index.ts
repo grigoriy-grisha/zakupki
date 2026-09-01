@@ -1,2 +1,2 @@
 export { PromoCodeDialog } from './promo-code-dialog';
-export { PromoCodeRow } from './promo-code-row';
+export { type PromoCodeData,PromoCodeRow } from './promo-code-row';

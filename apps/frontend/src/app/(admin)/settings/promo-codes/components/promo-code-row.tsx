@@ -10,20 +10,22 @@ import { cn } from '@/lib/utils';
 
 import { useTogglePromoCode } from '../hooks';
 import { getPromoStatus } from '../lib';
+export interface PromoCodeData {
+    id: number;
+    code: string;
+    label: string | null;
+    type: 'PERCENT' | 'FIXED';
+    value: string | number;
+    purchase: unknown;
+    usedCount: number;
+    maxUses: number | null;
+    minAmount: string | null;
+    expiresAt: string | null;
+    isActive: boolean;
+}
+
 interface PromoCodeRowProps {
-    promo: {
-        id: number;
-        code: string;
-        label: string | null;
-        type: 'PERCENT' | 'FIXED';
-        value: string | number;
-        purchase: unknown;
-        usedCount: number;
-        maxUses: number | null;
-        minAmount: string | null;
-        expiresAt: string | null;
-        isActive: boolean;
-    };
+    promo: PromoCodeData;
     onDelete: (promo: { id: number; code: string }) => void;
 }
 
