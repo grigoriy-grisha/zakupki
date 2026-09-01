@@ -135,7 +135,7 @@ function ProductCardImpl({
                     <p className="text-12-bold text-secondary sm:text-14-bold">{ctx.freeRemainderLabel}</p>
                 )}
 
-                <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1.5">
                     <span className="whitespace-nowrap font-display text-18-semibold text-fg-primary tabular-nums sm:text-24-semibold">
                         {formatPriceRub(hasOrder ? ctx.total : ctx.price)}
                         <span className="ml-1 font-sans text-11-regular font-normal text-fg-tertiary sm:text-12-regular">
