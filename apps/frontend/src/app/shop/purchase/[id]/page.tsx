@@ -216,8 +216,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
             <div className="flex flex-col gap-6 sm:gap-8">
                 <div className="flex flex-col items-center gap-5">
                     <Skeleton className="h-24 w-[124px] rounded-2xl sm:h-40 sm:w-[224px]" />
-                    <Skeleton className="h-9 w-32 rounded-full" />
-                    <Skeleton className="h-9 w-48" />
+                    <Skeleton className="h-7 w-32 rounded-full" />
+                    <Skeleton className="h-10 w-48 rounded-lg sm:h-14 sm:w-72" />
                 </div>
                 <Skeleton className="h-16 rounded-full sm:h-[68px]" />
                 <Skeleton className="h-10 w-full rounded-full" />

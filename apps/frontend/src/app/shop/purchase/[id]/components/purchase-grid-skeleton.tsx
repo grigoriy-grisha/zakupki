@@ -11,12 +11,18 @@ export function PurchaseGridSkeleton() {
             aria-label="Загрузка товаров"
         >
             {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} role="listitem" className="flex flex-col gap-2 overflow-hidden rounded-2xl bg-bg-soft p-3 sm:p-4">
-                    <Skeleton className="aspect-[6/5] w-full rounded-xl max-sm:aspect-[4/5]" />
-                    <Skeleton className="mt-2 h-4 w-4/5 rounded-md" />
-                    <Skeleton className="h-3 w-1/2 rounded-md" />
-                    <Skeleton className="mt-1 h-5 w-2/5 rounded-md" />
-                    <Skeleton className="mt-2 h-10 w-full rounded-full sm:h-12" />
+                <div
+                    key={i}
+                    role="listitem"
+                    className="flex flex-col overflow-hidden rounded-2xl border-2 border-transparent bg-bg-soft max-sm:flex-row"
+                >
+                    <Skeleton className="aspect-[6/5] w-full shrink-0 rounded-none max-sm:aspect-auto max-sm:h-36 max-sm:w-[45%] max-sm:self-stretch" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:p-4">
+                        <Skeleton className="h-5 w-4/5 rounded-md" />
+                        <Skeleton className="h-5 w-3/5 rounded-md" />
+                        <Skeleton className="mt-1 h-4 w-1/2 rounded-md" />
+                        <Skeleton className="mt-auto h-12 w-full rounded-full" />
+                    </div>
                 </div>
             ))}
         </div>
