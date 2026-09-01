@@ -139,9 +139,8 @@ export function AdminParticipantRow({
                 </button>
 
                 <div className="hidden w-[64px] shrink-0 text-center sm:block">
-                    <span className="text-12-regular text-fg-tertiary">№</span>
                     <p className="text-13-medium tabular-nums text-fg-primary">
-                        {purchaseOrderId != null ? purchaseOrderId : '—'}
+                        {purchaseOrderId != null ? `№ ${purchaseOrderId}` : '—'}
                     </p>
                 </div>
 
