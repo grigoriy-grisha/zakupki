@@ -4,7 +4,6 @@ import { signOut,useSession } from 'next-auth/react';
 import { useState } from 'react';
 
 import { AppLink } from '@/components/app-link';
-
 import {
     BrandLogo,
     HeaderBellIcon,
