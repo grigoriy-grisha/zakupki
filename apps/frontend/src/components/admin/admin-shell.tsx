@@ -1,29 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { useAppPathname } from '@/lib/hooks/use-app-pathname';
-import { useSession, signOut } from 'next-auth/react';
 import { LogOutIcon, UserIcon } from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
+import { useState } from 'react';
 
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { AppLink } from '@/components/app-link';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { withPlatformPrefix } from '@/lib/app-path';
 import { usePlatform } from '@/lib/hooks/use-platform';
 
-import { getCurrentNavLabel, MobileNavTrigger, Sidebar, SidebarBrand } from './sidebar';
+import { MobileNavTrigger, Sidebar, SidebarBrand } from './sidebar';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-    const pathname = useAppPathname();
     const { data: session } = useSession();
     const platform = usePlatform();
     const [menuOpen, setMenuOpen] = useState(false);
 
-    const pageTitle = getCurrentNavLabel(pathname, !!session?.user);
-
     return (
         <div className="flex h-[100dvh] flex-col bg-bg-base">
-            <header className="flex h-14 shrink-0 items-center justify-between gap-3 bg-bg-card px-4 md:hidden">
+            <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border-low bg-bg-base px-4 md:hidden">
                 <div className="flex items-center gap-3">
                     <MobileNavTrigger onClick={() => setMenuOpen(true)} />
                     <AppLink href="/" className="flex items-center">
@@ -57,7 +53,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 )}
             </header>
 
-            <div className="flex min-h-0 flex-1 gap-0 p-0 md:gap-2 md:p-2">
+            <div className="flex min-h-0 flex-1">
                 <Sidebar className="hidden md:flex" />
 
                 <Sheet open={menuOpen} onOpenChange={setMenuOpen}>

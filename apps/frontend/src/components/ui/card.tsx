@@ -14,7 +14,7 @@ type CardRounded = keyof typeof cardRoundedMap;
 
 function Card({
     className,
-    rounded = 'xl',
+    rounded = '2xl',
     ...props
 }: React.ComponentProps<'div'> & {
     rounded?: CardRounded;
@@ -22,11 +22,7 @@ function Card({
     return (
         <div
             data-slot="card"
-            className={cn(
-                'flex flex-col gap-6 border border-border bg-bg-card py-6 text-card-foreground shadow-xs',
-                cardRoundedMap[rounded],
-                className,
-            )}
+            className={cn('flex flex-col gap-6 bg-bg-soft py-6 text-card-foreground', cardRoundedMap[rounded], className)}
             {...props}
         />
     );
@@ -91,11 +87,11 @@ function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
 
 export {
     Card,
-    CardHeader,
-    CardFooter,
-    CardTitle,
     CardAction,
-    CardDescription,
     CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
     type CardRounded,
+    CardTitle,
 };

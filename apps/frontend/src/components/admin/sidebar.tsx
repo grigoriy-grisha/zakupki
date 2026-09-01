@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
@@ -12,13 +11,15 @@ import {
     UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 
 import { AppLink } from '@/components/app-link';
+import { BrandLogo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { useUserRole } from '@/lib/hooks/use-user-role';
+import { isNavActive } from '@/lib/app-path';
 import { useSidebarCollapsed } from '@/lib/client/use-sidebar-collapsed';
 import { useAppPathname } from '@/lib/hooks/use-app-pathname';
-import { isNavActive, withPlatformPrefix } from '@/lib/app-path';
+import { useUserRole } from '@/lib/hooks/use-user-role';
 import { cn } from '@/lib/utils';
 
 type NavItem = {
@@ -36,17 +37,8 @@ const navItems: NavItem[] = [
     { href: '/settings', label: 'Настройки', icon: SettingsIcon, admin: true },
 ];
 
-function SidebarBrand({ collapsed }: { collapsed?: boolean }) {
-    return (
-        <div className="flex items-center gap-2 overflow-hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <ShoppingCartIcon className="size-4" />
-            </div>
-            {!collapsed && (
-                <span className="truncate text-18-semibold text-fg-primary tracking-tight">Закупки</span>
-            )}
-        </div>
-    );
+function SidebarBrand() {
+    return <BrandLogo className="h-8 w-auto text-primary" />;
 }
 
 type SidebarProps = {
@@ -66,11 +58,13 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             className={cn(
-                'group flex h-full shrink-0 flex-col bg-bg-base transition-[width] duration-200 ease-in-out',
+                'group relative flex h-full shrink-0 flex-col bg-bg-base transition-[width] duration-200 ease-in-out',
                 collapsed ? 'w-[52px]' : 'w-[220px]',
                 className,
             )}
         >
+            <span aria-hidden className="absolute bottom-10 right-0 top-10 w-0.5 bg-secondary" />
+
             <div className="flex h-14 items-center justify-between gap-1 px-2.5">
                 {collapsed ? (
                     <Link
@@ -81,7 +75,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                             closeMobile();
                         }}
                     >
-                        <SidebarBrand collapsed />
+                        <SidebarBrand />
                     </Link>
                 ) : (
                     <AppLink
@@ -90,7 +84,7 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                             onNavigate?.();
                             closeMobile();
                         }}
-                        className="flex h-9 items-center"
+                        className="flex h-9 items-center px-1.5"
                     >
                         <SidebarBrand />
                     </AppLink>
@@ -142,8 +136,8 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                                 'flex h-9 items-center rounded-full transition-colors',
                                 collapsed ? 'w-9 justify-center px-0' : 'gap-2 px-3',
                                 active
-                                    ? 'bg-bg-soft text-fg-primary'
-                                    : 'text-fg-secondary hover:bg-bg-soft hover:text-fg-primary',
+                                    ? 'bg-secondary text-secondary-foreground'
+                                    : 'text-fg-secondary hover:bg-secondary/10 hover:text-secondary',
                             )}
                         >
                             <Icon className="size-4 shrink-0" />
@@ -173,8 +167,3 @@ export function MobileNavTrigger({ onClick, className }: { onClick: () => void; 
 
 export { SidebarBrand };
 
-export function getCurrentNavLabel(pathname: string, isAdmin: boolean): string {
-    const items = isAdmin ? navItems : navItems.filter((n) => !n.admin);
-    const match = items.find((item) => isNavActive(pathname, item.href));
-    return match?.label ?? 'Закупки';
-}
