@@ -231,7 +231,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     <span
                         className={cn(
                             'inline-flex h-7 items-center justify-self-start self-end rounded-full border border-secondary px-3.5',
-                            'text-12-medium text-secondary sm:self-auto',
+                            'text-12-medium text-secondary sm:h-9 sm:self-auto sm:px-5 sm:text-14-medium',
                         )}
                     >
                         {isSupplement ? 'Добор' : fulfillmentLabel}
@@ -243,7 +243,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         aria-hidden
                         className={cn(
                             'inline-flex h-7 items-center rounded-full border border-secondary px-3.5 text-12-medium text-secondary',
-                            'invisible sm:hidden',
+                            'invisible sm:h-9 sm:hidden sm:px-5 sm:text-14-medium',
                         )}
                     >
                         {isSupplement ? 'Добор' : fulfillmentLabel}
