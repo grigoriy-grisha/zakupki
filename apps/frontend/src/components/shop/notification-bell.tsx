@@ -131,7 +131,7 @@ export function NotificationBell({
             <div
                 className={cn(
                     'flex justify-center pt-1',
-                    surface === 'sheet' ? 'pb-[max(1.25rem,env(safe-area-inset-bottom))]' : 'pb-5',
+                    surface === 'sheet' ? 'pb-[max(2.25rem,env(safe-area-inset-bottom))]' : 'pb-5',
                 )}
             >
                 <AppLink
