@@ -131,6 +131,7 @@ export function PurchasePaymentDialog({
                                 <Button
                                     type="button"
                                     variant="outline"
+                                    size="sm"
                                     onClick={() => void form.applyPromo()}
                                     disabled={!form.promoInput.trim() || form.promoLoading}
                                 >
