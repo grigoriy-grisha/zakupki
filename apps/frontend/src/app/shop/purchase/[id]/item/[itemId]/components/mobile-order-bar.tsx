@@ -22,7 +22,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                     <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">
                         {ctx.hasOrder ? 'В корзине' : `Цена за ${ctx.shortName}`}
                     </p>
-                    <p className="truncate font-display text-16-semibold tabular-nums text-fg-primary">
+                    <p className="truncate text-16-semibold tabular-nums text-fg-primary">
                         {ctx.hasOrder
                             ? formatPriceRub(ctx.total)
                             : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}

@@ -22,7 +22,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
             {price > 0 && (
                 <div>
                     <div className="flex flex-wrap items-baseline gap-x-1.5">
-                        <span className="font-display text-24-semibold tabular-nums text-fg-primary sm:text-30-semibold">
+                        <span className="text-24-semibold tabular-nums text-fg-primary sm:text-30-semibold">
                             {formatPriceRub(price)}
                         </span>
                         <span className="text-13-regular text-fg-tertiary">/ {ctx.shortName}</span>
@@ -60,7 +60,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-low pt-2">
                         <span className="text-12-medium text-fg-secondary">Итого</span>
-                        <span className="font-display text-20-semibold text-primary tabular-nums">
+                        <span className="text-20-semibold text-primary tabular-nums">
                             {formatPriceRub(ctx.total)}
                         </span>
                     </div>

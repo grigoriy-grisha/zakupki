@@ -221,7 +221,7 @@ function PurchaseOrderCard({
                                         secondaryClassName="mt-0.5 block truncate text-12-regular text-fg-tertiary sm:text-13-regular"
                                     />
                                 )}
-                                <p className="mt-0.5 font-display text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
+                                <p className="mt-0.5 text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
                                     {qtyLabel} · {formatRub(amount)}
                                 </p>
                                 {breakdown && (breakdown.orgFeeRub > 0 || breakdown.deliveryRub > 0) && (
@@ -246,7 +246,7 @@ function PurchaseOrderCard({
             </div>
 
             <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:gap-4">
-                <p className="text-right font-display text-20-semibold text-primary tabular-nums sm:text-24-semibold">
+                <p className="text-right text-20-semibold text-primary tabular-nums sm:text-24-semibold">
                     Итоговая сумма {formatRub(group.total)}
                 </p>
                 {totals && (totals.org > 0 || totals.delivery > 0) && (

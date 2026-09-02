@@ -1,7 +1,7 @@
 import './globals.css';
 
 import type { Metadata } from 'next';
-import { Cormorant_Infant, JetBrains_Mono, Raleway } from 'next/font/google';
+import { Cormorant_Infant, Inter, JetBrains_Mono, Raleway } from 'next/font/google';
 import Script from 'next/script';
 
 import { Toaster } from '@/components/ui/sonner';
@@ -24,6 +24,12 @@ const cormorantInfant = Cormorant_Infant({
 const jetbrainsMono = JetBrains_Mono({
     subsets: ['latin', 'cyrillic'],
     variable: '--font-jetbrains-mono',
+    display: 'swap',
+});
+
+const inter = Inter({
+    subsets: ['latin', 'cyrillic'],
+    variable: '--font-inter',
     display: 'swap',
 });
 
@@ -59,7 +65,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <html
             lang="ru"
             suppressHydrationWarning
-            className={`${raleway.variable} ${cormorantInfant.variable} ${jetbrainsMono.variable}`}
+            className={`${raleway.variable} ${cormorantInfant.variable} ${jetbrainsMono.variable} ${inter.variable}`}
         >
             <body className="antialiased" suppressHydrationWarning>
                 <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
