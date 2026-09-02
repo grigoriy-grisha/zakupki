@@ -82,7 +82,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                         </div>
                         <div>
                             <p className="text-14-regular text-fg-secondary">Сумма</p>
-                            <p className="text-24-semibold text-primary tabular-nums">{formatRub(totalAmount)}</p>
+                            <p className="font-display text-24-semibold text-primary tabular-nums">{formatRub(totalAmount)}</p>
                             {childAmount > 0 && (
                                 <p className="text-12-regular text-success">
                                     Оплачено {formatRub(Number(payment.amount))} + промокод {promoCode?.code}{' '}

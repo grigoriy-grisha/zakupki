@@ -436,7 +436,7 @@
 
 @utility tabular-nums {
     font-variant-numeric: tabular-nums;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
 }
 
 /* === Заголовки (Figma DS: Cormorant Infant 700, mobile-first → десктоп) === */
