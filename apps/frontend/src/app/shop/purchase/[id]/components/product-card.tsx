@@ -150,8 +150,8 @@ function ProductCardImpl({
                     {showPackHint && (
                         <span
                             className={cn(
-                                'inline-flex items-center rounded-full bg-secondary/10 px-2 py-0.5',
-                                'text-11-semibold text-secondary sm:text-12-semibold',
+                                'inline-flex items-center rounded-full bg-secondary px-2 py-0.5',
+                                'text-11-semibold text-primary-foreground sm:text-12-semibold',
                             )}
                         >
                             {ctx.hasOrder
