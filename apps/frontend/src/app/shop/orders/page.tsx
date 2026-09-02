@@ -117,6 +117,43 @@ function PurchaseOrderCard({
     const { remaining, hasPending, isFullyPaid } = paymentSummary;
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
+    const ordersWithBreakdown = group.orders.map((order) => {
+        const priceInfo = order.source.priceInfo as
+            | {
+                  pricePerPackCurrency: number | null;
+                  rateToRub: number | null;
+                  packSize: number | null;
+                  orgFeePercent: number;
+                  deliveryPercent: number;
+              }
+            | null
+            | undefined;
+        const breakdown = priceInfo
+            ? computeOrderLinePriceBreakdown({
+                  amountDue: order.amountDue,
+                  quantity: order.quantity,
+                  packageCount: order.packageCount,
+                  pricePerPackCurrency: priceInfo.pricePerPackCurrency,
+                  rateToRub: priceInfo.rateToRub,
+                  packSize: priceInfo.packSize,
+                  orgFeePercent: priceInfo.orgFeePercent,
+                  deliveryPercent: priceInfo.deliveryPercent,
+              })
+            : null;
+        return { order, breakdown };
+    });
+    const totals =
+        ordersWithBreakdown.length > 0 && ordersWithBreakdown.every(({ breakdown }) => breakdown != null)
+            ? ordersWithBreakdown.reduce(
+                  (acc, { breakdown }) => ({
+                      base: acc.base + breakdown!.baseRub,
+                      org: acc.org + breakdown!.orgFeeRub,
+                      delivery: acc.delivery + breakdown!.deliveryRub,
+                  }),
+                  { base: 0, org: 0, delivery: 0 },
+              )
+            : null;
+
     return (
         <section className="py-5 first:pt-0 last:pb-0 sm:py-6">
             <div className="min-w-0">
@@ -138,7 +175,7 @@ function PurchaseOrderCard({
             </div>
 
             <div className="mt-5 divide-y divide-border-low sm:mt-6">
-                {group.orders.map((order) => {
+                {ordersWithBreakdown.map(({ order, breakdown }) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
                     const shortName = product?.unitCode ? (getUnitByCode(product.unitCode)?.shortName ?? '') : '';
@@ -146,28 +183,6 @@ function PurchaseOrderCard({
                     const qty = order.quantity;
                     const amount = order.amountDue;
                     const pkgLabel = order.packageCount > 0 ? ` + ${order.packageCount} упак.` : '';
-                    const priceInfo = order.source.priceInfo as
-                        | {
-                              pricePerPackCurrency: number | null;
-                              rateToRub: number | null;
-                              packSize: number | null;
-                              orgFeePercent: number;
-                              deliveryPercent: number;
-                          }
-                        | null
-                        | undefined;
-                    const breakdown = priceInfo
-                        ? computeOrderLinePriceBreakdown({
-                              amountDue: amount,
-                              quantity: qty,
-                              packageCount: order.packageCount,
-                              pricePerPackCurrency: priceInfo.pricePerPackCurrency,
-                              rateToRub: priceInfo.rateToRub,
-                              packSize: priceInfo.packSize,
-                              orgFeePercent: priceInfo.orgFeePercent,
-                              deliveryPercent: priceInfo.deliveryPercent,
-                          })
-                        : null;
 
                     return (
                         <AppLink
@@ -232,6 +247,12 @@ function PurchaseOrderCard({
                 <p className="text-right font-display text-20-semibold text-primary sm:text-24-semibold">
                     Итоговая сумма {formatRub(group.total)}
                 </p>
+                {totals && (totals.org > 0 || totals.delivery > 0) && (
+                    <p className="-mt-2 text-right text-13-regular text-fg-tertiary tabular-nums">
+                        Из них: {formatPriceRub(totals.base)} + оргсбор {formatPriceRub(totals.org)}
+                        {totals.delivery > 0 ? ` + доставка ${formatPriceRub(totals.delivery)}` : ''}
+                    </p>
+                )}
 
                 {purchasePayments.length > 0 && (
                     <div className="flex flex-col gap-1.5">
