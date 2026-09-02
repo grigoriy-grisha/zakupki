@@ -11,7 +11,7 @@ import { trpc } from '@/lib/client/trpc';
 import { normalizeNovelHtml, postTemplateEngine, productDescriptionBuilder } from '@/lib/product-description';
 import { buildShowInTitleByTypeId, type ProductLabelSource } from '@/lib/product-label';
 
-import { getUnitPriceRub, getUnitPriceWithDeliveryRub } from '../../lib/items-table-pricing';
+import { getUnitPriceRub } from '../../lib/items-table-pricing';
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { defaultUnitField } from '../../lib/unit-defaults';
@@ -180,24 +180,6 @@ export function PurchaseProductEditForm({
         [pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride, currencyRates, orgFeeDefaultPercent],
     );
 
-    const unitPriceWithDeliveryRub = useMemo(
-        () =>
-            getUnitPriceWithDeliveryRub(
-                { pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride },
-                currencyRates ?? [],
-                orgFeeDefaultPercent,
-                deliveryPercent,
-            ),
-        [
-            pricePerPackCurrency,
-            currencyId,
-            packAmount,
-            orgFeePercentOverride,
-            currencyRates,
-            orgFeeDefaultPercent,
-            deliveryPercent,
-        ],
-    );
 
     // По умолчанию выбираем валюту поставщика (EUR), а не рубль.
     // Срабатывает только если валюта не задана и список валют загружен.

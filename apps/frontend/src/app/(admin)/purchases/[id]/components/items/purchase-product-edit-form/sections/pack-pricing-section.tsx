@@ -21,7 +21,6 @@ import {
     getPackPriceRub,
     getPackPriceWithOrgFeeRub,
     getUnitPriceRub,
-    getUnitPriceWithDeliveryRub,
 } from '../../../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef } from '../../../../lib/types';
 import { InlineCell } from '../../inline-cell';
@@ -128,16 +127,9 @@ export function PackPricingSection({
     const packRub = getPackPriceRub(pricingFields, currencyRates ?? []);
     const packOrgRub = getPackPriceWithOrgFeeRub(pricingFields, currencyRates ?? [], orgFeeDefaultPercent);
     const unitRub = getUnitPriceRub(pricingFields, currencyRates ?? [], orgFeeDefaultPercent);
-    const unitWithDeliveryRub = getUnitPriceWithDeliveryRub(
-        pricingFields,
-        currencyRates ?? [],
-        orgFeeDefaultPercent,
-        deliveryPercent,
-    );
     const rubEditable = rateToRub != null && rateToRub > 0;
     const unitEditable = rubEditable && packAmount != null && packAmount > 0;
     const rubInputClassName = 'h-9 rounded-xl px-3 text-13-medium tabular-nums';
-    const deliveryActive = deliveryPercent > 0;
 
     return (
         <FormSection card title="Цена за упаковку">
@@ -234,19 +226,6 @@ export function PackPricingSection({
                 </div>
             </div>
 
-            {deliveryActive && (
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                    <div>
-                        <label className="mb-1 block text-12-regular text-fg-tertiary">
-                            За 1 ед с доставкой, ₽
-                            <span className="ml-1 opacity-70">+{deliveryPercent}%</span>
-                        </label>
-                        <div className="flex h-9 items-center rounded-xl border border-border bg-bg-soft px-3 text-13-medium text-fg-primary tabular-nums">
-                            {unitWithDeliveryRub != null ? formatUnitRub(unitWithDeliveryRub) : '—'}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Вес упаковки + единица */}
             <div className="mt-3 flex items-end gap-2">

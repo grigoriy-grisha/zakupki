@@ -6,7 +6,6 @@ import {
     getPackPriceWithOrgFeeRub,
     getRemainderQty,
     getUnitPriceRub,
-    getUnitPriceWithDeliveryRub,
 } from '../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef, PurchaseDetail } from '../../lib/types';
 import type { ItemsTableRowDerived } from './items-table-row';
@@ -17,7 +16,6 @@ export function deriveRow(
     item: ItemRow,
     currencyRates: PurchaseCurrencyRateRef[],
     orgFeeDefaultPercent: number,
-    deliveryPercent: number,
     fulfillmentStatus: PurchaseDetail['fulfillmentStatus'],
     status: PurchaseDetail['status'],
     isActive: boolean,
@@ -34,12 +32,6 @@ export function deriveRow(
         packPriceRub: getPackPriceRub(item, currencyRates),
         packPriceWithOrgFeeRub: getPackPriceWithOrgFeeRub(item, currencyRates, orgFeeDefaultPercent),
         unitPriceRub: getUnitPriceRub(item, currencyRates, orgFeeDefaultPercent),
-        unitPriceWithDeliveryRub: getUnitPriceWithDeliveryRub(
-            item,
-            currencyRates,
-            orgFeeDefaultPercent,
-            deliveryPercent,
-        ),
         collectedQty: getCollectedQty(item),
         remainderQty: getRemainderQty(item, fulfillmentStatus),
         orgFeePercent,

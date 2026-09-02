@@ -8,7 +8,6 @@ import {
     computePackPriceRub,
     computePackPriceWithOrgFee,
     computeUnitPriceRub,
-    computeUnitPriceRubFromItem,
     PURCHASE_FULFILLMENT_STATUSES,
     resolveCurrencyRate,
     resolveOrgFeePercent,
@@ -67,22 +66,6 @@ export function getUnitPriceRub(
     return computeUnitPriceRub(packOrg, toNum(item.packAmount));
 }
 
-/** Цена за 1ед с доставкой закупки — та же формула свёртки, что и в amountDue. */
-export function getUnitPriceWithDeliveryRub(
-    item: ItemPricingFields,
-    rates: PurchaseCurrencyRateRef[],
-    orgFeeDefaultPercent: number,
-    deliveryPercent: number,
-): number | null {
-    const orgFee = resolveOrgFeePercent(toNum(item.orgFeePercentOverride), orgFeeDefaultPercent);
-    return computeUnitPriceRubFromItem({
-        pricePerPackCurrency: toNum(item.pricePerPackCurrency),
-        rateToRub: resolveCurrencyRate(toRates(rates), item.currencyId ?? null),
-        orgFeePercent: orgFee,
-        deliveryPercent,
-        packSize: toNum(item.packAmount),
-    });
-}
 
 /**
  * Кол. 7 «Собрано»: сумма effective qty = quantity + packageCount × packSize

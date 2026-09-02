@@ -23,7 +23,6 @@ export interface ItemsTableRowDerived {
     packPriceRub: number | null;
     packPriceWithOrgFeeRub: number | null;
     unitPriceRub: number | null;
-    unitPriceWithDeliveryRub: number | null;
     collectedQty: number;
     remainderQty: number | null;
     orgFeePercent: number;
@@ -78,7 +77,6 @@ export function ItemsTableRow({
         packPriceRub,
         packPriceWithOrgFeeRub,
         unitPriceRub,
-        unitPriceWithDeliveryRub,
         collectedQty,
         remainderQty,
         orgFeePercent,
@@ -170,9 +168,6 @@ export function ItemsTableRow({
                 </div>
             </TableCell>
 
-            <TableCell className="px-3 text-right text-13-medium tabular-nums text-fg-secondary">
-                {numOrDash(unitPriceWithDeliveryRub)}
-            </TableCell>
 
             <TableCell className="px-3 text-right text-13-medium tabular-nums text-fg-secondary">
                 {numOrDash(collectedQty)}
