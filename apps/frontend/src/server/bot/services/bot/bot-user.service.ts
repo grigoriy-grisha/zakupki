@@ -28,4 +28,13 @@ export class BotUserService {
     ): Promise<void> {
         await serviceContainer.user.refreshProfile(userId, data);
     }
+
+    async hasPersonalDataConsent(userId: number): Promise<boolean> {
+        const consent = await serviceContainer.user.getPersonalDataConsent(userId);
+        return consent.accepted;
+    }
+
+    async acceptPersonalDataConsent(userId: number): Promise<void> {
+        await serviceContainer.user.acceptPersonalDataConsent(userId);
+    }
 }

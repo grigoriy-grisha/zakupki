@@ -13,12 +13,21 @@ export const paymentsRouter = router({
                 proofBase64: z.string().min(1, 'Прикрепите чек'),
                 proofMimeType: z.string().min(1),
                 promoCode: z.string().optional(),
+                consentAccepted: z.boolean().optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
             const purchase = await ctx.services.purchase.getById(input.purchaseId);
             if (!isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
                 throw new ValidationError('Оплата ещё не открыта. Ждём начала оплаты.');
+            }
+
+            const consent = await ctx.services.user.getPersonalDataConsent(ctx.userId);
+            if (!consent.accepted) {
+                if (input.consentAccepted !== true) {
+                    throw new ValidationError('Подтвердите согласие на обработку персональных данных');
+                }
+                await ctx.services.user.acceptPersonalDataConsent(ctx.userId);
             }
 
             const proofData = input.proofBase64 ? Buffer.from(input.proofBase64, 'base64') : undefined;

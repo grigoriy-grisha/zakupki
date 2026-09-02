@@ -88,20 +88,21 @@ model ProductCharacteristicValue {
 }
 
 model User {
-  id                 Int                 @id @default(autoincrement())
-  username           String?
-  firstName          String
-  lastName           String?
-  avatarUrl          String?
-  phone              String?
-  createdAt          DateTime            @default(now())
-  role               RoleKind            @default(CLIENT)
-  orderLines         OrderLine[]
-  payments           Payment[]
-  purchaseOrders     PurchaseOrder[]
-  notifications      Notification[]
-  telegramCredential TelegramCredential?
-  vkCredential       VkCredential?
+  id                    Int                 @id @default(autoincrement())
+  username              String?
+  firstName             String
+  lastName              String?
+  avatarUrl             String?
+  phone                 String?
+  createdAt             DateTime            @default(now())
+  personalDataConsentAt DateTime?
+  role                  RoleKind            @default(CLIENT)
+  orderLines            OrderLine[]
+  payments              Payment[]
+  purchaseOrders        PurchaseOrder[]
+  notifications         Notification[]
+  telegramCredential    TelegramCredential?
+  vkCredential          VkCredential?
 
   @@index([createdAt])
   @@index([username])

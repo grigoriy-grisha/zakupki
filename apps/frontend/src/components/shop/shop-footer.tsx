@@ -1,3 +1,4 @@
+import { AppLink } from '@/components/app-link';
 import { BrandLogo, InstagramIcon, PinterestIcon, TelegramCircleIcon, VkCircleIcon } from '@/components/icons';
 
 const SOCIALS = [
@@ -8,6 +9,11 @@ const SOCIALS = [
 ];
 
 const FOOTER_LINKS = ['японский и чешский бисер', 'фурнитура', 'инструменты', 'вдохновение'];
+
+const LEGAL_LINKS = [
+    { label: 'Агентская оферта', href: '/offer' },
+    { label: 'Обработка персональных данных', href: '/privacy' },
+];
 
 export function ShopFooter() {
     return (
@@ -38,6 +44,18 @@ export function ShopFooter() {
                 </p>
 
                 <BrandLogo className="w-[92px] text-secondary" />
+
+                <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+                    {LEGAL_LINKS.map((link) => (
+                        <AppLink
+                            key={link.href}
+                            href={link.href}
+                            className="text-13-medium text-secondary underline-offset-4 transition-colors hover:text-primary hover:underline"
+                        >
+                            {link.label}
+                        </AppLink>
+                    ))}
+                </div>
             </div>
 
             <div

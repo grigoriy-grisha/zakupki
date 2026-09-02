@@ -1,8 +1,8 @@
-import { NotFoundError, ValidationError } from '@zakupki/types';
 import type { RoleKind } from '@zakupki/database';
+import { NotFoundError, ValidationError } from '@zakupki/types';
 
+import type { UserRepository } from '../domain/user.repository';
 import type { VerifiedAccount } from '../domain/user.types';
-import { UserRepository } from '../domain/user.repository';
 
 function splitName(name: string) {
     const [firstName, ...rest] = name.split(' ');
@@ -57,6 +57,15 @@ export class UserService {
         const role = await this.getCachedRole(userId);
         if (role === null) throw new NotFoundError('Пользователь', userId);
         return { role };
+    }
+
+    async getPersonalDataConsent(userId: number) {
+        const acceptedAt = await this.repo.getPersonalDataConsentAt(userId);
+        return { accepted: acceptedAt != null, acceptedAt };
+    }
+
+    async acceptPersonalDataConsent(userId: number) {
+        await this.repo.setPersonalDataConsent(userId);
     }
 
     async signInWithVk(verified: VerifiedAccount) {

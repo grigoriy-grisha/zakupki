@@ -1,10 +1,11 @@
-import { InlineKeyboard } from 'grammy';
 import { isPurchasePaymentOpen } from '@zakupki/types';
+import { InlineKeyboard } from 'grammy';
 
-import type { CustomContext } from '../../domain/types';
-import { isPrivateChat } from '../shared/is-private-chat';
-import type { CommandHandler } from '../../domain/handler';
 import type { ServiceContainer } from '../../container/service-container';
+import type { CommandHandler } from '../../domain/handler';
+import type { CustomContext } from '../../domain/types';
+import { consentKeyboard, consentText } from '../../lib/consent';
+import { isPrivateChat } from '../shared/is-private-chat';
 
 /**
  * /pay — отображает клавиатуру закупок, по которым можно отправить оплату.
@@ -22,6 +23,13 @@ export class PayCommand implements CommandHandler {
         }
 
         const userId = ctx.session.userId!;
+        const consented = await this.container.userService.hasPersonalDataConsent(userId);
+        if (!consented) {
+            const name = ctx.from?.first_name ?? 'Друг';
+            await ctx.reply(consentText(name), { reply_markup: consentKeyboard() });
+            return;
+        }
+
         const payable = await this.container.paymentService.getPayablePurchases(userId);
 
         if (payable.length === 0) {

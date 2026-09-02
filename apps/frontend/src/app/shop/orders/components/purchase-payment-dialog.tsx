@@ -3,7 +3,9 @@
 import { AlertCircle, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
 
 import { usePaymentForm } from '@/app/shop/hooks/use-payment-form';
+import { AppLink } from '@/components/app-link';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -223,6 +225,25 @@ export function PurchasePaymentDialog({
                         />
                         {!form.fileData && <p className="text-12-regular text-error">Прикрепите подтверждение оплаты</p>}
                     </div>
+
+                    {form.consentRequired && (
+                        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-bg-soft p-3 text-13-regular text-fg-secondary">
+                            <Checkbox
+                                checked={form.consentChecked}
+                                onCheckedChange={(v) => form.setConsentChecked(v === true)}
+                                className="mt-0.5"
+                            />
+                            <span>
+                                Я даю{' '}
+                                <AppLink
+                                    href="/privacy"
+                                    className="text-secondary underline underline-offset-2 hover:text-primary"
+                                >
+                                    согласие на обработку персональных данных
+                                </AppLink>
+                            </span>
+                        </label>
+                    )}
 
                     <Button
                         type="submit"

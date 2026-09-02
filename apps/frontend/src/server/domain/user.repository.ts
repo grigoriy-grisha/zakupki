@@ -284,6 +284,21 @@ export class UserRepository {
         });
     }
 
+    async getPersonalDataConsentAt(userId: number) {
+        const user = await dbClient.user.findUnique({
+            where: { id: userId },
+            select: { personalDataConsentAt: true },
+        });
+        return user?.personalDataConsentAt ?? null;
+    }
+
+    async setPersonalDataConsent(userId: number) {
+        await dbClient.user.updateMany({
+            where: { id: userId, personalDataConsentAt: null },
+            data: { personalDataConsentAt: new Date() },
+        });
+    }
+
     async unlinkVk(userId: number) {
         return dbClient.vkCredential.deleteMany({ where: { userId } });
     }

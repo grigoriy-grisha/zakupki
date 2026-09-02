@@ -1,14 +1,13 @@
-import { Bot, GrammyError, HttpError, session, type BotConfig } from 'grammy';
 import { autoRetry } from '@grammyjs/auto-retry';
+import { Bot, type BotConfig,GrammyError, HttpError, session } from 'grammy';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
-import type { CreateBotOptions, CustomContext, SessionData } from './domain/types';
-import { SessionInitMiddleware } from './middlewares/init';
-import { AuthGuard } from './middlewares/auth';
 import { HandlerRegistry } from './container/handler-registry';
-import { isOrderCollectionMessage } from './lib/telegram-chat';
-import { log } from './lib/logger';
 import type { ServiceContainer } from './container/service-container';
+import type { CreateBotOptions, CustomContext, SessionData } from './domain/types';
+import { log } from './lib/logger';
+import { isOrderCollectionMessage } from './lib/telegram-chat';
+import { SessionInitMiddleware } from './middlewares/init';
 
 function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
     return {
@@ -70,7 +69,7 @@ export function createBot(
     const registry = new HandlerRegistry(container);
     registry
         // Commands
-        .addCommand(new StartCommand())
+        .addCommand(new StartCommand(container))
         .addCommand(new HelpCommand())
         .addCommand(new OrdersCommand(container))
         .addCommand(new PaymentsCommand(container))
@@ -79,6 +78,7 @@ export function createBot(
         // Callbacks
         .addCallback(new OrdersCallbackQueryHandler(container))
         .addCallback(new PayCallbackQueryHandler(container))
+        .addCallback(new ConsentCallbackQueryHandler(container))
         // Messages
         .addMessage(new ChannelPostShopCommentHandler())
         .addMessage(new PaymentProofHandler(container))
@@ -104,17 +104,18 @@ export function createBot(
 }
 
 // ── Imports для HandlerRegistry (используются в addCommand/addCallback/addMessage выше) ──
-import { StartCommand } from './handlers/command/start.command';
-import { HelpCommand } from './handlers/command/help.command';
-import { OrdersCommand } from './handlers/command/orders.command';
-import { PaymentsCommand } from './handlers/command/payments.command';
-import { PayCommand } from './handlers/command/pay.command';
-import { CancelPaymentCommand } from './handlers/command/cancel.command';
+import { ConsentCallbackQueryHandler } from './handlers/callback/consent.callback';
 import { OrdersCallbackQueryHandler } from './handlers/callback/orders.callback';
 import { PayCallbackQueryHandler } from './handlers/callback/pay.callback';
+import { CancelPaymentCommand } from './handlers/command/cancel.command';
+import { HelpCommand } from './handlers/command/help.command';
+import { OrdersCommand } from './handlers/command/orders.command';
+import { PayCommand } from './handlers/command/pay.command';
+import { PaymentsCommand } from './handlers/command/payments.command';
+import { StartCommand } from './handlers/command/start.command';
 import { ChannelPostShopCommentHandler } from './handlers/message/channel-post-comment.handler';
-import { PaymentProofHandler } from './handlers/message/payment-proof.handler';
+import { FallbackTextHandler } from './handlers/message/fallback-text.handler';
+import { OrderReplyHandler } from './handlers/message/order-reply.handler';
 import { PaymentAmountHandler } from './handlers/message/payment-amount.handler';
 import { PaymentPromoHandler } from './handlers/message/payment-promo.handler';
-import { OrderReplyHandler } from './handlers/message/order-reply.handler';
-import { FallbackTextHandler } from './handlers/message/fallback-text.handler';
+import { PaymentProofHandler } from './handlers/message/payment-proof.handler';

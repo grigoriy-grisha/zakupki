@@ -23,27 +23,34 @@ export function usePaymentForm(purchaseId: number, remaining: number) {
     const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
     const [promoError, setPromoError] = useState('');
     const [promoLoading, setPromoLoading] = useState(false);
+    const [consentChecked, setConsentChecked] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     const utils = trpc.useUtils();
+
+    const { data: consent } = trpc.users.myConsent.useQuery(undefined, { enabled: open });
 
     const mutation = trpc.payments.submit.useMutation({
         onSuccess: () => {
             void utils.payments.getMyPayments.invalidate();
             void utils.orders.getMyOrders.invalidate();
+            void utils.users.myConsent.invalidate();
             setOpen(false);
             setComment('');
             setPreview(null);
             setFileData(null);
             setPromoInput('');
             setAppliedPromo(null);
+            setConsentChecked(false);
             toast.success('Оплата отправлена · ожидает подтверждения');
         },
         onError: (err) => toast.error(err.message),
     });
 
+    const consentRequired = consent != null && !consent.accepted;
     const numAmount = Number(amount);
     const amountError = numAmount > remaining ? `Максимум ${formatRub(remaining)}` : '';
-    const canSubmit = fileData && numAmount > 0 && numAmount <= remaining;
+    const canSubmit =
+        fileData && numAmount > 0 && numAmount <= remaining && (!consentRequired || consentChecked);
 
     async function applyPromo() {
         if (!promoInput.trim()) return;
@@ -121,6 +128,7 @@ export function usePaymentForm(purchaseId: number, remaining: number) {
             proofBase64: fileData!.base64,
             proofMimeType: fileData!.mimeType,
             promoCode: appliedPromo?.code,
+            consentAccepted: consentRequired ? consentChecked : undefined,
         });
     }
 
@@ -150,5 +158,8 @@ export function usePaymentForm(purchaseId: number, remaining: number) {
         handleSubmit,
         mutation,
         remaining,
+        consentRequired,
+        consentChecked,
+        setConsentChecked,
     };
 }

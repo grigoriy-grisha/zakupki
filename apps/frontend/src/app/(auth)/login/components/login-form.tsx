@@ -2,6 +2,7 @@
 
 import { Loader2 } from 'lucide-react';
 
+import { AppLink } from '@/components/app-link';
 import { BrandLogo, TelegramOutlineIcon, VkOutlineIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 
@@ -80,6 +81,13 @@ export function LoginForm({
                     {telegramLoading ? 'Авторизация…' : 'Войти через Telegram'}
                 </Button>
             </div>
+
+            <p className="mt-6 max-w-[320px] animate-fade-in-up text-center text-12-regular leading-relaxed text-fg-tertiary [animation-delay:400ms] sm:max-w-sm sm:text-13-regular">
+                Регистрируясь, вы подтверждаете{' '}
+                <AppLink href="/privacy" className="underline underline-offset-2 hover:text-primary">
+                    согласие на обработку персональных данных
+                </AppLink>
+            </p>
         </div>
     );
 }

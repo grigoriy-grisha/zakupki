@@ -1,7 +1,8 @@
-import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
 
 import { verifyTelegram, verifyVk } from '@/lib/auth';
+
 import { adminProcedure, protectedProcedure, publicProcedure, router } from '../trpc';
 
 export const usersRouter = router({
@@ -19,6 +20,10 @@ export const usersRouter = router({
 
     getRole: protectedProcedure.query(async ({ ctx }) => {
         return ctx.services.user.getRole(ctx.userId);
+    }),
+
+    myConsent: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.services.user.getPersonalDataConsent(ctx.userId);
     }),
 
     upsertFromTelegram: publicProcedure

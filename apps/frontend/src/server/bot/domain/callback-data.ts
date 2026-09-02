@@ -14,7 +14,8 @@ export type CallbackAction =
     | { kind: 'pay:pick'; purchaseId: number }
     | { kind: 'pay:all'; purchaseId: number }
     | { kind: 'pay:promo' }
-    | { kind: 'pay:skip' };
+    | { kind: 'pay:skip' }
+    | { kind: 'consent:accept' };
 
 /** Все известные префиксы callback-data (для регистрации dispatcher'а). */
 export const CALLBACK_PREFIXES = ['orders:', 'pay:'] as const;
@@ -46,6 +47,7 @@ export class CallbackParser {
 
         if (data === 'pay:promo') return { kind: 'pay:promo' };
         if (data === 'pay:skip') return { kind: 'pay:skip' };
+        if (data === 'consent:accept') return { kind: 'consent:accept' };
 
         return null;
     }
@@ -67,6 +69,8 @@ export class CallbackParser {
                 return 'pay:promo';
             case 'pay:skip':
                 return 'pay:skip';
+            case 'consent:accept':
+                return 'consent:accept';
         }
     }
 }
