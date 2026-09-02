@@ -135,7 +135,7 @@ function ProductCardImpl({
                 {showMinHint && <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>}
 
                 {ctx.freeRemainderLabel && (
-                    <p className="text-12-bold text-secondary tabular-nums sm:text-14-bold">
+                    <p className="mt-2 text-12-bold text-secondary tabular-nums sm:text-14-bold">
                         {ctx.freeRemainderLabel}
                     </p>
                 )}
