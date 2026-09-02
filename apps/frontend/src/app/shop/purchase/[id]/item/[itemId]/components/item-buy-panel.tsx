@@ -13,8 +13,6 @@ import { formatQty,type ItemOrderControls } from './item-ctx';
 export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint: string | null }) {
     const price = ctx.unitPriceRub ?? ctx.price;
     const packInfo = ctx.packDiscountInfo;
-    // Packages bypass the supplement pool (whole packs, limited only by
-    // supplierLimit), so "Разобрано" applies only when packages are off too.
     const packagesOrderable = ctx.showPackageButtons && ctx.canAddPackage;
     const soldOutNoOrder = ctx.isSoldOut && !ctx.hasOrder && !packagesOrderable;
     const orderingClosedNoOrder = ctx.orderingClosed && !ctx.hasOrder;
@@ -87,19 +85,21 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                 </Button>
             ) : (
                 <div className="flex flex-col gap-2">
-                    <QuantityStepper
-                        size="lg"
-                        wrapClassName="hidden lg:flex"
-                        value={
-                            <>
-                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                            </>
-                        }
-                        onRemove={ctx.handleRemove}
-                        onAdd={ctx.handleAdd}
-                        canRemove={ctx.canDecrease}
-                        canAdd={ctx.canAdd}
-                    />
+                    {(ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity) && (
+                        <QuantityStepper
+                            size="lg"
+                            wrapClassName="hidden lg:flex"
+                            value={
+                                <>
+                                    {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                                </>
+                            }
+                            onRemove={ctx.handleRemove}
+                            onAdd={ctx.handleAdd}
+                            canRemove={ctx.canDecrease}
+                            canAdd={ctx.canAdd}
+                        />
+                    )}
                     {ctx.showPackageButtons && ctx.packSize != null && (
                         <QuantityStepper
                             size="md"
@@ -112,7 +112,9 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                             addAriaLabel="Добавить упаковку"
                         />
                     )}
-                    {minHint && <p className="text-center text-12-regular text-fg-tertiary">{minHint}</p>}
+                    {(ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity) && minHint && (
+                        <p className="text-center text-12-regular text-fg-tertiary">{minHint}</p>
+                    )}
                 </div>
             )}
         </div>

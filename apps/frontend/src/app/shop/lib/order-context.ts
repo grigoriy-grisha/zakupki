@@ -1,4 +1,4 @@
-import type { CurrencyRate, PackDiscountPricingInfo, PurchaseItem } from '@zakupki/types';
+import type { CurrencyRate, OrderLineRowLike, PackDiscountPricingInfo, PurchaseItem } from '@zakupki/types';
 import {
     buildOrderQtyOptions,
     computeAmountDueWithPackages,
@@ -156,15 +156,16 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         packDiscountPercent,
         { orgFeeDefaultPercent, currencyRates },
     );
-    const book = OrderBook.create(purchaseItem, toOrderLinesVO((item.orderLines ?? []) as any[]));
+    const book = OrderBook.create(purchaseItem, toOrderLinesVO((item.orderLines ?? []) as OrderLineRowLike[]));
     const availablePool = book.remainder;
 
     // Цена за единицу по новой модели (валюта × курс × оргсбор). null если не активна.
     const unitPriceRub = computeUnitPriceRubNewModel(purchaseItem);
     const price = unitPriceRub ?? 0;
 
+    const poolEmptyForUser = isSupplement && availablePool != null && availablePool <= 1e-9 && currentQuantity <= 0;
     const freeRemainderLabel =
-        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY
+        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY && !poolEmptyForUser
             ? `Можно добавить: ${availablePool} ${shortName}`
             : null;
 
@@ -208,8 +209,6 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const total = computeAmountDueWithPackages(currentQuantity, currentPackageCount, purchaseItem);
     // Скидка за целую пачку: packPriceRub = packAmount × unitPriceRub (цена упаковки в ₽).
     const packDiscountInfo = getPackDiscountPricingInfo(packSize, packagePrice, packDiscountPercent);
-    // Full packs come from effective qty: loose grams plus packages (a package IS
-    // a full pack), otherwise a package-only order never shows its discount.
     const effectiveQty = currentQuantity + currentPackageCount * (packSize ?? 0);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(effectiveQty, packDiscountInfo.packSize) : 0;
 

@@ -8,6 +8,10 @@ import { cn } from '@/lib/utils';
 
 type ItemOrderControls = ReturnType<typeof useItemOrderControls>;
 
+function isLooseOrderable(ctx: ItemOrderControls): boolean {
+    return ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity;
+}
+
 export function ProductCardControls({
     ctx,
     isSoldOutNoOrder,
@@ -35,22 +39,22 @@ export function ProductCardControls({
         return <InCartControls ctx={ctx} stop={stop} />;
     }
 
-    // Pool exhausted but packages still orderable: loose qty button stays disabled
-    // (canAdd is false), the package button keeps working.
     return (
         <div className="flex flex-col gap-1.5">
-            <Button
-                variant="brand"
-                size="default"
-                className="h-10 w-full rounded-full text-13-bold sm:text-14-medium md:text-14-medium"
-                onClick={(e) => {
-                    stop(e);
-                    ctx.handleAdd();
-                }}
-                disabled={!ctx.canAdd || ctx.isPending}
-            >
-                Добавить
-            </Button>
+            {isLooseOrderable(ctx) && (
+                <Button
+                    variant="brand"
+                    size="default"
+                    className="h-10 w-full rounded-full text-13-bold sm:text-14-medium md:text-14-medium"
+                    onClick={(e) => {
+                        stop(e);
+                        ctx.handleAdd();
+                    }}
+                    disabled={!ctx.canAdd || ctx.isPending}
+                >
+                    Добавить
+                </Button>
+            )}
             {ctx.showPackageButtons && ctx.packSize != null && (
                 <Button
                     variant="outline"
@@ -77,46 +81,52 @@ export function ProductCardControls({
 }
 
 function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React.MouseEvent) => void }) {
+    if (!isLooseOrderable(ctx) && !(ctx.showPackageButtons && ctx.packSize != null)) {
+        return null;
+    }
+
     return (
         <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2" onClick={stop} onPointerDown={stop}>
-                <button
-                    type="button"
-                    onClick={ctx.handleRemove}
-                    disabled={!ctx.canDecrease || ctx.isPending}
-                    aria-label="Убрать единицу товара"
-                    className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-full',
-                        'border-2 border-primary text-primary transition-colors',
-                        'hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40',
-                    )}
-                >
-                    <Minus className="size-4" />
-                </button>
-                <div
-                    className={cn(
-                        'flex h-9 min-w-0 flex-1 items-center justify-center rounded-full',
-                        'border-2 border-primary px-2 text-13-bold text-primary tabular-nums',
-                    )}
-                >
-                    <span className="truncate">
-                        {ctx.currentQuantity} {ctx.shortName}
-                    </span>
+            {isLooseOrderable(ctx) && (
+                <div className="flex items-center gap-2" onClick={stop} onPointerDown={stop}>
+                    <button
+                        type="button"
+                        onClick={ctx.handleRemove}
+                        disabled={!ctx.canDecrease || ctx.isPending}
+                        aria-label="Убрать единицу товара"
+                        className={cn(
+                            'flex size-9 shrink-0 items-center justify-center rounded-full',
+                            'border-2 border-primary text-primary transition-colors',
+                            'hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40',
+                        )}
+                    >
+                        <Minus className="size-4" />
+                    </button>
+                    <div
+                        className={cn(
+                            'flex h-9 min-w-0 flex-1 items-center justify-center rounded-full',
+                            'border-2 border-primary px-2 text-13-bold text-primary tabular-nums',
+                        )}
+                    >
+                        <span className="truncate">
+                            {ctx.currentQuantity} {ctx.shortName}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={ctx.handleAdd}
+                        disabled={!ctx.canAdd || ctx.isPending}
+                        aria-label="Добавить единицу товара"
+                        className={cn(
+                            'flex size-9 shrink-0 items-center justify-center rounded-full',
+                            'bg-primary text-primary-foreground transition-colors',
+                            'hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40',
+                        )}
+                    >
+                        <Plus className="size-4" />
+                    </button>
                 </div>
-                <button
-                    type="button"
-                    onClick={ctx.handleAdd}
-                    disabled={!ctx.canAdd || ctx.isPending}
-                    aria-label="Добавить единицу товара"
-                    className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-full',
-                        'bg-primary text-primary-foreground transition-colors',
-                        'hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40',
-                    )}
-                >
-                    <Plus className="size-4" />
-                </button>
-            </div>
+            )}
             {ctx.showPackageButtons && ctx.packSize != null && (
                 <div className="flex items-center gap-2">
                     <button

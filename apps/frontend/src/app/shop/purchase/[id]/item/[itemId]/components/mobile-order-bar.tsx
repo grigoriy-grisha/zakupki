@@ -29,20 +29,22 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                     </p>
                 </div>
                 {ctx.hasOrder ? (
-                    <QuantityStepper
-                        size="md"
-                        wrapClassName="shrink-0"
-                        value={
-                            <>
-                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                                {ctx.currentPackageCount > 0 ? ` + ${ctx.currentPackageCount} упак.` : ''}
-                            </>
-                        }
-                        onRemove={ctx.handleRemove}
-                        onAdd={ctx.handleAdd}
-                        canRemove={ctx.canDecrease}
-                        canAdd={ctx.canAdd}
-                    />
+                    (ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity) ? (
+                        <QuantityStepper
+                            size="md"
+                            wrapClassName="shrink-0"
+                            value={
+                                <>
+                                    {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                                    {ctx.currentPackageCount > 0 ? ` + ${ctx.currentPackageCount} упак.` : ''}
+                                </>
+                            }
+                            onRemove={ctx.handleRemove}
+                            onAdd={ctx.handleAdd}
+                            canRemove={ctx.canDecrease}
+                            canAdd={ctx.canAdd}
+                        />
+                    ) : null
                 ) : (
                     <Button
                         variant="brand"

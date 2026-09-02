@@ -429,9 +429,6 @@
     font-weight: 600;
 }
 
-/* === Numbers (Figma DS: Cormorant Infant for every numeric value) ===
-   tabular-nums marks a numeric surface (prices, quantities, counters,
-   totals), so the utility also switches the family to the display serif. */
 @utility tabular-nums {
     font-variant-numeric: tabular-nums;
     font-family: var(--font-display);
