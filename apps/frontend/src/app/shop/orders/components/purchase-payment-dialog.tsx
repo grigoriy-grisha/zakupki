@@ -227,11 +227,10 @@ export function PurchasePaymentDialog({
                     </div>
 
                     {form.consentRequired && (
-                        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-bg-soft p-3 text-13-regular text-fg-secondary">
+                        <label className="flex cursor-pointer items-center gap-2.5 rounded-xl bg-bg-soft p-3 text-13-regular text-fg-secondary">
                             <Checkbox
                                 checked={form.consentChecked}
                                 onCheckedChange={(v) => form.setConsentChecked(v === true)}
-                                className="mt-0.5"
                             />
                             <span>
                                 Я даю{' '}
