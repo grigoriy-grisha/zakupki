@@ -40,7 +40,7 @@ export default function DashboardPage() {
                             <ShoppingCartIcon className="size-4" />
                         </div>
                     </div>
-                    <p className="font-display text-36-semibold text-fg-primary">{activeCount}</p>
+                    <p className="text-36-semibold tabular-nums text-fg-primary">{activeCount}</p>
                     <Button variant="link" className="h-auto p-0 text-14-medium text-secondary" asChild>
                         <AppLink href="/purchases" className="inline-flex items-center gap-1">
                             Перейти к закупкам <ArrowRightIcon className="size-3.5" />
@@ -54,7 +54,7 @@ export default function DashboardPage() {
                             <PackageIcon className="size-4" />
                         </div>
                     </div>
-                    <p className="font-display text-36-semibold text-fg-primary">{productCount}</p>
+                    <p className="text-36-semibold tabular-nums text-fg-primary">{productCount}</p>
                     <Button variant="link" className="h-auto p-0 text-14-medium text-secondary" asChild>
                         <AppLink href="/products" className="inline-flex items-center gap-1">
                             Перейти к каталогу <ArrowRightIcon className="size-3.5" />

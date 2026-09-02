@@ -51,7 +51,7 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     <span className="text-fg-disabled">·</span>
                     <span className="tabular-nums">{totalOrders} заказ.</span>
                     <span className="text-fg-disabled">·</span>
-                    <span className="font-display text-14-semibold text-primary tabular-nums">{formatRub(totalAmount)}</span>
+                    <span className="text-14-semibold text-primary tabular-nums">{formatRub(totalAmount)}</span>
                 </div>
             </AppLink>
 
