@@ -135,7 +135,9 @@ function ProductCardImpl({
                 {showMinHint && <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>}
 
                 {ctx.freeRemainderLabel && (
-                    <p className="text-12-bold text-secondary sm:text-14-bold">{ctx.freeRemainderLabel}</p>
+                    <p className="text-12-bold text-secondary tabular-nums sm:text-14-bold">
+                        {ctx.freeRemainderLabel}
+                    </p>
                 )}
 
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1.5">

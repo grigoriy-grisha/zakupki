@@ -16,7 +16,6 @@ const raleway = Raleway({
 
 const cormorantInfant = Cormorant_Infant({
     subsets: ['latin', 'cyrillic'],
-    weight: ['600', '700'],
     style: ['normal', 'italic'],
     variable: '--font-cormorant',
     display: 'swap',
