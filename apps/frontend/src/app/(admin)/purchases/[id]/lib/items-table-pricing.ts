@@ -97,6 +97,22 @@ export function getUnitPriceWithDeliveryRub(
     });
 }
 
+/** Цена за упаковку с оргсбором и доставкой: база × (1 + (орг + доставка)/100). */
+export function getPackPriceWithDeliveryRub(
+    item: ItemPricingFields,
+    rates: PurchaseCurrencyRateRef[],
+    orgFeeDefaultPercent: number,
+    purchaseDeliveryPercent: number,
+): number | null {
+    const packRub = getPackPriceRub(item, rates);
+    if (packRub == null) return null;
+    const orgFee = resolveOrgFeePercent(toNum(item.orgFeePercentOverride), orgFeeDefaultPercent);
+    return computePackPriceWithOrgFee(
+        packRub,
+        orgFee + getEffectiveDeliveryPercent(item, purchaseDeliveryPercent),
+    );
+}
+
 
 /**
  * Кол. 7 «Собрано»: сумма effective qty = quantity + packageCount × packSize

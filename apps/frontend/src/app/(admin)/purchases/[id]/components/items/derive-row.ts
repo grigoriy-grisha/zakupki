@@ -4,6 +4,7 @@ import {
     getCollectedQty,
     getEffectiveDeliveryPercent,
     getPackPriceRub,
+    getPackPriceWithDeliveryRub,
     getPackPriceWithOrgFeeRub,
     getRemainderQty,
     getUnitPriceRub,
@@ -36,6 +37,12 @@ export function deriveRow(
         packPriceWithOrgFeeRub: getPackPriceWithOrgFeeRub(item, currencyRates, orgFeeDefaultPercent),
         unitPriceRub: getUnitPriceRub(item, currencyRates, orgFeeDefaultPercent),
         unitPriceWithDeliveryRub: getUnitPriceWithDeliveryRub(
+            item,
+            currencyRates,
+            orgFeeDefaultPercent,
+            purchaseDeliveryPercent,
+        ),
+        packPriceWithDeliveryRub: getPackPriceWithDeliveryRub(
             item,
             currencyRates,
             orgFeeDefaultPercent,

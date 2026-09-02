@@ -24,6 +24,7 @@ export interface ItemsTableRowDerived {
     packPriceWithOrgFeeRub: number | null;
     unitPriceRub: number | null;
     unitPriceWithDeliveryRub: number | null;
+    packPriceWithDeliveryRub: number | null;
     deliveryPercent: number;
     collectedQty: number;
     remainderQty: number | null;
@@ -80,6 +81,7 @@ export function ItemsTableRow({
         packPriceWithOrgFeeRub,
         unitPriceRub,
         unitPriceWithDeliveryRub,
+        packPriceWithDeliveryRub,
         deliveryPercent,
         collectedQty,
         remainderQty,
@@ -156,18 +158,18 @@ export function ItemsTableRow({
             <TableCell className="px-2 py-1 text-right">
                 <div className="flex items-center justify-end gap-1">
                     <InlineCell
-                        value={unitPriceWithDeliveryRub}
-                        disabled={!unitEditable}
+                        value={packPriceWithDeliveryRub}
+                        disabled={!rubEditable}
                         onCommit={(v) =>
                             commitRubPrice(
-                                solvePricePerPackFromUnitRub(v, rateToRub, orgFeePercent, packSize, deliveryPercent),
+                                solvePricePerPackFromPackOrgRub(v, rateToRub, orgFeePercent, deliveryPercent),
                             )
                         }
                         min={0}
-                        ariaLabel="Цена за 1 единицу с доставкой в рублях"
+                        ariaLabel="Цена за упаковку с доставкой в рублях"
                         align="right"
                         placeholder="—"
-                        format={formatUnitRub}
+                        format={formatWholeRub}
                         className="w-full"
                     />
                     {deliveryPercent > 0 && (
