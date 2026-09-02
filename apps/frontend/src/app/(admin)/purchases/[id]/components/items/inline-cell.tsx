@@ -118,7 +118,7 @@ export function InlineCell({
                 }
             }}
             className={cn(
-                'h-7 w-full min-w-0 rounded-md border border-border bg-bg-card px-1 text-13-medium tabular-nums shadow-xs hover:border-ring focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/30',
+                'h-7 w-full min-w-0 rounded-md border border-border bg-bg-card px-1 text-14-medium tabular-nums shadow-xs hover:border-ring focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/30',
                 align === 'right' && 'text-right',
                 align === 'center' && 'text-center',
                 align === 'left' && 'text-left',
