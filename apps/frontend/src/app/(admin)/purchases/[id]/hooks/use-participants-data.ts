@@ -42,13 +42,14 @@ interface PurchaseOrderRow {
         lastName: string | null;
         username: string | null;
         avatarUrl: string | null;
+        personalDataConsentAt?: string | Date | null;
         telegramCredential: { username: string | null } | null;
     } | null;
 }
 
 const emptyMaps = () => ({
     userIds: [] as number[],
-    userMap: new Map<number, { name: string; username?: string }>(),
+    userMap: new Map<number, { name: string; username?: string; consentAt: Date | null }>(),
     userOrders: new Map<number, OrderRow[]>(),
     userPayments: new Map<number, PaymentRef[]>(),
     paidByUser: new Map<number, number>(),
@@ -76,7 +77,7 @@ export function useParticipantsData(purchaseId: number) {
         const typedPurchaseOrders = (purchaseOrders ?? []) as unknown as PurchaseOrderRow[];
         const typedPayments = (payments ?? []) as unknown as PaymentRef[];
 
-        const userMap = new Map<number, { name: string; username?: string }>();
+        const userMap = new Map<number, { name: string; username?: string; consentAt: Date | null }>();
         const userOrders = new Map<number, OrderRow[]>();
         const orderComments = new Map<number, OrderComment>();
         const handoffByUser = new Map<number, HandoffStatus | null>();
@@ -94,6 +95,10 @@ export function useParticipantsData(purchaseId: number) {
                             lastName: po.user.lastName ?? null,
                         }),
                         username: uname,
+                        consentAt:
+                            po.user.personalDataConsentAt != null
+                                ? new Date(po.user.personalDataConsentAt)
+                                : null,
                     });
                 }
             }
@@ -117,6 +122,7 @@ export function useParticipantsData(purchaseId: number) {
                 userMap.set(o.userId, {
                     name: displayName({ firstName: o.user.firstName, lastName: o.user.lastName ?? null }),
                     username: o.user.username,
+                    consentAt: null,
                 });
             }
             if (!userOrders.has(o.userId)) userOrders.set(o.userId, []);

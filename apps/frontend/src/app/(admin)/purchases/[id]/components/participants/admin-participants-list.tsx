@@ -275,6 +275,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             userId={userId}
                             name={name}
                             username={info?.username}
+                            consentAt={info?.consentAt ?? null}
                             purchaseId={purchaseId}
                             purchaseOrderId={purchaseOrderId}
                             orderComment={orderComment}

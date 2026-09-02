@@ -26,6 +26,8 @@ interface AdminParticipantRowProps {
     userId: number;
     name: string;
     username?: string;
+    /** Дата согласия на обработку ПД (null — согласие не получено). */
+    consentAt?: Date | null;
     purchaseId: number;
     onOpenProfile: (userId: number) => void;
     /** ID PurchaseOrder — для P1 (отображение номера заказа) и для мутации комментария. */
@@ -52,6 +54,7 @@ export function AdminParticipantRow({
     userId,
     name,
     username,
+    consentAt,
     purchaseId,
     onOpenProfile,
     purchaseOrderId,
@@ -135,6 +138,27 @@ export function AdminParticipantRow({
                                 @<Highlight text={username} query={searchQuery} />
                             </p>
                         )}
+                        <p
+                            className={cn(
+                                'mt-0.5 flex items-center gap-1 truncate text-12-regular',
+                                consentAt ? 'text-success' : 'text-warning',
+                            )}
+                        >
+                            {consentAt ? (
+                                <CircleCheck className="size-3 shrink-0" aria-hidden />
+                            ) : (
+                                <CircleX className="size-3 shrink-0" aria-hidden />
+                            )}
+                            {consentAt
+                                ? `Согласие ПД · ${consentAt.toLocaleString('ru-RU', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                  })}`
+                                : 'Согласие ПД не получено'}
+                        </p>
                     </div>
                 </button>
 
