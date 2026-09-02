@@ -60,7 +60,11 @@ export function buildDisplayContext(
     const packagePrice = computePackagePrice(item);
     const packageTotal = currentPackageCount * packagePrice;
     const amountDue = computeAmountDueWithPackages(currentQuantity, currentPackageCount, item);
-    const fullPacks = packSize != null ? countFullSupplierPacks(currentQuantity, packSize) : 0;
+    // Full packs from effective qty: loose units plus packages (a package IS a full pack).
+    const fullPacks =
+        packSize != null
+            ? countFullSupplierPacks(currentQuantity + currentPackageCount * packSize, packSize)
+            : 0;
 
     const maxAllowed =
         availablePool != null && Number.isFinite(availablePool)

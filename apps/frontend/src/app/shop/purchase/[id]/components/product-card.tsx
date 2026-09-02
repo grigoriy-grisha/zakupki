@@ -154,10 +154,9 @@ function ProductCardImpl({
                                 'text-11-semibold text-secondary sm:text-12-semibold',
                             )}
                         >
-                            −{packInfo.discountPercent}% ·{' '}
                             {ctx.hasOrder
-                                ? `${ctx.fullPacks} ${pluralRu(ctx.fullPacks, ['пачку', 'пачки', 'пачек'])}`
-                                : '1 пачку'}
+                                ? `−${packInfo.discountPercent}% · ${ctx.fullPacks} ${pluralRu(ctx.fullPacks, ['пачка', 'пачки', 'пачек'])}`
+                                : `−${packInfo.discountPercent}% на целую пачку`}
                         </span>
                     )}
                 </div>

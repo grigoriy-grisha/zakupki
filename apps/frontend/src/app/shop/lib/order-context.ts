@@ -208,7 +208,10 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const total = computeAmountDueWithPackages(currentQuantity, currentPackageCount, purchaseItem);
     // Скидка за целую пачку: packPriceRub = packAmount × unitPriceRub (цена упаковки в ₽).
     const packDiscountInfo = getPackDiscountPricingInfo(packSize, packagePrice, packDiscountPercent);
-    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(currentQuantity, packDiscountInfo.packSize) : 0;
+    // Full packs come from effective qty: loose grams plus packages (a package IS
+    // a full pack), otherwise a package-only order never shows its discount.
+    const effectiveQty = currentQuantity + currentPackageCount * (packSize ?? 0);
+    const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(effectiveQty, packDiscountInfo.packSize) : 0;
 
     // Границы — ЕДИНОЕ правило с бэком: maxAllowed = pool + currentQuantity
     const maxAllowed =
