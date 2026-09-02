@@ -93,6 +93,10 @@ function ProductCardImpl({
     const showPackHint = packInfo != null && (hasOrder ? ctx.fullPacks > 0 : true);
     const showMinHint = minHint != null && !hasOrder && looseOrderable;
 
+    const orderQtyParts: string[] = [];
+    if (ctx.currentQuantity > 0) orderQtyParts.push(`${ctx.currentQuantity} ${ctx.shortName}`);
+    if (ctx.currentPackageCount > 0) orderQtyParts.push(`${ctx.currentPackageCount} упак.`);
+
     return (
         <div
             className={cn(
@@ -138,7 +142,7 @@ function ProductCardImpl({
 
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1.5">
                     <span className="whitespace-nowrap text-18-medium text-fg-primary tabular-nums sm:text-20-medium">
-                        {formatPriceRub(hasOrder ? ctx.total : ctx.price)}
+                        {formatPriceRub(ctx.price)}
                         <span className="ml-1 font-sans text-11-regular font-normal text-fg-tertiary sm:text-12-regular">
                             /{ctx.shortName}
                         </span>
@@ -156,6 +160,12 @@ function ProductCardImpl({
                         </span>
                     )}
                 </div>
+
+                {hasOrder && orderQtyParts.length > 0 && (
+                    <p className="text-12-medium text-fg-secondary tabular-nums sm:text-13-medium">
+                        {orderQtyParts.join(' + ')} · {formatPriceRub(ctx.total)}
+                    </p>
+                )}
 
                 <div className="mt-1.5" onClick={stop} onPointerDown={stop}>
                     <ProductCardControls ctx={ctx} isSoldOutNoOrder={isSoldOutNoOrder} stop={stop} />
