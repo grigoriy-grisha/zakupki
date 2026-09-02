@@ -36,13 +36,14 @@ export default function UsersPage() {
                                     <TableHead className="w-12" />
                                     <TableHead>Имя</TableHead>
                                     <TableHead>Роль</TableHead>
+                                    <TableHead>Согласие ПД</TableHead>
                                     <TableHead>Закупки</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {users?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center text-fg-secondary">
+                                        <TableCell colSpan={5} className="h-24 text-center text-fg-secondary">
                                             Нет участников
                                         </TableCell>
                                     </TableRow>

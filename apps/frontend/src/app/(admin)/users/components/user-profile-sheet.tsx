@@ -24,6 +24,7 @@ export type UserListItem = {
     phone: string | null;
     role: 'ADMIN' | 'CLIENT';
     createdAt: Date | string;
+    personalDataConsentAt?: Date | string | null;
     orderLines: { id: number; purchaseItem?: { purchaseId: number } | null }[];
     telegramCredential: {
         telegramId: string;

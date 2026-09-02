@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, CircleCheck, CircleX } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { UserAvatar } from '@/components/shared/user-avatar';
@@ -70,6 +70,25 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                     <UserRoleSelect userId={user.id} role={user.role} />
                 </TableCell>
                 <TableCell>
+                    {user.personalDataConsentAt ? (
+                        <p className="flex items-center gap-1 text-13-regular text-success">
+                            <CircleCheck className="size-3.5 shrink-0" aria-hidden />
+                            {new Date(user.personalDataConsentAt).toLocaleString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })}
+                        </p>
+                    ) : (
+                        <p className="flex items-center gap-1 text-13-regular text-warning">
+                            <CircleX className="size-3.5 shrink-0" aria-hidden />
+                            Не получено
+                        </p>
+                    )}
+                </TableCell>
+                <TableCell>
                     <Badge variant="secondary" className="font-normal">
                         {purchaseCount > 0
                             ? `${purchaseCount} закупок · ${user.orderLines.length} поз.`
@@ -80,7 +99,7 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
 
             {open && (
                 <TableRow>
-                    <TableCell colSpan={4} className="bg-bg-soft/50 p-0">
+                    <TableCell colSpan={5} className="bg-bg-soft/50 p-0">
                         <div className="p-4">
                             <p className="mb-3 text-14-semibold text-fg-secondary">Закупки участника</p>
                             {ordersLoading ? (
