@@ -174,7 +174,7 @@ export function ItemsTableRow({
 
             <TableCell className="px-2 py-1 text-right">
                 <div className="flex items-center justify-end gap-1">
-                    <span className="text-16-medium tabular-nums text-fg-secondary">
+                    <span className="text-14-medium tabular-nums text-fg-secondary">
                         {numOrDash(unitPriceWithDeliveryRub)}
                     </span>
                     {deliveryPercent > 0 && (
@@ -185,7 +185,7 @@ export function ItemsTableRow({
                 </div>
             </TableCell>
 
-            <TableCell className="px-3 text-right text-16-medium tabular-nums text-fg-secondary">
+            <TableCell className="px-3 text-right text-14-medium tabular-nums text-fg-secondary">
                 {numOrDash(collectedQty)}
                 <span className="ml-1 text-13-regular text-fg-tertiary">{unit || 'ед'}</span>
             </TableCell>

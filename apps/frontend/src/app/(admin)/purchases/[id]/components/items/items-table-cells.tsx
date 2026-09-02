@@ -177,15 +177,15 @@ export function RemainderCell({ remainderQty }: { remainderQty: number | null })
     return (
         <TableCell className="px-3 text-right">
             {remainderQty == null ? (
-                <span className="text-16-medium text-fg-tertiary">—</span>
+                <span className="text-14-medium text-fg-tertiary">—</span>
             ) : (
                 <span
                     className={
                         remainderQty > 0
-                            ? 'text-16-medium tabular-nums text-warning'
+                            ? 'text-14-medium tabular-nums text-warning'
                             : remainderQty < 0
-                              ? 'text-16-medium tabular-nums text-error'
-                              : 'text-16-medium tabular-nums text-fg-tertiary'
+                              ? 'text-14-medium tabular-nums text-error'
+                              : 'text-14-medium tabular-nums text-fg-tertiary'
                     }
                 >
                     {numOrDash(remainderQty)}
