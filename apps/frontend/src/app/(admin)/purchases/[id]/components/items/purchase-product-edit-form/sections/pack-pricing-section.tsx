@@ -156,7 +156,7 @@ export function PackPricingSection({
             {/* Цена + валюта */}
             <div className="flex items-end gap-2">
                 <div className="flex-1">
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">Цена</label>
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">Цена</label>
                     <Input
                         type="number"
                         step="0.01"
@@ -173,7 +173,7 @@ export function PackPricingSection({
                     />
                 </div>
                 <div className="w-40 shrink-0">
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">Валюта</label>
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">Валюта</label>
                     <Select
                         value={currencyId != null ? String(currencyId) : 'none'}
                         onValueChange={(v) => {
@@ -198,7 +198,7 @@ export function PackPricingSection({
 
             <div className="mt-3 flex items-end gap-2">
                 <div className="w-32 shrink-0">
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">Вес упаковки</label>
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">Вес упаковки</label>
                     <Input
                         type="number"
                         step="0.001"
@@ -215,7 +215,7 @@ export function PackPricingSection({
                     />
                 </div>
                 <div className="shrink-0">
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">Единица</label>
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">Единица</label>
                     <PackageUnitSelect
                         value={packUnit ?? PACKAGE_UNITS[0]}
                         onChange={handlePackUnitChange}
@@ -226,7 +226,7 @@ export function PackPricingSection({
 
             <div className="mt-3 grid grid-cols-2 gap-2">
                 <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">
                         Оргсбор, %<span className="ml-1 opacity-70">(по умолчанию {orgFeeDefaultPercent}%)</span>
                     </label>
                     <Input
@@ -246,7 +246,7 @@ export function PackPricingSection({
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">
                         Доставка, %<span className="ml-1 opacity-70">(по закупке {deliveryPercent}%)</span>
                     </label>
                     <Input
@@ -269,7 +269,7 @@ export function PackPricingSection({
 
             <div className="mt-3 grid grid-cols-2 gap-2">
                 <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">Цена в ₽</label>
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">Цена в ₽</label>
                     <InlineCell
                         value={packRub}
                         disabled={!rubEditable}
@@ -282,7 +282,7 @@ export function PackPricingSection({
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">
                         С оргсбором, ₽<span className="ml-1 opacity-70">+{effOrgFee}%</span>
                     </label>
                     <InlineCell
@@ -297,7 +297,7 @@ export function PackPricingSection({
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">
                         С доставкой, ₽<span className="ml-1 opacity-70">+{effMarkupPercent}%</span>
                     </label>
                     <InlineCell
@@ -314,7 +314,7 @@ export function PackPricingSection({
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">За 1 ед, ₽</label>
+                    <label className="mb-1 block text-13-regular text-fg-tertiary">За 1 ед, ₽</label>
                     <InlineCell
                         value={unitFullRub}
                         disabled={!unitEditable}
@@ -332,7 +332,7 @@ export function PackPricingSection({
                 </div>
             </div>
 
-            <p className="mt-3 text-12-regular text-fg-tertiary">
+            <p className="mt-3 text-13-regular text-fg-tertiary">
                 Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты задаётся
                 в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.
             </p>

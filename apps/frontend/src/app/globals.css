@@ -131,8 +131,8 @@
 
     /* === Foreground === */
     --fg-primary: #393939;
-    --fg-secondary: #9f9f9f;
-    --fg-tertiary: rgb(159 159 159 / 0.75);
+    --fg-secondary: #6f6f6f;
+    --fg-tertiary: #8a8a8a;
     --fg-disabled: rgb(57 57 57 / 0.3);
     --fg-inverse: #fdf6ea;
 

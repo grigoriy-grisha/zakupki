@@ -154,7 +154,7 @@ export function CurrencyRatesPanel({ purchaseId, rates, deliveryPercent }: Curre
             <div className="mb-3 flex items-center justify-between">
                 <div>
                     <h3 className="text-14-medium">Валюты закупки</h3>
-                    <p className="text-12-regular text-fg-tertiary">
+                    <p className="text-13-regular text-fg-tertiary">
                         До 3 валют. Курс вводится вручную для каждой закупки.
                     </p>
                 </div>
@@ -280,13 +280,13 @@ export function CurrencyRatesPanel({ purchaseId, rates, deliveryPercent }: Curre
                             Отмена
                         </Button>
                         {(currencies ?? []).length === 0 && (
-                            <span className="text-12-regular text-fg-tertiary">
+                            <span className="text-13-regular text-fg-tertiary">
                                 Сначала создайте валюты в настройках.
                             </span>
                         )}
                     </div>
                     {canAddMore && availableCurrencies.length === 0 && (currencies ?? []).length > 0 && (
-                        <p className="flex items-center gap-1 text-12-regular text-fg-tertiary">
+                        <p className="flex items-center gap-1 text-13-regular text-fg-tertiary">
                             <Plus className="h-3 w-3" /> Все валюты справочника уже добавлены.
                         </p>
                     )}
