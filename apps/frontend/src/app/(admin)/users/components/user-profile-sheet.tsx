@@ -197,7 +197,11 @@ export function UserProfileSheet({ user: userProp, userId, open, onOpenChange }:
                         ) : (
                             <div className="space-y-2">
                                 {purchaseGroups.map((group) => (
-                                    <UserPurchaseGroupBlock key={group.purchaseId} group={group} />
+                                    <UserPurchaseGroupBlock
+                                        key={group.purchaseId}
+                                        group={group}
+                                        userId={user?.id ?? 0}
+                                    />
                                 ))}
                                 <p className="pt-1 text-right text-14-semibold">Итого: {formatRub(ordersTotal)}</p>
                             </div>

@@ -50,13 +50,13 @@ const OPTIONS: HandoffOption[] = [
     },
 ];
 
-interface ParticipantHandoffSelectProps {
+interface HandoffStatusSelectProps {
     value: HandoffStatus | null;
     disabled?: boolean;
     onSelect: (status: HandoffStatus | null) => void;
 }
 
-export function ParticipantHandoffSelect({ value, disabled = false, onSelect }: ParticipantHandoffSelectProps) {
+export function HandoffStatusSelect({ value, disabled = false, onSelect }: HandoffStatusSelectProps) {
     const current = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0]!;
     const CurrentIcon = current.icon;
 

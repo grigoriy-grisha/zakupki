@@ -96,7 +96,7 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                             ) : (
                                 <div className="space-y-2">
                                     {purchaseGroups.map((group) => (
-                                        <UserPurchaseGroupBlock key={group.purchaseId} group={group} />
+                                        <UserPurchaseGroupBlock key={group.purchaseId} group={group} userId={user.id} />
                                     ))}
                                 </div>
                             )}

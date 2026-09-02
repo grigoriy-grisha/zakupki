@@ -1,4 +1,5 @@
 import type { inferRouterOutputs } from '@trpc/server';
+import type { HandoffStatus } from '@zakupki/types';
 
 import type { AppRouter } from '@/server/routers/_app';
 
@@ -8,8 +9,10 @@ export type UserOrderLine = RouterOutputs['orders']['getByUser'][number];
 
 export type UserPurchaseGroup = {
     purchaseId: number;
+    purchaseOrderId: number | null;
     orderNumber: number | null;
     tag: string;
+    handoffStatus: HandoffStatus | null;
     orders: UserOrderLine[];
     totalDue: number;
 };
@@ -22,11 +25,13 @@ export function groupOrdersByPurchase(orders: UserOrderLine[]): UserPurchaseGrou
         const purchaseId = purchase?.id ?? order.purchaseItem?.purchaseId;
         if (!purchaseId) continue;
 
-        const purchaseOrderId = null;
+        const purchaseOrderId = order.purchaseOrderId ?? null;
         const existing = map.get(purchaseId) ?? {
             purchaseId,
+            purchaseOrderId,
             orderNumber: purchaseOrderId,
             tag: purchase?.tag ?? `Закупка #${purchaseId}`,
+            handoffStatus: order.purchaseOrder?.handoffStatus ?? null,
             orders: [],
             totalDue: 0,
         };

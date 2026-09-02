@@ -4,6 +4,7 @@ import type { HandoffStatus } from '@zakupki/types';
 import { ChevronDown, ChevronRight, CircleCheck, CircleX, Clock, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { HandoffStatusSelect } from '@/components/admin/handoff-status-select';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Highlight } from '@/components/shared/highlight';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,6 @@ import type { OrderComment } from '../../hooks/use-participants-data';
 import type { PaymentRef } from '../../lib/types';
 import { type PurchaseItemOption } from './admin-order-controls';
 import { ParticipantCommentStrip } from './participant-comment-strip';
-import { ParticipantHandoffSelect } from './participant-handoff-select';
 import { ParticipantOrdersPanel } from './participant-orders-panel';
 import { ParticipantPaymentsPanel } from './participant-payments-panel';
 import type { ParticipantOrder } from './types';
@@ -164,7 +164,7 @@ export function AdminParticipantRow({
 
                 <div className="ml-auto flex items-center gap-2">
                     {purchaseOrderId != null && (
-                        <ParticipantHandoffSelect
+                        <HandoffStatusSelect
                             value={handoffStatus}
                             disabled={orderActions.setHandoffStatus.isPending}
                             onSelect={(status) => {
