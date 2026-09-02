@@ -95,17 +95,17 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                         disabled={!ctx.canDecrease || ctx.isPending}
                         aria-label="Убрать единицу товара"
                         className={cn(
-                            'flex size-9 shrink-0 items-center justify-center rounded-full',
+                            'flex size-8 shrink-0 items-center justify-center rounded-full',
                             'border-2 border-primary text-primary transition-colors',
                             'hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40',
                         )}
                     >
-                        <Minus className="size-4" />
+                        <Minus className="size-3.5" />
                     </button>
                     <div
                         className={cn(
-                            'flex h-9 min-w-0 flex-1 items-center justify-center rounded-full',
-                            'border-2 border-primary px-2 text-13-bold text-primary tabular-nums',
+                            'flex h-8 min-w-0 flex-1 items-center justify-center rounded-full',
+                            'border-2 border-primary px-2 text-12-bold text-primary tabular-nums',
                         )}
                     >
                         <span className="truncate">
@@ -118,12 +118,12 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                         disabled={!ctx.canAdd || ctx.isPending}
                         aria-label="Добавить единицу товара"
                         className={cn(
-                            'flex size-9 shrink-0 items-center justify-center rounded-full',
+                            'flex size-8 shrink-0 items-center justify-center rounded-full',
                             'bg-primary text-primary-foreground transition-colors',
                             'hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40',
                         )}
                     >
-                        <Plus className="size-4" />
+                        <Plus className="size-3.5" />
                     </button>
                 </div>
             )}

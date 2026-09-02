@@ -87,7 +87,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                 <div className="flex flex-col gap-2">
                     {(ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity) && (
                         <QuantityStepper
-                            size="lg"
+                            size="md"
                             wrapClassName="hidden lg:flex"
                             value={
                                 <>

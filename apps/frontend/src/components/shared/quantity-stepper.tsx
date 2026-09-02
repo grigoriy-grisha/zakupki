@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type QuantityStepperSize = 'sm' | 'md' | 'lg';
+type QuantityStepperSize = 'sm' | 'md';
 
 const STEPPER_SIZES: Record<QuantityStepperSize, { button: string; cell: string; icon: string; wrap: string }> = {
     sm: {
@@ -16,16 +16,10 @@ const STEPPER_SIZES: Record<QuantityStepperSize, { button: string; cell: string;
         wrap: 'gap-1',
     },
     md: {
-        button: 'size-10 rounded-xl',
+        button: 'size-9 rounded-xl',
         cell: 'min-w-20 px-2 text-13-semibold',
-        icon: 'size-4',
+        icon: 'size-3.5',
         wrap: 'gap-1.5',
-    },
-    lg: {
-        button: 'size-11 rounded-xl',
-        cell: 'px-2 text-14-semibold',
-        icon: 'size-4',
-        wrap: 'gap-2',
     },
 };
 
