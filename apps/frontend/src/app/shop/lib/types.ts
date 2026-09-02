@@ -24,6 +24,7 @@ export interface ShopPurchaseItemProduct {
 export interface ShopOrderLineInItem {
     userId: number;
     quantity: string | number;
+    packageCount?: string | number | null;
     baseQuantity: string | number | null;
     status?: string | null;
 }

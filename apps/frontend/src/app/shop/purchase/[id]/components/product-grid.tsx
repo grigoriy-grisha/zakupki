@@ -5,12 +5,15 @@ import { Package } from 'lucide-react';
 
 import { EmptyState } from '@/components/ui/empty-state';
 
+import type { CollectedQtyItem } from '../../../lib/collected-qty';
 import type { AggregatedForUser } from '../../../lib/order-aggregation';
 import { ProductCard } from './product-card';
 
 export interface ProductGridItem {
     id: number;
     purchaseItemId?: number;
+    packAmount?: string | number | null;
+    orderLines?: CollectedQtyItem['orderLines'];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     product: any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

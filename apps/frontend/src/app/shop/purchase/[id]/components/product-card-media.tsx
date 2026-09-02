@@ -1,6 +1,6 @@
 'use client';
 
-import { Package } from 'lucide-react';
+import { Package, PackageCheck } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
 
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
@@ -12,12 +12,14 @@ export function ProductCardMedia({
     photoIds,
     goToDetail,
     isSoldOutNoOrder,
+    collectedLabel,
 }: {
     productName: string;
     photoId?: number;
     photoIds?: number[];
     goToDetail: () => void;
     isSoldOutNoOrder: boolean;
+    collectedLabel?: string | null;
 }) {
     return (
         <div
@@ -44,6 +46,18 @@ export function ProductCardMedia({
                         <ProductPhotoPreview photoId={photoId} photoIds={photoIds} alt={productName} fill />
                     </div>
                 </div>
+
+                {collectedLabel && (
+                    <div
+                        className={cn(
+                            'absolute top-2 left-2 z-[2] flex items-center gap-1.5 rounded-full',
+                            'bg-black/50 px-2.5 py-1 text-white shadow-sm backdrop-blur',
+                        )}
+                    >
+                        <PackageCheck className="size-3 shrink-0" />
+                        <span className="text-11-semibold tabular-nums sm:text-12-semibold">{collectedLabel}</span>
+                    </div>
+                )}
 
                 {isSoldOutNoOrder && (
                     <>

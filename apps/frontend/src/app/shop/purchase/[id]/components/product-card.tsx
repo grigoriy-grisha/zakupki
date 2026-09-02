@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { memo, useCallback } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
+import { getCollectedLabel } from '@/app/shop/lib/collected-qty';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { formatPriceRub } from '@/lib/format/money';
@@ -112,6 +113,7 @@ function ProductCardImpl({
                 photoIds={photoIds}
                 goToDetail={goToDetail}
                 isSoldOutNoOrder={isSoldOutNoOrder}
+                collectedLabel={getCollectedLabel(item, ctx.shortName)}
             />
 
             <div className="flex min-w-0 flex-1 flex-col gap-1 p-3 sm:gap-1.5 sm:p-4">

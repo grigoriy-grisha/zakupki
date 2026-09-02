@@ -1,11 +1,12 @@
 'use client';
 
 import type { CurrencyRate } from '@zakupki/types';
-import { ArrowLeft, Building2, PackageSearch } from 'lucide-react';
+import { ArrowLeft, Building2, PackageCheck, PackageSearch } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { use, useMemo } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
+import { getCollectedLabel } from '@/app/shop/lib/collected-qty';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import type { ShopPurchaseItem } from '@/app/shop/lib/types';
 import { AppLink } from '@/components/app-link';
@@ -193,6 +194,7 @@ function ItemDetailLoaded({
     const minHint = buildStepHint(item, fulfillmentStatus, ctx.shortName);
     const descriptionRows = buildShopItemDescriptionRows(product as ProductCatalogCardSource, attributeTypes);
     const supplierName = item.supplier?.name;
+    const collectedLabel = getCollectedLabel(item, ctx.shortName);
     const showMobileBar = !ctx.isSoldOut || ctx.hasOrder;
 
     return (
@@ -248,12 +250,18 @@ function ItemDetailLoaded({
                             primaryClassName="block font-display text-20-bold leading-tight text-fg-primary sm:text-24-bold"
                             secondaryClassName="mt-1 block text-13-regular text-fg-tertiary"
                         />
-                        {(supplierName || ctx.freeRemainderLabel) && (
+                        {(supplierName || ctx.freeRemainderLabel || collectedLabel) && (
                             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                                 {supplierName && (
                                     <Badge type="subtle" variant="neutral" size="sm">
                                         <Building2 className="size-3" />
                                         {supplierName}
+                                    </Badge>
+                                )}
+                                {collectedLabel && (
+                                    <Badge type="subtle" variant="success" size="sm" className="tabular-nums">
+                                        <PackageCheck className="size-3" />
+                                        {collectedLabel}
                                     </Badge>
                                 )}
                                 {ctx.freeRemainderLabel && (
