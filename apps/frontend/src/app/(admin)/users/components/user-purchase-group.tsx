@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 import { HandoffStatusSelect } from '@/components/admin/handoff-status-select';
+import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -87,9 +88,17 @@ export function UserPurchaseGroupBlock({ group, userId }: UserPurchaseGroupProps
                             {group.orders.map((order) => (
                                 <TableRow key={order.id}>
                                     <TableCell>
-                                        <p className="text-14-semibold leading-tight">
-                                            {order.purchaseItem?.product?.name ?? `Товар #${order.purchaseItemId}`}
-                                        </p>
+                                        <div className="flex items-center gap-3">
+                                            <ProductPhotoPreview
+                                                photoId={order.purchaseItem?.product?.photos?.[0]?.id}
+                                                photoIds={order.purchaseItem?.product?.photos?.map((p) => p.id)}
+                                                alt={order.purchaseItem?.product?.name ?? 'Фото товара'}
+                                                thumbClassName="h-11 w-11 rounded-lg"
+                                            />
+                                            <p className="min-w-0 text-14-semibold leading-tight">
+                                                {order.purchaseItem?.product?.name ?? `Товар #${order.purchaseItemId}`}
+                                            </p>
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {Number(order.quantity).toLocaleString('ru-RU')}{' '}
