@@ -182,7 +182,10 @@ function PurchaseOrderCard({
                     const photo = product?.photos?.[0];
                     const qty = order.quantity;
                     const amount = order.amountDue;
-                    const pkgLabel = order.packageCount > 0 ? ` + ${order.packageCount} упак.` : '';
+                    const qtyParts: string[] = [];
+                    if (qty > 0) qtyParts.push(`${qty} ${shortName}`);
+                    if (order.packageCount > 0) qtyParts.push(`${order.packageCount} упак.`);
+                    const qtyLabel = qtyParts.join(' + ');
 
                     return (
                         <AppLink
@@ -219,8 +222,7 @@ function PurchaseOrderCard({
                                     />
                                 )}
                                 <p className="mt-0.5 font-display text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
-                                    {qty} {shortName}
-                                    {pkgLabel} · {formatRub(amount)}
+                                    {qtyLabel} · {formatRub(amount)}
                                 </p>
                                 {breakdown && (breakdown.orgFeeRub > 0 || breakdown.deliveryRub > 0) && (
                                     <p className="mt-0.5 text-14-medium text-fg-secondary tabular-nums">
