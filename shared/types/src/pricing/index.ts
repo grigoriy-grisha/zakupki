@@ -1,7 +1,8 @@
 import type { OrderQuantityOptions } from './types';
-export type { CurrencyRate } from './currency-pricing';
+export type { CurrencyRate, OrderLinePriceBreakdown } from './currency-pricing';
 export {
     computeAmountDueNewModel,
+    computeOrderLinePriceBreakdown,
     computePackPriceRub,
     computePackPriceWithOrgFee,
     computeUnitPriceRub,

@@ -18,6 +18,14 @@ export interface GroupableOrderLine {
     createdOnStage?: string | null;
     purchaseOrderId?: number | null;
     purchaseOrder?: { handoffStatus?: string | null } | null;
+    /** Резолвнутые цена/курс/проценты для расшифровки цены (прикрепляет OrderService). */
+    priceInfo?: {
+        pricePerPackCurrency: number | null;
+        rateToRub: number | null;
+        packSize: number | null;
+        orgFeePercent: number;
+        deliveryPercent: number;
+    } | null;
     purchaseItem?: {
         purchase?: {
             id: number;

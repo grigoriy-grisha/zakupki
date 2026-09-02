@@ -1,6 +1,7 @@
 'use client';
 
 import {
+    computeOrderLinePriceBreakdown,
     getUnitByCode,
     isPurchaseCompleted,
     isPurchasePaymentOpen,
@@ -19,7 +20,7 @@ import { type ShopPaymentView, summarizePurchasePayments } from '@/components/sh
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
-import { formatRub } from '@/lib/format/money';
+import { formatPriceRub, formatRub } from '@/lib/format/money';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import type { ProductLabelSource } from '@/lib/product-label';
 import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
@@ -145,6 +146,28 @@ function PurchaseOrderCard({
                     const qty = order.quantity;
                     const amount = order.amountDue;
                     const pkgLabel = order.packageCount > 0 ? ` + ${order.packageCount} упак.` : '';
+                    const priceInfo = order.source.priceInfo as
+                        | {
+                              pricePerPackCurrency: number | null;
+                              rateToRub: number | null;
+                              packSize: number | null;
+                              orgFeePercent: number;
+                              deliveryPercent: number;
+                          }
+                        | null
+                        | undefined;
+                    const breakdown = priceInfo
+                        ? computeOrderLinePriceBreakdown({
+                              amountDue: amount,
+                              quantity: qty,
+                              packageCount: order.packageCount,
+                              pricePerPackCurrency: priceInfo.pricePerPackCurrency,
+                              rateToRub: priceInfo.rateToRub,
+                              packSize: priceInfo.packSize,
+                              orgFeePercent: priceInfo.orgFeePercent,
+                              deliveryPercent: priceInfo.deliveryPercent,
+                          })
+                        : null;
 
                     return (
                         <AppLink
@@ -184,6 +207,15 @@ function PurchaseOrderCard({
                                     {qty} {shortName}
                                     {pkgLabel} · {formatRub(amount)}
                                 </p>
+                                {breakdown && (breakdown.orgFeeRub > 0 || breakdown.deliveryRub > 0) && (
+                                    <p className="mt-0.5 text-12-regular text-fg-tertiary tabular-nums sm:text-13-regular">
+                                        {formatPriceRub(breakdown.baseRub)} + оргсбор{' '}
+                                        {formatPriceRub(breakdown.orgFeeRub)}
+                                        {breakdown.deliveryRub > 0
+                                            ? ` + доставка ${formatPriceRub(breakdown.deliveryRub)}`
+                                            : ''}
+                                    </p>
+                                )}
                             </div>
                             <ChevronRight
                                 className={cn(

@@ -124,12 +124,14 @@ export {
 // Pricing
 export {
     computeAmountDueNewModel,
+    computeOrderLinePriceBreakdown,
     computePackPriceRub,
     computePackPriceWithOrgFee,
     computeUnitPriceRub,
     computeUnitPriceRubFromItem,
     type CurrencyRate,
     formatActiveStepHint,
+    type OrderLinePriceBreakdown,
     type OrderQuantityOptions,
     parsePriceTiers,
     type PriceTier,

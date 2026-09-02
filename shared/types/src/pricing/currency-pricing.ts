@@ -132,6 +132,86 @@ export function totalMarkupDivisor(orgFeePercent: number, deliveryPercent?: numb
     return 1 + (orgFeePercent + (deliveryPercent ?? 0)) / 100;
 }
 
+export interface OrderLinePriceBreakdown {
+    /** Базовая цена товара без наценок (валюта × курс × количество). */
+    baseRub: number;
+    orgFeeRub: number;
+    orgFeePercent: number;
+    deliveryRub: number;
+    deliveryPercent: number;
+}
+
+/**
+ * Расшифровка суммы строки заказа для клиента: база + оргсбор + доставка.
+ * Компоненты считаются от базовой цены, последняя ненулевая наценка —
+ * балансом от amountDue, чтобы сумма компонентов сходилась до копейки.
+ * Возвращает null, если цена не задана (нет курса/цены/веса упаковки).
+ */
+export function computeOrderLinePriceBreakdown(input: {
+    amountDue: number;
+    quantity: number;
+    packageCount: number;
+    pricePerPackCurrency: number | null;
+    rateToRub: number | null;
+    packSize: number | null;
+    orgFeePercent: number;
+    deliveryPercent: number;
+}): OrderLinePriceBreakdown | null {
+    if (
+        input.pricePerPackCurrency == null ||
+        !Number.isFinite(input.pricePerPackCurrency) ||
+        input.rateToRub == null ||
+        !Number.isFinite(input.rateToRub) ||
+        input.packSize == null ||
+        input.packSize <= 0
+    ) {
+        return null;
+    }
+    const effectiveQty = input.quantity + input.packageCount * input.packSize;
+    if (!Number.isFinite(effectiveQty) || effectiveQty <= 0) return null;
+
+    const unitBase = (input.pricePerPackCurrency * input.rateToRub) / input.packSize;
+    const baseRub = roundMoney(effectiveQty * unitBase);
+    const hasOrg = input.orgFeePercent > 0;
+    const hasDelivery = input.deliveryPercent > 0;
+
+    if (!hasOrg && !hasDelivery) {
+        return {
+            baseRub: input.amountDue,
+            orgFeeRub: 0,
+            orgFeePercent: 0,
+            deliveryRub: 0,
+            deliveryPercent: 0,
+        };
+    }
+    if (!hasDelivery) {
+        return {
+            baseRub,
+            orgFeeRub: roundMoney(input.amountDue - baseRub),
+            orgFeePercent: input.orgFeePercent,
+            deliveryRub: 0,
+            deliveryPercent: 0,
+        };
+    }
+    if (!hasOrg) {
+        return {
+            baseRub,
+            orgFeeRub: 0,
+            orgFeePercent: 0,
+            deliveryRub: roundMoney(input.amountDue - baseRub),
+            deliveryPercent: input.deliveryPercent,
+        };
+    }
+    const orgFeeRub = roundMoney(baseRub * (input.orgFeePercent / 100));
+    return {
+        baseRub,
+        orgFeeRub,
+        orgFeePercent: input.orgFeePercent,
+        deliveryRub: roundMoney(input.amountDue - baseRub - orgFeeRub),
+        deliveryPercent: input.deliveryPercent,
+    };
+}
+
 /**
  * Сумма к оплате по новой модели: effectiveQty × unitPriceRub.
  * effectiveQty = quantity + packageCount × packSize (как в старой модели).

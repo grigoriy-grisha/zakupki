@@ -6,6 +6,9 @@ import {
     type HandoffStatus,
     NotFoundError,
     OrderBook,
+    resolveCurrencyRate,
+    resolveDeliveryPercent,
+    resolveOrgFeePercent,
     userEffectiveQty,
     ValidationError,
 } from '@zakupki/types';
@@ -182,9 +185,41 @@ export class OrderService {
 
     /**
      * Все заказы пользователя (в т.ч. CANCELLED). Используется для админ-карточки.
+     * К каждой строке прикрепляется priceInfo — резолвнутые цена/курс/проценты
+     * для клиентской расшифровки «база + оргсбор + доставка».
      */
     async getUserOrders(userId: number) {
-        return this.repo.getByUser(userId);
+        const [lines, orgFeeDefaultPercent] = await Promise.all([
+            this.repo.getByUser(userId),
+            this.pricingSettings.getOrgFeeDefaultPercent(),
+        ]);
+        return lines.map((line) => {
+            const item = line.purchaseItem;
+            const purchase = item?.purchase;
+            if (!item || !purchase) return { ...line, priceInfo: null };
+            const rateToRub = resolveCurrencyRate(
+                (purchase.currencyRates ?? []).map((r) => ({
+                    currencyId: r.currencyId,
+                    rateToRub: Number(r.rateToRub),
+                })),
+                item.currencyId ?? null,
+            );
+            const priceInfo = {
+                pricePerPackCurrency:
+                    item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
+                rateToRub,
+                packSize: item.packAmount != null ? Number(item.packAmount) : null,
+                orgFeePercent: resolveOrgFeePercent(
+                    item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
+                    orgFeeDefaultPercent,
+                ),
+                deliveryPercent: resolveDeliveryPercent(
+                    item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
+                    Number(purchase.deliveryPercent ?? 0),
+                ),
+            };
+            return { ...line, priceInfo };
+        });
     }
 
     /** Все ACTIVE строки пользователя для purchaseItem (базовые + supplement). */

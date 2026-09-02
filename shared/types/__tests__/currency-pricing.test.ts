@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     computeAmountDueNewModel,
+    computeOrderLinePriceBreakdown,
     computePackPriceRub,
     computePackPriceWithOrgFee,
     computeUnitPriceRub,
@@ -164,5 +165,88 @@ describe('computeAmountDueNewModel (сумма заказа)', () => {
                 unitPriceRub: null,
             }),
         ).toBeNull();
+    });
+});
+
+describe('computeOrderLinePriceBreakdown — расшифровка для клиента', () => {
+    const mossLike = {
+        quantity: 60,
+        packageCount: 0,
+        pricePerPackCurrency: 14.82,
+        rateToRub: 100,
+        packSize: 1000,
+    };
+
+    it('оргсбор + доставка: компоненты в сумме дают amountDue до копейки', () => {
+        const bd = computeOrderLinePriceBreakdown({
+            ...mossLike,
+            amountDue: 103.8,
+            orgFeePercent: 10,
+            deliveryPercent: 7,
+        });
+        expect(bd).not.toBeNull();
+        expect(bd!.baseRub).toBe(88.92);
+        expect(bd!.orgFeeRub).toBe(8.89);
+        expect(bd!.baseRub + bd!.orgFeeRub + bd!.deliveryRub).toBe(103.8);
+    });
+
+    it('только оргсбор: orgFeeRub балансом от amountDue', () => {
+        const bd = computeOrderLinePriceBreakdown({
+            ...mossLike,
+            amountDue: 97.8,
+            orgFeePercent: 10,
+            deliveryPercent: 0,
+        });
+        expect(bd!.baseRub).toBe(88.92);
+        expect(bd!.baseRub + bd!.orgFeeRub).toBe(97.8);
+        expect(bd!.deliveryRub).toBe(0);
+    });
+
+    it('без наценок: база = amountDue', () => {
+        const bd = computeOrderLinePriceBreakdown({
+            ...mossLike,
+            amountDue: 88.92,
+            orgFeePercent: 0,
+            deliveryPercent: 0,
+        });
+        expect(bd!.baseRub).toBe(88.92);
+        expect(bd!.orgFeeRub).toBe(0);
+        expect(bd!.deliveryRub).toBe(0);
+    });
+
+    it('нет курса или веса упаковки — null', () => {
+        expect(
+            computeOrderLinePriceBreakdown({
+                ...mossLike,
+                rateToRub: null,
+                amountDue: 100,
+                orgFeePercent: 10,
+                deliveryPercent: 5,
+            }),
+        ).toBeNull();
+        expect(
+            computeOrderLinePriceBreakdown({
+                ...mossLike,
+                packSize: null,
+                amountDue: 100,
+                orgFeePercent: 10,
+                deliveryPercent: 5,
+            }),
+        ).toBeNull();
+    });
+
+    it('упаковки входят в базу через effectiveQty', () => {
+        const bd = computeOrderLinePriceBreakdown({
+            quantity: 0,
+            packageCount: 2,
+            pricePerPackCurrency: 1000,
+            rateToRub: 1,
+            packSize: 50,
+            amountDue: 2300,
+            orgFeePercent: 10,
+            deliveryPercent: 15,
+        });
+        expect(bd!.baseRub).toBe(2000);
+        expect(bd!.baseRub + bd!.orgFeeRub + bd!.deliveryRub).toBe(2300);
     });
 });

@@ -1,5 +1,5 @@
 import { dbClient } from '@zakupki/database';
-import { NotFoundError, type HandoffStatus } from '@zakupki/types';
+import { type HandoffStatus,NotFoundError } from '@zakupki/types';
 
 import { productInclude } from './product-include';
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
@@ -162,7 +162,14 @@ export class OrderRepository {
                     include: {
                         product: { include: productInclude },
                         purchase: {
-                            select: { id: true, tag: true, status: true, fulfillmentStatus: true },
+                            select: {
+                                id: true,
+                                tag: true,
+                                status: true,
+                                fulfillmentStatus: true,
+                                deliveryPercent: true,
+                                currencyRates: { select: { currencyId: true, rateToRub: true } },
+                            },
                         },
                     },
                 },
