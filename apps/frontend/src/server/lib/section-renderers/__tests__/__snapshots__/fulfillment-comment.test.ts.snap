@@ -4,7 +4,7 @@ exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=COLLECTI
 "<b>Статус закупки изменён</b>
 Пост #123
 <b>Сбор заказов</b>
-Сбор заказов открыт."
+Сбор заказов открыт. Добавляйте товар граммами или целыми пачками — кнопка «+1 упак.»."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=IN_TRANSIT_RF → renders with correct label and hint 1`] = `
@@ -32,7 +32,7 @@ exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=PAYMENT 
 "<b>Статус закупки изменён</b>
 Пост #123
 <b>Оплата заказов</b>
-Теперь можно только добавлять остатки."
+Добавить можно только остатки — граммами с шагом добора. Целые пачки («+1 упак.») на этом этапе уже недоступны."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=PREPARING_SHIPMENT_RF → renders with correct label and hint 1`] = `
@@ -53,7 +53,7 @@ exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=REORDER 
 "<b>Статус закупки изменён</b>
 Пост #123
 <b>Доборы</b>
-Теперь можно добавлять только остатки и пачки."
+Добор: остатки добавляются граммами с шагом добора, целая пачка — сразу целиком кнопкой «+1 упак.» (упак. = полная пачка поставщика)."
 `;
 
 exports[`FulfillmentCommentRenderer > all fulfillment statuses > status=SUPPLIER_ASSEMBLY → renders with correct label and hint 1`] = `
@@ -72,12 +72,12 @@ exports[`FulfillmentCommentRenderer > handles unknown status with raw label and 
 exports[`FulfillmentCommentRenderer > renders comment without channelPostMessageId prefix (omits "Пост #N" line) 1`] = `
 "<b>Статус закупки изменён</b>
 <b>Оплата заказов</b>
-Теперь можно только добавлять остатки."
+Добавить можно только остатки — граммами с шагом добора. Целые пачки («+1 упак.») на этом этапе уже недоступны."
 `;
 
 exports[`FulfillmentCommentRenderer > renders full comment with channelPostMessageId prefix 1`] = `
 "<b>Статус закупки изменён</b>
 Пост #123
 <b>Оплата заказов</b>
-Теперь можно только добавлять остатки."
+Добавить можно только остатки — граммами с шагом добора. Целые пачки («+1 упак.») на этом этапе уже недоступны."
 `;

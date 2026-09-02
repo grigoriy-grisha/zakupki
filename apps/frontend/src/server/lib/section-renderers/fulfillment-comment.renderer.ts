@@ -1,11 +1,13 @@
 import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus } from '@zakupki/types';
 
-import { escapeHtmlLocal, joinNonEmpty, BaseSectionRenderer, type SectionProps } from './base-section-renderer';
+import { BaseSectionRenderer, escapeHtmlLocal, joinNonEmpty, type SectionProps } from './base-section-renderer';
 
 const FULFILLMENT_HINTS: Record<PurchaseFulfillmentStatus, string> = {
-    COLLECTION: 'Сбор заказов открыт.',
-    REORDER: 'Теперь можно добавлять только остатки и пачки.',
-    PAYMENT: 'Теперь можно только добавлять остатки.',
+    COLLECTION: 'Сбор заказов открыт. Добавляйте товар граммами или целыми пачками — кнопка «+1 упак.».',
+    REORDER:
+        'Добор: остатки добавляются граммами с шагом добора, целая пачка — сразу целиком кнопкой «+1 упак.» (упак. = полная пачка поставщика).',
+    PAYMENT:
+        'Добавить можно только остатки — граммами с шагом добора. Целые пачки («+1 упак.») на этом этапе уже недоступны.',
     SUPPLIER_ASSEMBLY: 'Заказ комплектуется поставщиком.',
     PREPARING_SHIPMENT_RF: 'Подготовка к отправке в РФ.',
     IN_TRANSIT_RF: 'Товар едет в РФ.',
