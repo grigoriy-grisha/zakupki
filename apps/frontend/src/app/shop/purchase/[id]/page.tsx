@@ -360,6 +360,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                         isSupplement={isSupplement}
                         canAddPackage={fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER'}
                         fulfillmentStatus={fulfillmentStatus}
+                        deliveryPercent={Number(purchase.deliveryPercent ?? 0)}
                     />
 
                     {totalPages > 1 && (

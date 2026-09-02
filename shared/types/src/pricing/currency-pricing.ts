@@ -61,9 +61,10 @@ export function solvePricePerPackFromPackOrgRub(
     packPriceWithOrgFeeRub: number | null,
     rateToRub: number | null,
     orgFeePercent: number,
+    deliveryPercent?: number,
 ): number | null {
     if (packPriceWithOrgFeeRub == null || !isPositiveFinite(rateToRub)) return null;
-    const divisor = 1 + orgFeePercent / 100;
+    const divisor = totalMarkupDivisor(orgFeePercent, deliveryPercent);
     if (!Number.isFinite(divisor) || divisor <= 0) return null;
     return roundPrice4(packPriceWithOrgFeeRub / divisor / rateToRub);
 }
@@ -73,10 +74,11 @@ export function solvePricePerPackFromUnitRub(
     rateToRub: number | null,
     orgFeePercent: number,
     packAmount: number | null,
+    deliveryPercent?: number,
 ): number | null {
     if (unitPriceRub == null || !isPositiveFinite(rateToRub)) return null;
     if (packAmount == null || !Number.isFinite(packAmount) || packAmount <= 0) return null;
-    const divisor = 1 + orgFeePercent / 100;
+    const divisor = totalMarkupDivisor(orgFeePercent, deliveryPercent);
     if (!Number.isFinite(divisor) || divisor <= 0) return null;
     return roundPrice4((unitPriceRub * packAmount) / divisor / rateToRub);
 }
@@ -104,11 +106,22 @@ export function computeUnitPriceRubFromItem(input: {
     pricePerPackCurrency: number | null;
     rateToRub: number | null;
     orgFeePercent: number;
+    /** % доставки закупки, аддитивно к оргсбору. */
+    deliveryPercent?: number;
     packSize: number | null;
 }): number | null {
     const packRub = computePackPriceRub(input.pricePerPackCurrency, input.rateToRub);
-    const packOrg = computePackPriceWithOrgFee(packRub, input.orgFeePercent);
+    const markupDivisor = totalMarkupDivisor(input.orgFeePercent, input.deliveryPercent);
+    const packOrg = packRub == null ? null : roundMoney(packRub * markupDivisor);
     return computeUnitPriceRub(packOrg, input.packSize);
+}
+
+/**
+ * Итоговый множитель наценки: 1 + (оргсбор + доставка)/100 — аддитивно,
+ * оба процента считаются от базовой цены (1000 + 10% + 5% = 1150).
+ */
+export function totalMarkupDivisor(orgFeePercent: number, deliveryPercent?: number): number {
+    return 1 + (orgFeePercent + (deliveryPercent ?? 0)) / 100;
 }
 
 /**

@@ -15,6 +15,7 @@ import type { PurchaseCurrencyRateRef } from '../../lib/types';
 interface CurrencyRatesPanelProps {
     purchaseId: number;
     rates: PurchaseCurrencyRateRef[];
+    deliveryPercent: number;
 }
 
 interface RateDraft {
@@ -28,6 +29,18 @@ const MAX_CURRENCIES = 3;
  * Разбирает строку курса (допускает запятую вместо точки) в число.
  * Возвращает null, если значение пустое или не парсится в положительное число.
  */
+/**
+ * Разбирает строку процента доставки в число 0..100.
+ * Возвращает null, если значение пустое или не парсится.
+ */
+function parsePercent(raw: string): number | null {
+    const normalized = raw.trim().replace(',', '.');
+    if (normalized === '') return null;
+    const n = Number(normalized);
+    if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+    return Math.round(n * 100) / 100;
+}
+
 function parseRate(raw: string): number | null {
     const normalized = raw.trim().replace(',', '.');
     if (normalized === '') return null;
@@ -44,7 +57,7 @@ function parseRate(raw: string): number | null {
  * обновлении (например, после инвалидации кэша) черновик сбрасывается к актуальным
  * значениям, пока пользователь не начал редактирование.
  */
-export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProps) {
+export function CurrencyRatesPanel({ purchaseId, rates, deliveryPercent }: CurrencyRatesPanelProps) {
     const utils = trpc.useUtils();
     const [editing, setEditing] = useState(false);
 
@@ -53,6 +66,8 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
     const { data: currencies } = trpc.currencies.list.useQuery(undefined, {
         enabled: editing,
     });
+
+    const [deliveryDraft, setDeliveryDraft] = useState(String(deliveryPercent));
 
     const [drafts, setDrafts] = useState<RateDraft[]>(() =>
         rates.map((r) => ({ currencyId: r.currencyId, rateToRub: String(r.rateToRub) })),
@@ -65,10 +80,14 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
         setDrafts(rates.map((r) => ({ currencyId: r.currencyId, rateToRub: String(r.rateToRub) })));
     }, [rates]);
 
+    useEffect(() => {
+        setDeliveryDraft(String(deliveryPercent));
+    }, [deliveryPercent]);
+
     const updateRates = trpc.purchases.updateCurrencyRates.useMutation({
         onSuccess: async () => {
             await utils.purchases.getById.invalidate({ id: purchaseId });
-            toast.success('Курсы валют сохранены');
+            toast.success('Курсы валют и доставка сохранены');
             setEditing(false);
         },
         onError: (err) => toast.error(err.message),
@@ -104,17 +123,24 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
             toast.error(`Укажите курс больше 0 для: ${names}`);
             return;
         }
+        const delivery = parsePercent(deliveryDraft);
+        if (delivery == null) {
+            toast.error('Укажите процент доставки от 0 до 100');
+            return;
+        }
         updateRates.mutate({
             purchaseId,
             rates: drafts.map((d) => ({
                 currencyId: d.currencyId,
                 rateToRub: parseRate(d.rateToRub)!,
             })),
+            deliveryPercent: delivery,
         });
     }
 
     function handleCancel() {
         setDrafts(rates.map((r) => ({ currencyId: r.currencyId, rateToRub: String(r.rateToRub) })));
+        setDeliveryDraft(String(deliveryPercent));
         setEditing(false);
     }
 
@@ -157,6 +183,10 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
                             </div>
                         ))
                     )}
+                    <div className="flex items-center gap-2 rounded-full bg-bg-soft px-3 py-1.5 text-13-medium">
+                        <span>Доставка:</span>
+                        <span className="tabular-nums">{deliveryPercent}%</span>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -190,6 +220,25 @@ export function CurrencyRatesPanel({ purchaseId, rates }: CurrencyRatesPanelProp
                             </Button>
                         </div>
                     ))}
+
+                    <div className="flex items-center gap-2">
+                        <div className="w-48">
+                            <Label htmlFor="delivery-percent">Доставка, %</Label>
+                        </div>
+                        <div className="flex-1">
+                            <Input
+                                id="delivery-percent"
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                max={100}
+                                placeholder="Процент доставки"
+                                value={deliveryDraft}
+                                onChange={(e) => setDeliveryDraft(e.target.value)}
+                                className="text-13-regular"
+                            />
+                        </div>
+                    </div>
 
                     {canAddMore && availableCurrencies.length > 0 && (
                         <Select

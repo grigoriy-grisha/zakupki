@@ -1,6 +1,5 @@
-import { z } from 'zod';
-
 import { RoleKind } from '@zakupki/database';
+import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
@@ -215,9 +214,10 @@ export const purchasesRouter = router({
                         }),
                     )
                     .max(3, 'Не более 3 валют на закупку'),
+                deliveryPercent: z.number().min(0, 'Доставка не может быть отрицательной').max(100).optional(),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            return ctx.services.purchase.setCurrencyRates(input.purchaseId, input.rates);
+            return ctx.services.purchase.setCurrencyRates(input.purchaseId, input.rates, input.deliveryPercent);
         }),
 });

@@ -1,24 +1,24 @@
+import type { EventBus } from '@zakupki/queue';
 import {
     computeUnitPriceRubFromItem,
+    type CurrencyRate,
     NotFoundError,
     resolveOrgFeePercent,
-    type CurrencyRate,
 } from '@zakupki/types';
-import type { EventBus } from '@zakupki/queue';
 
 import {
-    postTemplateEngine,
-    productDescriptionBuilder,
     type DescriptionFields,
+    postTemplateEngine,
     type ProductCharacteristicsCatalog,
+    productDescriptionBuilder,
 } from '@/lib/product-description';
 import { buildShowInTitleByTypeId } from '@/lib/product-label';
 
-import { AttributeTypeRepository } from '../domain/attribute-type.repository';
-import { CharacteristicRepository } from '../domain/characteristic.repository';
-import { PostTemplateRepository } from '../domain/post-template.repository';
-import { ProductAttributeRepository } from '../domain/product-attribute.repository';
-import { PurchaseRepository } from '../domain/purchase.repository';
+import type { AttributeTypeRepository } from '../domain/attribute-type.repository';
+import type { CharacteristicRepository } from '../domain/characteristic.repository';
+import type { PostTemplateRepository } from '../domain/post-template.repository';
+import type { ProductAttributeRepository } from '../domain/product-attribute.repository';
+import type { PurchaseRepository } from '../domain/purchase.repository';
 import type { PricingSettingsService } from './settings/pricing-settings';
 
 type ItemForDescription = NonNullable<Awaited<ReturnType<PurchaseRepository['findItemForDescription']>>>;
@@ -84,6 +84,7 @@ export class PurchaseItemDescriptionService {
                     ? (currencyRates.find((r) => r.currencyId === item.currencyId)?.rateToRub ?? null)
                     : null,
             orgFeePercent,
+            deliveryPercent: Number(item.purchase.deliveryPercent ?? 0),
             packSize: item.packAmount != null ? Number(item.packAmount) : null,
         });
 

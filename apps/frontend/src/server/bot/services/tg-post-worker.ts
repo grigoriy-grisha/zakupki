@@ -1,27 +1,27 @@
 import type { Prisma, PrismaClient } from '@zakupki/database';
 import { dbClient } from '@zakupki/database';
+import { createLogger } from '@zakupki/logger';
 import type { TgPostJob } from '@zakupki/queue';
 import { getTgPostJobsQueue } from '@zakupki/queue';
-import { createLogger } from '@zakupki/logger';
-import type { Api } from 'grammy';
-
-import { getOrInitDiscussionChatId } from '../lib/channel-discussion';
-import { getDiscussionMessageStore } from '../lib/discussion-message-store';
-import { getChannelIdFromEnv } from '../lib/telegram-post';
-import { getOrdersChatIdFromEnv } from '../lib/telegram-chat';
-import { TgClient } from '../lib/tg-client';
-import { shopInlineKeyboardForGroup } from '../lib/webapp-url';
-import type { ChannelPostPhoto } from '../domain/types';
-import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 import {
     computeRawPool,
     computeUnitPriceRubNewModel,
     getStageStrategy,
     getUnitByCode,
     mapToPurchaseItem,
-    toOrderLinesVO,
     type PurchaseFulfillmentStatus,
+    toOrderLinesVO,
 } from '@zakupki/types';
+import type { Api } from 'grammy';
+
+import type { ChannelPostPhoto } from '../domain/types';
+import { getOrInitDiscussionChatId } from '../lib/channel-discussion';
+import { getDiscussionMessageStore } from '../lib/discussion-message-store';
+import { getOrdersChatIdFromEnv } from '../lib/telegram-chat';
+import { getChannelIdFromEnv } from '../lib/telegram-post';
+import type { TgClient } from '../lib/tg-client';
+import { shopInlineKeyboardForGroup } from '../lib/webapp-url';
+import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 
 const log = createLogger('tg-post-worker');
 
@@ -43,6 +43,7 @@ const ITEM_INCLUDE = {
     purchase: {
         select: {
             fulfillmentStatus: true,
+            deliveryPercent: true,
             currencyRates: { select: { currencyId: true, rateToRub: true } },
         },
     },
@@ -125,6 +126,7 @@ function computeItemUnitPriceRub(item: Item): number | null {
     return computeUnitPriceRubNewModel(
         mapToPurchaseItem(item, 0, {
             orgFeeDefaultPercent: 0,
+            deliveryPercent: Number(item.purchase?.deliveryPercent ?? 0),
             currencyRates: (item.purchase?.currencyRates ?? []).map((r) => ({
                 currencyId: r.currencyId,
                 rateToRub: Number(r.rateToRub),

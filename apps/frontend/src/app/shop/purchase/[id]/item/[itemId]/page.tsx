@@ -138,6 +138,7 @@ function ItemDetailContent({
             currentPackageCount={aggregated.packageCount}
             baseQuantity={aggregated.baseQuantity}
             fulfillmentStatus={fulfillmentStatus}
+            deliveryPercent={Number(purchase.deliveryPercent ?? 0)}
             packDiscountPercent={packDiscountPercent}
             orgFeeDefaultPercent={orgFeeDefaultPercent}
             currencyRates={currencyRates}
@@ -155,6 +156,7 @@ function ItemDetailLoaded({
     currentPackageCount,
     baseQuantity,
     fulfillmentStatus,
+    deliveryPercent,
     packDiscountPercent,
     orgFeeDefaultPercent,
     currencyRates,
@@ -168,6 +170,7 @@ function ItemDetailLoaded({
     currentPackageCount: number;
     baseQuantity: number;
     fulfillmentStatus: string;
+    deliveryPercent: number;
     packDiscountPercent: number;
     orgFeeDefaultPercent: number;
     currencyRates: CurrencyRate[];
@@ -180,6 +183,7 @@ function ItemDetailLoaded({
         currentPackageCount,
         baseQuantity,
         fulfillmentStatus,
+        deliveryPercent,
         packDiscountPercent,
         orgFeeDefaultPercent,
         currencyRates,

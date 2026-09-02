@@ -1,20 +1,20 @@
+import { createLogger } from '@zakupki/logger';
+import type { EventBus } from '@zakupki/queue';
+import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 import {
     canCancelOrder,
+    type HandoffStatus,
     NotFoundError,
     OrderBook,
     userEffectiveQty,
     ValidationError,
-    type HandoffStatus,
 } from '@zakupki/types';
-import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
-import { EventBus } from '@zakupki/queue';
-import { createLogger } from '@zakupki/logger';
 
-import { OrderRepository } from '../domain/order.repository';
-import { PurchaseRepository } from '../domain/purchase.repository';
+import type { OrderRepository } from '../domain/order.repository';
+import type { PurchaseRepository } from '../domain/purchase.repository';
 import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
-import type { PricingSettingsService } from '../services/settings/pricing-settings';
 import type { NotificationService } from '../services/notification.service';
+import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
 const log = createLogger('order-service');
 
@@ -441,7 +441,11 @@ export class OrderService {
             rateToRub: Number(r.rateToRub),
         }));
         return {
-            item: mapToPurchaseItem(row, packDiscountPercent, { orgFeeDefaultPercent, currencyRates }),
+            item: mapToPurchaseItem(row, packDiscountPercent, {
+                orgFeeDefaultPercent,
+                currencyRates,
+                deliveryPercent: Number(row.purchase?.deliveryPercent ?? 0),
+            }),
             lines: toOrderLines(row.orderLines as any),
         };
     }

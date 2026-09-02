@@ -181,7 +181,11 @@ export class OrderCollectionService {
         const packDiscountPercent = this.container
             ? await this.container.pricingSettings.getBeadPackPriceDiscountPercent()
             : 0;
-        const domainItem = mapToPurchaseItem(item, packDiscountPercent, { orgFeeDefaultPercent, currencyRates });
+        const domainItem = mapToPurchaseItem(item, packDiscountPercent, {
+            orgFeeDefaultPercent,
+            currencyRates,
+            deliveryPercent: Number(item.purchase?.deliveryPercent ?? 0),
+        });
 
         const unitPriceRub = computeUnitPriceRubNewModel(domainItem) ?? 0;
         const packSize = item.packAmount != null ? Number(item.packAmount) : null;

@@ -27,6 +27,7 @@ export function computeUnitPriceRubNewModel(item: PurchaseItem): number | null {
         pricePerPackCurrency: item.pricePerPackCurrency,
         rateToRub,
         orgFeePercent,
+        deliveryPercent: item.deliveryPercent,
         packSize: item.packAmount,
     });
 }

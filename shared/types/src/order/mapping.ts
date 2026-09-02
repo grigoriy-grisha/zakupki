@@ -73,11 +73,13 @@ export interface PurchaseItemRowLike {
 
 /**
  * Контекст новой модели цен, резолвимый на уровне сервиса (глобальный оргсбор +
- * ставки валют закупки). Передаётся третьим аргументом в mapToPurchaseItem.
+ * % доставки закупки + ставки валют). Передаётся третьим аргументом в mapToPurchaseItem.
  * Опционален — при отсутствии новая модель не активируется (значения null/пусто).
  */
 export interface PurchaseItemPricingContext {
     orgFeeDefaultPercent?: number;
+    /** % доставки закупки, аддитивно к оргсбору. */
+    deliveryPercent?: number;
     currencyRates?: CurrencyRate[];
 }
 
@@ -116,6 +118,7 @@ export function mapToPurchaseItem(
         orgFeePercentOverride:
             item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
         orgFeeDefaultPercent: pricingContext?.orgFeeDefaultPercent ?? 0,
+        deliveryPercent: pricingContext?.deliveryPercent ?? 0,
         currencyRates: pricingContext?.currencyRates ?? [],
     };
 }

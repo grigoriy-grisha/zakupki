@@ -11,7 +11,7 @@ import { trpc } from '@/lib/client/trpc';
 import { normalizeNovelHtml, postTemplateEngine, productDescriptionBuilder } from '@/lib/product-description';
 import { buildShowInTitleByTypeId, type ProductLabelSource } from '@/lib/product-label';
 
-import { getUnitPriceRub } from '../../lib/items-table-pricing';
+import { getUnitPriceRub, getUnitPriceWithDeliveryRub } from '../../lib/items-table-pricing';
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { defaultUnitField } from '../../lib/unit-defaults';
@@ -85,6 +85,7 @@ interface PurchaseProductEditFormProps {
      * Берётся из purchase.currencyRates (purchases.getById).
      */
     currencyRates?: PurchaseCurrencyRateRef[];
+    deliveryPercent?: number;
     /**
      * `true` — загрузить сохранённое описание и применить шаблон по дефолту.
      * Используется при **редактировании** существующего товара в закупке.
@@ -115,6 +116,7 @@ export function PurchaseProductEditForm({
     footer,
     purchaseTag,
     currencyRates,
+    deliveryPercent = 0,
     loadSavedDescription = false,
 }: PurchaseProductEditFormProps) {
     const f = initialPurchaseFields ?? {};
@@ -176,6 +178,25 @@ export function PurchaseProductEditForm({
                 orgFeeDefaultPercent,
             ),
         [pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride, currencyRates, orgFeeDefaultPercent],
+    );
+
+    const unitPriceWithDeliveryRub = useMemo(
+        () =>
+            getUnitPriceWithDeliveryRub(
+                { pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride },
+                currencyRates ?? [],
+                orgFeeDefaultPercent,
+                deliveryPercent,
+            ),
+        [
+            pricePerPackCurrency,
+            currencyId,
+            packAmount,
+            orgFeePercentOverride,
+            currencyRates,
+            orgFeeDefaultPercent,
+            deliveryPercent,
+        ],
     );
 
     // По умолчанию выбираем валюту поставщика (EUR), а не рубль.
@@ -394,6 +415,7 @@ export function PurchaseProductEditForm({
                 packUnit={packUnit}
                 orgFeePercentOverride={orgFeePercentOverride}
                 orgFeeDefaultPercent={orgFeeDefaultPercent}
+                deliveryPercent={deliveryPercent}
                 currencyRates={currencyRates}
                 currencies={(currencies ?? []).map((c) => ({
                     id: c.id,

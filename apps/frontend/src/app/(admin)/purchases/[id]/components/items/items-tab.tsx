@@ -119,7 +119,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
 
     return (
         <div className="space-y-3">
-            <CurrencyRatesPanel purchaseId={purchaseId} rates={currencyRates} />
+            <CurrencyRatesPanel purchaseId={purchaseId} rates={currencyRates} deliveryPercent={Number(detail.deliveryPercent ?? 0)} />
 
             <ItemsToolbar
                 search={search}
@@ -150,7 +150,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                     </div>
                 ) : (
                     <div className="overflow-hidden rounded-2xl bg-bg-soft">
-                        <Table className="table-fixed min-w-[2200px]">
+                        <Table className="table-fixed min-w-[2360px]">
                             <ItemsTableHeader
                                 selectableCount={selectableIds.length}
                                 allSelected={allSelected}
@@ -166,6 +166,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                                             item,
                                             currencyRates,
                                             orgFeeDefaultPercent,
+                                            Number(detail.deliveryPercent ?? 0),
                                             detail.fulfillmentStatus,
                                             detail.status,
                                             isActive,

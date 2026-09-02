@@ -17,6 +17,7 @@ interface UseItemOrderControlsInput {
     currentPackageCount: number;
     baseQuantity: number;
     fulfillmentStatus: string;
+    deliveryPercent?: number;
     packDiscountPercent: number;
     orgFeeDefaultPercent: number;
     currencyRates: CurrencyRate[];
@@ -33,6 +34,7 @@ export function useItemOrderControls(input: UseItemOrderControlsInput) {
                 currentPackageCount: input.currentPackageCount,
                 baseQuantity: input.baseQuantity,
                 fulfillmentStatus: input.fulfillmentStatus,
+                deliveryPercent: input.deliveryPercent,
                 packDiscountPercent: input.packDiscountPercent,
                 orgFeeDefaultPercent: input.orgFeeDefaultPercent,
                 currencyRates: input.currencyRates,
@@ -44,6 +46,7 @@ export function useItemOrderControls(input: UseItemOrderControlsInput) {
             input.currentPackageCount,
             input.baseQuantity,
             input.fulfillmentStatus,
+            input.deliveryPercent,
             input.packDiscountPercent,
             input.orgFeeDefaultPercent,
             input.currencyRates,

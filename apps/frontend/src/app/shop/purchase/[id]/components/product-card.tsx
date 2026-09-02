@@ -27,6 +27,7 @@ interface ShopPurchaseItemProductCardProps {
     isSupplement: boolean;
     canAddPackage: boolean;
     fulfillmentStatus: string;
+    deliveryPercent: number;
     onOrderChange?: () => void;
 }
 
@@ -40,6 +41,7 @@ function ProductCardImpl({
     currentPackageCount = 0,
     baseQuantity: baseQuantityProp,
     fulfillmentStatus,
+    deliveryPercent,
 }: ShopPurchaseItemProductCardProps) {
     const router = useRouter();
     const purchaseItemId = item.purchaseItemId ?? item.id;
@@ -53,6 +55,7 @@ function ProductCardImpl({
         currentPackageCount,
         baseQuantity: baseQuantityProp ?? 0,
         fulfillmentStatus,
+        deliveryPercent,
         packDiscountPercent,
         orgFeeDefaultPercent,
         currencyRates,
@@ -179,6 +182,7 @@ function arePropsEqual(prev: ShopPurchaseItemProductCardProps, next: ShopPurchas
         prev.purchaseId === next.purchaseId &&
         prev.packDiscountPercent === next.packDiscountPercent &&
         prev.fulfillmentStatus === next.fulfillmentStatus &&
+        prev.deliveryPercent === next.deliveryPercent &&
         prev.isSupplement === next.isSupplement &&
         prev.canAddPackage === next.canAddPackage &&
         prev.baseQuantity === next.baseQuantity &&

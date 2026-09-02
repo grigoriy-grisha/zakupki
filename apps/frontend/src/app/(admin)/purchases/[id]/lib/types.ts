@@ -123,6 +123,7 @@ export interface PurchaseDetail {
     tag: string;
     status: string;
     fulfillmentStatus?: string | null;
+    deliveryPercent?: string | number | null;
     items: PurchaseItem[];
     currencyRates?: PurchaseCurrencyRateRef[];
     payments?: PaymentRef[];

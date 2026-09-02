@@ -23,6 +23,7 @@ export interface ItemOrderContextInput {
     currentPackageCount: number;
     baseQuantity: number;
     fulfillmentStatus: string;
+    deliveryPercent?: number;
     packDiscountPercent: number;
     orgFeeDefaultPercent: number;
     currencyRates: CurrencyRate[];
@@ -95,6 +96,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         currentPackageCount,
         baseQuantity,
         fulfillmentStatus,
+        deliveryPercent,
         packDiscountPercent,
         orgFeeDefaultPercent,
         currencyRates,
@@ -154,7 +156,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             purchase: { fulfillmentStatus },
         },
         packDiscountPercent,
-        { orgFeeDefaultPercent, currencyRates },
+        { orgFeeDefaultPercent, currencyRates, deliveryPercent },
     );
     const book = OrderBook.create(purchaseItem, toOrderLinesVO((item.orderLines ?? []) as OrderLineRowLike[]));
     const availablePool = book.remainder;

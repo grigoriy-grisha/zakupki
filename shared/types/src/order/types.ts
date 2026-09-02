@@ -76,7 +76,7 @@ export interface PurchaseItem {
     /** Денормализованное имя поставщика для UI/логов (не использовать для логики). */
     supplierName: string | null;
 
-    // ── Новая модель цен (валюта + курс + оргсбор) ──
+    // ── Новая модель цен (валюта + курс + оргсбор + доставка) ──
     /** id валюты цены товара. null — валюта не задана. */
     currencyId: number | null;
     /** Цена за упаковку в валюте (кол. 3). */
@@ -85,6 +85,8 @@ export interface PurchaseItem {
     orgFeePercentOverride: number | null;
     /** Глобальный % оргсбора (из настроек). */
     orgFeeDefaultPercent: number;
+    /** % доставки закупки (аддитивно к оргсбору: база × (1 + (орг + доставка)/100)). */
+    deliveryPercent: number;
     /** Ставки валют закупки (currencyId → rateToRub). */
     currencyRates: CurrencyRate[];
 }

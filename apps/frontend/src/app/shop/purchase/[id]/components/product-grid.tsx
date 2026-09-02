@@ -27,6 +27,7 @@ interface ProductGridProps {
     isSupplement: boolean;
     canAddPackage: boolean;
     fulfillmentStatus: string;
+    deliveryPercent: number;
     emptyTitle?: string;
     emptyDescription?: string;
 }
@@ -41,6 +42,7 @@ export function ProductGrid({
     isSupplement,
     canAddPackage,
     fulfillmentStatus,
+    deliveryPercent,
     emptyTitle = 'Пока нет товаров',
     emptyDescription = 'Администратор ещё не добавил товары в эту закупку',
 }: ProductGridProps) {
@@ -80,6 +82,7 @@ export function ProductGrid({
                             isSupplement={isSupplement}
                             canAddPackage={canAddPackage}
                             fulfillmentStatus={fulfillmentStatus}
+                            deliveryPercent={deliveryPercent}
                         />
                     </div>
                 );

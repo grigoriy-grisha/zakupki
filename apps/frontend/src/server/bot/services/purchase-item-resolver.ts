@@ -1,10 +1,10 @@
+import { dbClient } from '@zakupki/database';
 import type { RedisClient } from '@zakupki/queue';
 import { getRedisConnection } from '@zakupki/queue';
-import { dbClient } from '@zakupki/database';
 
-import { getChannelIdFromEnv } from '../lib/telegram-post';
-import { allTelegramPostRefs, type ReplyToMessage, walkReplyChain } from '../lib/resolve-reply-purchase-item';
 import { log } from '../lib/logger';
+import { allTelegramPostRefs, type ReplyToMessage, walkReplyChain } from '../lib/resolve-reply-purchase-item';
+import { getChannelIdFromEnv } from '../lib/telegram-post';
 
 /** Ключ-кандидат для поиска PurchaseItem по Telegram-контексту. */
 interface LookupCandidate {
@@ -36,6 +36,7 @@ const ITEM_INCLUDE = {
             tag: true,
             status: true,
             fulfillmentStatus: true,
+            deliveryPercent: true,
             currencyRates: { select: { currencyId: true, rateToRub: true } },
         },
     },

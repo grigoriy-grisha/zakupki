@@ -1,4 +1,5 @@
-import { Prisma, dbClient, type PurchaseStatus, type PurchaseFulfillmentStatus } from '@zakupki/database';
+import type { Prisma} from '@zakupki/database';
+import { dbClient, type PurchaseFulfillmentStatus,type PurchaseStatus } from '@zakupki/database';
 import { getUnitShortName } from '@zakupki/types';
 
 import { productInclude } from './product-include';
@@ -270,8 +271,12 @@ export class PurchaseRepository {
     async setCurrencyRates(
         purchaseId: number,
         rates: { currencyId: number; rateToRub: number }[],
+        deliveryPercent?: number,
     ) {
         return dbClient.$transaction(async (tx) => {
+            if (deliveryPercent != null) {
+                await tx.purchase.update({ where: { id: purchaseId }, data: { deliveryPercent } });
+            }
             await tx.purchaseCurrencyRate.deleteMany({ where: { purchaseId } });
             if (rates.length === 0) return [];
             return tx.purchaseCurrencyRate.createMany({
@@ -392,6 +397,7 @@ export class PurchaseRepository {
                     select: {
                         id: true,
                         tag: true,
+                        deliveryPercent: true,
                         currencyRates: { include: { currency: true } },
                     },
                 },

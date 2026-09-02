@@ -1,19 +1,19 @@
+import type { EventBus } from '@zakupki/queue';
 import {
     canAddItemsAtStage,
     computeAmountDueWithPackages,
     mapToPurchaseItem,
     NotFoundError,
     PURCHASE_FULFILLMENT_LABELS,
-    ValidationError,
     type PurchaseFulfillmentStatus,
+    ValidationError,
 } from '@zakupki/types';
 
+import type { OrderRepository } from '../domain/order.repository';
+import type { ProductRepository } from '../domain/product.repository';
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
-import { OrderRepository } from '../domain/order.repository';
-import { ProductRepository } from '../domain/product.repository';
-import { PurchaseRepository } from '../domain/purchase.repository';
+import type { PurchaseRepository } from '../domain/purchase.repository';
 import { handleDbConflict } from '../lib/error-utils';
-import type { EventBus } from '@zakupki/queue';
 import type { PricingSettingsService } from './settings/pricing-settings';
 import type { TelegramPublishService } from './telegram-publish.service';
 
@@ -307,7 +307,11 @@ export class PurchaseService {
             const domainItem = mapToPurchaseItem(
                 { ...item, purchase: { fulfillmentStatus: purchase.fulfillmentStatus } },
                 packDiscountPercent,
-                { orgFeeDefaultPercent, currencyRates },
+                {
+                    orgFeeDefaultPercent,
+                    currencyRates,
+                    deliveryPercent: Number(purchase.deliveryPercent ?? 0),
+                },
             );
             let touched = false;
             for (const line of item.orderLines) {
@@ -331,11 +335,15 @@ export class PurchaseService {
      * Курс влияет на unitPriceRub → пересчитываем amountDue всех ACTIVE заказов
      * и эмитим обновление постов в канале (через recalculateAmounts).
      */
-    async setCurrencyRates(purchaseId: number, rates: { currencyId: number; rateToRub: number }[]) {
+    async setCurrencyRates(
+        purchaseId: number,
+        rates: { currencyId: number; rateToRub: number }[],
+        deliveryPercent?: number,
+    ) {
         const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
-        await this.repo.setCurrencyRates(purchaseId, rates);
-        // Курс изменился → пересчитываем суммы заказов по новой модели цен.
+        await this.repo.setCurrencyRates(purchaseId, rates, deliveryPercent);
+        // Курс или % доставки изменились → пересчитываем суммы заказов по новой модели цен.
         await this.recalculateAmounts(purchaseId);
         return this.repo.getCurrencyRates(purchaseId);
     }
