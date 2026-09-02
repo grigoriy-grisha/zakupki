@@ -353,6 +353,7 @@ export class PurchaseRepository {
         return dbClient.purchaseItem.findUnique({
             where: { id },
             select: {
+                purchaseId: true,
                 productId: true,
                 tgMessageId: true,
                 tgChannelId: true,

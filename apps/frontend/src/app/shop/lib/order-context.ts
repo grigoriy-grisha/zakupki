@@ -140,6 +140,8 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             packUnit: item.packUnit ?? null,
             orgFeePercentOverride:
                 item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
+            deliveryPercentOverride:
+                item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
             minPackageAmount,
             minPackageUnit: item.minPackageUnit ?? null,
             supplementStep: item.supplementStep,

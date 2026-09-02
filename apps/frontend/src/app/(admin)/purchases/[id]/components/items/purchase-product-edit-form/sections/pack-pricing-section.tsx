@@ -1,7 +1,9 @@
 'use client';
 
 import {
+    computePackPriceWithOrgFee,
     resolveCurrencyRate,
+    resolveDeliveryPercent,
     resolveOrgFeePercent,
     solvePricePerPackFromPackOrgRub,
     solvePricePerPackFromPackRub,
@@ -13,14 +15,13 @@ import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 import {
     formatUnitRub,
     formatWholeRub,
     getPackPriceRub,
     getPackPriceWithOrgFeeRub,
-    getUnitPriceRub,
+    getUnitPriceWithDeliveryRub,
 } from '../../../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef } from '../../../../lib/types';
 import { InlineCell } from '../../inline-cell';
@@ -63,6 +64,8 @@ interface PackPricingSectionProps {
     orgFeeDefaultPercent: number;
     /** % доставки закупки (аддитивно к оргсбору в ₽-пересчётах). */
     deliveryPercent: number;
+    /** Override % доставки на товар (null = используется процент закупки). */
+    deliveryPercentOverride: number | null;
     /** Все валюты из справочника. */
     currencies: CurrencyRow[];
     /** Курсы валют закупки (для ₽-полей; без них ₽-поля выключены). */
@@ -72,6 +75,7 @@ interface PackPricingSectionProps {
     onPackAmountChange: (value: number | null) => void;
     onPackUnitChange: (value: string | null) => void;
     onOrgFeeChange: (value: number | null) => void;
+    onDeliveryPercentChange: (value: number | null) => void;
     /**
      * Optional: prefill these when the package unit switches to grams. Wired
      * by the parent form so that picking «гр» also sets the supplement-step
@@ -85,10 +89,10 @@ interface PackPricingSectionProps {
  * Секция «Цена за упаковку» — новая модель цен.
  *
  * Поля: цена в валюте + валюта (Select из справочника), вес упаковки +
- * единица (гр/шт/туба), оргсбор % (override; пусто = глобальный default).
+ * единица (гр/шт/туба), оргсбор % и доставка % (override; пусто = дефолт).
  *
- * Цена в ₽, цена с оргсбором и цена за 1ед редактируются в форме и связаны
- * с ценой в валюте обратным пересчётом — как колонки 4/5/6 таблицы товаров.
+ * Рублёвая сетка 2×2 связана обратным пересчётом с ценой в валюте:
+ * цена в ₽ → с оргсбором → с доставкой (орг + доставка) → за 1ед.
  */
 export function PackPricingSection({
     pricePerPackCurrency,
@@ -100,11 +104,13 @@ export function PackPricingSection({
     currencies,
     currencyRates,
     deliveryPercent,
+    deliveryPercentOverride,
     onPriceChange,
     onCurrencyChange,
     onPackAmountChange,
     onPackUnitChange,
     onOrgFeeChange,
+    onDeliveryPercentChange,
     onGramsSelected,
 }: PackPricingSectionProps) {
     // On switching the unit to grams, prefill min package and supplement step
@@ -123,10 +129,24 @@ export function PackPricingSection({
         currencyId,
     );
     const effOrgFee = resolveOrgFeePercent(orgFeePercentOverride, orgFeeDefaultPercent);
-    const pricingFields = { pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride };
+    const effDelivery = resolveDeliveryPercent(deliveryPercentOverride, deliveryPercent);
+    const effMarkupPercent = parseFloat((effOrgFee + effDelivery).toFixed(2));
+    const pricingFields = {
+        pricePerPackCurrency,
+        currencyId,
+        packAmount,
+        orgFeePercentOverride,
+        deliveryPercentOverride,
+    };
     const packRub = getPackPriceRub(pricingFields, currencyRates ?? []);
     const packOrgRub = getPackPriceWithOrgFeeRub(pricingFields, currencyRates ?? [], orgFeeDefaultPercent);
-    const unitRub = getUnitPriceRub(pricingFields, currencyRates ?? [], orgFeeDefaultPercent);
+    const packFullRub = computePackPriceWithOrgFee(packRub, effMarkupPercent);
+    const unitFullRub = getUnitPriceWithDeliveryRub(
+        pricingFields,
+        currencyRates ?? [],
+        orgFeeDefaultPercent,
+        deliveryPercent,
+    );
     const rubEditable = rateToRub != null && rateToRub > 0;
     const unitEditable = rubEditable && packAmount != null && packAmount > 0;
     const rubInputClassName = 'h-9 rounded-xl px-3 text-13-medium tabular-nums';
@@ -176,58 +196,6 @@ export function PackPricingSection({
                 </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
-                <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">Цена в ₽</label>
-                    <InlineCell
-                        value={packRub}
-                        disabled={!rubEditable}
-                        onCommit={(v) => onPriceChange(solvePricePerPackFromPackRub(v, rateToRub))}
-                        min={0}
-                        ariaLabel="Цена за упаковку в рублях"
-                        placeholder="—"
-                        format={formatWholeRub}
-                        className={rubInputClassName}
-                    />
-                </div>
-                <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">
-                        С оргсбором, ₽<span className="ml-1 opacity-70">+{effOrgFee}%</span>
-                    </label>
-                    <InlineCell
-                        value={packOrgRub}
-                        disabled={!rubEditable}
-                        onCommit={(v) =>
-                            onPriceChange(solvePricePerPackFromPackOrgRub(v, rateToRub, effOrgFee, deliveryPercent))
-                        }
-                        min={0}
-                        ariaLabel="Цена за упаковку с оргсбором в рублях"
-                        placeholder="—"
-                        format={formatWholeRub}
-                        className={rubInputClassName}
-                    />
-                </div>
-                <div>
-                    <label className="mb-1 block text-12-regular text-fg-tertiary">За 1 ед, ₽</label>
-                    <InlineCell
-                        value={unitRub}
-                        disabled={!unitEditable}
-                        onCommit={(v) =>
-                            onPriceChange(
-                                solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount, deliveryPercent),
-                            )
-                        }
-                        min={0}
-                        ariaLabel="Цена за 1 единицу в рублях"
-                        placeholder="—"
-                        format={formatUnitRub}
-                        className={rubInputClassName}
-                    />
-                </div>
-            </div>
-
-
-            {/* Вес упаковки + единица */}
             <div className="mt-3 flex items-end gap-2">
                 <div className="w-32 shrink-0">
                     <label className="mb-1 block text-12-regular text-fg-tertiary">Вес упаковки</label>
@@ -256,31 +224,118 @@ export function PackPricingSection({
                 </div>
             </div>
 
-            {/* Оргсбор % */}
-            <div className="mt-3">
-                <label className="mb-1 block text-12-regular text-fg-tertiary">
-                    Оргсбор, %<span className="ml-1 opacity-70">(по умолчанию {orgFeeDefaultPercent}%)</span>
-                </label>
-                <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    max={100}
-                    inputMode="decimal"
-                    className={cn('h-9 w-32 rounded-xl text-13-medium tabular-nums')}
-                    value={orgFeePercentOverride != null ? String(orgFeePercentOverride) : ''}
-                    onChange={(e) => {
-                        const raw = e.target.value;
-                        onOrgFeeChange(raw === '' ? null : Number(raw));
-                    }}
-                    placeholder={String(orgFeeDefaultPercent)}
-                    aria-label="Оргсбор процент"
-                />
-                <p className="mt-1.5 text-12-regular text-fg-tertiary">
-                    Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты
-                    задаётся в панели «Валюты закупки».
-                </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                        Оргсбор, %<span className="ml-1 opacity-70">(по умолчанию {orgFeeDefaultPercent}%)</span>
+                    </label>
+                    <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={100}
+                        inputMode="decimal"
+                        className="h-9 w-full rounded-xl text-13-medium tabular-nums"
+                        value={orgFeePercentOverride != null ? String(orgFeePercentOverride) : ''}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            onOrgFeeChange(raw === '' ? null : Number(raw));
+                        }}
+                        placeholder={String(orgFeeDefaultPercent)}
+                        aria-label="Оргсбор процент"
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                        Доставка, %<span className="ml-1 opacity-70">(по закупке {deliveryPercent}%)</span>
+                    </label>
+                    <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={100}
+                        inputMode="decimal"
+                        className="h-9 w-full rounded-xl text-13-medium tabular-nums"
+                        value={deliveryPercentOverride != null ? String(deliveryPercentOverride) : ''}
+                        onChange={(e) => {
+                            const raw = e.target.value;
+                            onDeliveryPercentChange(raw === '' ? null : Number(raw));
+                        }}
+                        placeholder={String(deliveryPercent)}
+                        aria-label="Процент доставки"
+                    />
+                </div>
             </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">Цена в ₽</label>
+                    <InlineCell
+                        value={packRub}
+                        disabled={!rubEditable}
+                        onCommit={(v) => onPriceChange(solvePricePerPackFromPackRub(v, rateToRub))}
+                        min={0}
+                        ariaLabel="Цена за упаковку в рублях"
+                        placeholder="—"
+                        format={formatWholeRub}
+                        className={rubInputClassName}
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                        С оргсбором, ₽<span className="ml-1 opacity-70">+{effOrgFee}%</span>
+                    </label>
+                    <InlineCell
+                        value={packOrgRub}
+                        disabled={!rubEditable}
+                        onCommit={(v) => onPriceChange(solvePricePerPackFromPackOrgRub(v, rateToRub, effOrgFee))}
+                        min={0}
+                        ariaLabel="Цена за упаковку с оргсбором в рублях"
+                        placeholder="—"
+                        format={formatWholeRub}
+                        className={rubInputClassName}
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">
+                        С доставкой, ₽<span className="ml-1 opacity-70">+{effMarkupPercent}%</span>
+                    </label>
+                    <InlineCell
+                        value={packFullRub}
+                        disabled={!rubEditable}
+                        onCommit={(v) =>
+                            onPriceChange(solvePricePerPackFromPackOrgRub(v, rateToRub, effOrgFee, effDelivery))
+                        }
+                        min={0}
+                        ariaLabel="Цена за упаковку с доставкой в рублях"
+                        placeholder="—"
+                        format={formatWholeRub}
+                        className={rubInputClassName}
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-12-regular text-fg-tertiary">За 1 ед, ₽</label>
+                    <InlineCell
+                        value={unitFullRub}
+                        disabled={!unitEditable}
+                        onCommit={(v) =>
+                            onPriceChange(
+                                solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount, effDelivery),
+                            )
+                        }
+                        min={0}
+                        ariaLabel="Цена за 1 единицу в рублях"
+                        placeholder="—"
+                        format={formatUnitRub}
+                        className={rubInputClassName}
+                    />
+                </div>
+            </div>
+
+            <p className="mt-3 text-12-regular text-fg-tertiary">
+                Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты задаётся
+                в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.
+            </p>
         </FormSection>
     );
 }

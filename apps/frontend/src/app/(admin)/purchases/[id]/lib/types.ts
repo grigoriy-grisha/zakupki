@@ -82,6 +82,7 @@ export interface PurchaseItem {
     currency?: CurrencyRef | null;
     pricePerPackCurrency?: string | number | null;
     orgFeePercentOverride?: string | number | null;
+    deliveryPercentOverride?: string | number | null;
     // Операционные количества (заполняет организатор):
     orderedQty?: string | number | null;
     assembledQty?: string | number | null;

@@ -150,7 +150,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                     </div>
                 ) : (
                     <div className="overflow-hidden rounded-2xl bg-bg-soft">
-                        <Table className="table-fixed min-w-[2200px]">
+                        <Table className="table-fixed min-w-[2360px]">
                             <ItemsTableHeader
                                 selectableCount={selectableIds.length}
                                 allSelected={allSelected}
@@ -166,6 +166,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                                             item,
                                             currencyRates,
                                             orgFeeDefaultPercent,
+                                            Number(detail.deliveryPercent ?? 0),
                                             detail.fulfillmentStatus,
                                             detail.status,
                                             isActive,

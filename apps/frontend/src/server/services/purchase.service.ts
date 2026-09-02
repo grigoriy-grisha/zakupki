@@ -153,6 +153,7 @@ export class PurchaseService {
             'currencyId',
             'pricePerPackCurrency',
             'orgFeePercentOverride',
+            'deliveryPercentOverride',
             // Операционные количества + комментарий + скрытие:
             'orderedQty',
             'assembledQty',
@@ -172,6 +173,18 @@ export class PurchaseService {
         }
 
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
+
+        const pricingKeys = [
+            'packAmount',
+            'currencyId',
+            'pricePerPackCurrency',
+            'orgFeePercentOverride',
+            'deliveryPercentOverride',
+        ];
+        const pricingChanged = pricingKeys.some((key) => itemUpdate[key] !== undefined);
+        if (pricingChanged) {
+            await this.recalculateAmounts(item.purchaseId);
+        }
 
         if (hidingPublishedItem) {
             await this.eventBus.emitPostDelete(

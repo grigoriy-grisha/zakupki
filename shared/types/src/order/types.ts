@@ -5,8 +5,8 @@
  * только plain TypeScript interfaces/types. Все числовые поля — number
  * (преобразование Decimal→number делается на границе приложения).
  */
-import type { CurrencyRate } from '../pricing/currency-pricing';
 import type { PurchaseFulfillmentStatus } from '../index';
+import type { CurrencyRate } from '../pricing/currency-pricing';
 
 // ── Value Objects ──────────────────────────────────────────────────
 
@@ -83,9 +83,11 @@ export interface PurchaseItem {
     pricePerPackCurrency: number | null;
     /** Override % оргсбора для этого товара (приоритет над глобальным). null — глобальный. */
     orgFeePercentOverride: number | null;
+    /** Override % доставки для этого товара (приоритет над процентом закупки). null — процент закупки. */
+    deliveryPercentOverride: number | null;
     /** Глобальный % оргсбора (из настроек). */
     orgFeeDefaultPercent: number;
-    /** % доставки закупки (аддитивно к оргсбору: база × (1 + (орг + доставка)/100)). */
+    /** Эффективный % доставки (override товара ?? процент закупки), аддитивно к оргсбору. */
     deliveryPercent: number;
     /** Ставки валют закупки (currencyId → rateToRub). */
     currencyRates: CurrencyRate[];

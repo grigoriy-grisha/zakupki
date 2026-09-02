@@ -64,150 +64,149 @@ export function isPurchasePaymentOpen(status: PurchaseFulfillmentStatus | null |
 }
 
 // Order domain — ООП (rich entities + aggregate root)
-export {
-    OrderLine,
-    OrderBook,
-    getStageConfig,
-    aggregateForPool,
-    getStageStrategy,
-    validateSupplementPool,
-    computeRawPool,
-    computePoolInfo,
-    computeRawSupplierLimit,
-    computeSupplierLimitInfo,
-    validateSupplierLimit,
-    computeAmountDue,
-    computeAmountDueWithPackages,
-    computePackagePrice,
-    computeUnitPriceRubNewModel,
-    mergeLines,
-    toOrderLineVO,
-    toOrderLinesVO,
-    mapToPurchaseItem,
-    // ООП StageStrategy (v3)
-    StageStrategy,
-    makeStrategy,
-    CollectionStrategy,
-    ReorderStrategy,
-    PaymentPlusStrategy,
-    effectiveQty,
-    sumEffectiveQty,
-    userEffectiveQty,
-    totalOrderedQuantity,
-    getUnitShortName,
-} from './order';
 export type {
-    StageConfig,
-    TargetLineType,
-    ZeroQuantityAction,
+    AdjustResult,
+    AggregatedOrder,
     LineUpdate,
     MultiUpdate,
-    PoolAggregation,
-    OrderLineVO,
-    OrderLineProps,
-    OrderLineStatus,
-    AdjustResult,
-    PurchaseItem,
+    OrderDisplayContext,
     OrderEffect,
     OrderError,
     OrderErrorCode,
-    PoolInfo,
-    AggregatedOrder,
-    OrderDisplayContext,
+    OrderLineProps,
     OrderLineRowLike,
-    PurchaseItemRowLike,
+    OrderLineStatus,
+    OrderLineVO,
+    PoolAggregation,
+    PoolInfo,
+    PurchaseItem,
     PurchaseItemPricingContext,
-    SupplierLimitInfo,
+    PurchaseItemRowLike,
+    StageConfig,
     StageStrategyShim,
+    SupplierLimitInfo,
+    TargetLineType,
+    ZeroQuantityAction,
+} from './order';
+export {
+    aggregateForPool,
+    CollectionStrategy,
+    computeAmountDue,
+    computeAmountDueWithPackages,
+    computePackagePrice,
+    computePoolInfo,
+    computeRawPool,
+    computeRawSupplierLimit,
+    computeSupplierLimitInfo,
+    computeUnitPriceRubNewModel,
+    effectiveQty,
+    getStageConfig,
+    getStageStrategy,
+    getUnitShortName,
+    makeStrategy,
+    mapToPurchaseItem,
+    mergeLines,
+    OrderBook,
+    OrderLine,
+    PaymentPlusStrategy,
+    ReorderStrategy,
+    // ООП StageStrategy (v3)
+    StageStrategy,
+    sumEffectiveQty,
+    toOrderLinesVO,
+    toOrderLineVO,
+    totalOrderedQuantity,
+    userEffectiveQty,
+    validateSupplementPool,
+    validateSupplierLimit,
 } from './order';
 
 // Pricing
 export {
-    formatActiveStepHint,
-    parsePriceTiers,
+    computeAmountDueNewModel,
     computePackPriceRub,
     computePackPriceWithOrgFee,
     computeUnitPriceRub,
     computeUnitPriceRubFromItem,
-    computeAmountDueNewModel,
-    resolveOrgFeePercent,
-    resolveCurrencyRate,
-    solvePricePerPackFromPackRub,
-    solvePricePerPackFromPackOrgRub,
-    solvePricePerPackFromUnitRub,
-    type PriceTier,
-    type OrderQuantityOptions,
     type CurrencyRate,
+    formatActiveStepHint,
+    type OrderQuantityOptions,
+    parsePriceTiers,
+    type PriceTier,
+    resolveCurrencyRate,
+    resolveDeliveryPercent,
+    resolveOrgFeePercent,
+    solvePricePerPackFromPackOrgRub,
+    solvePricePerPackFromPackRub,
+    solvePricePerPackFromUnitRub,
 } from './pricing';
-
-export { buildOrderQtyOptions, getOrderQuantityStep, getSupplementStep, getActiveStep } from './pricing';
+export { buildOrderQtyOptions, getActiveStep,getOrderQuantityStep, getSupplementStep } from './pricing';
 
 // Pack discount
 export {
     countFullSupplierPacks,
-    splitQtyIntoPackages,
-    getPackDiscountPricingInfo,
     formatPackDiscountBanner,
     formatPackDiscountHint,
+    getPackDiscountPricingInfo,
     type PackDiscountPricingInfo,
+    splitQtyIntoPackages,
 } from './pack-discount';
 
 // Supplement formatting (stub implementations)
 export {
-    formatSupplementPhotoRemainderBadge,
     formatSupplementCardPreviewHint,
     formatSupplementOrderHint,
+    formatSupplementPhotoRemainderBadge,
 } from './supplement-formatting';
 
 // Payment proof MIME types
-export { PROOF_MIME_TYPES, PROOF_MIME_BY_EXT } from './proof-mime';
+export { PROOF_MIME_BY_EXT,PROOF_MIME_TYPES } from './proof-mime';
 
 // Errors
 export {
     AppError,
-    NotFoundError,
-    ValidationError,
     BusinessRuleError,
-    InsufficientStockError,
-    PurchaseNotActiveError,
-    InvalidPaymentTransitionError,
     ForbiddenError,
+    InsufficientStockError,
+    InvalidPaymentTransitionError,
+    NotFoundError,
+    PurchaseNotActiveError,
+    ValidationError,
 } from './errors';
 
 // Settings
 export {
-    SETTINGS_SCHEMA,
-    isSettingKey,
     getSettingDef,
+    isSettingKey,
     parseSettingValue,
-    serializeSettingValue,
     serializeDefault,
-    type SettingKey,
-    type SettingValue,
+    serializeSettingValue,
     type SettingDef,
+    type SettingKey,
+    SETTINGS_SCHEMA,
     type SettingType,
+    type SettingValue,
 } from './settings';
-
-export { positiveOrNull, isPositive, formatQtyLabel } from './utils';
+export { formatQtyLabel,isPositive, positiveOrNull } from './utils';
 
 // Units
 export {
-    UNITS,
     getUnitByCode,
     getUnitByShortName,
-    resolveUnit,
-    isWeightUnit,
     isPieceUnit,
+    isWeightUnit,
     normalizeUnitCode,
     normalizeUnitShortName,
-    type UnitKind,
+    resolveUnit,
     type UnitDef,
+    type UnitKind,
+    UNITS,
 } from './units';
 
 // Order strategies — checks per fulfillment stage
 export {
-    canAdjustOrder,
     canAddNewItem,
+    canAdjustOrder,
     canCancelOrder,
     canDecreaseOrder,
     canIncreaseFromRemainder,
@@ -217,9 +216,9 @@ export {
 
 // Purchase fulfillment state machine
 export {
-    FULFILLMENT_TRANSITIONS,
     canAddItemsAtStage,
     canTransitionFulfillment,
+    FULFILLMENT_TRANSITIONS,
     isFreezePoint,
     isPaymentPlusFreezePoint,
     isUnfreezePoint,
@@ -230,21 +229,21 @@ export {
     COALESCABLE_NOTIFICATION_TYPES,
     COALESCE_DELIVERY_DELAY_MS,
     COALESCE_WINDOW_MS,
-    NOTIFICATION_TYPES,
+    type CoalesceCandidate,
+    getNotificationFields,
+    getNotificationVisual,
     NOTIFIABLE_FULFILLMENT_STAGES,
-    renderNotificationTitle,
+    NOTIFICATION_TYPES,
+    type NotificationField,
+    type NotificationIconKind,
+    type NotificationPayload,
+    type NotificationPayloads,
+    type NotificationTone,
+    type NotificationType,
+    type NotificationVisual,
+    type NotifyInput,
     renderNotificationBody,
     renderNotificationTelegramBody,
+    renderNotificationTitle,
     renderNotificationUrl,
-    getNotificationVisual,
-    getNotificationFields,
-    type CoalesceCandidate,
-    type NotificationType,
-    type NotificationPayloads,
-    type NotificationPayload,
-    type NotifyInput,
-    type NotificationIconKind,
-    type NotificationTone,
-    type NotificationVisual,
-    type NotificationField,
 } from './notifications';

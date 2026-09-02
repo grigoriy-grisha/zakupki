@@ -11,7 +11,7 @@ import { trpc } from '@/lib/client/trpc';
 import { normalizeNovelHtml, postTemplateEngine, productDescriptionBuilder } from '@/lib/product-description';
 import { buildShowInTitleByTypeId, type ProductLabelSource } from '@/lib/product-label';
 
-import { getUnitPriceRub } from '../../lib/items-table-pricing';
+import { getUnitPriceWithDeliveryRub } from '../../lib/items-table-pricing';
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { defaultUnitField } from '../../lib/unit-defaults';
@@ -39,6 +39,7 @@ export type PurchaseProductSaveData = {
     packAmount: number | null;
     packUnit: string | null;
     orgFeePercentOverride: number | null;
+    deliveryPercentOverride: number | null;
     // Добор и лимиты (+ minPackage используется внутри секции):
     minPackageAmount: number | null;
     minPackageUnit: string | null;
@@ -64,6 +65,7 @@ interface PurchaseProductEditFormProps {
         packAmount?: string | number | null;
         packUnit?: string | null;
         orgFeePercentOverride?: string | number | null;
+        deliveryPercentOverride?: string | number | null;
         // Добор и лимиты:
         minPackageAmount?: string | number | null;
         minPackageUnit?: string | null;
@@ -130,6 +132,9 @@ export function PurchaseProductEditForm({
         defaultUnitField(f.packUnit, getUnitByCode(product.unitCode)?.shortName),
     );
     const [orgFeePercentOverride, setOrgFeePercentOverride] = useState<number | null>(toNum(f.orgFeePercentOverride));
+    const [deliveryPercentOverride, setDeliveryPercentOverride] = useState<number | null>(
+        toNum(f.deliveryPercentOverride),
+    );
     // Добор и лимиты. Для граммовых позиций предзаполняем 5/10 (см. gramsOrDefault).
     // Юнит для дефолта берём из сохранённого packUnit, иначе из единицы продукта.
     const fallbackUnit = getUnitByCode(product.unitCode)?.shortName ?? null;
@@ -167,17 +172,27 @@ export function PurchaseProductEditForm({
         return (currencies ?? []).find((c) => c.id === currencyId)?.name ?? null;
     }, [currencyId, currencies]);
 
-    // Цена за 1 единицу (гр/шт) в ₽ — та же формула, что в колонке таблицы товаров
-    // («Цена за 1ед ₽»). Нужна для шаблонных меток {{цены}} и {{фасовка поставщика}}.
-    // Пересчитывается live при изменении цены/валюты/веса/оргсбора/курса.
+    // Цена за 1 единицу (гр/шт) в ₽ с оргсбором и доставкой — та же формула
+    // свёртки, что в amountDue. Нужна для шаблонных меток {{цены}} и
+    // {{фасовка поставщика}}. Пересчитывается live при изменении полей цены.
     const unitPriceRub = useMemo(
         () =>
-            getUnitPriceRub(
-                { pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride },
+            getUnitPriceWithDeliveryRub(
+                { pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride, deliveryPercentOverride },
                 currencyRates ?? [],
                 orgFeeDefaultPercent,
+                deliveryPercent,
             ),
-        [pricePerPackCurrency, currencyId, packAmount, orgFeePercentOverride, currencyRates, orgFeeDefaultPercent],
+        [
+            pricePerPackCurrency,
+            currencyId,
+            packAmount,
+            orgFeePercentOverride,
+            deliveryPercentOverride,
+            currencyRates,
+            orgFeeDefaultPercent,
+            deliveryPercent,
+        ],
     );
 
 
@@ -211,6 +226,7 @@ export function PurchaseProductEditForm({
         setPackAmount(toNum(nextF.packAmount));
         setPackUnit(nextInitialUnit);
         setOrgFeePercentOverride(toNum(nextF.orgFeePercentOverride));
+        setDeliveryPercentOverride(toNum(nextF.deliveryPercentOverride));
         setMinPkgAmount(gramsOrDefault(nextF.minPackageAmount, nextInitialUnit, GRAM_DEFAULT_MIN_PACKAGE));
         setMinPkgUnit(defaultUnitField(nextF.minPackageUnit, nextFallbackUnit));
         setSupplementStep(gramsOrDefault(nextF.supplementStep, nextInitialUnit, GRAM_DEFAULT_SUPPLEMENT_STEP));
@@ -378,6 +394,7 @@ export function PurchaseProductEditForm({
             packAmount,
             packUnit,
             orgFeePercentOverride,
+            deliveryPercentOverride,
             minPackageAmount: minPkgAmount,
             minPackageUnit: minPkgUnit,
             supplementStep,
@@ -398,6 +415,7 @@ export function PurchaseProductEditForm({
                 orgFeePercentOverride={orgFeePercentOverride}
                 orgFeeDefaultPercent={orgFeeDefaultPercent}
                 deliveryPercent={deliveryPercent}
+                deliveryPercentOverride={deliveryPercentOverride}
                 currencyRates={currencyRates}
                 currencies={(currencies ?? []).map((c) => ({
                     id: c.id,
@@ -410,6 +428,7 @@ export function PurchaseProductEditForm({
                 onPackAmountChange={setPackAmount}
                 onPackUnitChange={setPackUnit}
                 onOrgFeeChange={setOrgFeePercentOverride}
+                onDeliveryPercentChange={setDeliveryPercentOverride}
                 // Picking grams as the package unit preloads sensible defaults
                 // for the supplement section below (5 g min package, 10 g step).
                 // The constants live in PackPricingSection so they're co-located

@@ -8,8 +8,10 @@ import {
     computePackPriceRub,
     computePackPriceWithOrgFee,
     computeUnitPriceRub,
+    computeUnitPriceRubFromItem,
     PURCHASE_FULFILLMENT_STATUSES,
     resolveCurrencyRate,
+    resolveDeliveryPercent,
     resolveOrgFeePercent,
 } from '@zakupki/types';
 
@@ -23,7 +25,11 @@ import type { PurchaseCurrencyRateRef, PurchaseItem } from './types';
  */
 export type ItemPricingFields = Pick<
     PurchaseItem,
-    'pricePerPackCurrency' | 'currencyId' | 'packAmount' | 'orgFeePercentOverride'
+    | 'pricePerPackCurrency'
+    | 'currencyId'
+    | 'packAmount'
+    | 'orgFeePercentOverride'
+    | 'deliveryPercentOverride'
 >;
 
 /** Кол. 4: цена упаковки в ₽ = pricePerPackCurrency × курс. */
@@ -64,6 +70,31 @@ export function getUnitPriceRub(
 ): number | null {
     const packOrg = getPackPriceWithOrgFeeRub(item, rates, orgFeeDefaultPercent);
     return computeUnitPriceRub(packOrg, toNum(item.packAmount));
+}
+
+/** Эффективный % доставки товара: override товара ?? процент закупки. */
+export function getEffectiveDeliveryPercent(
+    item: ItemPricingFields,
+    purchaseDeliveryPercent: number,
+): number {
+    return resolveDeliveryPercent(toNum(item.deliveryPercentOverride), purchaseDeliveryPercent);
+}
+
+/** Цена за 1ед с доставкой — та же формула свёртки, что и amountDue (аддитивно орг + доставка). */
+export function getUnitPriceWithDeliveryRub(
+    item: ItemPricingFields,
+    rates: PurchaseCurrencyRateRef[],
+    orgFeeDefaultPercent: number,
+    purchaseDeliveryPercent: number,
+): number | null {
+    const orgFee = resolveOrgFeePercent(toNum(item.orgFeePercentOverride), orgFeeDefaultPercent);
+    return computeUnitPriceRubFromItem({
+        pricePerPackCurrency: toNum(item.pricePerPackCurrency),
+        rateToRub: resolveCurrencyRate(toRates(rates), item.currencyId ?? null),
+        orgFeePercent: orgFee,
+        deliveryPercent: getEffectiveDeliveryPercent(item, purchaseDeliveryPercent),
+        packSize: toNum(item.packAmount),
+    });
 }
 
 

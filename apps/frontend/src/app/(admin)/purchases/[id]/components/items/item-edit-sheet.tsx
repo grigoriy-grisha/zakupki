@@ -59,6 +59,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                                 packAmount: item.packAmount ?? null,
                                 packUnit: item.packUnit ?? null,
                                 orgFeePercentOverride: item.orgFeePercentOverride ?? null,
+                                deliveryPercentOverride: item.deliveryPercentOverride ?? null,
                                 // Добор и лимиты:
                                 minPackageAmount: item.minPackageAmount ?? null,
                                 minPackageUnit: item.minPackageUnit ?? null,

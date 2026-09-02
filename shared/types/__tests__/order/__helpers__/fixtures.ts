@@ -1,5 +1,5 @@
-import { OrderLine } from '../../../src/order';
 import type { OrderLineProps, PurchaseItem } from '../../../src/order';
+import { OrderLine } from '../../../src/order';
 
 /** Алиас типа стадии — короче писать в тестах. */
 export type Stage = PurchaseItem['fulfillmentStatus'];
@@ -86,6 +86,8 @@ export function makeItem(stage: Stage, overrides: Partial<PurchaseItem> = {}): P
         pricePerPackCurrency,
         orgFeePercentOverride: null,
         orgFeeDefaultPercent: TEST_ORG_FEE_PERCENT,
+        deliveryPercentOverride: null,
+        deliveryPercent: 0,
         currencyRates: TEST_CURRENCY_RATES,
         // ── Параметры фасовки ──
         unitCode: 'piece',

@@ -5,8 +5,9 @@
  * Живёт в shared, чтобы и frontend (order-domain-mapper), и бот могли
  * переиспользовать одну конвертацию.
  */
-import type { CurrencyRate } from '../pricing/currency-pricing';
 import type { PurchaseFulfillmentStatus } from '../index';
+import type { CurrencyRate } from '../pricing/currency-pricing';
+import { resolveDeliveryPercent } from '../pricing/currency-pricing';
 import type { OrderLineVO, PurchaseItem } from './types';
 
 /** Минимальная форма строки, которую умеет конвертировать маппер. */
@@ -63,6 +64,7 @@ export interface PurchaseItemRowLike {
     currencyId?: number | null;
     pricePerPackCurrency?: unknown;
     orgFeePercentOverride?: unknown;
+    deliveryPercentOverride?: unknown;
     // Product — только каталожные данные (unit, multiplicity):
     product: {
         unitCode?: string;
@@ -118,7 +120,12 @@ export function mapToPurchaseItem(
         orgFeePercentOverride:
             item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
         orgFeeDefaultPercent: pricingContext?.orgFeeDefaultPercent ?? 0,
-        deliveryPercent: pricingContext?.deliveryPercent ?? 0,
+        deliveryPercentOverride:
+            item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
+        deliveryPercent: resolveDeliveryPercent(
+            item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
+            pricingContext?.deliveryPercent ?? 0,
+        ),
         currencyRates: pricingContext?.currencyRates ?? [],
     };
 }

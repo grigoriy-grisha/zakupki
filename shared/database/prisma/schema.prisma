@@ -273,6 +273,7 @@ model PurchaseItem {
   currencyId              Int?
   pricePerPackCurrency    Decimal?  @db.Decimal(10, 4)
   orgFeePercentOverride   Decimal?  @db.Decimal(5, 2)
+  deliveryPercentOverride Decimal?  @db.Decimal(5, 2)
   // Операционные количества (в базовых единицах, гр/шт). Заполняются организатором.
   orderedQty              Decimal?  @db.Decimal(10, 3)
   assembledQty            Decimal?  @db.Decimal(10, 3)

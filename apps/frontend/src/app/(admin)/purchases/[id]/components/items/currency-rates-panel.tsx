@@ -223,21 +223,30 @@ export function CurrencyRatesPanel({ purchaseId, rates, deliveryPercent }: Curre
 
                     <div className="flex items-center gap-2">
                         <div className="w-48">
-                            <Label htmlFor="delivery-percent">Доставка, %</Label>
+                            <Label className="sr-only">Доставка закупки</Label>
+                            <div className="flex h-9 items-center rounded-md border border-border bg-bg-card px-3 text-13-regular">
+                                Доставка закупки
+                            </div>
                         </div>
                         <div className="flex-1">
-                            <Input
-                                id="delivery-percent"
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                max={100}
-                                placeholder="Процент доставки"
-                                value={deliveryDraft}
-                                onChange={(e) => setDeliveryDraft(e.target.value)}
-                                className="text-13-regular"
-                            />
+                            <Label className="sr-only">Процент доставки</Label>
+                            <div className="relative">
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min={0}
+                                    max={100}
+                                    placeholder="Процент доставки"
+                                    value={deliveryDraft}
+                                    onChange={(e) => setDeliveryDraft(e.target.value)}
+                                    className="pr-7 text-13-regular"
+                                />
+                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-13-regular text-fg-tertiary">
+                                    %
+                                </span>
+                            </div>
                         </div>
+                        <div className="w-9 shrink-0" />
                     </div>
 
                     {canAddMore && availableCurrencies.length > 0 && (

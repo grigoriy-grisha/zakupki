@@ -32,6 +32,14 @@ export function resolveOrgFeePercent(override: number | null, globalDefault: num
 }
 
 /**
+ * Резолв % доставки: переопределение товара приоритетнее процента закупки.
+ */
+export function resolveDeliveryPercent(override: number | null, purchasePercent: number): number {
+    if (override != null && Number.isFinite(override)) return override;
+    return purchasePercent;
+}
+
+/**
  * Кол. 5: цена за упаковку с оргсбором = цена в ₽ × (1 + оргсбор/100).
  * Возвращает null, если базовая цена неизвестна.
  */

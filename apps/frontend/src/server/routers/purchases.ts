@@ -29,6 +29,7 @@ const purchaseItemFieldsSchema = z.object({
     currencyId: z.number().nullable().optional(),
     pricePerPackCurrency: z.number().nullable().optional(),
     orgFeePercentOverride: z.number().min(0).max(100).nullable().optional(),
+    deliveryPercentOverride: z.number().min(0).max(100).nullable().optional(),
     orderedQty: z.number().nullable().optional(),
     assembledQty: z.number().nullable().optional(),
     reorderedQty: z.number().nullable().optional(),

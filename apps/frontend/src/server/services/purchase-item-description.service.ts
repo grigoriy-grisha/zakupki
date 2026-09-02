@@ -3,6 +3,7 @@ import {
     computeUnitPriceRubFromItem,
     type CurrencyRate,
     NotFoundError,
+    resolveDeliveryPercent,
     resolveOrgFeePercent,
 } from '@zakupki/types';
 
@@ -76,6 +77,10 @@ export class PurchaseItemDescriptionService {
             item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
             orgFeeDefaultPercent,
         );
+        const deliveryPercent = resolveDeliveryPercent(
+            item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
+            Number(item.purchase.deliveryPercent ?? 0),
+        );
         const unitPriceRub = computeUnitPriceRubFromItem({
             pricePerPackCurrency:
                 item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
@@ -84,7 +89,7 @@ export class PurchaseItemDescriptionService {
                     ? (currencyRates.find((r) => r.currencyId === item.currencyId)?.rateToRub ?? null)
                     : null,
             orgFeePercent,
-            deliveryPercent: Number(item.purchase.deliveryPercent ?? 0),
+            deliveryPercent,
             packSize: item.packAmount != null ? Number(item.packAmount) : null,
         });
 

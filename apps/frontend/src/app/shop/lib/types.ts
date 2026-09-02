@@ -47,6 +47,7 @@ export interface ShopPurchaseItem {
     packAmount?: string | number | null;
     packUnit?: string | null;
     orgFeePercentOverride?: string | number | null;
+    deliveryPercentOverride?: string | number | null;
     targetRemainder: string | number | null;
     supplierLimit?: string | number | null;
     supplierLimitUnit?: string | null;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeAmountDueWithPackages, computePackagePrice, OrderBook } from '../../src/order';
+import { computeAmountDueWithPackages, computePackagePrice, mapToPurchaseItem, OrderBook } from '../../src/order';
 import { makeItem } from './__helpers__';
 
 // Регресс: упаковки учитываются в amountDue через effectiveQty × unitPriceRub.
@@ -30,6 +30,37 @@ describe('computePackagePrice — unitPriceRub × packAmount', () => {
         });
         // packPriceRub = 100; withOrgFee = 110; unitPriceRub = 11; package = 11 × 10 = 110
         expect(computePackagePrice(item)).toBe(110);
+    });
+});
+
+describe('deliveryPercent — аддитивная наценка и override товара', () => {
+    it('orgFee=10 + delivery=5 → ×1.15 (1000 + 100 + 50)', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 10,
+            pricePerPackCurrency: 1000,
+            orgFeePercentOverride: 10,
+            deliveryPercent: 5,
+        });
+        // unit = 1000 × 1.15 / 10 = 115; package = 115 × 10 = 1150
+        expect(computePackagePrice(item)).toBe(1150);
+    });
+
+    it('mapToPurchaseItem: override товара приоритетнее процента закупки', () => {
+        const mapped = mapToPurchaseItem(
+            { id: 1, product: {}, purchase: {}, deliveryPercentOverride: 7 },
+            0,
+            { deliveryPercent: 5 },
+        );
+        expect(mapped.deliveryPercentOverride).toBe(7);
+        expect(mapped.deliveryPercent).toBe(7);
+    });
+
+    it('mapToPurchaseItem: без override — процент закупки', () => {
+        const mapped = mapToPurchaseItem({ id: 1, product: {}, purchase: {} }, 0, {
+            deliveryPercent: 5,
+        });
+        expect(mapped.deliveryPercentOverride).toBeNull();
+        expect(mapped.deliveryPercent).toBe(5);
     });
 });
 
