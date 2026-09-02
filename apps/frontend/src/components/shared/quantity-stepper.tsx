@@ -37,6 +37,8 @@ interface QuantityStepperProps {
     canAdd?: boolean;
     size?: QuantityStepperSize;
     wrapClassName?: string;
+    removeAriaLabel?: string;
+    addAriaLabel?: string;
 }
 
 export function QuantityStepper({
@@ -47,6 +49,8 @@ export function QuantityStepper({
     canAdd,
     size = 'md',
     wrapClassName,
+    removeAriaLabel,
+    addAriaLabel,
 }: QuantityStepperProps) {
     const s = STEPPER_SIZES[size];
 
@@ -58,7 +62,7 @@ export function QuantityStepper({
                 className={cn('shrink-0', s.button)}
                 onClick={onRemove}
                 disabled={!canRemove}
-                aria-label="Уменьшить количество"
+                aria-label={removeAriaLabel ?? 'Уменьшить количество'}
             >
                 <Minus className={s.icon} />
             </Button>
@@ -77,7 +81,7 @@ export function QuantityStepper({
                 className={cn('shrink-0', s.button)}
                 onClick={onAdd}
                 disabled={!canAdd}
-                aria-label="Увеличить количество"
+                aria-label={addAriaLabel ?? 'Увеличить количество'}
             >
                 <Plus className={s.icon} />
             </Button>

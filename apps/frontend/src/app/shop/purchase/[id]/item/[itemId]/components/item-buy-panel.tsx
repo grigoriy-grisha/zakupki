@@ -92,13 +92,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         wrapClassName="hidden lg:flex"
                         value={
                             <>
-                                {ctx.currentQuantity > 0
-                                    ? `${formatQty(ctx.currentQuantity)} ${ctx.shortName}`
-                                    : ''}
-                                {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0
-                                    ? ' + '
-                                    : ''}
-                                {ctx.currentPackageCount > 0 ? `${ctx.currentPackageCount} упак.` : ''}
+                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
                             </>
                         }
                         onRemove={ctx.handleRemove}
@@ -107,24 +101,16 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         canAdd={ctx.canAdd}
                     />
                     {ctx.showPackageButtons && ctx.packSize != null && (
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                className="h-10 min-w-0 flex-1 rounded-full border-border-low text-13-medium"
-                                onClick={ctx.handleRemovePackage}
-                                disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
-                            >
-                                − 1 упак.
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="h-10 min-w-0 flex-1 rounded-full border-border-low text-13-medium"
-                                onClick={ctx.handleAddPackage}
-                                disabled={!ctx.canAddPackage || ctx.isPending}
-                            >
-                                + 1 упак. ({formatQty(ctx.packSize)} {ctx.shortName})
-                            </Button>
-                        </div>
+                        <QuantityStepper
+                            size="md"
+                            value={<>{formatQty(ctx.currentPackageCount)} упак.</>}
+                            onRemove={ctx.handleRemovePackage}
+                            onAdd={ctx.handleAddPackage}
+                            canRemove={ctx.currentPackageCount > 0 && !ctx.isPending}
+                            canAdd={ctx.canAddPackage && !ctx.isPending}
+                            removeAriaLabel="Убрать упаковку"
+                            addAriaLabel="Добавить упаковку"
+                        />
                     )}
                     {minHint && <p className="text-center text-12-regular text-fg-tertiary">{minHint}</p>}
                 </div>

@@ -34,13 +34,8 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                         wrapClassName="shrink-0"
                         value={
                             <>
-                                {ctx.currentQuantity > 0
-                                    ? `${formatQty(ctx.currentQuantity)} ${ctx.shortName}`
-                                    : ''}
-                                {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0
-                                    ? ' + '
-                                    : ''}
-                                {ctx.currentPackageCount > 0 ? `${ctx.currentPackageCount} упак.` : ''}
+                                {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                                {ctx.currentPackageCount > 0 ? ` + ${ctx.currentPackageCount} упак.` : ''}
                             </>
                         }
                         onRemove={ctx.handleRemove}

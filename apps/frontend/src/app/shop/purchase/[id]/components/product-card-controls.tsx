@@ -100,9 +100,7 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                     )}
                 >
                     <span className="truncate">
-                        {ctx.currentQuantity > 0 ? `${ctx.currentQuantity} ${ctx.shortName}` : ''}
-                        {ctx.currentQuantity > 0 && ctx.currentPackageCount > 0 ? ' + ' : ''}
-                        {ctx.currentPackageCount > 0 ? `${ctx.currentPackageCount} упак.` : ''}
+                        {ctx.currentQuantity} {ctx.shortName}
                     </span>
                 </div>
                 <button
@@ -120,26 +118,41 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                 </button>
             </div>
             {ctx.showPackageButtons && ctx.packSize != null && (
-                <div className="flex items-stretch gap-1.5">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 min-w-0 flex-1 justify-center rounded-full border-border-low text-12-medium"
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
                         onClick={ctx.handleRemovePackage}
                         disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
                         aria-label="Убрать упаковку"
+                        className={cn(
+                            'flex size-8 shrink-0 items-center justify-center rounded-full',
+                            'border-2 border-primary text-primary transition-colors',
+                            'hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40',
+                        )}
                     >
-                        <span className="truncate">− 1 упак.</span>
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 min-w-0 flex-1 justify-center rounded-full border-border-low text-12-medium"
+                        <Minus className="size-3.5" />
+                    </button>
+                    <div
+                        className={cn(
+                            'flex h-8 min-w-0 flex-1 items-center justify-center rounded-full',
+                            'border-2 border-primary px-2 text-12-bold text-primary tabular-nums',
+                        )}
+                    >
+                        <span className="truncate">{ctx.currentPackageCount} упак.</span>
+                    </div>
+                    <button
+                        type="button"
                         onClick={ctx.handleAddPackage}
                         disabled={!ctx.canAddPackage || ctx.isPending}
+                        aria-label="Добавить упаковку"
+                        className={cn(
+                            'flex size-8 shrink-0 items-center justify-center rounded-full',
+                            'bg-primary text-primary-foreground transition-colors',
+                            'hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40',
+                        )}
                     >
-                        <span className="truncate">+ 1 упак.</span>
-                    </Button>
+                        <Plus className="size-3.5" />
+                    </button>
                 </div>
             )}
         </div>
