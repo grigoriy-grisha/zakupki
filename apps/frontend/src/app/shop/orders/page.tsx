@@ -223,7 +223,7 @@ function PurchaseOrderCard({
                                     {pkgLabel} · {formatRub(amount)}
                                 </p>
                                 {breakdown && (breakdown.orgFeeRub > 0 || breakdown.deliveryRub > 0) && (
-                                    <p className="mt-0.5 text-12-regular text-fg-tertiary tabular-nums sm:text-13-regular">
+                                    <p className="mt-0.5 text-14-medium text-fg-secondary tabular-nums">
                                         {formatPriceRub(breakdown.baseRub)} + оргсбор{' '}
                                         {formatPriceRub(breakdown.orgFeeRub)}
                                         {breakdown.deliveryRub > 0
@@ -248,7 +248,7 @@ function PurchaseOrderCard({
                     Итоговая сумма {formatRub(group.total)}
                 </p>
                 {totals && (totals.org > 0 || totals.delivery > 0) && (
-                    <p className="-mt-2 text-right text-13-regular text-fg-tertiary tabular-nums">
+                    <p className="-mt-2 text-right text-16-medium text-fg-secondary tabular-nums">
                         Из них: {formatPriceRub(totals.base)} + оргсбор {formatPriceRub(totals.org)}
                         {totals.delivery > 0 ? ` + доставка ${formatPriceRub(totals.delivery)}` : ''}
                     </p>
