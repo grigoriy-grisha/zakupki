@@ -318,6 +318,11 @@
     line-height: 0.95rem;
     font-weight: 600;
 }
+@utility text-13-bold {
+    font-size: 0.8125rem;
+    line-height: 0.95rem;
+    font-weight: 700;
+}
 @utility text-14-regular {
     font-size: 0.875rem;
     line-height: 1.025rem;
