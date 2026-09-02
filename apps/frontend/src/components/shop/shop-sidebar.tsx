@@ -32,7 +32,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
             )}
         >
             <span aria-hidden className="absolute bottom-10 right-0 top-10 w-0.5 bg-secondary" />
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-6 sm:pt-8">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-8 sm:pt-10">
                 <div>
                     {isLoading ? (
                         <div className="space-y-4">
