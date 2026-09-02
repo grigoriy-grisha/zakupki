@@ -30,7 +30,7 @@ function StatCard({ icon: Icon, value, label, hint, accent = 'neutral', classNam
                 )}
                 <span className="text-12-medium uppercase tracking-wide text-fg-tertiary">{label}</span>
             </div>
-            <div className={cn('mt-2 text-24-semibold tabular-nums', accentMap[accent])}>{value}</div>
+            <div className={cn('mt-2 text-24-medium tabular-nums', accentMap[accent])}>{value}</div>
             {hint && <div className="mt-1 text-12-regular text-fg-tertiary">{hint}</div>}
         </div>
     );

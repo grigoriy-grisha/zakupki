@@ -246,7 +246,7 @@ function PurchaseOrderCard({
             </div>
 
             <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:gap-4">
-                <p className="text-right text-20-semibold text-primary tabular-nums sm:text-24-semibold">
+                <p className="text-right text-20-medium text-primary tabular-nums sm:text-24-medium">
                     Итоговая сумма {formatRub(group.total)}
                 </p>
                 {totals && (totals.org > 0 || totals.delivery > 0) && (

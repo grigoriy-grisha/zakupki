@@ -420,8 +420,13 @@
 }
 @utility text-30-semibold {
     font-size: 1.875rem;
-    line-height: 2.1875rem;
+    line-height: 2.2rem;
     font-weight: 600;
+}
+@utility text-30-medium {
+    font-size: 1.875rem;
+    line-height: 2.2rem;
+    font-weight: 500;
 }
 @utility text-36-semibold {
     font-size: 2.25rem;
