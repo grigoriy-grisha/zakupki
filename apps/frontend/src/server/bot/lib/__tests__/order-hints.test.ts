@@ -17,7 +17,7 @@ describe('getOrderQuantityHint', () => {
 
     it('returns payment hint on payment stage', () => {
         const hint = getOrderQuantityHint('PAYMENT');
-        expect(hint).toContain('🧵Пора оплачивать заказ🧵');
+        expect(hint).toContain('‼️ Пора оплачивать заказ ‼️');
         expect(hint).toContain('5 = 5 гр');
         expect(hint).not.toContain('«п»');
     });
