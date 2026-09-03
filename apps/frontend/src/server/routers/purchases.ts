@@ -119,6 +119,10 @@ export const purchasesRouter = router({
         return ctx.services.purchase.deleteDraft(input.id);
     }),
 
+    softDelete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        return ctx.services.purchase.softDelete(input.id);
+    }),
+
     setAvailableQuantities: adminProcedure
         .input(
             z.object({

@@ -70,6 +70,15 @@ export class PurchaseService {
         return deleted;
     }
 
+    async softDelete(id: number) {
+        const purchase = await this.repo.getById(id, true);
+        if (!purchase) throw new NotFoundError('Закупка', id);
+        if (purchase.deletedAt) {
+            throw new ValidationError('Закупка уже удалена');
+        }
+        return this.repo.softDelete(id);
+    }
+
     async findItemsToPublish(purchaseId: number) {
         const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);

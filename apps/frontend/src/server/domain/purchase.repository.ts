@@ -11,9 +11,16 @@ export class PurchaseRepository {
         return includeHidden ? undefined : { hidden: false };
     }
 
+    private static visibilityWhere(includeHidden: boolean) {
+        return includeHidden ? {} : { deletedAt: null };
+    }
+
     async list(status?: string, includeHidden = false) {
         return dbClient.purchase.findMany({
-            where: status ? { status: status as PurchaseStatus } : undefined,
+            where: {
+                ...(status ? { status: status as PurchaseStatus } : {}),
+                ...PurchaseRepository.visibilityWhere(includeHidden),
+            },
             include: {
                 items: {
                     where: PurchaseRepository.itemsWhere(includeHidden),
@@ -32,7 +39,10 @@ export class PurchaseRepository {
 
     async listByStatuses(statuses: string[], includeHidden = false) {
         return dbClient.purchase.findMany({
-            where: { status: { in: statuses as PurchaseStatus[] } },
+            where: {
+                status: { in: statuses as PurchaseStatus[] },
+                ...PurchaseRepository.visibilityWhere(includeHidden),
+            },
             include: {
                 items: {
                     where: PurchaseRepository.itemsWhere(includeHidden),
@@ -54,6 +64,7 @@ export class PurchaseRepository {
             where: {
                 status: { in: statuses as PurchaseStatus[] },
                 items: { some: { orderLines: { some: { userId } } } },
+                ...PurchaseRepository.visibilityWhere(includeHidden),
             },
             include: {
                 items: {
@@ -72,8 +83,8 @@ export class PurchaseRepository {
     }
 
     async getById(id: number, includeHidden = false) {
-        return dbClient.purchase.findUnique({
-            where: { id },
+        return dbClient.purchase.findFirst({
+            where: { id, ...PurchaseRepository.visibilityWhere(includeHidden) },
             include: {
                 items: {
                     where: PurchaseRepository.itemsWhere(includeHidden),
@@ -93,6 +104,13 @@ export class PurchaseRepository {
 
     findByTag(tag: string) {
         return dbClient.purchase.findUnique({ where: { tag }, select: { id: true, tag: true } });
+    }
+
+    softDelete(id: number) {
+        return dbClient.purchase.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
     }
 
     async findTagById(id: number): Promise<string | null> {

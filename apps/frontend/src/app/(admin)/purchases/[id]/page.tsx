@@ -1,6 +1,7 @@
 'use client';
 
 import { Boxes,CheckCircle2, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { use, useMemo, useState } from 'react';
 
 import { useStatusChangeConfirm } from '@/app/(admin)/lib/use-status-change-confirm';
@@ -41,6 +42,7 @@ type FulfillmentStatus =
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
     const id = Number(idStr);
+    const router = useRouter();
 
     const [activateOpen, setActivateOpen] = useState(false);
     const [remainderOpen, setRemainderOpen] = useState(false);
@@ -54,12 +56,17 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     const items = useMemo(() => purchase?.items ?? [], [purchase]);
 
     const purchaseTag = (purchase as { tag?: string } | undefined)?.tag ?? '';
+    const isDeleted = Boolean((purchase as { deletedAt?: string | null } | undefined)?.deletedAt);
 
-    const deleteDraftConfirm = useStatusChangeConfirm<PurchaseStatus>({
-        onConfirm: () => actions.deleteDraft.mutate({ id } as never),   
+    const softDeleteConfirm = useStatusChangeConfirm<PurchaseStatus>({
+        onConfirm: () => {
+            actions.softDelete.mutate({ id } as never, {
+                onSuccess: () => router.push('/purchases'),
+            });
+        },
         buildMessage: () => ({
-            title: 'Удалить черновик?',
-            description: `Черновик «${purchaseTag}» будет удалён безвозвратно. Это действие нельзя отменить.`,
+            title: 'Удалить закупку?',
+            description: `Закупка «${purchaseTag}» будет скрыта от участников и из бота. Товары, заказы и платежи останутся в базе.`,
             confirmLabel: 'Удалить',
             variant: 'destructive',
         }),
@@ -109,28 +116,35 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
             <PageHeader
                 title={purchase.tag}
                 badge={
-                    <Badge type="subtle" size="default" variant="neutral">
-                        {STATUS_LABELS[purchase.status] ?? purchase.status}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                        <Badge type="subtle" size="default" variant="neutral">
+                            {STATUS_LABELS[purchase.status] ?? purchase.status}
+                        </Badge>
+                        {isDeleted && (
+                            <Badge type="subtle" size="default" variant="critical">
+                                Удалена
+                            </Badge>
+                        )}
+                    </div>
                 }
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
                         <ExportPurchaseButtons purchaseId={id} />
+                        {!isDeleted && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => softDeleteConfirm.requestStatusChange({ target: 'DRAFT' })}
+                            >
+                                <Trash2 className="size-4" />
+                                <span className="hidden sm:inline">Удалить</span>
+                            </Button>
+                        )}
                         {isDraft && (
-                            <>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => deleteDraftConfirm.requestStatusChange({ target: 'DRAFT' })}
-                                >
-                                    <Trash2 className="size-4" />
-                                    <span className="hidden sm:inline">Удалить</span>
-                                </Button>
-                                <Button variant="brand" size="sm" onClick={() => setActivateOpen(true)}>
-                                    <Rocket className="size-4" />
-                                    <span className="hidden sm:inline">Активировать</span>
-                                </Button>
-                            </>
+                            <Button variant="brand" size="sm" onClick={() => setActivateOpen(true)}>
+                                <Rocket className="size-4" />
+                                <span className="hidden sm:inline">Активировать</span>
+                            </Button>
                         )}
                         {canComplete && (
                             <Button
@@ -216,7 +230,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 </TabsContent>
             </Tabs>
 
-            {deleteDraftConfirm.dialog}
+            {softDeleteConfirm.dialog}
             {completeConfirm.dialog}
 
             <Dialog open={activateOpen} onOpenChange={setActivateOpen}>

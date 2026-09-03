@@ -197,6 +197,7 @@ model Purchase {
   createdAt         DateTime                  @default(now())
   fulfillmentStatus PurchaseFulfillmentStatus @default(COLLECTION)
   deliveryPercent   Decimal                   @default(0) @db.Decimal(5, 2)
+  deletedAt         DateTime?
   payments          Payment[]
   promoCodes        PromoCode[]
   items             PurchaseItem[]

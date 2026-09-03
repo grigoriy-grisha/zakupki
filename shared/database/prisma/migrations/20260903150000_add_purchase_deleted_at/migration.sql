@@ -1,0 +1,1 @@
+ALTER TABLE "Purchase" ADD COLUMN "deletedAt" TIMESTAMP(3);

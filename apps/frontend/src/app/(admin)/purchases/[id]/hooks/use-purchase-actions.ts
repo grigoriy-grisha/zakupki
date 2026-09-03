@@ -28,6 +28,13 @@ export function usePurchaseActions(purchaseId: number) {
         }),
     );
 
+    const softDelete = trpc.purchases.softDelete.useMutation(
+        mutationOptions({
+            invalidate: invalidatePurchase,
+            success: 'Закупка удалена',
+        }),
+    );
+
     const publishAll = trpc.purchases.publishToTelegram.useMutation({
         onSuccess: (data) => {
             void utils.purchases.getById.invalidate({ id: purchaseId });
@@ -61,6 +68,7 @@ export function usePurchaseActions(purchaseId: number) {
         activate,
         complete,
         deleteDraft,
+        softDelete,
         publishAll,
         updateFulfillmentStatus,
         setAvailableQuantities,

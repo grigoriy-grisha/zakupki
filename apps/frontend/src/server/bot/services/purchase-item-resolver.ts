@@ -37,6 +37,7 @@ const ITEM_INCLUDE = {
             status: true,
             fulfillmentStatus: true,
             deliveryPercent: true,
+            deletedAt: true,
             currencyRates: { select: { currencyId: true, rateToRub: true } },
         },
     },

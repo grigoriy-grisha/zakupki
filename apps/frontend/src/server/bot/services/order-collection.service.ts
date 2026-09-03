@@ -116,6 +116,14 @@ export class OrderCollectionService {
             };
         }
 
+        if (purchaseItem.purchase.deletedAt) {
+            return {
+                ok: false,
+                reason: 'purchase_inactive',
+                message: 'Закупка удалена — заказы больше не принимаются',
+            };
+        }
+
         if (parsed.kind === 'add' && isOrderingClosedStage(purchaseItem.purchase.fulfillmentStatus ?? 'COLLECTION')) {
             return {
                 ok: false,
