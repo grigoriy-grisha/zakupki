@@ -55,8 +55,8 @@ export const STEP_DESCRIPTIONS: Record<PurchaseFulfillmentStatus, StepDescriptio
         actions: ['advance'],
     },
     IN_TRANSIT_RF: {
-        title: 'В пути по РФ',
-        description: 'Заказ едет в Россию.',
+        title: 'В пути из ЕС в РФ',
+        description: 'Заказ едет из ЕС в Россию.',
         icon: TruckIcon,
         actions: ['advance'],
     },
