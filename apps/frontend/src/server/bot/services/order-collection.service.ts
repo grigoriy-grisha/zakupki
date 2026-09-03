@@ -11,6 +11,7 @@ import {
 } from '@zakupki/types';
 
 import type { ServiceContainer } from '../container/service-container';
+import { getOrderQuantityHint } from '../lib/order-hints';
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
 import { PurchaseItemResolver } from './purchase-item-resolver';
 
@@ -54,6 +55,26 @@ export class OrderCollectionService {
         return new OrderCollectionService(container.purchaseItemResolver, container);
     }
 
+    /**
+     * Подсказка по формату количества для чата закупки: зависит от этапа
+     * (на доборе — расширенный текст про граммы и «п»).
+     */
+    async getQuantityHint(params: {
+        chatId: number;
+        replyTo?: import('../lib/resolve-reply-purchase-item').ReplyToMessage;
+        threadId?: number;
+    }): Promise<string> {
+        try {
+            const purchaseItem = await this.resolver.resolvePurchaseItem(params.chatId, {
+                reply_to_message: params.replyTo,
+                message_thread_id: params.threadId,
+            });
+            return getOrderQuantityHint(purchaseItem?.purchase?.fulfillmentStatus);
+        } catch {
+            return getOrderQuantityHint(null);
+        }
+    }
+
     async collectFromReply(params: {
         chatId: number;
         replyTo?: import('../lib/resolve-reply-purchase-item').ReplyToMessage;
@@ -68,7 +89,7 @@ export class OrderCollectionService {
             return {
                 ok: false,
                 reason: 'invalid_quantity',
-                message: 'Напишите количество числом, например: 10 (граммов) или +2п (две пачки) или -1п (снять пачку)',
+                message: await this.getQuantityHint(params),
             };
         }
 

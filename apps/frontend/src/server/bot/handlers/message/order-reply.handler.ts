@@ -41,15 +41,18 @@ export class OrderReplyHandler implements MessageHandler {
             return;
         }
 
+        const service = OrderCollectionService.fromContainer(this.container);
+
         if (!/^[-+]?\d/.test(ctx.message.text.trim())) {
-            await ctx.reply(
-                'Напишите количество числом. Например:\n• 10 — добавить 10\n• +10 — добавить 10\n• +2п — добавить 2 пачки\n• -5 — убрать 5\n• -1п — убрать пачку',
-                { reply_parameters: { message_id: ctx.message.message_id } },
-            );
+            const hint = await service.getQuantityHint({
+                chatId: ctx.chat.id,
+                replyTo,
+                threadId,
+            });
+            await ctx.reply(hint, { reply_parameters: { message_id: ctx.message.message_id } });
             return;
         }
 
-        const service = OrderCollectionService.fromContainer(this.container);
         const result = await service.collectFromReply({
             chatId: ctx.chat.id,
             replyTo,
