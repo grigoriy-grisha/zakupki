@@ -61,7 +61,7 @@ export default function PurchasesPage() {
                                 <p className="col-span-full py-12 text-center text-14-regular text-fg-secondary">Нет закупок</p>
                             )}
                             {items?.map((purchase) => (
-                                <PurchaseCard key={purchase.id} purchase={purchase} deleted />
+                                <PurchaseCard key={purchase.id} purchase={purchase} deleted={isDeletedTab} />
                             ))}
                         </div>
                     )}
