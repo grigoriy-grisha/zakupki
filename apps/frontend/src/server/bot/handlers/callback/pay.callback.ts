@@ -1,19 +1,31 @@
 import { InlineKeyboard } from 'grammy';
 
-import type { CustomContext } from '../../domain/types';
-import type { CallbackHandler } from '../../domain/handler';
-import type { CallbackAction } from '../../domain/callback-data';
 import type { ServiceContainer } from '../../container/service-container';
+import type { CallbackAction } from '../../domain/callback-data';
+import type { CallbackHandler } from '../../domain/handler';
+import type { CustomContext } from '../../domain/types';
+import type { BotPurchasePaymentInfo } from '../../services/bot/bot-payment.service';
 
 /**
  * Обрабатывает callback'и с префиксом `pay:`.
  *
  * Шаги flow: pick → amount → promo → proof.
  *   • `pay:pick:{id}` — старт с шага amount (пользователь вводит сумму).
- *   • `pay:all:{id}`  — сумма = remaining, старт сразу с шага promo.
+ *   • `pay:all:{id}`  — сумма = remaining, старт сразу с шагом promo.
  *   • `pay:promo`     — открыть ввод промокода (переход amount → promo).
  *   • `pay:skip`      — продолжить без промокода (promo/amount → proof).
  */
+
+/** Расшифровка суммы отдельными строками; пусто, если считать не из чего. */
+function formatBreakdown(info: BotPurchasePaymentInfo): string {
+    const breakdown = info.breakdown;
+    if (!breakdown || (breakdown.org <= 0 && breakdown.delivery <= 0)) return '';
+    const lines = [`Стоимость выбранных товаров: ${breakdown.base.toLocaleString('ru-RU')} ₽`];
+    if (breakdown.org > 0) lines.push(`Оргсбор: ${breakdown.org.toLocaleString('ru-RU')} ₽`);
+    if (breakdown.delivery > 0) lines.push(`Доставка: ${breakdown.delivery.toLocaleString('ru-RU')} ₽`);
+    return lines.join('\n');
+}
+
 export class PayCallbackQueryHandler implements CallbackHandler {
     readonly prefix = 'pay:';
     readonly requireAuth = true;
@@ -69,9 +81,11 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         );
 
         await ctx.answerCallbackQuery();
+        const breakdownText = formatBreakdown(info);
         await ctx.editMessageText(
             `Закупка «${info.tag}»\n` +
                 `К оплате: ${info.remaining.toLocaleString('ru-RU')} ₽\n\n` +
+                (breakdownText ? `${breakdownText}\n\n` : '') +
                 `Введите сумму в рублях или нажмите кнопку ниже.`,
             { reply_markup: keyboard },
         );
@@ -94,8 +108,10 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         flow.startPromoStep(purchaseId, info.tag, info.remaining, info.remaining);
 
         await ctx.answerCallbackQuery();
+        const breakdownText = formatBreakdown(info);
         await ctx.reply(
             `Сумма: ${info.remaining.toLocaleString('ru-RU')} ₽\n\n` +
+                (breakdownText ? `${breakdownText}\n\n` : '') +
                 `Есть промокод? Введите его текстом, либо продолжите без него.\n\n` +
                 `/cancel — отменить`,
             { reply_markup: this.promoKeyboard() },

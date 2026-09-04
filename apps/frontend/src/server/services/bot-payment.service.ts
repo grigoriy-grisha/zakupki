@@ -1,11 +1,22 @@
 import { dbClient } from '@zakupki/database';
-import { isPurchasePaymentOpen, PROOF_MIME_TYPES, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import {
+    computeOrderLinePriceBreakdown,
+    isPurchasePaymentOpen,
+    PROOF_MIME_TYPES,
+    type PurchaseFulfillmentStatus,
+} from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
 
-import { OrderService } from './order.service';
-import { PromoCodeService } from './promo-code.service';
-import { PaymentRepository } from '../domain/payment.repository';
+import type { PaymentRepository } from '../domain/payment.repository';
+import type { OrderService } from './order.service';
+import type { PromoCodeService } from './promo-code.service';
+
+export type PurchasePaymentBreakdown = {
+    base: number;
+    org: number;
+    delivery: number;
+};
 
 export type PurchasePaymentInfo = {
     due: number;
@@ -13,6 +24,7 @@ export type PurchasePaymentInfo = {
     hasPending: boolean;
     remaining: number;
     tag: string;
+    breakdown: PurchasePaymentBreakdown | null;
 };
 
 export type PayablePurchase = {
@@ -167,10 +179,11 @@ export class BotPaymentService {
 
     private async buildPaymentMap(userId: number): Promise<Map<number, PurchasePaymentInfo>> {
         const [orders, payments] = await Promise.all([
-            this.orderService.findAllActiveByUser(userId),
+            this.orderService.findAllByUserWithPriceInfo(userId),
             this.repo.findAllByUserId(userId),
         ]);
 
+        const breakdownByPurchase = this.summarizeBreakdowns(orders);
         const map = new Map<number, PurchasePaymentInfo>();
 
         for (const order of orders) {
@@ -178,7 +191,16 @@ export class BotPaymentService {
             const tag = order.purchaseItem?.purchase?.tag ?? '—';
             if (!purchaseId) continue;
 
-            const existing = map.get(purchaseId) ?? { due: 0, paid: 0, hasPending: false, remaining: 0, tag };
+            const existing =
+                map.get(purchaseId) ??
+                {
+                    due: 0,
+                    paid: 0,
+                    hasPending: false,
+                    remaining: 0,
+                    tag,
+                    breakdown: breakdownByPurchase.get(purchaseId) ?? null,
+                };
             existing.due += Number(order.amountDue);
             if (tag !== '—') existing.tag = tag;
             map.set(purchaseId, existing);
@@ -189,7 +211,16 @@ export class BotPaymentService {
             const tag = payment.purchase?.tag ?? '—';
             const total = Number(payment.amount) + this.sumChildAmount(payment.children);
 
-            const existing = map.get(purchaseId) ?? { due: 0, paid: 0, hasPending: false, remaining: 0, tag };
+            const existing =
+                map.get(purchaseId) ??
+                {
+                    due: 0,
+                    paid: 0,
+                    hasPending: false,
+                    remaining: 0,
+                    tag,
+                    breakdown: breakdownByPurchase.get(purchaseId) ?? null,
+                };
             if (payment.status === 'CONFIRMED') {
                 existing.paid += total;
             }
@@ -205,6 +236,56 @@ export class BotPaymentService {
         });
 
         return map;
+    }
+
+    /**
+     * Суммарная расшифровка «база/оргсбор/доставка» по закупкам на основе строк
+     * с priceInfo. null — если хоть по одной строке закупки расшифровку посчитать
+     * нельзя (нет цены/курса/веса упаковки): тогда показываем только итог.
+     */
+    private summarizeBreakdowns(
+        orders: Awaited<ReturnType<OrderService['findAllByUserWithPriceInfo']>>,
+    ): Map<number, PurchasePaymentBreakdown | null> {
+        const result = new Map<number, PurchasePaymentBreakdown | null>();
+
+        for (const order of orders) {
+            const purchaseId = order.purchaseItem?.purchaseId;
+            if (!purchaseId) continue;
+            const prev = result.get(purchaseId);
+            const line = order.priceInfo
+                ? computeOrderLinePriceBreakdown({
+                      amountDue: Number(order.amountDue),
+                      quantity: Number(order.quantity),
+                      packageCount: Number(order.packageCount ?? 0),
+                      pricePerPackCurrency: order.priceInfo.pricePerPackCurrency,
+                      rateToRub: order.priceInfo.rateToRub,
+                      packSize: order.priceInfo.packSize,
+                      orgFeePercent: order.priceInfo.orgFeePercent,
+                      deliveryPercent: order.priceInfo.deliveryPercent,
+                  })
+                : null;
+            if (!line || prev === null) {
+                result.set(purchaseId, null);
+                continue;
+            }
+            result.set(purchaseId, {
+                base: (prev?.base ?? 0) + line.baseRub,
+                org: (prev?.org ?? 0) + line.orgFeeRub,
+                delivery: (prev?.delivery ?? 0) + line.deliveryRub,
+            });
+        }
+
+        result.forEach((value, key) => {
+            if (value) {
+                result.set(key, {
+                    base: Math.round(value.base * 100) / 100,
+                    org: Math.round(value.org * 100) / 100,
+                    delivery: Math.round(value.delivery * 100) / 100,
+                });
+            }
+        });
+
+        return result;
     }
 
     private sumChildAmount(children: { amount: unknown }[] | undefined | null): number {

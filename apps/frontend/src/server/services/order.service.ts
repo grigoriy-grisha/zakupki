@@ -193,33 +193,62 @@ export class OrderService {
             this.repo.getByUser(userId),
             this.pricingSettings.getOrgFeeDefaultPercent(),
         ]);
-        return lines.map((line) => {
-            const item = line.purchaseItem;
-            const purchase = item?.purchase;
-            if (!item || !purchase) return { ...line, priceInfo: null };
-            const rateToRub = resolveCurrencyRate(
-                (purchase.currencyRates ?? []).map((r) => ({
-                    currencyId: r.currencyId,
-                    rateToRub: Number(r.rateToRub),
-                })),
-                item.currencyId ?? null,
-            );
-            const priceInfo = {
-                pricePerPackCurrency:
-                    item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
-                rateToRub,
-                packSize: item.packAmount != null ? Number(item.packAmount) : null,
-                orgFeePercent: resolveOrgFeePercent(
-                    item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
-                    orgFeeDefaultPercent,
-                ),
-                deliveryPercent: resolveDeliveryPercent(
-                    item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
-                    Number(purchase.deliveryPercent ?? 0),
-                ),
-            };
-            return { ...line, priceInfo };
-        });
+        return lines.map((line) => ({ ...line, priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent) }));
+    }
+
+    /**
+     * Все строки пользователя (тот же набор, что для расчёта оплат) с priceInfo —
+     * используется бот-сервисом оплат для расшифровки суммы.
+     */
+    async findAllByUserWithPriceInfo(userId: number) {
+        const [lines, orgFeeDefaultPercent] = await Promise.all([
+            this.repo.findAllByUserId(userId),
+            this.pricingSettings.getOrgFeeDefaultPercent(),
+        ]);
+        return lines.map((line) => ({ ...line, priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent) }));
+    }
+
+    /** Резолвит цену/курс/проценты строки для расшифровки «база + оргсбор + доставка». */
+    private priceInfoForLine(
+        line: {
+            purchaseItem: {
+                currencyId: number | null;
+                pricePerPackCurrency: unknown;
+                packAmount: unknown;
+                orgFeePercentOverride: unknown;
+                deliveryPercentOverride: unknown;
+                purchase: {
+                    deliveryPercent: unknown;
+                    currencyRates: { currencyId: number; rateToRub: unknown }[];
+                } | null;
+            } | null;
+        },
+        orgFeeDefaultPercent: number,
+    ) {
+        const item = line.purchaseItem;
+        const purchase = item?.purchase;
+        if (!item || !purchase) return null;
+        const rateToRub = resolveCurrencyRate(
+            (purchase.currencyRates ?? []).map((r) => ({
+                currencyId: r.currencyId,
+                rateToRub: Number(r.rateToRub),
+            })),
+            item.currencyId ?? null,
+        );
+        return {
+            pricePerPackCurrency:
+                item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
+            rateToRub,
+            packSize: item.packAmount != null ? Number(item.packAmount) : null,
+            orgFeePercent: resolveOrgFeePercent(
+                item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
+                orgFeeDefaultPercent,
+            ),
+            deliveryPercent: resolveDeliveryPercent(
+                item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
+                Number(purchase.deliveryPercent ?? 0),
+            ),
+        };
     }
 
     /** Все ACTIVE строки пользователя для purchaseItem (базовые + supplement). */
@@ -234,11 +263,6 @@ export class OrderService {
     /** PurchaseOrder headers for a purchase — covers bare participants too. */
     async getPurchaseOrdersByPurchase(purchaseId: number) {
         return this.repo.findPurchaseOrdersByPurchase(purchaseId);
-    }
-
-    /** Все строки пользователя (для расчёта карты оплат ботом). */
-    async findAllActiveByUser(userId: number) {
-        return this.repo.findAllByUserId(userId);
     }
 
     async cancelOrder(id: number, userId: number) {
