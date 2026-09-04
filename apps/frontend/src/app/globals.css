@@ -210,6 +210,15 @@
     html {
         -webkit-text-size-adjust: 100%;
     }
+    /* iOS Safari zooms the page when focusing an input with font-size < 16px,
+       so force 16px on touch devices (needs !important to beat utilities). */
+    @media (pointer: coarse) {
+        input,
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+    }
     body {
         @apply text-foreground;
         min-height: 100dvh;
