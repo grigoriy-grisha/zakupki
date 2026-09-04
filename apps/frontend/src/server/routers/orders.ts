@@ -165,4 +165,15 @@ export const ordersRouter = router({
         .mutation(async ({ ctx, input }) => {
             return ctx.services.order.setHandoffStatus(input.id, input.status, ctx.userId);
         }),
+
+    setHandoffChoice: protectedProcedure
+        .input(
+            z.object({
+                purchaseOrderId: z.number(),
+                choice: z.enum(['STORED', 'READY_TO_SHIP']),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.setHandoffChoice(input.purchaseOrderId, ctx.userId, input.choice);
+        }),
 });

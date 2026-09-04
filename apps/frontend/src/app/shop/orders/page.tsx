@@ -3,20 +3,33 @@
 import {
     computeOrderLinePriceBreakdown,
     getUnitByCode,
+    HANDOFF_STATUS_LABELS,
+    type HandoffStatus,
     isPurchaseCompleted,
     isPurchasePaymentOpen,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
-import { ChevronRight, ClipboardList, Package } from 'lucide-react';
+import {
+    Archive,
+    Boxes,
+    ChevronRight,
+    ClipboardList,
+    Package,
+    PackageCheck,
+    Send,
+    Truck,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { useHandoffChoice } from '@/app/shop/hooks/use-handoff-choice';
 import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
@@ -27,6 +40,51 @@ import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
 
 type OrdersTab = 'active' | 'past';
+
+const HANDOFF_PILL_STYLES: Record<HandoffStatus, { label: string; icon: typeof Truck; className: string }> = {
+    ASSEMBLED: {
+        label: HANDOFF_STATUS_LABELS.ASSEMBLED,
+        icon: Boxes,
+        className: 'border-primary/40 bg-primary/10 text-primary',
+    },
+    READY_TO_SHIP: {
+        label: HANDOFF_STATUS_LABELS.READY_TO_SHIP,
+        icon: Send,
+        className: 'border-accent-teal/40 bg-accent-teal/10 text-accent-teal',
+    },
+    SENT: {
+        label: HANDOFF_STATUS_LABELS.SENT,
+        icon: Truck,
+        className: 'border-secondary/40 bg-secondary/10 text-secondary',
+    },
+    RECEIVED: {
+        label: HANDOFF_STATUS_LABELS.RECEIVED,
+        icon: PackageCheck,
+        className: 'border-success/40 bg-success/10 text-success',
+    },
+    STORED: {
+        label: HANDOFF_STATUS_LABELS.STORED,
+        icon: Archive,
+        className: 'border-warning/40 bg-warning/10 text-warning',
+    },
+};
+
+function HandoffPill({ status }: { status: string }) {
+    const style = HANDOFF_PILL_STYLES[status as HandoffStatus];
+    if (!style) return null;
+    const Icon = style.icon;
+    return (
+        <span
+            className={cn(
+                'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-12-medium',
+                style.className,
+            )}
+        >
+            <Icon className="size-3" />
+            {style.label}
+        </span>
+    );
+}
 
 function OrdersEmptyState({
     title,
@@ -154,24 +212,30 @@ function PurchaseOrderCard({
               )
             : null;
 
+    const handoffChoice = useHandoffChoice();
+    const handoffStatus = (group.handoffStatus ?? null) as HandoffStatus | null;
+
     return (
         <section className="py-5 first:pt-0 last:pb-0 sm:py-6">
-            <div className="min-w-0">
-                {group.orderNumber != null && (
-                    <p className="text-13-regular text-fg-secondary tabular-nums sm:text-14-regular">
-                        Заказ №{group.orderNumber}
-                    </p>
-                )}
-                <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
-                    <h3
-                        className={cn(
-                            'font-display text-24-bold leading-tight text-secondary transition-colors',
-                            'group-hover/title:text-primary sm:text-30-semibold',
-                        )}
-                    >
-                        {group.tag}
-                    </h3>
-                </AppLink>
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    {group.orderNumber != null && (
+                        <p className="text-13-regular text-fg-secondary tabular-nums sm:text-14-regular">
+                            Заказ №{group.orderNumber}
+                        </p>
+                    )}
+                    <AppLink href={`/shop/purchase/${group.id}`} className="group/title mt-0.5 inline-block">
+                        <h3
+                            className={cn(
+                                'font-display text-24-bold leading-tight text-secondary transition-colors',
+                                'group-hover/title:text-primary sm:text-30-semibold',
+                            )}
+                        >
+                            {group.tag}
+                        </h3>
+                    </AppLink>
+                </div>
+                {handoffStatus && <HandoffPill status={handoffStatus} />}
             </div>
 
             <div className="mt-5 divide-y divide-border-low sm:mt-6">
@@ -263,6 +327,50 @@ function PurchaseOrderCard({
                         {purchasePayments.map((p, idx) => (
                             <MyPaymentRow key={(p as any).id ?? idx} payment={p as unknown as ShopPaymentView} />
                         ))}
+                    </div>
+                )}
+
+                {handoffStatus === 'ASSEMBLED' && group.orderNumber != null && (
+                    <div className="rounded-2xl border-2 border-gold/70 bg-bg-card/70 p-4">
+                        <p className="flex items-center gap-2 text-14-semibold text-fg-primary">
+                            <Boxes className="size-4 shrink-0 text-primary" />
+                            Ваш заказ собран
+                        </p>
+                        <p className="mt-1 text-13-regular text-fg-secondary">
+                            Отправляем заказ сейчас или пока оставим его на хранение?
+                        </p>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                            <Button
+                                variant="brand"
+                                size="sm"
+                                className="flex-1"
+                                disabled={handoffChoice.isPending}
+                                onClick={() =>
+                                    handoffChoice.mutate({
+                                        purchaseOrderId: group.orderNumber!,
+                                        choice: 'READY_TO_SHIP',
+                                    })
+                                }
+                            >
+                                <Send className="size-3.5" />
+                                Отправить заказ
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                disabled={handoffChoice.isPending}
+                                onClick={() =>
+                                    handoffChoice.mutate({
+                                        purchaseOrderId: group.orderNumber!,
+                                        choice: 'STORED',
+                                    })
+                                }
+                            >
+                                <Archive className="size-3.5" />
+                                Оставить на хранение
+                            </Button>
+                        </div>
                     </div>
                 )}
 
