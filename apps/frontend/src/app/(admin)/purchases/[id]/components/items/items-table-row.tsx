@@ -1,6 +1,7 @@
 'use client';
 
 import {
+    isPieceUnit,
     solvePricePerPackFromPackOrgRub,
     solvePricePerPackFromPackRub,
     solvePricePerPackFromUnitRub,
@@ -80,7 +81,6 @@ export function ItemsTableRow({
         packPriceRub,
         packPriceWithOrgFeeRub,
         unitPriceRub,
-        unitPriceWithDeliveryRub,
         packPriceWithDeliveryRub,
         deliveryPercent,
         collectedQty,
@@ -97,6 +97,7 @@ export function ItemsTableRow({
     const packSizeRaw = item.packAmount == null ? null : Number(item.packAmount);
     const packSize = packSizeRaw != null && Number.isFinite(packSizeRaw) ? packSizeRaw : null;
     const unitEditable = rubEditable && packSize != null && packSize > 0;
+    const isPiece = isPieceUnit(item.product.unitCode);
 
     function commitRubPrice(solved: number | null) {
         if (solved != null) onCommit({ pricePerPackCurrency: solved });
@@ -173,32 +174,34 @@ export function ItemsTableRow({
                         format={formatWholeRub}
                         className="w-full"
                     />
-                    {deliveryPercent > 0 && (
-                        <span className="w-10 shrink-0 text-13-regular text-fg-tertiary">
-                            +{deliveryPercent}%
-                        </span>
-                    )}
+                    <span className="w-10 shrink-0 text-13-regular text-fg-tertiary">+{deliveryPercent}%</span>
                 </div>
             </TableCell>
 
-            <TableCell className="px-2 py-1 text-right">
-                <div className="flex items-center justify-end gap-1">
-                    <InlineCell
-                        value={unitPriceRub}
-                        disabled={!unitEditable}
-                        onCommit={(v) =>
-                            commitRubPrice(solvePricePerPackFromUnitRub(v, rateToRub, orgFeePercent, packSize))
-                        }
-                        min={0}
-                        ariaLabel="Цена за 1 единицу в рублях"
-                        align="right"
-                        placeholder="—"
-                        format={formatUnitRub}
-                        className="w-full"
-                    />
-                    <span className="w-10 shrink-0 text-13-regular text-fg-tertiary">/{unit || 'ед'}</span>
-                </div>
-            </TableCell>
+            {isPiece ? (
+                <TableCell className="px-2 py-1 text-right">
+                    <span className="text-13-regular text-fg-tertiary">—</span>
+                </TableCell>
+            ) : (
+                <TableCell className="px-2 py-1 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                        <InlineCell
+                            value={unitPriceRub}
+                            disabled={!unitEditable}
+                            onCommit={(v) =>
+                                commitRubPrice(solvePricePerPackFromUnitRub(v, rateToRub, orgFeePercent, packSize))
+                            }
+                            min={0}
+                            ariaLabel="Цена за 1 единицу в рублях"
+                            align="right"
+                            placeholder="—"
+                            format={formatUnitRub}
+                            className="w-full"
+                        />
+                        <span className="w-10 shrink-0 text-13-regular text-fg-tertiary">/{unit || 'ед'}</span>
+                    </div>
+                </TableCell>
+            )}
 
             <TableCell className="px-3 text-right text-14-medium tabular-nums text-fg-secondary">
                 {numOrDash(collectedQty)}
