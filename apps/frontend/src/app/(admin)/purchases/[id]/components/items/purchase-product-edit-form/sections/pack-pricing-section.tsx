@@ -158,7 +158,7 @@ export function PackPricingSection({
                             onCurrencyChange(v === 'none' ? null : Number(v));
                         }}
                     >
-                        <SelectTrigger className="h-9 rounded-xl" aria-label="Валюта цены">
+                        <SelectTrigger className="h-9 w-full rounded-xl" aria-label="Валюта цены">
                             <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
