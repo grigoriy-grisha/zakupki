@@ -44,4 +44,39 @@ describe('OrderedStock. PAYMENT+: добор ограничен остатком
         if (!result.ok) return;
         expect(result.book.supplementLineForStage(1, 'PAYMENT')?.quantity).toBe(2);
     });
+
+    it('доборные строки разных подстадий делят один остаток', () => {
+        const book = OrderBook.create(
+            makeItem('SUPPLIER_ASSEMBLY', {
+                unitCode: 'piece',
+                packAmount: 1,
+                targetRemainder: null,
+                orderedQty: 90,
+            }),
+            [
+                makeFrozenCollectionLine({ id: 1, userId: 1, quantity: 80, amountDue: 8000, baseQuantity: 80 }),
+                OrderLine.create(
+                    makeLineProps({ id: 2, userId: 1, quantity: 3, amountDue: 300, createdOnStage: 'PAYMENT' }),
+                ),
+                OrderLine.create(
+                    makeLineProps({
+                        id: 3,
+                        userId: 1,
+                        quantity: 4,
+                        amountDue: 400,
+                        createdOnStage: 'SUPPLIER_ASSEMBLY',
+                    }),
+                ),
+            ],
+        );
+
+        const ok = book.adjust(1, 3);
+        expect(ok.ok).toBe(true);
+
+        const over = book.adjust(1, 4);
+        expect(over.ok).toBe(false);
+        if (over.ok) return;
+        expect(over.error.code).toBe('stock_exceeded');
+        expect(over.error.canAddMore).toBe(3);
+    });
 });

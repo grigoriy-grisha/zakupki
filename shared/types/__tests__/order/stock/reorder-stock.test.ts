@@ -85,4 +85,35 @@ describe('OrderedStock. REORDER: остаток к продаже на добо�
         expect(result.error.code).toBe('stock_exceeded');
         expect(result.error.canAddMore).toBe(40);
     });
+
+    it('гр: новичок без строки — упаковки тоже ограничены orderedQty', () => {
+        const book = OrderBook.create(makeItem('REORDER', { packAmount: 30, targetRemainder: null, orderedQty: 50 }));
+
+        const result = book.adjustPackages(2, 2);
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(result.error.code).toBe('stock_exceeded');
+        expect(result.error.canAddMore).toBe(50);
+    });
+
+    it('гр: новичок без строки — упаковки ограничены supplierLimit', () => {
+        const book = OrderBook.create(
+            makeItem('REORDER', { packAmount: 30, targetRemainder: null, supplierLimit: 50, supplierLimitUnit: 'гр' }),
+        );
+
+        const result = book.adjustPackages(2, 2);
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(result.error.code).toBe('limit_exceeded');
+        expect(result.error.canAddMore).toBe(50);
+    });
+
+    it('гр: новичок без строки — упаковка в пределах orderedQty проходит', () => {
+        const book = OrderBook.create(makeItem('REORDER', { packAmount: 30, targetRemainder: null, orderedQty: 50 }));
+
+        const result = book.adjustPackages(2, 1);
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.book.baseLineFor(2)?.packageCount).toBe(1);
+    });
 });

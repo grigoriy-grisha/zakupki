@@ -149,8 +149,20 @@ export class ReorderStrategy extends BaseMutableStrategy {
             return err(forbidden('На этом этапе нельзя добавить новый товар'));
         }
 
-        // Нет COLLECTION-строки и delta>0 → создаём с pkg=delta, qty=0
+        // Нет COLLECTION-строки и delta>0 → создаём с pkg=delta, qty=0.
+        // Глобальные капы (orderedQty + supplierLimit) проверяем и здесь:
+        // ветка раньше возвращалась до общих проверок ниже и обходила их.
         if (!base && delta > 0) {
+            const packSize = this.item.packAmount;
+            const userCurrent = effectiveQty(supp, packSize);
+            const userNew = userCurrent + delta * (packSize ?? 0);
+            if (userNew > 0) {
+                const aggregation = aggregateForPool('REORDER', toActiveVOs(this.lines), packSize);
+                const stockErr = validateOrderedStock(this.item, userNew, userCurrent, aggregation);
+                if (stockErr) return err(stockErr);
+                const limitErr = validateSupplierLimit(this.item, userNew, userCurrent, aggregation);
+                if (limitErr) return err(limitErr);
+            }
             const newPkgCount = delta;
             const amountDue = computeAmountDueWithPackages(0, newPkgCount, this.item);
             const newBase = makeNewLine(this.item, userId, 'COLLECTION', 0, amountDue, newPkgCount);
