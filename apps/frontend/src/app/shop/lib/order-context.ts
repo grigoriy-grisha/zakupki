@@ -10,6 +10,7 @@ import {
     getUnitByCode,
     isOrderingClosedStage,
     isSupplementPhase,
+    isWeightUnit,
     mapToPurchaseItem,
     OrderBook,
     toOrderLinesVO,
@@ -173,10 +174,10 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             ? `Можно добавить: ${availablePool} ${shortName}`
             : null;
 
-    // Упаковка
+    const isWeight = isWeightUnit(product.unitCode);
     const hasSupplierPackage = packSize != null && packSize > 0;
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
-    const showPackageButtons = canAddPackage && hasSupplierPackage;
+    const showPackageButtons = canAddPackage && hasSupplierPackage && isWeight;
 
     // Лимит на упаковки — только по supplierLimit (жёсткий лимит товара).
     // Остаток/пул добора НЕ ограничивает упаковки: упаковка = базовая фасовка,
@@ -205,14 +206,12 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         const supplierMaxAllowed = supplierLimitNum - totalOrderedWithPackages + effectiveUserQty;
         canAddMorePackages = effectiveUserQty + packSize <= supplierMaxAllowed + 1e-9;
     }
-    // Единый источник цены с сервером: computePackagePrice/computeAmountDueWithPackages
-    // берут priceOverride (как calculateOrderAmount). Раньше packagePrice считался от
-    // pricePerUnit → для ценника через priceOverride упаковки были бесплатными на клиенте.
     const packagePrice = computePackagePrice(purchaseItem);
     const packageTotal = currentPackageCount * packagePrice;
     const total = computeAmountDueWithPackages(currentQuantity, currentPackageCount, purchaseItem);
-    // Скидка за целую пачку: packPriceRub = packAmount × unitPriceRub (цена упаковки в ₽).
-    const packDiscountInfo = getPackDiscountPricingInfo(packSize, packagePrice, packDiscountPercent);
+    const packDiscountInfo = isWeight
+        ? getPackDiscountPricingInfo(packSize, packagePrice, packDiscountPercent)
+        : null;
     const effectiveQty = currentQuantity + currentPackageCount * (packSize ?? 0);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(effectiveQty, packDiscountInfo.packSize) : 0;
 

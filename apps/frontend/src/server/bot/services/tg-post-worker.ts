@@ -94,6 +94,7 @@ function computeFreeToOrder(item: Item): number | null {
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
         packSize: item.packAmount != null ? Number(item.packAmount) : null,
         aggregation,
+        unitCode: item.product.unitCode ?? null,
     });
 }
 

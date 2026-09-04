@@ -5,12 +5,12 @@ import {
     resolveCurrencyRate,
     resolveDeliveryPercent,
     resolveOrgFeePercent,
+    resolveUnit,
     solvePricePerPackFromPackOrgRub,
     solvePricePerPackFromPackRub,
     solvePricePerPackFromUnitRub,
 } from '@zakupki/types';
 
-import { PACKAGE_UNITS } from '@/app/(admin)/products/lib';
 import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
@@ -26,22 +26,15 @@ import {
 import type { PurchaseCurrencyRateRef } from '../../../../lib/types';
 import { InlineCell } from '../../inline-cell';
 
-/**
- * Sensible defaults when the admin picks grams as the package unit. Grams are
- * a bulk unit where a step of 1 is almost always wrong (nobody orders 1 gram
- * of tea); 5 g min packaging and 10 g reorder step match how organic small-batch
- * purchasing actually works in this domain. Only applied the moment the unit
- * switches to «гр» — the admin can still override afterwards, and switching
- * back to another unit does NOT reset the values.
- *
- * Exported so the parent form can apply the same defaults when wiring the
- * `onGramsSelected` callback (keeps the magic numbers in one place).
- */
 export const GRAM_DEFAULT_MIN_PACKAGE = 5;
 export const GRAM_DEFAULT_SUPPLEMENT_STEP = 10;
 export const GRAM_UNIT = 'гр';
 
-/** Строка валюты из trpc.currencies.list. */
+const PIECE_SECTION_TITLES: Record<string, string> = {
+    шт: 'Цена за штуку',
+    туба: 'Цена за тубу',
+};
+
 interface CurrencyRow {
     id: number;
     name: string;
@@ -50,55 +43,33 @@ interface CurrencyRow {
 }
 
 interface PackPricingSectionProps {
-    /** Цена за упаковку в выбранной валюте. */
+    unit: string;
+    onUnitChange: (value: string) => void;
     pricePerPackCurrency: number | null;
-    /** ID валюты (null = не выбрана). */
     currencyId: number | null;
-    /** Вес упаковки (packAmount). */
     packAmount: number | null;
-    /** Единица веса упаковки (packUnit: гр/шт/туба). */
-    packUnit: string | null;
-    /** Оргсбор % (override; null = используется глобальный default). */
     orgFeePercentOverride: number | null;
-    /** Глобальный % оргсбора по умолчанию (для placeholder). */
     orgFeeDefaultPercent: number;
-    /** % доставки закупки (аддитивно к оргсбору в ₽-пересчётах). */
     deliveryPercent: number;
-    /** Override % доставки на товар (null = используется процент закупки). */
     deliveryPercentOverride: number | null;
-    /** Все валюты из справочника. */
     currencies: CurrencyRow[];
-    /** Курсы валют закупки (для ₽-полей; без них ₽-поля выключены). */
     currencyRates?: PurchaseCurrencyRateRef[];
     onPriceChange: (value: number | null) => void;
     onCurrencyChange: (value: number | null) => void;
     onPackAmountChange: (value: number | null) => void;
-    onPackUnitChange: (value: string | null) => void;
     onOrgFeeChange: (value: number | null) => void;
     onDeliveryPercentChange: (value: number | null) => void;
-    /**
-     * Optional: prefill these when the package unit switches to grams. Wired
-     * by the parent form so that picking «гр» also sets the supplement-step
-     * section defaults (min package 5, supplement step 10). Omitted on the
-     * standalone product form where these fields don't exist.
-     */
     onGramsSelected?: () => void;
+    unitWarning?: string | null;
+    priceNote?: string | null;
 }
 
-/**
- * Секция «Цена за упаковку» — новая модель цен.
- *
- * Поля: цена в валюте + валюта (Select из справочника), вес упаковки +
- * единица (гр/шт/туба), оргсбор % и доставка % (override; пусто = дефолт).
- *
- * Рублёвая сетка 2×2 связана обратным пересчётом с ценой в валюте:
- * цена в ₽ → с оргсбором → с доставкой (орг + доставка) → за 1ед.
- */
 export function PackPricingSection({
+    unit,
+    onUnitChange,
     pricePerPackCurrency,
     currencyId,
     packAmount,
-    packUnit,
     orgFeePercentOverride,
     orgFeeDefaultPercent,
     currencies,
@@ -108,17 +79,18 @@ export function PackPricingSection({
     onPriceChange,
     onCurrencyChange,
     onPackAmountChange,
-    onPackUnitChange,
     onOrgFeeChange,
     onDeliveryPercentChange,
     onGramsSelected,
+    unitWarning,
+    priceNote,
 }: PackPricingSectionProps) {
-    // On switching the unit to grams, prefill min package and supplement step
-    // with domain-sensible defaults via the parent's callback. Pass-through for
-    // any other unit, so the admin's previously typed values survive a roundtrip.
-    const handlePackUnitChange = (v: string | null) => {
-        onPackUnitChange(v);
+    const isWeight = resolveUnit(unit)?.kind === 'WEIGHT';
+    const sectionTitle = isWeight ? 'Цена за упаковку' : (PIECE_SECTION_TITLES[unit] ?? 'Цена за единицу');
+
+    const handleUnitChange = (v: string) => {
         if (v === GRAM_UNIT) onGramsSelected?.();
+        onUnitChange(v);
     };
 
     const rateToRub = resolveCurrencyRate(
@@ -152,9 +124,14 @@ export function PackPricingSection({
     const rubInputClassName = 'h-9 rounded-xl px-3 text-13-medium tabular-nums';
 
     return (
-        <FormSection card title="Цена за упаковку">
-            {/* Цена + валюта */}
-            <div className="flex items-end gap-2">
+        <FormSection card title={sectionTitle}>
+            <div className="shrink-0">
+                <label className="mb-1 block text-13-regular text-fg-tertiary">Единица товара</label>
+                <PackageUnitSelect value={unit} onChange={handleUnitChange} className="h-9 rounded-xl" />
+                {unitWarning && <p className="mt-1.5 text-12-regular text-warning">{unitWarning}</p>}
+            </div>
+
+            <div className="mt-3 flex items-end gap-2">
                 <div className="flex-1">
                     <label className="mb-1 block text-13-regular text-fg-tertiary">Цена</label>
                     <Input
@@ -171,6 +148,7 @@ export function PackPricingSection({
                         placeholder="0"
                         aria-label="Цена за упаковку в валюте"
                     />
+                    {priceNote && <p className="mt-1.5 text-12-regular text-fg-tertiary">{priceNote}</p>}
                 </div>
                 <div className="w-40 shrink-0">
                     <label className="mb-1 block text-13-regular text-fg-tertiary">Валюта</label>
@@ -196,33 +174,28 @@ export function PackPricingSection({
                 </div>
             </div>
 
-            <div className="mt-3 flex items-end gap-2">
-                <div className="w-32 shrink-0">
-                    <label className="mb-1 block text-13-regular text-fg-tertiary">Вес упаковки</label>
-                    <Input
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        inputMode="decimal"
-                        className="h-9 rounded-xl text-13-medium tabular-nums"
-                        value={packAmount != null ? String(packAmount) : ''}
-                        onChange={(e) => {
-                            const raw = e.target.value;
-                            onPackAmountChange(raw === '' ? null : Number(raw));
-                        }}
-                        placeholder="0"
-                        aria-label="Вес упаковки"
-                    />
+            {isWeight && (
+                <div className="mt-3 flex items-end gap-2">
+                    <div className="w-32 shrink-0">
+                        <label className="mb-1 block text-13-regular text-fg-tertiary">Вес упаковки</label>
+                        <Input
+                            type="number"
+                            step="0.001"
+                            min={0}
+                            inputMode="decimal"
+                            className="h-9 rounded-xl text-13-medium tabular-nums"
+                            value={packAmount != null ? String(packAmount) : ''}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                onPackAmountChange(raw === '' ? null : Number(raw));
+                            }}
+                            placeholder="0"
+                            aria-label="Вес упаковки"
+                        />
+                    </div>
+                    <span className="pb-2.5 text-13-regular text-fg-tertiary">{unit}</span>
                 </div>
-                <div className="shrink-0">
-                    <label className="mb-1 block text-13-regular text-fg-tertiary">Единица</label>
-                    <PackageUnitSelect
-                        value={packUnit ?? PACKAGE_UNITS[0]}
-                        onChange={handlePackUnitChange}
-                        className="h-9 rounded-xl"
-                    />
-                </div>
-            </div>
+            )}
 
             <div className="mt-3 grid grid-cols-2 gap-2">
                 <div>
@@ -313,28 +286,31 @@ export function PackPricingSection({
                         className={rubInputClassName}
                     />
                 </div>
-                <div>
-                    <label className="mb-1 block text-13-regular text-fg-tertiary">За 1 ед, ₽</label>
-                    <InlineCell
-                        value={unitFullRub}
-                        disabled={!unitEditable}
-                        onCommit={(v) =>
-                            onPriceChange(
-                                solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount, effDelivery),
-                            )
-                        }
-                        min={0}
-                        ariaLabel="Цена за 1 единицу в рублях"
-                        placeholder="—"
-                        format={formatUnitRub}
-                        className={rubInputClassName}
-                    />
-                </div>
+                {isWeight && (
+                    <div>
+                        <label className="mb-1 block text-13-regular text-fg-tertiary">За 1 ед, ₽</label>
+                        <InlineCell
+                            value={unitFullRub}
+                            disabled={!unitEditable}
+                            onCommit={(v) =>
+                                onPriceChange(
+                                    solvePricePerPackFromUnitRub(v, rateToRub, effOrgFee, packAmount, effDelivery),
+                                )
+                            }
+                            min={0}
+                            ariaLabel="Цена за 1 единицу в рублях"
+                            placeholder="—"
+                            format={formatUnitRub}
+                            className={rubInputClassName}
+                        />
+                    </div>
+                )}
             </div>
 
             <p className="mt-3 text-13-regular text-fg-tertiary">
-                Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты задаётся
-                в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.
+                {isWeight
+                    ? 'Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты задаётся в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.'
+                    : `Цена указывается за 1 ${unit}. Курс валюты задаётся в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.`}
             </p>
         </FormSection>
     );

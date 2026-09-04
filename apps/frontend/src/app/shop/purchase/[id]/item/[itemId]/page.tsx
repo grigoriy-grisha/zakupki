@@ -32,6 +32,7 @@ import { SectionCard } from './components/section-card';
 
 interface ItemDetailProduct extends ProductLabelSource {
     photos?: { id: number }[];
+    unitCode?: string | null;
 }
 
 export default function ItemDetailPage({ params }: { params: Promise<{ id: string; itemId: string }> }) {
@@ -191,7 +192,7 @@ function ItemDetailLoaded({
     });
 
     const photoIds = (product.photos ?? []).map((p: { id: number }) => p.id);
-    const minHint = buildStepHint(item, fulfillmentStatus, ctx.shortName);
+    const minHint = buildStepHint(item, fulfillmentStatus, ctx.shortName, product.unitCode);
     const descriptionRows = buildShopItemDescriptionRows(product as ProductCatalogCardSource, attributeTypes);
     const supplierName = item.supplier?.name;
     const collectedLabel = getCollectedLabel(item, ctx.shortName);

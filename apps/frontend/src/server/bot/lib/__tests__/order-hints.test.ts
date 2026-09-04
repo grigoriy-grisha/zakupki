@@ -31,4 +31,30 @@ describe('getOrderQuantityHint', () => {
         expect(getOrderQuantityHint(null)).toContain('Напишите количество числом');
         expect(getOrderQuantityHint(undefined)).toContain('Напишите количество числом');
     });
+
+    it('piece goods: general hint has no pack suffix examples', () => {
+        const hint = getOrderQuantityHint('COLLECTION', false);
+        expect(hint).toContain('Напишите количество числом');
+        expect(hint).not.toContain('+2п');
+        expect(hint).not.toContain('пачку');
+    });
+
+    it('piece goods: dobor hint counts in pieces', () => {
+        const hint = getOrderQuantityHint('REORDER', false);
+        expect(hint).toContain('На этапе «Добор»');
+        expect(hint).toContain('2 = 2 шт');
+        expect(hint).not.toContain('гр');
+    });
+
+    it('piece goods: payment hint counts in pieces', () => {
+        const hint = getOrderQuantityHint('PAYMENT', false);
+        expect(hint).toContain('Пора оплачивать заказ');
+        expect(hint).toContain('в штуках');
+        expect(hint).not.toContain('гр');
+    });
+
+    it('weight default keeps pack examples', () => {
+        expect(getOrderQuantityHint('COLLECTION')).toContain('+2п');
+        expect(getOrderQuantityHint('REORDER')).toContain('1п = 1 целая пачка поставщика');
+    });
 });

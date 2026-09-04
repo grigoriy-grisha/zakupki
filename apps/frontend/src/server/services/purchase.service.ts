@@ -139,17 +139,15 @@ export class PurchaseService {
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
     }
 
-    /**
-     * Применяет partial-обновление к PurchaseItem. Вся per-purchase конкретика
-     * (описание, цены, фасовка, supplier) теперь редактируется здесь. Product
-     * больше не трогается — он хранит только каталожные данные.
-     */
     async updateItemProduct(purchaseItemId: number, itemData: Record<string, unknown>) {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
-        // Собираем partial update PurchaseItem за один round-trip.
-        // Только поля, которые явно пришли из формы (не undefined).
+        const nextUnitCode = itemData.productUnitCode;
+        if (typeof nextUnitCode === 'string' && nextUnitCode !== item.product.unitCode) {
+            await this.productRepo.update(item.productId, { unitCode: nextUnitCode });
+        }
+
         const itemUpdate: Record<string, unknown> = {};
         const allowedKeys = [
             'supplierId',
@@ -160,14 +158,12 @@ export class PurchaseService {
             'supplierLimit',
             'supplierLimitUnit',
             'targetRemainder',
-            // Новая модель цен:
             'packAmount',
             'packUnit',
             'currencyId',
             'pricePerPackCurrency',
             'orgFeePercentOverride',
             'deliveryPercentOverride',
-            // Операционные количества + комментарий + скрытие:
             'orderedQty',
             'assembledQty',
             'reorderedQty',
@@ -226,12 +222,12 @@ export class PurchaseService {
             minPackageAmount?: number | null;
             minPackageUnit?: string | null;
             supplementStep?: number | null;
-            // Новая модель цен (валюта + курс + оргсбор):
             packAmount?: number | null;
             packUnit?: string | null;
             currencyId?: number | null;
             pricePerPackCurrency?: number | null;
             orgFeePercentOverride?: number | null;
+            productUnitCode?: string;
         }[],
     ) {
         const purchase = await this.repo.getById(purchaseId, true);
@@ -272,6 +268,15 @@ export class PurchaseService {
         for (const config of toCreate) {
             const item = await this.repo.addItem(purchaseId, config);
             created.push(item);
+        }
+
+        const unitUpdates = new Map(
+            toCreate
+                .filter((c) => typeof c.productUnitCode === 'string')
+                .map((c) => [c.productId, c.productUnitCode as string]),
+        );
+        for (const [productId, unitCode] of unitUpdates) {
+            await this.productRepo.update(productId, { unitCode });
         }
 
         return {

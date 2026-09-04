@@ -1,5 +1,6 @@
 'use client';
 
+import { isPieceUnit } from '@zakupki/types';
 import { EyeOff } from 'lucide-react';
 
 import { Highlight } from '@/components/shared/highlight';
@@ -59,13 +60,22 @@ export function PackSizeCell({
     packAmount,
     packUnit,
     fallbackUnit,
+    unitCode,
     onCommit,
 }: {
     packAmount: string | number | null | undefined;
     packUnit: string | null | undefined;
     fallbackUnit: string | null | undefined;
+    unitCode?: string | null;
     onCommit: (patch: { packAmount?: number | null; packUnit?: string | null }) => void;
 }) {
+    if (unitCode && isPieceUnit(unitCode)) {
+        return (
+            <TableCell className="px-2 py-1 text-right">
+                <span className="text-13-regular text-fg-tertiary">—</span>
+            </TableCell>
+        );
+    }
     return (
         <TableCell className="px-2 py-1 text-right">
             <div className="flex items-center justify-end gap-1">

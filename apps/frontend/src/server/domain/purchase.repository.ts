@@ -395,6 +395,7 @@ export class PurchaseRepository {
                 tgChannelId: true,
                 supplierLimit: true,
                 supplierLimitUnit: true,
+                product: { select: { unitCode: true } },
             },
         });
     }

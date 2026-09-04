@@ -9,31 +9,25 @@
  */
 import type { OrderError, PoolAggregation, PoolInfo, PurchaseItem } from './types';
 import { getUnitShortName } from './utils';
+import { isPieceUnit } from '../units/normalize';
 
-/**
- * Считает «сырой» пул (сколько остатка доступно всем вместе) без привязки
- * к конкретному пользователю.
- *
- * @returns null если ограничений нет (нет ни targetRemainder, ни packSize).
- */
 export function computeRawPool(input: {
     targetRemainder: number | null;
     packSize: number | null;
     aggregation: PoolAggregation;
+    unitCode?: string | null;
 }): number | null {
     const { targetRemainder, packSize, aggregation } = input;
     const { totalOrderedQuantity, supplementClaimed, totalBaseQuantity } = aggregation;
 
-    // Путь 1: админский лимит — вычитаем то, что уже добрали
     if (targetRemainder != null) {
         return Math.max(0, targetRemainder - Math.max(0, supplementClaimed));
     }
 
-    // Путь 2: авторасчёт по остатку от замороженных пачек
+    if (isPieceUnit(input.unitCode ?? null)) return null;
+
     if (packSize == null || packSize <= 0) return null;
 
-    // Пачки фиксируются по замороженному baseQuantity.
-    // Если baseQuantity ещё не заморожен (COLLECTION) — считаем от текущего total.
     const baseForPacks = totalBaseQuantity > 0 ? totalBaseQuantity : totalOrderedQuantity;
     const packsNeeded = Math.max(1, Math.ceil(baseForPacks / packSize - 1e-9));
     return Math.max(0, packsNeeded * packSize - totalOrderedQuantity);
@@ -50,13 +44,14 @@ export function computePoolInfo(input: {
     targetRemainder: number | null;
     packSize: number | null;
     aggregation: PoolAggregation;
-    /** Текущее количество пользователя (для canAddMore). */
     currentQty: number;
+    unitCode?: string | null;
 }): PoolInfo {
     const pool = computeRawPool({
         targetRemainder: input.targetRemainder,
         packSize: input.packSize,
         aggregation: input.aggregation,
+        unitCode: input.unitCode ?? null,
     });
 
     if (pool == null) {
@@ -99,6 +94,7 @@ export function validateSupplementPool(
         targetRemainder: item.targetRemainder,
         packSize: item.packAmount,
         aggregation,
+        unitCode: item.unitCode,
     });
     if (pool == null) return null;
 

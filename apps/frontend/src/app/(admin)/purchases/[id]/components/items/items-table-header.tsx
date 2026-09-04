@@ -19,11 +19,11 @@ export function ItemsTableHeader({
             <TableRow>
                 <TableHead className="sticky left-0 z-10 w-[200px] bg-bg-soft">Товар</TableHead>
                 <TableHead className="w-[140px] px-3 text-right">Вес упаковки</TableHead>
-                <TableHead className="w-[160px] px-3 text-right">Цена за упаковку</TableHead>
-                <TableHead className="w-[150px] px-3 text-right">Цена за упаковку ₽</TableHead>
-                <TableHead className="w-[170px] px-3 text-right">Цена за упаковку + орг</TableHead>
-                <TableHead className="w-[160px] px-3 text-right">Цена + доставка</TableHead>
-                <TableHead className="w-[150px] px-3 text-right">Цена за 1 единицу ₽</TableHead>
+                <TableHead className="w-[160px] px-3 text-right">Цена</TableHead>
+                <TableHead className="w-[150px] px-3 text-right">Цена ₽</TableHead>
+                <TableHead className="w-[170px] px-3 text-right">Цена ₽ + орг</TableHead>
+                <TableHead className="w-[160px] px-3 text-right">Цена ₽ + орг и доставка</TableHead>
+                <TableHead className="w-[150px] px-3 text-right">Цена за 1 ед ₽</TableHead>
                 <TableHead className="w-[130px] px-3 text-right">Собрано</TableHead>
                 <TableHead className="w-[120px] px-3 text-right">Заказано</TableHead>
                 <TableHead className="w-[140px] px-3 text-right">Скомплектовано</TableHead>

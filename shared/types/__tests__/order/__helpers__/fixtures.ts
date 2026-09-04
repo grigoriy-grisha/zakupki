@@ -90,7 +90,7 @@ export function makeItem(stage: Stage, overrides: Partial<PurchaseItem> = {}): P
         deliveryPercent: 0,
         currencyRates: TEST_CURRENCY_RATES,
         // ── Параметры фасовки ──
-        unitCode: 'piece',
+        unitCode: 'gram',
         multiplicity: 1,
         minPackageUnit: null,
         supplementStep: null,

@@ -8,6 +8,10 @@ export function toNum(v: string | number | null | undefined): number | null {
     return Number.isFinite(n) ? n : null;
 }
 
+export function roundCurrency4(value: number): number {
+    return Math.round(value * 10000) / 10000;
+}
+
 export function gramsOrDefault(
     saved: string | number | null | undefined,
     unit: string | null | undefined,

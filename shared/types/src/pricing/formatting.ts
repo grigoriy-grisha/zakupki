@@ -1,25 +1,16 @@
 import { formatQtyLabel, positiveOrNull } from '../utils';
 import { isSupplementPhase } from '../order-strategies';
+import { isPieceUnit } from '../units/normalize';
 
-/**
- * Stage-aware подсказка шага для UI: учитывает текущий этап закупки.
- *
- * На COLLECTION показывает «Мин. фасовка: N ед» (regular step = minPackageAmount).
- * На REORDER/PAYMENT+ показывает «Шаг добора: N ед», где N = supplementStep,
- * если задан, иначе fallback на minPackageAmount (та же логика, что в getSupplementStep).
- *
- * Признак этапа добора берётся из общего isSupplementPhase (используется и в
- * getSupplementStep-окружении, и в order-strategies) — единый source of truth.
- *
- * Возвращает null если шаг нельзя показать (например, оба значения null).
- */
 export function formatActiveStepHint(input: {
     fulfillmentStatus: string;
     minPackageAmount: number | null;
     minPackageUnit: string | null;
     supplementStep: number | null;
     unitShort: string;
+    unitCode?: string | null;
 }): string | null {
+    if (isPieceUnit(input.unitCode ?? null)) return null;
     const isSupplement = isSupplementPhase(input.fulfillmentStatus);
     const regularStep = positiveOrNull(input.minPackageAmount);
     const step = isSupplement ? positiveOrNull(input.supplementStep) ?? regularStep : regularStep;

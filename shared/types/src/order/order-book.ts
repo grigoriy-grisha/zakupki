@@ -19,6 +19,7 @@ import { effectiveQty } from './order-math';
 import { aggregateForPool, applyUpdates, toActiveVOs, type LineUpdate, type MultiUpdate } from './strategies/atomic';
 import { makeStrategy } from './strategies/concrete-strategies';
 import { StageStrategy } from './strategies/stage-strategy';
+import { isPieceUnit } from '../units/normalize';
 import type {
     AggregatedOrder,
     OrderDisplayContext,
@@ -94,6 +95,7 @@ export class OrderBook {
             targetRemainder: this.item.targetRemainder,
             packSize: this.item.packAmount,
             aggregation: this.poolAggregation(),
+            unitCode: this.item.unitCode,
         });
     }
 
@@ -122,6 +124,7 @@ export class OrderBook {
             packSize,
             aggregation: this.poolAggregation(),
             currentQty,
+            unitCode: this.item.unitCode,
         });
 
         // Supplier limit (если задан) — действует как жёсткий верх для всех этапов.
@@ -176,6 +179,15 @@ export class OrderBook {
     /** Изменить количество упаковок. */
     adjustPackages(userId: number, delta: number): AdjustResult {
         if (delta === 0) return ok(this);
+        if (isPieceUnit(this.item.unitCode)) {
+            return {
+                ok: false,
+                error: {
+                    code: 'no_package',
+                    message: 'Товар штучный — упаковок нет, заказывайте количеством',
+                },
+            };
+        }
         if (!this.item.packAmount) {
             return {
                 ok: false,

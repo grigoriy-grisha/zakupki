@@ -9,6 +9,7 @@ import {
     computePackPriceWithOrgFee,
     computeUnitPriceRub,
     computeUnitPriceRubFromItem,
+    isWeightUnit,
     PURCHASE_FULFILLMENT_STATUSES,
     resolveCurrencyRate,
     resolveDeliveryPercent,
@@ -146,31 +147,25 @@ export function computeAutoRemainder(collected: number, packSize: number | null)
     return packsNeeded * packSize - collected;
 }
 
-/**
- * Кол. 11 «Остаток на пристрой» — фазозависимо:
- *  - до SUPPLIER_ASSEMBLY: orderedQty − собрано
- *  - с SUPPLIER_ASSEMBLY: (assembledQty + reorderedQty) − собрано
- * Если операционные количества не заполнены (null) — авторасчёт по целым пачкам.
- * >0 = излишек на пристрой, <0 = недостача.
- */
 export function getRemainderQty(
     item: PurchaseItem,
     fulfillmentStatus: string | null | undefined,
 ): number | null {
     const collected = getCollectedQty(item);
     const packSize = toNum(item.packAmount);
+    const packRemainderApplies = isWeightUnit(item.product.unitCode);
     const isAfterSettlement = isAtOrAfterSupplierAssembly(fulfillmentStatus);
     if (isAfterSettlement) {
         const assembled = toNum(item.assembledQty);
         const reordered = toNum(item.reorderedQty);
         if (assembled == null && reordered == null) {
-            return computeAutoRemainder(collected, packSize);
+            return packRemainderApplies ? computeAutoRemainder(collected, packSize) : null;
         }
         return (assembled ?? 0) + (reordered ?? 0) - collected;
     }
     const ordered = toNum(item.orderedQty);
     if (ordered == null) {
-        return computeAutoRemainder(collected, packSize);
+        return packRemainderApplies ? computeAutoRemainder(collected, packSize) : null;
     }
     return ordered - collected;
 }

@@ -114,6 +114,7 @@ export function ItemsTableRow({
                 packAmount={item.packAmount}
                 packUnit={item.packUnit}
                 fallbackUnit={unit}
+                unitCode={item.product.unitCode}
                 onCommit={onCommit}
             />
 

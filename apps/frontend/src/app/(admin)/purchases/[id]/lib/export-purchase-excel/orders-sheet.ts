@@ -217,15 +217,16 @@ export function addParticipantOrdersTable(
         const product =
             (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
             order.purchaseItem?.product;
+        const gramItem = isGramProduct(product) ? order.purchaseItem : undefined;
         const [packPrice, price510, price1] = purchaseItemPriceCells(order.purchaseItem as never);
-        const [partialQty, fullPackQty] = orderQuantitySplitColumns(order.purchaseItem, order.quantity);
-        const amounts = orderAmountSplit(order.purchaseItem, order.amountDue, order.quantity);
+        const [partialQty, fullPackQty] = orderQuantitySplitColumns(gramItem, order.quantity);
+        const amounts = orderAmountSplit(gramItem, order.amountDue, order.quantity);
         amountTotals.partial += amounts.partial;
         amountTotals.fullPack += amounts.fullPack;
 
         if (isGramProduct(product)) {
             const qty = formatMoney(order.quantity);
-            if (isFullPackOrder(order.purchaseItem, order.quantity)) {
+            if (isFullPackOrder(gramItem, order.quantity)) {
                 gramTotals.fullPackGr += qty;
             } else if (qty > 0) {
                 gramTotals.partialGr += qty;
@@ -234,7 +235,7 @@ export function addParticipantOrdersTable(
 
         const row = sheet.addRow([
             '',
-            product ? formatSupplierPackage(order.purchaseItem) : '',
+            product ? formatSupplierPackage(gramItem) : '',
             packPrice,
             price510,
             price1,

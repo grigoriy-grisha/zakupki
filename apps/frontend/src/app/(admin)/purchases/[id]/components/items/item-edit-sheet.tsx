@@ -69,6 +69,7 @@ export function ItemEditSheet({ purchaseItemId, open, onClose, purchaseId }: Ite
                                 targetRemainder: item.targetRemainder ?? null,
                             }}
                             loadSavedDescription
+                            hasOrders={(item.orderLines ?? []).some((l) => l.status !== 'CANCELLED')}
                             purchaseTag={purchase?.tag}
                             currencyRates={purchase?.currencyRates ?? []}
                             deliveryPercent={Number(purchase?.deliveryPercent ?? 0)}

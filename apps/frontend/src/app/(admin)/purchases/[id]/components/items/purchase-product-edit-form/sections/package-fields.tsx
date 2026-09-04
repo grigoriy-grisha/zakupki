@@ -162,6 +162,7 @@ export function PackageEditor({
     showPrice = false,
     description,
     className,
+    lockUnit = false,
 }: {
     label: string;
     amount: number | null;
@@ -173,6 +174,7 @@ export function PackageEditor({
     showPrice?: boolean;
     description?: React.ReactNode;
     className?: string;
+    lockUnit?: boolean;
 }) {
     return (
         <FormField label={label} hint={description} className={className}>
@@ -190,7 +192,11 @@ export function PackageEditor({
                     }}
                     aria-label="Количество"
                 />
-                <PackageUnitSelect value={unit} onChange={onUnitChange} />
+                {lockUnit ? (
+                    <span className="shrink-0 text-13-regular text-fg-tertiary">{unit}</span>
+                ) : (
+                    <PackageUnitSelect value={unit} onChange={onUnitChange} />
+                )}
                 {showPrice && onPriceChange && (
                     <>
                         <span className="shrink-0 text-13-regular text-fg-tertiary">—</span>

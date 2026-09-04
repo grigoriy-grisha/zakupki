@@ -35,6 +35,7 @@ const purchaseItemFieldsSchema = z.object({
     reorderedQty: z.number().nullable().optional(),
     adminComment: z.string().max(2000).nullable().optional(),
     hidden: z.boolean().optional(),
+    productUnitCode: z.enum(['gram', 'piece', 'tube']).optional(),
 });
 
 const addItemInputSchema = z.object({

@@ -5,6 +5,7 @@ import {
     getOrderQuantityStep,
     getUnitByCode,
     isOrderingClosedStage,
+    isWeightUnit,
     mapToPurchaseItem,
     mergeLines,
     toOrderLinesVO,
@@ -69,7 +70,10 @@ export class OrderCollectionService {
                 reply_to_message: params.replyTo,
                 message_thread_id: params.threadId,
             });
-            return getOrderQuantityHint(purchaseItem?.purchase?.fulfillmentStatus);
+            return getOrderQuantityHint(
+                purchaseItem?.purchase?.fulfillmentStatus,
+                isWeightUnit(purchaseItem?.product?.unitCode),
+            );
         } catch {
             return getOrderQuantityHint(null);
         }

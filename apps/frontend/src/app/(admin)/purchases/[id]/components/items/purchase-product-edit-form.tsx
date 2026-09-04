@@ -1,6 +1,6 @@
 'use client';
 
-import { getUnitByCode } from '@zakupki/types';
+import { resolveUnit } from '@zakupki/types';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -15,7 +15,7 @@ import { getUnitPriceWithDeliveryRub } from '../../lib/items-table-pricing';
 import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/template-storage';
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { defaultUnitField } from '../../lib/unit-defaults';
-import { gramsOrDefault, mergeTemplateIntoDescription, toNum } from './purchase-product-edit-form/form-utils';
+import { gramsOrDefault, mergeTemplateIntoDescription, roundCurrency4, toNum } from './purchase-product-edit-form/form-utils';
 import { DescriptionSection } from './purchase-product-edit-form/sections/description-section';
 import {
     GRAM_DEFAULT_MIN_PACKAGE,
@@ -26,47 +26,38 @@ import {
 import { SupplementLimitsSection } from './purchase-product-edit-form/sections/supplement-limits-section';
 import { SupplierSection } from './purchase-product-edit-form/sections/supplier-section';
 
-/**
- * Данные формы при сохранении — новая модель цен + добор/лимиты + описание.
- * Старая tier-модель (priceTiers, supplierPackage*, priceOverride) убрана.
- */
 export type PurchaseProductSaveData = {
     supplierId?: number | null;
     description?: string | null;
-    // Новая модель цен:
     pricePerPackCurrency: number | null;
     currencyId: number | null;
     packAmount: number | null;
     packUnit: string | null;
     orgFeePercentOverride: number | null;
     deliveryPercentOverride: number | null;
-    // Добор и лимиты (+ minPackage используется внутри секции):
     minPackageAmount: number | null;
     minPackageUnit: string | null;
     supplementStep: number | null;
     supplierLimit: number | null;
     supplierLimitUnit: string | null;
     targetRemainder: number | null;
+    productUnitCode: 'gram' | 'piece' | 'tube';
 };
 
 interface PurchaseProductEditFormProps {
     product: ProductLabelSource & {
         id: number;
-        /** Плоский код единицы (gram | piece | tube), как в Product.unitCode. */
         unitCode: string;
     };
-    /** Per-purchase поля (если форма используется для редактирования существующего PurchaseItem). */
     initialPurchaseFields?: {
         supplierId?: number | null;
         description?: string | null;
-        // Новая модель цен:
         pricePerPackCurrency?: string | number | null;
         currencyId?: number | null;
         packAmount?: string | number | null;
         packUnit?: string | null;
         orgFeePercentOverride?: string | number | null;
         deliveryPercentOverride?: string | number | null;
-        // Добор и лимиты:
         minPackageAmount?: string | number | null;
         minPackageUnit?: string | null;
         supplementStep?: string | number | null;
@@ -78,36 +69,14 @@ interface PurchaseProductEditFormProps {
     onCancel?: () => void;
     isSaving: boolean;
     submitLabel?: string;
-    /** Кастомный footer (опц.). */
     footer?: React.ReactNode;
     purchaseTag?: string;
-    /**
-     * Курсы валют закупки (rateToRub). Нужны для расчёта цены за 1ед в ₽,
-     * которая подставляется в шаблонные метки {{цены}} и {{фасовка поставщика}}.
-     * Берётся из purchase.currencyRates (purchases.getById).
-     */
     currencyRates?: PurchaseCurrencyRateRef[];
     deliveryPercent?: number;
-    /**
-     * `true` — загрузить сохранённое описание и применить шаблон по дефолту.
-     * Используется при **редактировании** существующего товара в закупке.
-     * `false` — пустая форма. Используется при **создании нового**.
-     */
     loadSavedDescription?: boolean;
+    hasOrders?: boolean;
 }
 
-/**
- * Форма редактирования/создания товара в закупке — упрощённая модель цен.
- *
- * Секции:
- *  1. Шаблон поста
- *  2. Поставщик (опц.)
- *  3. Цена за упаковку (валюта + вес + оргсбор) — новая модель
- *  4. Добор и лимиты
- *  5. Описание (NovelEditor)
- *
- * Sticky footer с [Отмена] [Сохранить].
- */
 export function PurchaseProductEditForm({
     product,
     initialPurchaseFields,
@@ -120,42 +89,51 @@ export function PurchaseProductEditForm({
     currencyRates,
     deliveryPercent = 0,
     loadSavedDescription = false,
+    hasOrders = false,
 }: PurchaseProductEditFormProps) {
     const f = initialPurchaseFields ?? {};
 
-    // Новая модель цен:
-    const [pricePerPackCurrency, setPricePerPackCurrency] = useState<number | null>(toNum(f.pricePerPackCurrency));
-    const [currencyId, setCurrencyId] = useState<number | null>(f.currencyId ?? null);
-    const [packAmount, setPackAmount] = useState<number | null>(toNum(f.packAmount));
-    // Дефолт единицы для всех трёх unit-полей: сохранённое значение → unit товара → null.
-    const [packUnit, setPackUnit] = useState<string | null>(
-        defaultUnitField(f.packUnit, getUnitByCode(product.unitCode)?.shortName),
+    const initialUnitDef = resolveUnit(f.packUnit) ?? resolveUnit(product.unitCode);
+    const initialUnit = initialUnitDef?.shortName ?? GRAM_UNIT;
+    const initialIsWeight = initialUnitDef?.kind === 'WEIGHT';
+    const savedPackAmount = toNum(f.packAmount);
+    const savedPrice = toNum(f.pricePerPackCurrency);
+    const legacyPiecePack = !initialIsWeight && savedPackAmount != null && savedPackAmount > 1;
+    const legacyPriceNote = legacyPiecePack && savedPrice != null
+        ? `Цена пересчитана за 1 ${initialUnit} из цены упаковки (${savedPackAmount} ${initialUnit})`
+        : null;
+
+    const [unit, setUnit] = useState(initialUnit);
+    const [priceNote, setPriceNote] = useState<string | null>(legacyPriceNote);
+    const [pricePerPackCurrency, setPricePerPackCurrency] = useState<number | null>(
+        legacyPiecePack && savedPrice != null ? roundCurrency4(savedPrice / (savedPackAmount ?? 1)) : savedPrice,
     );
+    const [currencyId, setCurrencyId] = useState<number | null>(f.currencyId ?? null);
+    const [packAmount, setPackAmount] = useState<number | null>(initialIsWeight ? savedPackAmount : 1);
+    const isWeight = resolveUnit(unit)?.kind === 'WEIGHT';
     const [orgFeePercentOverride, setOrgFeePercentOverride] = useState<number | null>(toNum(f.orgFeePercentOverride));
     const [deliveryPercentOverride, setDeliveryPercentOverride] = useState<number | null>(
         toNum(f.deliveryPercentOverride),
     );
-    // Добор и лимиты. Для граммовых позиций предзаполняем 5/10 (см. gramsOrDefault).
-    // Юнит для дефолта берём из сохранённого packUnit, иначе из единицы продукта.
-    const fallbackUnit = getUnitByCode(product.unitCode)?.shortName ?? null;
-    const initialUnit = defaultUnitField(f.packUnit, fallbackUnit);
     const [minPkgAmount, setMinPkgAmount] = useState<number | null>(
         gramsOrDefault(f.minPackageAmount, initialUnit, GRAM_DEFAULT_MIN_PACKAGE),
     );
-    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(defaultUnitField(f.minPackageUnit, fallbackUnit));
+    const [minPkgUnit, setMinPkgUnit] = useState<string | null>(defaultUnitField(f.minPackageUnit, initialUnit));
     const [supplementStep, setSupplementStep] = useState<number | null>(
         gramsOrDefault(f.supplementStep, initialUnit, GRAM_DEFAULT_SUPPLEMENT_STEP),
     );
     const [supplierLimit, setSupplierLimit] = useState<number | null>(toNum(f.supplierLimit));
     const [supplierLimitUnit, setSupplierLimitUnit] = useState<string | null>(
-        defaultUnitField(f.supplierLimitUnit, getUnitByCode(product.unitCode)?.shortName),
+        defaultUnitField(f.supplierLimitUnit, initialUnit),
     );
     const [targetRemainder, setTargetRemainder] = useState<number | null>(toNum(f.targetRemainder));
-    // Прочее:
     const [supplierId, setSupplierId] = useState<number | null>(f.supplierId ?? null);
     const [description, setDescription] = useState(f.description ?? '');
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
+
+    const gramPackAmountRef = useRef<number | null>(initialIsWeight ? savedPackAmount : null);
+    const initialUnitRef = useRef(initialUnit);
 
     const { data: postTemplates } = trpc.postTemplates.list.useQuery();
     const { data: suppliers } = trpc.suppliers.list.useQuery();
@@ -172,9 +150,6 @@ export function PurchaseProductEditForm({
         return (currencies ?? []).find((c) => c.id === currencyId)?.name ?? null;
     }, [currencyId, currencies]);
 
-    // Цена за 1 единицу (гр/шт) в ₽ с оргсбором и доставкой — та же формула
-    // свёртки, что в amountDue. Нужна для шаблонных меток {{цены}} и
-    // {{фасовка поставщика}}. Пересчитывается live при изменении полей цены.
     const unitPriceRub = useMemo(
         () =>
             getUnitPriceWithDeliveryRub(
@@ -196,9 +171,6 @@ export function PurchaseProductEditForm({
     );
 
 
-    // По умолчанию выбираем валюту поставщика (EUR), а не рубль.
-    // Срабатывает только если валюта не задана и список валют загружен.
-    // Приоритет: EUR → первая не-RUB → первая в списке.
     useEffect(() => {
         if (currencyId != null) return;
         if (!currencies?.length) return;
@@ -216,26 +188,39 @@ export function PurchaseProductEditForm({
     );
     const preserveSavedDescriptionRef = useRef(loadSavedDescription && !!normalizeNovelHtml(f.description ?? ''));
 
-    // Сброс при смене товара.
     useEffect(() => {
         const nextF = initialPurchaseFields ?? {};
-        const nextFallbackUnit = getUnitByCode(product.unitCode)?.shortName ?? null;
-        const nextInitialUnit = defaultUnitField(nextF.packUnit, nextFallbackUnit);
-        setPricePerPackCurrency(toNum(nextF.pricePerPackCurrency));
+        const nextUnitDef = resolveUnit(nextF.packUnit) ?? resolveUnit(product.unitCode);
+        const nextUnit = nextUnitDef?.shortName ?? GRAM_UNIT;
+        const nextIsWeight = nextUnitDef?.kind === 'WEIGHT';
+        const nextSavedPack = toNum(nextF.packAmount);
+        const nextSavedPrice = toNum(nextF.pricePerPackCurrency);
+        const nextLegacyPack = !nextIsWeight && nextSavedPack != null && nextSavedPack > 1;
+
+        setUnit(nextUnit);
+        setPriceNote(
+            nextLegacyPack && nextSavedPrice != null
+                ? `Цена пересчитана за 1 ${nextUnit} из цены упаковки (${nextSavedPack} ${nextUnit})`
+                : null,
+        );
+        setPricePerPackCurrency(
+            nextLegacyPack && nextSavedPrice != null ? roundCurrency4(nextSavedPrice / (nextSavedPack ?? 1)) : nextSavedPrice,
+        );
         setCurrencyId(nextF.currencyId ?? null);
-        setPackAmount(toNum(nextF.packAmount));
-        setPackUnit(nextInitialUnit);
+        setPackAmount(nextIsWeight ? nextSavedPack : 1);
         setOrgFeePercentOverride(toNum(nextF.orgFeePercentOverride));
         setDeliveryPercentOverride(toNum(nextF.deliveryPercentOverride));
-        setMinPkgAmount(gramsOrDefault(nextF.minPackageAmount, nextInitialUnit, GRAM_DEFAULT_MIN_PACKAGE));
-        setMinPkgUnit(defaultUnitField(nextF.minPackageUnit, nextFallbackUnit));
-        setSupplementStep(gramsOrDefault(nextF.supplementStep, nextInitialUnit, GRAM_DEFAULT_SUPPLEMENT_STEP));
+        setMinPkgAmount(gramsOrDefault(nextF.minPackageAmount, nextUnit, GRAM_DEFAULT_MIN_PACKAGE));
+        setMinPkgUnit(defaultUnitField(nextF.minPackageUnit, nextUnit));
+        setSupplementStep(gramsOrDefault(nextF.supplementStep, nextUnit, GRAM_DEFAULT_SUPPLEMENT_STEP));
         setSupplierLimit(toNum(nextF.supplierLimit));
-        setSupplierLimitUnit(defaultUnitField(nextF.supplierLimitUnit, nextFallbackUnit));
+        setSupplierLimitUnit(defaultUnitField(nextF.supplierLimitUnit, nextUnit));
         setTargetRemainder(toNum(nextF.targetRemainder));
         setSupplierId(nextF.supplierId ?? null);
         setDescription(nextF.description ?? '');
 
+        gramPackAmountRef.current = nextIsWeight ? nextSavedPack : null;
+        initialUnitRef.current = nextUnit;
         userPickedTemplateRef.current = false;
         preserveSavedDescriptionRef.current = loadSavedDescription && !!normalizeNovelHtml(nextF.description ?? '');
         lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current ? (nextF.description ?? '') : null;
@@ -276,8 +261,8 @@ export function PurchaseProductEditForm({
             name: product.name,
             pricePerPackCurrency,
             currencyName: currencyName ?? undefined,
-            packAmount,
-            packUnit,
+            packAmount: isWeight ? packAmount : null,
+            packUnit: unit,
             supplierName: supplierName ?? undefined,
             purchaseTag,
             minPackageAmount: minPkgAmount,
@@ -292,7 +277,8 @@ export function PurchaseProductEditForm({
             pricePerPackCurrency,
             currencyName,
             packAmount,
-            packUnit,
+            unit,
+            isWeight,
             supplierName,
             purchaseTag,
             minPkgAmount,
@@ -385,33 +371,53 @@ export function PurchaseProductEditForm({
         syncDescriptionFromTemplate(value, { replace: true, bumpEditor: true });
     }
 
+    function handleUnitChange(next: string) {
+        const nextIsWeight = resolveUnit(next)?.kind === 'WEIGHT';
+        if (nextIsWeight) {
+            setPackAmount(gramPackAmountRef.current);
+        } else {
+            if (isWeight) gramPackAmountRef.current = packAmount;
+            setPackAmount(1);
+            setMinPkgAmount(null);
+            setSupplementStep(null);
+        }
+        setUnit(next);
+    }
+
     function handleSave() {
         onSave({
             supplierId,
             description: description || null,
             pricePerPackCurrency,
             currencyId,
-            packAmount,
-            packUnit,
+            packAmount: isWeight ? packAmount : 1,
+            packUnit: unit,
             orgFeePercentOverride,
             deliveryPercentOverride,
-            minPackageAmount: minPkgAmount,
-            minPackageUnit: minPkgUnit,
-            supplementStep,
+            minPackageAmount: isWeight ? minPkgAmount : null,
+            minPackageUnit: isWeight ? minPkgUnit : unit,
+            supplementStep: isWeight ? supplementStep : null,
             supplierLimit,
-            supplierLimitUnit,
+            supplierLimitUnit: isWeight ? supplierLimitUnit : unit,
             targetRemainder,
+            productUnitCode: (resolveUnit(unit)?.code ?? product.unitCode) as 'gram' | 'piece' | 'tube',
         });
     }
+
+    const unitWarning =
+        hasOrders && unit !== initialUnitRef.current
+            ? 'У позиции уже есть заказы — смена единицы не пересчитает их количества'
+            : null;
 
     return (
         <div className="flex flex-col gap-4">
             <SupplierSection supplierId={supplierId} onChange={setSupplierId} />
             <PackPricingSection
+                unit={unit}
+                onUnitChange={handleUnitChange}
                 pricePerPackCurrency={pricePerPackCurrency}
                 currencyId={currencyId}
                 packAmount={packAmount}
-                packUnit={packUnit}
                 orgFeePercentOverride={orgFeePercentOverride}
                 orgFeeDefaultPercent={orgFeeDefaultPercent}
                 deliveryPercent={deliveryPercent}
@@ -426,13 +432,10 @@ export function PurchaseProductEditForm({
                 onPriceChange={setPricePerPackCurrency}
                 onCurrencyChange={setCurrencyId}
                 onPackAmountChange={setPackAmount}
-                onPackUnitChange={setPackUnit}
                 onOrgFeeChange={setOrgFeePercentOverride}
                 onDeliveryPercentChange={setDeliveryPercentOverride}
-                // Picking grams as the package unit preloads sensible defaults
-                // for the supplement section below (5 g min package, 10 g step).
-                // The constants live in PackPricingSection so they're co-located
-                // with the trigger; here we only wire them to the target fields.
+                unitWarning={unitWarning}
+                priceNote={priceNote}
                 onGramsSelected={() => {
                     setMinPkgAmount(GRAM_DEFAULT_MIN_PACKAGE);
                     setMinPkgUnit(GRAM_UNIT);
@@ -440,6 +443,7 @@ export function PurchaseProductEditForm({
                 }}
             />
             <SupplementLimitsSection
+                unit={unit}
                 minPackageAmount={minPkgAmount}
                 supplementStep={supplementStep}
                 supplierLimit={supplierLimit}
@@ -465,7 +469,6 @@ export function PurchaseProductEditForm({
 
             {footer}
 
-            {/* Sticky footer */}
             <FormFooter>
                 {onCancel && (
                     <Button

@@ -85,6 +85,7 @@ function ProductCardImpl({
         },
         fulfillmentStatus,
         ctx.shortName,
+        product.unitCode,
     );
 
     const hasOrder = ctx.hasOrder;
