@@ -62,7 +62,7 @@ export function QuantityStepper({
             </Button>
             <div
                 className={cn(
-                    'flex min-w-0 flex-1 items-center justify-center border border-border bg-bg-base text-fg-primary tabular-nums',
+                    'flex min-w-0 flex-auto items-center justify-center border border-border bg-bg-base text-fg-primary tabular-nums',
                     s.button,
                     s.cell,
                 )}
