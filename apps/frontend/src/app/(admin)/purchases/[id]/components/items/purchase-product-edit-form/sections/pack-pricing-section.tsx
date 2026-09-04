@@ -271,7 +271,10 @@ export function PackPricingSection({
                 </div>
                 <div>
                     <label className="mb-1 block text-13-regular text-fg-tertiary">
-                        С доставкой, ₽<span className="ml-1 opacity-70">+{effMarkupPercent}%</span>
+                        С доставкой, ₽
+                        <span className="ml-1 opacity-70">
+                            +{effOrgFee}% орг +{effDelivery}% дост
+                        </span>
                     </label>
                     <InlineCell
                         value={packFullRub}
