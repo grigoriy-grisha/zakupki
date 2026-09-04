@@ -9,7 +9,6 @@ import {
     isPurchasePaymentOpen,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
-    renderNotificationBody,
 } from '@zakupki/types';
 import {
     Archive,
@@ -25,6 +24,7 @@ import { useMemo, useState } from 'react';
 
 import { useHandoffChoice } from '@/app/shop/hooks/use-handoff-choice';
 import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
+import { HandoffMessageCard } from '@/app/shop/orders/components/handoff-message-card';
 import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
@@ -323,29 +323,7 @@ function PurchaseOrderCard({
                 )}
 
                 {(handoffStatus === 'READY_TO_SHIP' || handoffStatus === 'STORED') && (
-                    <div className="rounded-2xl bg-bg-soft p-4">
-                        <p className="flex items-center gap-2 text-14-semibold text-fg-primary">
-                            {handoffStatus === 'READY_TO_SHIP' ? (
-                                <>
-                                    <Send className="size-4 shrink-0 text-accent-teal" />
-                                    Готовим отправку
-                                </>
-                            ) : (
-                                <>
-                                    <Archive className="size-4 shrink-0 text-warning" />
-                                    Заказ на хранении
-                                </>
-                            )}
-                        </p>
-                        <p className="mt-1.5 whitespace-pre-line text-13-regular text-fg-secondary">
-                            {renderNotificationBody(
-                                handoffStatus === 'READY_TO_SHIP'
-                                    ? 'ORDER_HANDOFF_SHIP_REQUEST'
-                                    : 'ORDER_HANDOFF_STORED',
-                                { purchaseId: group.id, purchaseTag: group.tag },
-                            )}
-                        </p>
-                    </div>
+                    <HandoffMessageCard status={handoffStatus} />
                 )}
 
                 {purchasePayments.length > 0 && (
