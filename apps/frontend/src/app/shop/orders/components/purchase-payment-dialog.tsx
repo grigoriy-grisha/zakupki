@@ -85,12 +85,6 @@ export function PurchasePaymentDialog({
                 <DialogHeader>
                     <DialogTitle>Оплата — прикрепите чек</DialogTitle>
                 </DialogHeader>
-                <div className="rounded-lg bg-warning/10 p-3 flex items-center gap-2 text-warning text-13-regular">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>
-                        Осталось оплатить: <strong>{formatRub(remaining)}</strong>
-                    </span>
-                </div>
                 <div className="rounded-lg bg-bg-soft p-3">
                     <p className="text-13-semibold text-fg-primary">Реквизиты для оплаты</p>
                     <div className="mt-1.5 space-y-0.5 text-13-regular text-fg-secondary">
@@ -107,6 +101,12 @@ export function PurchasePaymentDialog({
                             Банк: <span className="text-fg-primary">{PAYMENT_DETAILS.banks}</span>
                         </p>
                     </div>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 flex items-center gap-2 text-warning text-13-regular">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                        Осталось оплатить: <strong>{formatRub(remaining)}</strong>
+                    </span>
                 </div>
                 <form onSubmit={form.handleSubmit} className="space-y-4">
                     <div className="space-y-2">
