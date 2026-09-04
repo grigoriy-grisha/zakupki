@@ -83,19 +83,26 @@ function buildStatusBlock(renderer: BotProductRenderer, item: Item, orderLinesSu
 }
 
 /**
- * Сколько ещё свободно к заказу — пул добора, посчитанный как в UI (computeRawPool).
+ * Сколько ещё свободно к заказу — минимум из пула и глобальных капов.
  * Путь 1: targetRemainder админа. Путь 2: авто по пачкам поставщика (packsNeeded*packSize − ordered).
- * null = ограничения нет (нет ни targetRemainder, ни packSize).
+ * Путь 3: orderedQty — остаток к продаже (для шт/туб — единственный путь, для гр — min с пачками).
+ * supplierLimit (если задан) ограничивает итог сверху — как validateSupplierLimit на бэке.
+ * null = ограничения нет (нет ни targetRemainder, ни orderedQty, ни packSize, ни supplierLimit).
  */
 function computeFreeToOrder(item: Item): number | null {
     const stage = item.purchase.fulfillmentStatus as PurchaseFulfillmentStatus;
-    const aggregation = getStageStrategy(stage).aggregateForPool(toOrderLinesVO(item.orderLines));
-    return computeRawPool({
+    const packSize = item.packAmount != null ? Number(item.packAmount) : null;
+    const aggregation = getStageStrategy(stage).aggregateForPool(toOrderLinesVO(item.orderLines), packSize);
+    const pool = computeRawPool({
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
-        packSize: item.packAmount != null ? Number(item.packAmount) : null,
+        packSize,
         aggregation,
         unitCode: item.unitCode ?? null,
+        orderedQty: item.orderedQty != null ? Number(item.orderedQty) : null,
     });
+    if (item.supplierLimit == null) return pool;
+    const supplierStock = Math.max(0, Number(item.supplierLimit) - aggregation.totalOrderedWithPackages);
+    return pool == null ? supplierStock : Math.min(pool, supplierStock);
 }
 
 /** Short name ед. продукта (напр. «гр») для строки «Свободно к заказу». */

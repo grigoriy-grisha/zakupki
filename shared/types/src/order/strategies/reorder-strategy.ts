@@ -16,6 +16,7 @@
 import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
 import { validateSupplementPool } from '../pool';
 import { validateSupplierLimit } from '../limit';
+import { validateOrderedStock } from '../ordered-stock';
 import { effectiveQty } from '../order-math';
 import type { OrderLine } from '../order-line';
 import { BaseMutableStrategy } from './stage-strategy';
@@ -66,6 +67,12 @@ export class ReorderStrategy extends BaseMutableStrategy {
         // Pool: на суммарный user total. Пакеты = qty (effective).
         const userCurrent = effectiveQty(base, packSize) + effectiveQty(supp, packSize);
         const userNew = userCurrent + delta;
+
+        // Ordered stock: остаток к продаже (сколько заказано у поставщика).
+        // Жёстче и специфичнее pool — проверяем первым.
+        const stockErr = validateOrderedStock(this.item, userNew, userCurrent, aggregation);
+        if (stockErr) return err(stockErr);
+
         const poolErr = validateSupplementPool(this.item, userNew, userCurrent, aggregation);
         if (poolErr) return err(poolErr);
 
@@ -161,22 +168,20 @@ export class ReorderStrategy extends BaseMutableStrategy {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
         }
 
-        // Supplier limit check: пакеты дают qty (pkg * packAmount).
-        // Если delta>0 и пакеты увеличивают qty — проверяем глобальный пул.
+        // Ordered stock + supplier limit: пакеты дают qty (pkg * packAmount).
+        // Если delta>0 и пакеты увеличивают qty — проверяем глобальные капы.
         if (delta > 0 && this.item.packAmount != null) {
             const packSize = this.item.packAmount;
             const pkgDeltaQty = delta * packSize;
-            // userCurrent должен учитывать и текущие пакеты, иначе лимит считается
-            // только от qty и разрешает превысить supplierLimit.
+            // userCurrent должен учитывать и текущие пакеты, иначе кап считается
+            // только от qty и разрешает превысить остаток.
             const userCurrent = effectiveQty(base, packSize) + effectiveQty(supp, packSize);
             const userNew = userCurrent + pkgDeltaQty;
             if (userNew > 0) {
-                const limitErr = validateSupplierLimit(
-                    this.item,
-                    userNew,
-                    userCurrent,
-                    aggregateForPool('REORDER', toActiveVOs(this.lines), packSize),
-                );
+                const aggregation = aggregateForPool('REORDER', toActiveVOs(this.lines), packSize);
+                const stockErr = validateOrderedStock(this.item, userNew, userCurrent, aggregation);
+                if (stockErr) return err(stockErr);
+                const limitErr = validateSupplierLimit(this.item, userNew, userCurrent, aggregation);
                 if (limitErr) return err(limitErr);
             }
         }

@@ -51,6 +51,7 @@ export interface ShopPurchaseItem {
     orgFeePercentOverride?: string | number | null;
     deliveryPercentOverride?: string | number | null;
     targetRemainder: string | number | null;
+    orderedQty?: string | number | null;
     supplierLimit?: string | number | null;
     supplierLimitUnit?: string | null;
     minQty: string | number | null;

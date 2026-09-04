@@ -12,6 +12,7 @@
 import { OrderLine, type OrderLineProps } from './order-line';
 import { computePoolInfo, computeRawPool } from './pool';
 import { computeSupplierLimitInfo } from './limit';
+import { computeOrderedStockInfo } from './ordered-stock';
 import { getStageConfig } from './stages';
 import { mergeLines } from './aggregation';
 import { buildDisplayContext } from './order-display';
@@ -96,6 +97,7 @@ export class OrderBook {
             packSize: this.item.packAmount,
             aggregation: this.poolAggregation(),
             unitCode: this.item.unitCode,
+            orderedQty: this.item.orderedQty ?? null,
         });
     }
 
@@ -125,37 +127,51 @@ export class OrderBook {
             aggregation: this.poolAggregation(),
             currentQty,
             unitCode: this.item.unitCode,
+            orderedQty: this.item.orderedQty ?? null,
         });
 
-        // Supplier limit (если задан) — действует как жёсткий верх для всех этапов.
-        // Применяется даже когда poolApplies=false (COLLECTION): используем
-        // aggregateForPool с явным stage, чтобы не дублировать inline-цикл.
-        if (this.item.supplierLimit != null) {
-            const aggregation = cfg.poolApplies
-                ? poolInfo.totalOrderedQuantity > 0
-                    ? {
-                          totalBaseQuantity: poolInfo.totalBaseQuantity,
-                          supplementClaimed: poolInfo.supplementClaimed,
-                          totalOrderedQuantity: poolInfo.totalOrderedQuantity,
-                          totalOrderedWithPackages: poolInfo.totalOrderedWithPackages,
-                      }
-                    : this.poolAggregation()
-                : aggregateForPool('COLLECTION', toActiveVOs(this.lines), packSize);
+        // Supplier limit и ordered stock — глобальные капы, действующие как
+        // жёсткий верх на ВСЕХ этапах (включая COLLECTION, где pool не применяется).
+        // Берём минимум из pool и капов. Применяются даже когда poolApplies=false:
+        // используем aggregateForPool с явным stage, чтобы не дублировать inline-цикл.
+        let best = poolInfo;
+        const globalAggregation =
+            this.item.supplierLimit != null || this.item.orderedQty != null
+                ? cfg.poolApplies
+                    ? best.totalOrderedQuantity > 0
+                        ? {
+                              totalBaseQuantity: best.totalBaseQuantity,
+                              supplementClaimed: best.supplementClaimed,
+                              totalOrderedQuantity: best.totalOrderedQuantity,
+                              totalOrderedWithPackages: best.totalOrderedWithPackages,
+                          }
+                      : this.poolAggregation()
+                    : aggregateForPool('COLLECTION', toActiveVOs(this.lines), packSize)
+                : null;
+
+        if (globalAggregation != null && this.item.supplierLimit != null) {
             const limitInfo = computeSupplierLimitInfo({
                 supplierLimit: this.item.supplierLimit,
-                aggregation,
+                aggregation: globalAggregation,
                 currentQty,
             });
-            if (limitInfo.maxAllowed < poolInfo.maxAllowed) {
-                return {
-                    ...poolInfo,
-                    maxAllowed: limitInfo.maxAllowed,
-                    canAddMore: limitInfo.canAddMore,
-                };
+            if (limitInfo.maxAllowed < best.maxAllowed) {
+                best = { ...best, maxAllowed: limitInfo.maxAllowed, canAddMore: limitInfo.canAddMore };
             }
         }
 
-        return poolInfo;
+        if (globalAggregation != null && this.item.orderedQty != null) {
+            const stockInfo = computeOrderedStockInfo({
+                orderedQty: this.item.orderedQty,
+                aggregation: globalAggregation,
+                currentQty,
+            });
+            if (stockInfo.maxAllowed < best.maxAllowed) {
+                best = { ...best, maxAllowed: stockInfo.maxAllowed, canAddMore: stockInfo.canAddMore };
+            }
+        }
+
+        return best;
     }
 
     displayContextFor(userId: number): OrderDisplayContext {

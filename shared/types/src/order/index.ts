@@ -34,6 +34,8 @@ export { buildDisplayContext } from './order-display';
 export { computeRawPool, computePoolInfo, validateSupplementPool } from './pool';
 export { computeRawSupplierLimit, computeSupplierLimitInfo, validateSupplierLimit } from './limit';
 export type { SupplierLimitInfo } from './limit';
+export { computeRawOrderedStock, computeOrderedStockInfo, validateOrderedStock } from './ordered-stock';
+export type { OrderedStockInfo } from './ordered-stock';
 export { aggregateForPool } from './strategies/atomic';
 export { computeAmountDue, computeAmountDueWithPackages, computePackagePrice, computeUnitPriceRubNewModel } from './pricing';
 export { mergeLines } from './aggregation';

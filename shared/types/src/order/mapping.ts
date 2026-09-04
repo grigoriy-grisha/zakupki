@@ -55,6 +55,7 @@ export interface PurchaseItemRowLike {
     minPackageUnit?: string | null;
     supplementStep?: unknown;
     targetRemainder?: unknown;
+    orderedQty?: unknown;
     supplierLimit?: unknown;
     supplierLimitUnit?: string | null;
     supplierId?: number | null;
@@ -111,6 +112,7 @@ export function mapToPurchaseItem(
         supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
         fulfillmentStatus: (item.purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus,
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
+        orderedQty: item.orderedQty != null ? Number(item.orderedQty) : null,
         supplierLimit: item.supplierLimit != null ? Number(item.supplierLimit) : null,
         supplierLimitUnit: item.supplierLimitUnit ?? null,
         supplierId: item.supplierId ?? item.supplier?.id ?? null,

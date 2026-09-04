@@ -149,6 +149,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             minPackageUnit: item.minPackageUnit ?? null,
             supplementStep: item.supplementStep,
             targetRemainder: item.targetRemainder,
+            orderedQty: item.orderedQty != null ? Number(item.orderedQty) : null,
             supplierLimit: item.supplierLimit,
             supplierLimitUnit: item.supplierLimitUnit ?? null,
             supplierId: item.supplierId ?? null,
@@ -170,10 +171,37 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const unitPriceRub = computeUnitPriceRubNewModel(purchaseItem);
     const price = unitPriceRub ?? 0;
 
-    const poolEmptyForUser = isSupplement && availablePool != null && availablePool <= 1e-9 && currentQuantity <= 0;
+    const effectiveUserQty = currentQuantity + currentPackageCount * (packSize ?? 0);
+    const totalOrderedWithPackages = (item.orderLines ?? [])
+        .filter((l) => (l as { status?: string }).status !== 'CANCELLED')
+        .reduce(
+            (sum, l) =>
+                sum +
+                Number((l as { quantity?: unknown }).quantity ?? 0) +
+                Number((l as { packageCount?: unknown }).packageCount ?? 0) * (packSize ?? 0),
+            0,
+        );
+
+    // Глобальные капы — жёсткий минимум из пула, остатка к продаже (orderedQty)
+    // и лимита поставщика. Совпадает с бэком: validateOrderedStock проверяется
+    // первым, validateSupplierLimit вторым — эффективный остаток одинаковый.
+    const orderedQtyNum = item.orderedQty != null ? Number(item.orderedQty) : null;
+    const orderedStock =
+        orderedQtyNum != null ? Math.max(0, orderedQtyNum - totalOrderedWithPackages) : null;
+    const supplierLimitNum = item.supplierLimit != null ? Number(item.supplierLimit) : null;
+    const supplierStock =
+        supplierLimitNum != null ? Math.max(0, supplierLimitNum - totalOrderedWithPackages) : null;
+    const globalStocks = [orderedStock, supplierStock].filter((s): s is number => s != null);
+    const effectivePool =
+        globalStocks.length > 0
+            ? Math.min(availablePool ?? Number.POSITIVE_INFINITY, ...globalStocks)
+            : availablePool;
+
+    const poolEmptyForUser =
+        isSupplement && effectivePool != null && effectivePool <= 1e-9 && currentQuantity <= 0;
     const freeRemainderLabel =
-        isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY && !poolEmptyForUser
-            ? `Можно добавить: ${formatQtyUnit(availablePool, shortName)}`
+        isSupplement && effectivePool != null && effectivePool < Number.POSITIVE_INFINITY && !poolEmptyForUser
+            ? `Можно добавить: ${formatQtyUnit(effectivePool, shortName)}`
             : null;
 
     const isWeight = isWeightUnit(unitCode);
@@ -181,32 +209,18 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
     const showPackageButtons = canAddPackage && hasSupplierPackage && isWeight;
 
-    // Лимит на упаковки — только по supplierLimit (жёсткий лимит товара).
+    // Лимит на упаковки — supplierLimit + orderedQty (жёсткие глобальные капы).
     // Остаток/пул добора НЕ ограничивает упаковки: упаковка = базовая фасовка,
-    // а не добор. Бэкенд (ReorderStrategy.adjustPackages) проверяет только
-    // validateSupplierLimit, не validateSupplementPool — здесь та же логика.
-    // supplierMaxAllowed = supplierLimit − totalOrderedWithPackages + effectiveUserQty
-    // (totalOrderedWithPackages уже включает effectiveUserQty, поэтому компенсируем).
-    const supplierLimitNum = item.supplierLimit != null ? Number(item.supplierLimit) : null;
+    // а не добор. Бэкенд (adjustPackages) проверяет validateOrderedStock и
+    // validateSupplierLimit — здесь та же логика.
     let canAddMorePackages: boolean;
     if (!showPackageButtons || packSize == null) {
         canAddMorePackages = false;
-    } else if (supplierLimitNum == null) {
-        // Нет жёсткого лимита → упаковки без ограничений.
-        canAddMorePackages = true;
     } else {
-        const effectiveUserQty = currentQuantity + currentPackageCount * packSize;
-        const totalOrderedWithPackages = (item.orderLines ?? [])
-            .filter((l) => (l as { status?: string }).status !== 'CANCELLED')
-            .reduce(
-                (sum, l) =>
-                    sum +
-                    Number((l as { quantity?: unknown }).quantity ?? 0) +
-                    Number((l as { packageCount?: unknown }).packageCount ?? 0) * packSize,
-                0,
-            );
-        const supplierMaxAllowed = supplierLimitNum - totalOrderedWithPackages + effectiveUserQty;
-        canAddMorePackages = effectiveUserQty + packSize <= supplierMaxAllowed + 1e-9;
+        const nextQty = effectiveUserQty + packSize;
+        const fitsSupplier = supplierStock == null || nextQty <= supplierStock + effectiveUserQty + 1e-9;
+        const fitsOrdered = orderedStock == null || nextQty <= orderedStock + effectiveUserQty + 1e-9;
+        canAddMorePackages = fitsSupplier && fitsOrdered;
     }
     const packagePrice = computePackagePrice(purchaseItem);
     const packageTotal = currentPackageCount * packagePrice;
@@ -217,17 +231,18 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const effectiveQty = currentQuantity + currentPackageCount * (packSize ?? 0);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(effectiveQty, packDiscountInfo.packSize) : 0;
 
-    // Границы — ЕДИНОЕ правило с бэком: maxAllowed = pool + currentQuantity
-    const maxAllowed =
+    // Границы — ЕДИНОЕ правило с бэком: maxAllowed = min(pool, orderedStock, supplierStock) + currentQuantity
+    const poolMaxAllowed =
         availablePool != null && Number.isFinite(availablePool)
             ? availablePool + currentQuantity
             : Number.POSITIVE_INFINITY;
+    const maxAllowed = Math.min(poolMaxAllowed, ...globalStocks.map((s) => s + currentQuantity));
     const minAllowed = fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
 
     // Разрешения
     const orderingClosed = isOrderingClosedStage(fulfillmentStatus);
     const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
-    const poolExhausted = isSupplement && availablePool != null && availablePool <= 1e-9;
+    const poolExhausted = isSupplement && effectivePool != null && effectivePool <= 1e-9;
     const isSoldOut = poolExhausted && !hasOrder;
     const canAdd = !orderingClosed && currentQuantity < maxAllowed;
     const canDecrease =
@@ -242,7 +257,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         currentPackageCount,
         activeStep,
         isSupplement,
-        availablePool,
+        availablePool: effectivePool,
         isSoldOut,
         freeRemainderLabel,
         packSize,

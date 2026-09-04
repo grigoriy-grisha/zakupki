@@ -16,6 +16,7 @@
  */
 import { validateSupplementPool } from '../pool';
 import { validateSupplierLimit } from '../limit';
+import { validateOrderedStock } from '../ordered-stock';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
     aggregateForPool,
@@ -41,9 +42,12 @@ export class PaymentPlusStrategy extends BaseMutableStrategy {
         // Агрегируем один раз — используется обеими проверками.
         if (delta > 0) {
             // packSize обязателен: без него пакеты не учитываются в
-            // totalOrderedWithPackages и supplierLimit пускает сверх лимита
+            // totalOrderedWithPackages и глобальные капы пускают сверх остатка
             // (тот же класс бага, что и в reorder-strategy.ts:62).
             const aggregation = aggregateForPool(this.item.fulfillmentStatus, toActiveVOs(this.lines), this.item.packAmount);
+
+            const stockErr = validateOrderedStock(this.item, newQty, currentQty, aggregation);
+            if (stockErr) return err(stockErr);
 
             if (this.cfg.poolApplies) {
                 const poolErr = validateSupplementPool(this.item, newQty, currentQty, aggregation);

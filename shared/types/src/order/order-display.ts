@@ -16,6 +16,7 @@ import { computeAmountDueWithPackages, computePackagePrice, computeUnitPriceRubN
 import { getStageConfig } from './stages';
 import { computePoolInfo } from './pool';
 import { computeSupplierLimitInfo } from './limit';
+import { computeOrderedStockInfo } from './ordered-stock';
 import { aggregateForPool } from './strategies/atomic';
 import { mergeLines } from './aggregation';
 import { getUnitShortName } from './utils';
@@ -132,35 +133,48 @@ function buildPoolInfo(item: PurchaseItem, lines: readonly OrderLine[], userId: 
             aggregation: aggregateForPool(item.fulfillmentStatus, activeVOs(lines), packSize),
             currentQty,
             unitCode: item.unitCode,
+            orderedQty: item.orderedQty ?? null,
         });
     }
 
-    // Supplier limit (если задан) — глобальный остаток поставщика, действует
-    // на ВСЕХ этапах (включая COLLECTION). Берём минимум из pool и supplier limit.
-    if (item.supplierLimit != null) {
-        const aggregation = cfg.poolApplies
-            ? {
-                  totalBaseQuantity: poolInfo.totalBaseQuantity,
-                  supplementClaimed: poolInfo.supplementClaimed,
-                  totalOrderedQuantity: poolInfo.totalOrderedQuantity,
-                  totalOrderedWithPackages: poolInfo.totalOrderedWithPackages,
-              }
-            : aggregateForPool('COLLECTION', activeVOs(lines), packSize);
+    // Supplier limit и ordered stock — глобальные капы, действующие на ВСЕХ
+    // этапах (включая COLLECTION). Берём минимум из pool и капов.
+    let best = poolInfo;
+    const globalAggregation =
+        item.supplierLimit != null || item.orderedQty != null
+            ? cfg.poolApplies
+                ? {
+                      totalBaseQuantity: best.totalBaseQuantity,
+                      supplementClaimed: best.supplementClaimed,
+                      totalOrderedQuantity: best.totalOrderedQuantity,
+                      totalOrderedWithPackages: best.totalOrderedWithPackages,
+                  }
+                : aggregateForPool('COLLECTION', activeVOs(lines), packSize)
+            : null;
+
+    if (globalAggregation != null && item.supplierLimit != null) {
         const limitInfo = computeSupplierLimitInfo({
             supplierLimit: item.supplierLimit,
-            aggregation,
+            aggregation: globalAggregation,
             currentQty,
         });
-        if (limitInfo.maxAllowed < poolInfo.maxAllowed) {
-            return {
-                ...poolInfo,
-                maxAllowed: limitInfo.maxAllowed,
-                canAddMore: limitInfo.canAddMore,
-            };
+        if (limitInfo.maxAllowed < best.maxAllowed) {
+            best = { ...best, maxAllowed: limitInfo.maxAllowed, canAddMore: limitInfo.canAddMore };
         }
     }
 
-    return poolInfo;
+    if (globalAggregation != null && item.orderedQty != null) {
+        const stockInfo = computeOrderedStockInfo({
+            orderedQty: item.orderedQty,
+            aggregation: globalAggregation,
+            currentQty,
+        });
+        if (stockInfo.maxAllowed < best.maxAllowed) {
+            best = { ...best, maxAllowed: stockInfo.maxAllowed, canAddMore: stockInfo.canAddMore };
+        }
+    }
+
+    return best;
 }
 
 function filterUserLines(lines: readonly OrderLine[], userId: number): readonly OrderLine[] {

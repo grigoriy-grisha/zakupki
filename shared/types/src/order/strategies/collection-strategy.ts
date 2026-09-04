@@ -12,6 +12,7 @@
  */
 import type { OrderLine } from '../order-line';
 import { validateSupplierLimit } from '../limit';
+import { validateOrderedStock } from '../ordered-stock';
 import { effectiveQty } from '../order-math';
 import { BaseMutableStrategy } from './stage-strategy';
 import {
@@ -43,10 +44,13 @@ export class CollectionStrategy extends BaseMutableStrategy {
             return applyZeroOutOnLine(line);
         }
 
-        // Supplier limit check (глобальный пул, не зависит от poolApplies)
+        // Ordered stock + supplier limit (глобальные капы, не зависят от poolApplies)
         if (delta > 0) {
             const newEffectiveQty = currentQtyEffective + delta;
-            const limitErr = validateSupplierLimit(this.item, newEffectiveQty, currentQtyEffective, this.aggregateForPool());
+            const aggregation = this.aggregateForPool();
+            const stockErr = validateOrderedStock(this.item, newEffectiveQty, currentQtyEffective, aggregation);
+            if (stockErr) return err(stockErr);
+            const limitErr = validateSupplierLimit(this.item, newEffectiveQty, currentQtyEffective, aggregation);
             if (limitErr) return err(limitErr);
         }
 
@@ -64,11 +68,14 @@ export class CollectionStrategy extends BaseMutableStrategy {
             return err({ code: 'negative', message: 'Количество упаковок не может быть отрицательным' });
         }
 
-        // Supplier limit check: пакеты добавляют qty, проверяем глобальный пул.
+        // Ordered stock + supplier limit: пакеты добавляют qty, проверяем глобальные капы.
         if (delta > 0 && packSize != null) {
             const newQty = currentQty + delta * packSize;
             if (newQty > 0) {
-                const limitErr = validateSupplierLimit(this.item, newQty, currentQty, this.aggregateForPool());
+                const aggregation = this.aggregateForPool();
+                const stockErr = validateOrderedStock(this.item, newQty, currentQty, aggregation);
+                if (stockErr) return err(stockErr);
+                const limitErr = validateSupplierLimit(this.item, newQty, currentQty, aggregation);
                 if (limitErr) return err(limitErr);
             }
         }

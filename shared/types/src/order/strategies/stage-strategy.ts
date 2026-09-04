@@ -253,31 +253,26 @@ export abstract class BaseMutableStrategy extends StageStrategy {
  */
 export interface StageStrategyShim {
     readonly stageName: PurchaseFulfillmentStatus;
-    aggregateForPool(vos: OrderLineVO[]): PoolAggregation;
+    aggregateForPool(vos: OrderLineVO[], packSize?: number | null): PoolAggregation;
+}
+
+function shimFor(stage: PurchaseFulfillmentStatus): StageStrategyShim {
+    return {
+        stageName: stage,
+        aggregateForPool: (vos, packSize) => aggregateForPool(stage, vos, packSize),
+    };
 }
 
 const STATIC_STRATEGIES: Record<PurchaseFulfillmentStatus, StageStrategyShim> = {
-    COLLECTION: { stageName: 'COLLECTION', aggregateForPool: (vos) => aggregateForPool('COLLECTION', vos) },
-    REORDER: { stageName: 'REORDER', aggregateForPool: (vos) => aggregateForPool('REORDER', vos) },
-    PAYMENT: { stageName: 'PAYMENT', aggregateForPool: (vos) => aggregateForPool('PAYMENT', vos) },
-    SUPPLIER_ASSEMBLY: {
-        stageName: 'SUPPLIER_ASSEMBLY',
-        aggregateForPool: (vos) => aggregateForPool('SUPPLIER_ASSEMBLY', vos),
-    },
-    PREPARING_SHIPMENT_RF: {
-        stageName: 'PREPARING_SHIPMENT_RF',
-        aggregateForPool: (vos) => aggregateForPool('PREPARING_SHIPMENT_RF', vos),
-    },
-    IN_TRANSIT_RF: { stageName: 'IN_TRANSIT_RF', aggregateForPool: (vos) => aggregateForPool('IN_TRANSIT_RF', vos) },
-    IN_TRANSIT_TO_ORGANIZER: {
-        stageName: 'IN_TRANSIT_TO_ORGANIZER',
-        aggregateForPool: (vos) => aggregateForPool('IN_TRANSIT_TO_ORGANIZER', vos),
-    },
-    PACKAGING: { stageName: 'PACKAGING', aggregateForPool: (vos) => aggregateForPool('PACKAGING', vos) },
-    READY_FOR_PICKUP: {
-        stageName: 'READY_FOR_PICKUP',
-        aggregateForPool: (vos) => aggregateForPool('READY_FOR_PICKUP', vos),
-    },
+    COLLECTION: shimFor('COLLECTION'),
+    REORDER: shimFor('REORDER'),
+    PAYMENT: shimFor('PAYMENT'),
+    SUPPLIER_ASSEMBLY: shimFor('SUPPLIER_ASSEMBLY'),
+    PREPARING_SHIPMENT_RF: shimFor('PREPARING_SHIPMENT_RF'),
+    IN_TRANSIT_RF: shimFor('IN_TRANSIT_RF'),
+    IN_TRANSIT_TO_ORGANIZER: shimFor('IN_TRANSIT_TO_ORGANIZER'),
+    PACKAGING: shimFor('PACKAGING'),
+    READY_FOR_PICKUP: shimFor('READY_FOR_PICKUP'),
 };
 
 export function getStageStrategy(stage: PurchaseFulfillmentStatus): StageStrategyShim {

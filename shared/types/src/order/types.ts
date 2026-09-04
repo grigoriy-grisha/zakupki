@@ -63,6 +63,15 @@ export interface PurchaseItem {
     /** Явно заданный админом остаток добора. null — авторасчёт по пачкам. */
     targetRemainder: number | null;
     /**
+     * Заказано у поставщика (в базовых единицах: гр/шт/туба) — сколько
+     * организатор закупил и может продать. Если задано — суммарный
+     * effective-заказ всех пользователей (qty + упаковки × packSize) не может
+     * превысить это количество ни на одном этапе. null — ещё не заказано,
+     * ограничения нет. На этапах после сборки поставщика кап остаётся на
+     * orderedQty (на assembledQty/reorderedQty не переключается).
+     */
+    orderedQty?: number | null;
+    /**
      * Глобальный лимит остатка у поставщика (в ед. supplierLimitUnit).
      * Суммарно все пользователи не могут заказать больше этого лимита ни на одном этапе.
      * null — без ограничений.
@@ -129,6 +138,7 @@ export type OrderErrorCode =
     | 'forbidden'
     | 'pool_exceeded'
     | 'limit_exceeded'
+    | 'stock_exceeded'
     | 'below_base'
     | 'no_package'
     | 'negative'

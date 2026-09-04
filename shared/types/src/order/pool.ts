@@ -1,36 +1,51 @@
 /**
  * Расчёт пула добора (supplement pool).
  *
- * Два пути:
+ * Три пути:
  *  1. targetRemainder задан админом → pool = targetRemainder - supplementClaimed.
  *  2. Авторасчёт по пачкам: pool = packsNeeded * packSize - totalOrdered,
  *     где packsNeeded фиксируется по замороженному baseQuantity (REORDER)
  *     или по totalOrdered (COLLECTION, до заморозки).
+ *  3. orderedQty задан (шт/туба — единственный путь; гр/пачки — min с путём 2):
+ *     pool = orderedQty - totalOrderedWithPackages (остаток к продаже).
  */
 import type { OrderError, PoolAggregation, PoolInfo, PurchaseItem } from './types';
 import { getUnitShortName } from './utils';
 import { isPieceUnit } from '../units/normalize';
+import { computeRawOrderedStock } from './ordered-stock';
 
 export function computeRawPool(input: {
     targetRemainder: number | null;
     packSize: number | null;
     aggregation: PoolAggregation;
     unitCode?: string | null;
+    orderedQty?: number | null;
 }): number | null {
     const { targetRemainder, packSize, aggregation } = input;
     const { totalOrderedQuantity, supplementClaimed, totalBaseQuantity } = aggregation;
 
+    const orderedPool = computeRawOrderedStock({
+        orderedQty: input.orderedQty ?? null,
+        aggregation,
+    });
+
+    let pool: number | null;
     if (targetRemainder != null) {
-        return Math.max(0, targetRemainder - Math.max(0, supplementClaimed));
+        pool = Math.max(0, targetRemainder - Math.max(0, supplementClaimed));
+    } else if (isPieceUnit(input.unitCode ?? null)) {
+        pool = null;
+    } else if (packSize == null || packSize <= 0) {
+        pool = null;
+    } else {
+        const baseForPacks = totalBaseQuantity > 0 ? totalBaseQuantity : totalOrderedQuantity;
+        const packsNeeded = Math.max(1, Math.ceil(baseForPacks / packSize - 1e-9));
+        pool = Math.max(0, packsNeeded * packSize - totalOrderedQuantity);
     }
 
-    if (isPieceUnit(input.unitCode ?? null)) return null;
-
-    if (packSize == null || packSize <= 0) return null;
-
-    const baseForPacks = totalBaseQuantity > 0 ? totalBaseQuantity : totalOrderedQuantity;
-    const packsNeeded = Math.max(1, Math.ceil(baseForPacks / packSize - 1e-9));
-    return Math.max(0, packsNeeded * packSize - totalOrderedQuantity);
+    if (orderedPool != null) {
+        pool = pool == null ? orderedPool : Math.min(pool, orderedPool);
+    }
+    return pool;
 }
 
 /**
@@ -46,12 +61,14 @@ export function computePoolInfo(input: {
     aggregation: PoolAggregation;
     currentQty: number;
     unitCode?: string | null;
+    orderedQty?: number | null;
 }): PoolInfo {
     const pool = computeRawPool({
         targetRemainder: input.targetRemainder,
         packSize: input.packSize,
         aggregation: input.aggregation,
         unitCode: input.unitCode ?? null,
+        orderedQty: input.orderedQty ?? null,
     });
 
     if (pool == null) {
@@ -95,6 +112,7 @@ export function validateSupplementPool(
         packSize: item.packAmount,
         aggregation,
         unitCode: item.unitCode,
+        orderedQty: item.orderedQty ?? null,
     });
     if (pool == null) return null;
 
