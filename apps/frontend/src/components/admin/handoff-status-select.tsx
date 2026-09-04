@@ -1,7 +1,7 @@
 'use client';
 
 import { HANDOFF_DEFAULT_LABEL, HANDOFF_STATUS_LABELS, type HandoffStatus } from '@zakupki/types';
-import { Archive, Check, ChevronDown, Clock, PackageCheck, Truck } from 'lucide-react';
+import { Archive, Boxes, Check, ChevronDown, Clock, PackageCheck, Send, Truck } from 'lucide-react';
 
 import {
     DropdownMenu,
@@ -26,6 +26,20 @@ const OPTIONS: HandoffOption[] = [
         icon: Clock,
         itemClass: 'text-fg-secondary',
         triggerClass: 'border-border bg-bg-card text-fg-secondary',
+    },
+    {
+        value: 'ASSEMBLED',
+        label: HANDOFF_STATUS_LABELS.ASSEMBLED,
+        icon: Boxes,
+        itemClass: 'text-primary',
+        triggerClass: 'border-primary/30 bg-primary/10 text-primary',
+    },
+    {
+        value: 'READY_TO_SHIP',
+        label: HANDOFF_STATUS_LABELS.READY_TO_SHIP,
+        icon: Send,
+        itemClass: 'text-accent-teal',
+        triggerClass: 'border-accent-teal/30 bg-accent-teal/10 text-accent-teal',
     },
     {
         value: 'SENT',

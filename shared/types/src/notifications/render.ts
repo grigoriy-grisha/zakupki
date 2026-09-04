@@ -1,10 +1,10 @@
+import type { HandoffStatus, PurchaseFulfillmentStatus, PurchaseStatus } from '../index';
 import {
     HANDOFF_DEFAULT_LABEL,
     HANDOFF_STATUS_LABELS,
     PURCHASE_FULFILLMENT_LABELS,
     PURCHASE_STATUS_LABELS,
 } from '../index';
-import type { HandoffStatus, PurchaseFulfillmentStatus, PurchaseStatus } from '../index';
 import { formatQtyLabel } from '../utils';
 import type { NotificationPayload, NotificationType } from './types';
 
@@ -14,6 +14,44 @@ import type { NotificationPayload, NotificationType } from './types';
  * so list queries never need to re-render. Do NOT call from the client or the
  * bot worker — they read the stored `title`/`body`/`url` columns directly.
  */
+
+const ORDER_ASSEMBLED_TEXT =
+    'Добрый день! Ваш заказ полностью собран ✅\n\nПожалуйста, уточните: отправляем заказ сейчас или пока оставляем на хранение?';
+
+const HANDOFF_STORED_TEXT = [
+    'Хорошо, ваш заказ пока оставляем на хранение ✅',
+    'Когда будете готовы получить заказ, просто напишите в ЛС @kind_of_girl, какие закупки необходимо отправить вместе 📦',
+    '',
+    'Если в дальнейшем к этому заказу добавятся новые закупки, их можно будет объединить в одну отправку.',
+].join('\n');
+
+const HANDOFF_SHIP_REQUEST_TEXT = [
+    'Отлично! Пришлите, пожалуйста в ЛС @kind_of_girl следующую информацию:',
+    '',
+    '1. Транспортная компания',
+    '2. Город',
+    '3. Адрес ПВЗ',
+    '4. Номер телефона получателя',
+    '5. Фамилия, Имя, Отчество',
+    '6. Страховка посылки:',
+    '— на полную сумму заказа',
+    '— или минимальная сумма страхования (обычно 1 000–3 000 ₽, в зависимости от ТК)',
+    '7. Какие закупки / заказы необходимо отправить вместе',
+    '',
+    'После получения данных я самостоятельно оформлю заявку на доставку и направлю вам сумму к оплате.',
+    '',
+    'После оплаты доставки посылка будет передана на отправку.',
+    '',
+    '🧵Можно оформить доставку самостоятельно',
+    'Если вам удобнее, вы можете самостоятельно создать отправление в выбранной транспортной компании.',
+    '',
+    'Если для оформления потребуется фотография посылки, например в Ozon, — напишите мне, я её отправлю.',
+    '',
+    'После оформления пришлите в ЛС @kind_of_girl:',
+    'штрихкод / QR-код / номер заказа или отправления, который необходимо предъявить при передаче посылки.',
+    '',
+    'Такой вариант тоже отлично подходит и помогает значительно ускорить отправку 🤍',
+].join('\n');
 
 /** Short human title, used as the notification headline in the bell & list. */
 export function renderNotificationTitle(type: NotificationType): string {
@@ -30,6 +68,12 @@ export function renderNotificationTitle(type: NotificationType): string {
             return 'Заказ очищен';
         case 'ORDER_HANDOFF_STATUS':
             return 'Статус заказа обновлён';
+        case 'ORDER_ASSEMBLED':
+            return 'Заказ собран';
+        case 'ORDER_HANDOFF_STORED':
+            return 'Заказ на хранении';
+        case 'ORDER_HANDOFF_SHIP_REQUEST':
+            return 'Готовим отправку';
         case 'PURCHASE_FULFILLMENT_STAGE':
             return 'Этап закупки обновлён';
         case 'PURCHASE_STATUS_CHANGED':
@@ -82,6 +126,12 @@ export function renderNotificationBody<T extends NotificationType>(
             const label = HANDOFF_STATUS_LABELS[p.status as HandoffStatus];
             return `Закупка ${formatTag(p.purchaseTag)}: статус вашего заказа — «${label}».`;
         }
+        case 'ORDER_ASSEMBLED':
+            return ORDER_ASSEMBLED_TEXT;
+        case 'ORDER_HANDOFF_STORED':
+            return HANDOFF_STORED_TEXT;
+        case 'ORDER_HANDOFF_SHIP_REQUEST':
+            return HANDOFF_SHIP_REQUEST_TEXT;
         case 'PURCHASE_FULFILLMENT_STAGE': {
             const p = payload as NotificationPayload<'PURCHASE_FULFILLMENT_STAGE'>;
             const label = PURCHASE_FULFILLMENT_LABELS[p.stage as PurchaseFulfillmentStatus];
@@ -152,6 +202,12 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
             lines.push(`<b>Статус:</b> ${escapeHtml(label)}`);
             break;
         }
+        case 'ORDER_ASSEMBLED':
+            return ORDER_ASSEMBLED_TEXT;
+        case 'ORDER_HANDOFF_STORED':
+            return HANDOFF_STORED_TEXT;
+        case 'ORDER_HANDOFF_SHIP_REQUEST':
+            return HANDOFF_SHIP_REQUEST_TEXT;
         case 'PURCHASE_FULFILLMENT_STAGE': {
             const pp = p as NotificationPayload<'PURCHASE_FULFILLMENT_STAGE'>;
             const label = PURCHASE_FULFILLMENT_LABELS[pp.stage as PurchaseFulfillmentStatus];
@@ -181,6 +237,9 @@ export function renderNotificationUrl<T extends NotificationType>(
         case 'PAYMENT_CONFIRMED':
         case 'PAYMENT_REJECTED':
         case 'ORDER_HANDOFF_STATUS':
+        case 'ORDER_ASSEMBLED':
+        case 'ORDER_HANDOFF_STORED':
+        case 'ORDER_HANDOFF_SHIP_REQUEST':
             return '/shop/orders';
         case 'ORDER_QTY_CHANGED':
         case 'ORDER_LINE_DELETED':
@@ -258,6 +317,12 @@ export function getNotificationVisual(type: NotificationType): NotificationVisua
         case 'ORDER_CLEARED':
             return { icon: 'order-remove', tone: 'warning' };
         case 'ORDER_HANDOFF_STATUS':
+            return { icon: 'handoff', tone: 'accent' };
+        case 'ORDER_ASSEMBLED':
+            return { icon: 'handoff', tone: 'success' };
+        case 'ORDER_HANDOFF_STORED':
+            return { icon: 'handoff', tone: 'neutral' };
+        case 'ORDER_HANDOFF_SHIP_REQUEST':
             return { icon: 'handoff', tone: 'accent' };
         case 'PURCHASE_FULFILLMENT_STAGE':
             return { icon: 'stage', tone: 'neutral' };
@@ -343,6 +408,24 @@ export function getNotificationFields<T extends NotificationType>(
                 label: 'Статус',
                 value: p.status == null ? HANDOFF_DEFAULT_LABEL : HANDOFF_STATUS_LABELS[p.status as HandoffStatus],
             });
+            break;
+        }
+        case 'ORDER_ASSEMBLED': {
+            const p = payload as NotificationPayload<'ORDER_ASSEMBLED'>;
+            addTag(p.purchaseTag);
+            fields.push({ label: 'Статус', value: HANDOFF_STATUS_LABELS.ASSEMBLED });
+            break;
+        }
+        case 'ORDER_HANDOFF_STORED': {
+            const p = payload as NotificationPayload<'ORDER_HANDOFF_STORED'>;
+            addTag(p.purchaseTag);
+            fields.push({ label: 'Статус', value: HANDOFF_STATUS_LABELS.STORED });
+            break;
+        }
+        case 'ORDER_HANDOFF_SHIP_REQUEST': {
+            const p = payload as NotificationPayload<'ORDER_HANDOFF_SHIP_REQUEST'>;
+            addTag(p.purchaseTag);
+            fields.push({ label: 'Статус', value: HANDOFF_STATUS_LABELS.READY_TO_SHIP });
             break;
         }
         case 'PURCHASE_FULFILLMENT_STAGE': {

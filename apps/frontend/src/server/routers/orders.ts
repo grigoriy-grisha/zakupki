@@ -1,3 +1,4 @@
+import { HANDOFF_STATUSES } from '@zakupki/types';
 import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
@@ -158,7 +159,7 @@ export const ordersRouter = router({
         .input(
             z.object({
                 id: z.number(),
-                status: z.enum(['SENT', 'RECEIVED', 'STORED']).nullable(),
+                status: z.enum(HANDOFF_STATUSES).nullable(),
             }),
         )
         .mutation(async ({ ctx, input }) => {

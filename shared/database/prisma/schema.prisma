@@ -460,6 +460,8 @@ enum OrderLineStatus {
 }
 
 enum HandoffStatus {
+  ASSEMBLED
+  READY_TO_SHIP
   SENT
   RECEIVED
   STORED

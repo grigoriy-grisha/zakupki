@@ -3,6 +3,7 @@ import type { EventBus } from '@zakupki/queue';
 import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 import {
     canCancelOrder,
+    ForbiddenError,
     type HandoffStatus,
     NotFoundError,
     OrderBook,
@@ -242,7 +243,36 @@ export class OrderService {
         if ((po.handoffStatus as HandoffStatus | null) === status) return;
 
         await this.repo.setHandoffStatus(purchaseOrderId, status, actorId);
+        if (status === 'ASSEMBLED') {
+            await this.notification.notify({
+                userId: po.userId,
+                type: 'ORDER_ASSEMBLED',
+                payload: { purchaseId: po.purchaseId, purchaseTag: po.purchase.tag, purchaseOrderId },
+            });
+            return;
+        }
         await this.notifyHandoffStatusChanged(po.userId, po.purchaseId, po.purchase.tag, status);
+    }
+
+    async setHandoffChoice(
+        purchaseOrderId: number,
+        userId: number,
+        choice: 'STORED' | 'READY_TO_SHIP',
+    ): Promise<{ purchaseId: number; purchaseTag: string }> {
+        const po = await this.repo.findPurchaseOrderWithPurchase(purchaseOrderId);
+        if (!po) throw new NotFoundError('Заказ участника', purchaseOrderId);
+        if (po.userId !== userId) throw new ForbiddenError('Это не ваш заказ');
+        if ((po.handoffStatus as HandoffStatus | null) === choice) {
+            return { purchaseId: po.purchaseId, purchaseTag: po.purchase.tag };
+        }
+
+        await this.repo.setHandoffStatus(purchaseOrderId, choice, userId);
+        await this.notification.notifyInApp({
+            userId: po.userId,
+            type: choice === 'STORED' ? 'ORDER_HANDOFF_STORED' : 'ORDER_HANDOFF_SHIP_REQUEST',
+            payload: { purchaseId: po.purchaseId, purchaseTag: po.purchase.tag },
+        });
+        return { purchaseId: po.purchaseId, purchaseTag: po.purchase.tag };
     }
 
     async deleteAllByUserAndItem(purchaseItemId: number, userId: number): Promise<void> {

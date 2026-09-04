@@ -122,6 +122,8 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
         const counts: Record<HandoffFilter, number> = {
             all: data.userIds.length,
             none: 0,
+            ASSEMBLED: 0,
+            READY_TO_SHIP: 0,
             SENT: 0,
             RECEIVED: 0,
             STORED: 0,
@@ -208,6 +210,20 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                         count={handoffCounts.none}
                         active={handoffFilter === 'none'}
                         onClick={() => setHandoffFilter('none')}
+                    />
+                    <StatusChip
+                        label={HANDOFF_STATUS_LABELS.ASSEMBLED}
+                        count={handoffCounts.ASSEMBLED}
+                        active={handoffFilter === 'ASSEMBLED'}
+                        activeClass="border-primary/40 bg-primary/10 text-primary"
+                        onClick={() => setHandoffFilter('ASSEMBLED')}
+                    />
+                    <StatusChip
+                        label={HANDOFF_STATUS_LABELS.READY_TO_SHIP}
+                        count={handoffCounts.READY_TO_SHIP}
+                        active={handoffFilter === 'READY_TO_SHIP'}
+                        activeClass="border-accent/40 bg-accent/10 text-accent"
+                        onClick={() => setHandoffFilter('READY_TO_SHIP')}
                     />
                     <StatusChip
                         label={HANDOFF_STATUS_LABELS.SENT}

@@ -1,6 +1,6 @@
-import { serviceContainer } from '@/server/lib/service-container';
-
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
+
+import { serviceContainer } from '@/server/lib/service-container';
 
 /**
  * Bot-slice OrderService. Тонкая обёртка над `serviceContainer.order`.
@@ -54,5 +54,13 @@ export class BotOrderService {
 
     async adjustPackageCount(purchaseItemId: number, userId: number, delta: number): Promise<void> {
         return serviceContainer.order.adjustPackageCount(purchaseItemId, userId, delta);
+    }
+
+    async setHandoffChoice(
+        purchaseOrderId: number,
+        userId: number,
+        choice: 'STORED' | 'READY_TO_SHIP',
+    ): Promise<{ purchaseId: number; purchaseTag: string }> {
+        return serviceContainer.order.setHandoffChoice(purchaseOrderId, userId, choice);
     }
 }

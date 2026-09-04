@@ -79,6 +79,7 @@ export function createBot(
         .addCallback(new OrdersCallbackQueryHandler(container))
         .addCallback(new PayCallbackQueryHandler(container))
         .addCallback(new ConsentCallbackQueryHandler(container))
+        .addCallback(new HandoffCallbackQueryHandler(container))
         // Messages
         .addMessage(new ChannelPostShopCommentHandler())
         .addMessage(new PaymentProofHandler(container))
@@ -105,6 +106,7 @@ export function createBot(
 
 // ── Imports для HandlerRegistry (используются в addCommand/addCallback/addMessage выше) ──
 import { ConsentCallbackQueryHandler } from './handlers/callback/consent.callback';
+import { HandoffCallbackQueryHandler } from './handlers/callback/handoff.callback';
 import { OrdersCallbackQueryHandler } from './handlers/callback/orders.callback';
 import { PayCallbackQueryHandler } from './handlers/callback/pay.callback';
 import { CancelPaymentCommand } from './handlers/command/cancel.command';

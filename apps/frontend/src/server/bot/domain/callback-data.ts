@@ -15,10 +15,12 @@ export type CallbackAction =
     | { kind: 'pay:all'; purchaseId: number }
     | { kind: 'pay:promo' }
     | { kind: 'pay:skip' }
-    | { kind: 'consent:accept' };
+    | { kind: 'consent:accept' }
+    | { kind: 'handoff:store'; purchaseOrderId: number }
+    | { kind: 'handoff:ship'; purchaseOrderId: number };
 
 /** Все известные префиксы callback-data (для регистрации dispatcher'а). */
-export const CALLBACK_PREFIXES = ['orders:', 'pay:'] as const;
+export const CALLBACK_PREFIXES = ['orders:', 'pay:', 'handoff:'] as const;
 export type CallbackPrefix = (typeof CALLBACK_PREFIXES)[number];
 
 export class CallbackParser {
@@ -49,6 +51,18 @@ export class CallbackParser {
         if (data === 'pay:skip') return { kind: 'pay:skip' };
         if (data === 'consent:accept') return { kind: 'consent:accept' };
 
+        const handoffStoreMatch = /^handoff:store:(\d+)$/.exec(data);
+        if (handoffStoreMatch) {
+            const purchaseOrderId = Number(handoffStoreMatch[1]);
+            if (Number.isFinite(purchaseOrderId)) return { kind: 'handoff:store', purchaseOrderId };
+        }
+
+        const handoffShipMatch = /^handoff:ship:(\d+)$/.exec(data);
+        if (handoffShipMatch) {
+            const purchaseOrderId = Number(handoffShipMatch[1]);
+            if (Number.isFinite(purchaseOrderId)) return { kind: 'handoff:ship', purchaseOrderId };
+        }
+
         return null;
     }
 
@@ -71,6 +85,10 @@ export class CallbackParser {
                 return 'pay:skip';
             case 'consent:accept':
                 return 'consent:accept';
+            case 'handoff:store':
+                return `handoff:store:${action.purchaseOrderId}`;
+            case 'handoff:ship':
+                return `handoff:ship:${action.purchaseOrderId}`;
         }
     }
 }

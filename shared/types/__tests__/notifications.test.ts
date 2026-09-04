@@ -19,7 +19,7 @@ import {
 } from '../src';
 
 describe('NOTIFICATION_TYPES', () => {
-    it('includes all 8 expected types', () => {
+    it('includes all 11 expected types', () => {
         expect(NOTIFICATION_TYPES).toEqual([
             'PAYMENT_CONFIRMED',
             'PAYMENT_REJECTED',
@@ -27,6 +27,9 @@ describe('NOTIFICATION_TYPES', () => {
             'ORDER_LINE_DELETED',
             'ORDER_CLEARED',
             'ORDER_HANDOFF_STATUS',
+            'ORDER_ASSEMBLED',
+            'ORDER_HANDOFF_STORED',
+            'ORDER_HANDOFF_SHIP_REQUEST',
             'PURCHASE_FULFILLMENT_STAGE',
             'PURCHASE_STATUS_CHANGED',
         ]);

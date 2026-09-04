@@ -1,12 +1,13 @@
-import { GrammyError } from 'grammy';
+import { createLogger } from '@zakupki/logger';
 import type { UserDmJob } from '@zakupki/queue';
 import { getUserDmJobsQueue } from '@zakupki/queue';
-import { createLogger } from '@zakupki/logger';
+import { GrammyError } from 'grammy';
+import type { InlineKeyboardMarkup } from 'grammy/types';
 
-import { NotificationRepository } from '../../domain/notification.repository';
-import { UserRepository } from '../../domain/user.repository';
+import type { NotificationRepository } from '../../domain/notification.repository';
+import type { UserRepository } from '../../domain/user.repository';
 import { getActiveBotConfig } from '../config/bot-config';
-import { buildOpenPurchaseKeyboard } from '../lib/dm-keyboard';
+import { buildHandoffChoiceKeyboard, buildOpenPurchaseKeyboard } from '../lib/dm-keyboard';
 import type { TgClient } from '../lib/tg-client';
 
 const log = createLogger('user-dm-worker');
@@ -44,6 +45,16 @@ export class UserDmWorker {
         }
     }
 
+    private buildKeyboard(type: string, payload: unknown): InlineKeyboardMarkup | null {
+        if (type === 'ORDER_ASSEMBLED') {
+            const id = (payload as { purchaseOrderId?: unknown }).purchaseOrderId;
+            if (typeof id === 'number' && Number.isFinite(id)) {
+                return buildHandoffChoiceKeyboard(id);
+            }
+        }
+        return buildOpenPurchaseKeyboard(payload, getActiveBotConfig());
+    }
+
     private async process(job: { id?: string; data: UserDmJob }): Promise<void> {
         const { notificationId } = job.data;
 
@@ -65,7 +76,7 @@ export class UserDmWorker {
         }
 
         try {
-            const keyboard = buildOpenPurchaseKeyboard(notif.payload, getActiveBotConfig());
+            const keyboard = this.buildKeyboard(notif.type, notif.payload);
             await this.tg.sendDm(telegramId, notif.body, keyboard ?? undefined);
             await this.notifRepo.markTgDelivered(notificationId);
         } catch (err) {

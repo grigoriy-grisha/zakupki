@@ -1,6 +1,26 @@
 import type { InlineKeyboardMarkup } from 'grammy/types';
 
 import type { BotConfig } from '../config/bot-config';
+import { CallbackParser } from '../domain/callback-data';
+
+export function buildHandoffChoiceKeyboard(purchaseOrderId: number): InlineKeyboardMarkup {
+    return {
+        inline_keyboard: [
+            [
+                {
+                    text: 'Оставить на хранение',
+                    callback_data: CallbackParser.build({ kind: 'handoff:store', purchaseOrderId }),
+                },
+            ],
+            [
+                {
+                    text: 'Отправить заказ',
+                    callback_data: CallbackParser.build({ kind: 'handoff:ship', purchaseOrderId }),
+                },
+            ],
+        ],
+    };
+}
 
 export function buildOpenPurchaseKeyboard(payload: unknown, cfg: BotConfig): InlineKeyboardMarkup | null {
     if (typeof payload !== 'object' || payload === null) return null;

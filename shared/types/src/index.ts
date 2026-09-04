@@ -16,11 +16,13 @@ export function isPurchaseCompleted(status: PurchaseStatus | string | null | und
 }
 
 // Handoff statuses — выдача заказа участнику (живёт на PurchaseOrder)
-export const HANDOFF_STATUSES = ['SENT', 'RECEIVED', 'STORED'] as const;
+export const HANDOFF_STATUSES = ['ASSEMBLED', 'READY_TO_SHIP', 'SENT', 'RECEIVED', 'STORED'] as const;
 
 export type HandoffStatus = (typeof HANDOFF_STATUSES)[number];
 
 export const HANDOFF_STATUS_LABELS: Record<HandoffStatus, string> = {
+    ASSEMBLED: 'Собран',
+    READY_TO_SHIP: 'К отправке',
     SENT: 'Отправлен',
     RECEIVED: 'Получение подтверждено',
     STORED: 'Отложен на хранение',

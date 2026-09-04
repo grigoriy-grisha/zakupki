@@ -1,18 +1,18 @@
+import { createLogger } from '@zakupki/logger';
+import type { UserDmJobsQueue } from '@zakupki/queue';
 import {
     COALESCABLE_NOTIFICATION_TYPES,
     COALESCE_DELIVERY_DELAY_MS,
     COALESCE_WINDOW_MS,
-    renderNotificationTelegramBody,
-    renderNotificationTitle,
-    renderNotificationUrl,
     type NotificationPayload,
     type NotificationType,
     type NotifyInput,
+    renderNotificationTelegramBody,
+    renderNotificationTitle,
+    renderNotificationUrl,
 } from '@zakupki/types';
-import { createLogger } from '@zakupki/logger';
-import type { UserDmJobsQueue } from '@zakupki/queue';
 
-import { NotificationRepository } from '../domain/notification.repository';
+import type { NotificationRepository } from '../domain/notification.repository';
 
 const log = createLogger('notification-service');
 
@@ -105,6 +105,18 @@ export class NotificationService {
             // Web bell still works — only the push is lost. Don't rethrow.
             log.warn({ notificationId, userId: input.userId, err }, 'failed to enqueue DM delivery');
         }
+    }
+
+    async notifyInApp<T extends NotificationType>(input: NotifyInput<T>): Promise<void> {
+        const payload = input.payload as NotificationPayload<T>;
+        await this.repo.create({
+            userId: input.userId,
+            type: input.type,
+            payload,
+            title: renderNotificationTitle(input.type),
+            body: renderNotificationTelegramBody(input.type, payload),
+            url: renderNotificationUrl(input.type, payload),
+        });
     }
 
     /**

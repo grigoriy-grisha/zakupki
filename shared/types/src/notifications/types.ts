@@ -14,6 +14,9 @@ export const NOTIFICATION_TYPES = [
     'ORDER_LINE_DELETED',
     'ORDER_CLEARED',
     'ORDER_HANDOFF_STATUS',
+    'ORDER_ASSEMBLED',
+    'ORDER_HANDOFF_STORED',
+    'ORDER_HANDOFF_SHIP_REQUEST',
     'PURCHASE_FULFILLMENT_STAGE',
     'PURCHASE_STATUS_CHANGED',
 ] as const;
@@ -66,6 +69,19 @@ export interface NotificationPayloads {
         purchaseId: number;
         purchaseTag: string;
         status: HandoffStatus | null;
+    };
+    ORDER_ASSEMBLED: {
+        purchaseId: number;
+        purchaseTag: string;
+        purchaseOrderId: number;
+    };
+    ORDER_HANDOFF_STORED: {
+        purchaseId: number;
+        purchaseTag: string;
+    };
+    ORDER_HANDOFF_SHIP_REQUEST: {
+        purchaseId: number;
+        purchaseTag: string;
     };
     PURCHASE_FULFILLMENT_STAGE: {
         purchaseId: number;
