@@ -250,10 +250,11 @@ function PurchaseOrderCard({
                     Итоговая сумма {formatRub(group.total)}
                 </p>
                 {totals && (totals.org > 0 || totals.delivery > 0) && (
-                    <p className="-mt-2 text-right text-16-medium text-fg-secondary tabular-nums">
-                        Из них: {formatPriceRub(totals.base)} + оргсбор {formatPriceRub(totals.org)}
-                        {totals.delivery > 0 ? ` + доставка ${formatPriceRub(totals.delivery)}` : ''}
-                    </p>
+                    <div className="-mt-2 flex flex-col gap-0.5 text-right text-16-medium text-fg-secondary tabular-nums">
+                        <p>Стоимость выбранных товаров: {formatPriceRub(totals.base)}</p>
+                        {totals.org > 0 && <p>Оргсбор: {formatPriceRub(totals.org)}</p>}
+                        {totals.delivery > 0 && <p>Доставка: {formatPriceRub(totals.delivery)}</p>}
+                    </div>
                 )}
 
                 {purchasePayments.length > 0 && (
