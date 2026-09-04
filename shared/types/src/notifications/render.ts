@@ -66,6 +66,8 @@ export function renderNotificationTitle(type: NotificationType): string {
             return 'Позиция удалена';
         case 'ORDER_CLEARED':
             return 'Заказ очищен';
+        case 'ORDER_AMOUNT_RECALCULATED':
+            return 'Сумма заказа пересчитана';
         case 'ORDER_HANDOFF_STATUS':
             return 'Статус заказа обновлён';
         case 'ORDER_ASSEMBLED':
@@ -117,6 +119,13 @@ export function renderNotificationBody<T extends NotificationType>(
         case 'ORDER_CLEARED': {
             const p = payload as NotificationPayload<'ORDER_CLEARED'>;
             return `Закупка ${formatTag(p.purchaseTag)}: администратор очистил ваш заказ.`;
+        }
+        case 'ORDER_AMOUNT_RECALCULATED': {
+            const p = payload as NotificationPayload<'ORDER_AMOUNT_RECALCULATED'>;
+            return (
+                `Закупка ${formatTag(p.purchaseTag)}: сумма вашего заказа пересчитана — ` +
+                `было ${formatAmount(p.prevAmountDue)}, стало ${formatAmount(p.newAmountDue)}.`
+            );
         }
         case 'ORDER_HANDOFF_STATUS': {
             const p = payload as NotificationPayload<'ORDER_HANDOFF_STATUS'>;
@@ -196,6 +205,12 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
         case 'ORDER_CLEARED':
             // No extra fields — the title + tag already tell the whole story.
             break;
+        case 'ORDER_AMOUNT_RECALCULATED': {
+            const pp = p as NotificationPayload<'ORDER_AMOUNT_RECALCULATED'>;
+            lines.push(`<b>Было:</b> ${escapeHtml(formatAmount(pp.prevAmountDue))}`);
+            lines.push(`<b>Стало:</b> ${escapeHtml(formatAmount(pp.newAmountDue))}`);
+            break;
+        }
         case 'ORDER_HANDOFF_STATUS': {
             const pp = p as NotificationPayload<'ORDER_HANDOFF_STATUS'>;
             const label = pp.status == null ? HANDOFF_DEFAULT_LABEL : HANDOFF_STATUS_LABELS[pp.status as HandoffStatus];
@@ -244,6 +259,7 @@ export function renderNotificationUrl<T extends NotificationType>(
         case 'ORDER_QTY_CHANGED':
         case 'ORDER_LINE_DELETED':
         case 'ORDER_CLEARED':
+        case 'ORDER_AMOUNT_RECALCULATED':
         case 'PURCHASE_FULFILLMENT_STAGE':
         case 'PURCHASE_STATUS_CHANGED': {
             const p = payload as NotificationPayload<typeof type>;
@@ -316,6 +332,8 @@ export function getNotificationVisual(type: NotificationType): NotificationVisua
             return { icon: 'order-remove', tone: 'warning' };
         case 'ORDER_CLEARED':
             return { icon: 'order-remove', tone: 'warning' };
+        case 'ORDER_AMOUNT_RECALCULATED':
+            return { icon: 'order-edit', tone: 'warning' };
         case 'ORDER_HANDOFF_STATUS':
             return { icon: 'handoff', tone: 'accent' };
         case 'ORDER_ASSEMBLED':
@@ -399,6 +417,13 @@ export function getNotificationFields<T extends NotificationType>(
         case 'ORDER_CLEARED': {
             const p = payload as NotificationPayload<'ORDER_CLEARED'>;
             addTag(p.purchaseTag);
+            break;
+        }
+        case 'ORDER_AMOUNT_RECALCULATED': {
+            const p = payload as NotificationPayload<'ORDER_AMOUNT_RECALCULATED'>;
+            addTag(p.purchaseTag);
+            fields.push({ label: 'Было', value: formatAmount(p.prevAmountDue) });
+            fields.push({ label: 'Стало', value: formatAmount(p.newAmountDue) });
             break;
         }
         case 'ORDER_HANDOFF_STATUS': {

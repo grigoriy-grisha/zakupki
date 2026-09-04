@@ -17,6 +17,10 @@ export type ProductFormPayload = {
     characteristics: { characteristicId: number; value: string }[];
 };
 
+function asRouterPayload(payload: ProductFormPayload) {
+    return { ...payload, unitCode: payload.unitCode as 'gram' | 'piece' | 'tube' };
+}
+
 export function useProductFormSubmit({
     editId,
     isCreating,
@@ -48,7 +52,8 @@ export function useProductFormSubmit({
 
     async function handleCreate(data: ProductCreateFormValues) {
         try {
-            const result = await createMutation.mutateAsync(basePayload(data));
+            const payload = asRouterPayload(basePayload(data));
+            const result = await createMutation.mutateAsync(payload);
 
             if (pendingFiles.length > 0) {
                 for (let i = 0; i < pendingFiles.length; i++) {
@@ -76,7 +81,7 @@ export function useProductFormSubmit({
         try {
             await updateMutation.mutateAsync({
                 id: editId,
-                ...basePayload(data),
+                ...asRouterPayload(basePayload(data)),
             });
             toast.success('Товар обновлён');
             void refreshProductCatalog(editId);

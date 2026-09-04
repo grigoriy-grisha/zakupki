@@ -1,15 +1,17 @@
-import { z } from 'zod';
 import { Prisma } from '@zakupki/database';
 import { AppError } from '@zakupki/types';
+import { z } from 'zod';
 
 import { withDbConflict } from '../lib/error-utils';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
+
+const unitCodeSchema = z.enum(['gram', 'piece', 'tube']);
 
 const productCreateInput = z.object({
     name: z.string().min(1),
     articleNumber: z.string().nullable().optional(),
     brandId: z.number().nullable().optional(),
-    unitCode: z.string().optional(),
+    unitCode: unitCodeSchema.optional(),
     multiplicity: z.number().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
@@ -21,7 +23,7 @@ const productUpdateInput = z.object({
     name: z.string().optional(),
     articleNumber: z.string().nullable().optional(),
     brandId: z.number().nullable().optional(),
-    unitCode: z.string().optional(),
+    unitCode: unitCodeSchema.optional(),
     multiplicity: z.number().optional(),
     attributeIds: z.array(z.number()).optional(),
     characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),

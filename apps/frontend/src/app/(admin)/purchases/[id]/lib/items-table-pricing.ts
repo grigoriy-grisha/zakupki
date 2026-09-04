@@ -154,7 +154,7 @@ export function getRemainderQty(
 ): number | null {
     const collected = getCollectedQty(item);
     const packSize = toNum(item.packAmount);
-    const packRemainderApplies = isWeightUnit(item.product.unitCode);
+    const packRemainderApplies = isWeightUnit(item.unitCode ?? item.product.unitCode);
     const isAfterSettlement = isAtOrAfterSupplierAssembly(fulfillmentStatus);
     if (isAfterSettlement) {
         const assembled = toNum(item.assembledQty);

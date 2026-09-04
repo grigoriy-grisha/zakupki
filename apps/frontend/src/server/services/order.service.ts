@@ -7,6 +7,7 @@ import {
     type HandoffStatus,
     NotFoundError,
     OrderBook,
+    PurchaseNotActiveError,
     resolveCurrencyRate,
     resolveDeliveryPercent,
     resolveOrgFeePercent,
@@ -33,7 +34,8 @@ export class OrderService {
 
     async adjustQuantity(purchaseItemId: number, userId: number, delta: number): Promise<void> {
         if (delta === 0) return;
-        const { item, lines } = await this.loadItem(purchaseItemId);
+        const { item, lines, row } = await this.loadItem(purchaseItemId);
+        if (delta > 0) this.assertUserCanIncrease(row);
         const result = OrderBook.create(item, lines).adjust(userId, delta);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
@@ -42,7 +44,8 @@ export class OrderService {
 
     async adjustPackageCount(purchaseItemId: number, userId: number, delta: number): Promise<void> {
         if (delta === 0) return;
-        const { item, lines } = await this.loadItem(purchaseItemId);
+        const { item, lines, row } = await this.loadItem(purchaseItemId);
+        if (delta > 0) this.assertUserCanIncrease(row);
         const result = OrderBook.create(item, lines).adjustPackages(userId, delta);
         if (!result.ok) throw new ValidationError(result.error.message);
         await this.persistEffects(result.changes);
@@ -414,7 +417,11 @@ export class OrderService {
         }
     }
 
-    private async loadItem(purchaseItemId: number): Promise<{ item: PurchaseItem; lines: OrderLine[] }> {
+    private async loadItem(purchaseItemId: number): Promise<{
+        item: PurchaseItem;
+        lines: OrderLine[];
+        row: NonNullable<Awaited<ReturnType<PurchaseRepository['findItemWithPrice']>>>;
+    }> {
         const row = await this.purchaseRepo.findItemWithPrice(purchaseItemId);
         if (!row) throw new NotFoundError('Товар закупки', purchaseItemId);
 
@@ -431,7 +438,23 @@ export class OrderService {
                 deliveryPercent: Number(row.purchase?.deliveryPercent ?? 0),
             }),
             lines: toOrderLines(row.orderLines),
+            row,
         };
+    }
+
+    private assertUserCanIncrease(row: {
+        hidden: boolean;
+        purchase: { status: string; deletedAt: Date | null } | null;
+    }): void {
+        if (row.purchase?.deletedAt != null) {
+            throw new ValidationError('Закупка удалена — заказы не принимаются');
+        }
+        if (row.purchase != null && row.purchase.status !== 'ACTIVE') {
+            throw new PurchaseNotActiveError(row.purchase.status);
+        }
+        if (row.hidden) {
+            throw new ValidationError('Товар скрыт и недоступен для заказа');
+        }
     }
 
     private async persistEffects(effects: OrderEffect[]): Promise<void> {

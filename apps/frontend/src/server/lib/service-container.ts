@@ -1,38 +1,37 @@
-import { OrderRepository } from '../domain/order.repository';
-import { PaymentRepository } from '../domain/payment.repository';
-import { ProductRepository } from '../domain/product.repository';
-import { PurchaseRepository } from '../domain/purchase.repository';
-import { UserRepository } from '../domain/user.repository';
-import { NotificationRepository } from '../domain/notification.repository';
-import { BotPaymentService } from '../services/bot-payment.service';
-import { NotificationService } from '../services/notification.service';
-import { OrderService } from '../services/order.service';
-import { PaymentService } from '../services/payment.service';
-import { PricingSettingsService } from '../services/settings/pricing-settings';
-import { SettingsService } from '../services/settings/settings.service';
-import { ProductService } from '../services/product.service';
-import { PromoCodeService } from '../services/promo-code.service';
-import { PurchaseService } from '../services/purchase.service';
-import { PurchaseItemDescriptionService } from '../services/purchase-item-description.service';
-import { PurchaseStatusService } from '../services/purchase-status.service';
-import { TelegramPublishService } from '../services/telegram-publish.service';
-import { UserService } from '../services/user.service';
+import { EventBus, getUserDmJobsQueue } from '@zakupki/queue';
 
 import { AttributeTypeRepository } from '../domain/attribute-type.repository';
 import { CharacteristicRepository } from '../domain/characteristic.repository';
 import { CurrencyRepository } from '../domain/currency.repository';
+import { NotificationRepository } from '../domain/notification.repository';
+import { OrderRepository } from '../domain/order.repository';
+import { PaymentRepository } from '../domain/payment.repository';
 import { PostTemplateRepository } from '../domain/post-template.repository';
+import { ProductRepository } from '../domain/product.repository';
 import { ProductAttributeRepository } from '../domain/product-attribute.repository';
 import { PromoCodeRepository } from '../domain/promo-code.repository';
+import { PurchaseRepository } from '../domain/purchase.repository';
 import { SupplierRepository } from '../domain/supplier.repository';
+import { UserRepository } from '../domain/user.repository';
 import { AttributeTypeService } from '../services/attribute-type.service';
+import { BotPaymentService } from '../services/bot-payment.service';
 import { CharacteristicService } from '../services/characteristic.service';
 import { CurrencyService } from '../services/currency.service';
-import { ProductAttributeService } from '../services/product-attribute.service';
+import { NotificationService } from '../services/notification.service';
+import { OrderService } from '../services/order.service';
+import { PaymentService } from '../services/payment.service';
 import { PostTemplateService } from '../services/post-template.service';
+import { ProductService } from '../services/product.service';
+import { ProductAttributeService } from '../services/product-attribute.service';
+import { PromoCodeService } from '../services/promo-code.service';
+import { PurchaseService } from '../services/purchase.service';
+import { PurchaseItemDescriptionService } from '../services/purchase-item-description.service';
+import { PurchaseStatusService } from '../services/purchase-status.service';
+import { PricingSettingsService } from '../services/settings/pricing-settings';
+import { SettingsService } from '../services/settings/settings.service';
 import { SupplierService } from '../services/supplier.service';
-
-import { EventBus, getUserDmJobsQueue } from '@zakupki/queue';
+import { TelegramPublishService } from '../services/telegram-publish.service';
+import { UserService } from '../services/user.service';
 
 export class ServiceContainer {
     private readonly userRepo = new UserRepository();
@@ -69,6 +68,7 @@ export class ServiceContainer {
         this.orderRepo,
         this.eventBus,
         this.pricingSettings,
+        this.notification,
     );
     public readonly purchaseStatus = new PurchaseStatusService(
         this.purchaseRepo,
@@ -77,9 +77,9 @@ export class ServiceContainer {
         this.notification,
     );
     public readonly product = new ProductService(this.productRepo, this.eventBus);
-    public readonly payment = new PaymentService(this.paymentRepo, this.notification);
     public readonly promoCode = new PromoCodeService(this.promoCodeRepo);
     public readonly botPayment = new BotPaymentService(this.paymentRepo, this.order, this.promoCode);
+    public readonly payment = new PaymentService(this.paymentRepo, this.notification, this.botPayment);
     public readonly attributeType = new AttributeTypeService(this.attributeTypeRepo);
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);

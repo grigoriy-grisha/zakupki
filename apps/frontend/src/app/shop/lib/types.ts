@@ -47,6 +47,7 @@ export interface ShopPurchaseItem {
     currencyId?: number | null;
     packAmount?: string | number | null;
     packUnit?: string | null;
+    unitCode?: string | null;
     orgFeePercentOverride?: string | number | null;
     deliveryPercentOverride?: string | number | null;
     targetRemainder: string | number | null;
@@ -72,6 +73,7 @@ export interface ShopOrderLine {
     userId: number;
     purchaseItem?: {
         purchaseId: number;
+        unitCode?: string;
         product?: {
             name?: string;
             unitCode?: string;

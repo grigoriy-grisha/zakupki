@@ -192,7 +192,7 @@ function ItemDetailLoaded({
     });
 
     const photoIds = (product.photos ?? []).map((p: { id: number }) => p.id);
-    const minHint = buildStepHint(item, fulfillmentStatus, ctx.shortName, product.unitCode);
+    const minHint = buildStepHint(item, fulfillmentStatus, ctx.shortName, item.unitCode ?? product.unitCode);
     const descriptionRows = buildShopItemDescriptionRows(product as ProductCatalogCardSource, attributeTypes);
     const supplierName = item.supplier?.name;
     const collectedLabel = getCollectedLabel(item, ctx.shortName);

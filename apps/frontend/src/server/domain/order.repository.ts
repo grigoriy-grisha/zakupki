@@ -287,6 +287,16 @@ export class OrderRepository {
         return rows.map((r) => r.userId);
     }
 
+    /** Distinct owners of ACTIVE lines on a purchase item. */
+    async findActiveLineUserIds(purchaseItemId: number): Promise<number[]> {
+        const rows = await dbClient.orderLine.findMany({
+            where: { purchaseItemId, status: 'ACTIVE' },
+            select: { userId: true },
+            distinct: ['userId'],
+        });
+        return rows.map((r) => r.userId);
+    }
+
     /**
      * Create-or-get the per-(user, purchase) PurchaseOrder header. Idempotent —
      * used by addParticipant to register a "bare" participant (no order lines yet).

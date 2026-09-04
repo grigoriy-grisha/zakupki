@@ -15,6 +15,8 @@ export interface ParticipantOrderItem {
     packAmount?: string | number | null;
     /** Единица веса упаковки. */
     packUnit?: string | null;
+    /** Снапшот единицы позиции (гр/шт/туба); фолбэк — product.unitCode. */
+    unitCode?: string | null;
     /** Комментарий организатора к позиции закупки. */
     adminComment?: string | null;
     product?: ProductLabelSource & {

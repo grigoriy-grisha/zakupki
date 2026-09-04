@@ -31,7 +31,7 @@ export function deriveRow(
     );
 
     return {
-        shortName: getUnitByCode(item.product.unitCode)?.shortName ?? '',
+        shortName: getUnitByCode(item.unitCode ?? item.product.unitCode)?.shortName ?? '',
         published,
         packPriceRub: getPackPriceRub(item, currencyRates),
         packPriceWithOrgFeeRub: getPackPriceWithOrgFeeRub(item, currencyRates, orgFeeDefaultPercent),

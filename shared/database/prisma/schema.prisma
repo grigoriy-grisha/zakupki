@@ -272,6 +272,7 @@ model PurchaseItem {
   //     «цена за упаковку в валюте × курс × оргсбор → цена за 1ед». ---
   packAmount              Decimal?  @db.Decimal(10, 3)
   packUnit                String?
+  unitCode                String    @default("piece")
   currencyId              Int?
   pricePerPackCurrency    Decimal?  @db.Decimal(10, 4)
   orgFeePercentOverride   Decimal?  @db.Decimal(5, 2)

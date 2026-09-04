@@ -61,6 +61,7 @@ export interface PurchaseItemRowLike {
     supplier?: { id: number; name: string } | null;
     packAmount?: unknown;
     packUnit?: string | null;
+    unitCode?: string | null;
     currencyId?: number | null;
     pricePerPackCurrency?: unknown;
     orgFeePercentOverride?: unknown;
@@ -103,7 +104,7 @@ export function mapToPurchaseItem(
         packDiscountPercent,
         packAmount: item.packAmount != null ? Number(item.packAmount) : null,
         packUnit: item.packUnit ?? null,
-        unitCode: item.product.unitCode ?? 'piece',
+        unitCode: item.unitCode ?? item.product.unitCode ?? 'piece',
         multiplicity: Number(item.product.multiplicity ?? 1),
         minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
         minPackageUnit: item.minPackageUnit ?? null,

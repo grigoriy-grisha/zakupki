@@ -56,6 +56,7 @@ interface PurchaseProductEditFormProps {
         currencyId?: number | null;
         packAmount?: string | number | null;
         packUnit?: string | null;
+        unitCode?: string | null;
         orgFeePercentOverride?: string | number | null;
         deliveryPercentOverride?: string | number | null;
         minPackageAmount?: string | number | null;
@@ -93,7 +94,7 @@ export function PurchaseProductEditForm({
 }: PurchaseProductEditFormProps) {
     const f = initialPurchaseFields ?? {};
 
-    const initialUnitDef = resolveUnit(f.packUnit) ?? resolveUnit(product.unitCode);
+    const initialUnitDef = resolveUnit(f.unitCode) ?? resolveUnit(f.packUnit) ?? resolveUnit(product.unitCode);
     const initialUnit = initialUnitDef?.shortName ?? GRAM_UNIT;
     const initialIsWeight = initialUnitDef?.kind === 'WEIGHT';
     const savedPackAmount = toNum(f.packAmount);
@@ -190,7 +191,8 @@ export function PurchaseProductEditForm({
 
     useEffect(() => {
         const nextF = initialPurchaseFields ?? {};
-        const nextUnitDef = resolveUnit(nextF.packUnit) ?? resolveUnit(product.unitCode);
+        const nextUnitDef =
+            resolveUnit(nextF.unitCode) ?? resolveUnit(nextF.packUnit) ?? resolveUnit(product.unitCode);
         const nextUnit = nextUnitDef?.shortName ?? GRAM_UNIT;
         const nextIsWeight = nextUnitDef?.kind === 'WEIGHT';
         const nextSavedPack = toNum(nextF.packAmount);

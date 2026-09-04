@@ -195,6 +195,7 @@ export { formatQtyLabel,isPositive, positiveOrNull } from './utils';
 
 // Units
 export {
+    applyPieceUnitInvariants,
     getUnitByCode,
     getUnitByShortName,
     isPieceUnit,
@@ -227,6 +228,12 @@ export {
     isPaymentPlusFreezePoint,
     isUnfreezePoint,
 } from './purchase-fulfillment';
+
+// Purchase status state machine
+export {
+    canTransitionPurchaseStatus,
+    PURCHASE_STATUS_TRANSITIONS,
+} from './purchase-status';
 
 // Notifications
 export {

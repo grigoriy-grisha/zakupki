@@ -103,7 +103,8 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         currencyRates,
     } = input;
     const product = item.product;
-    const unit = getUnitByCode(product.unitCode);
+    const unitCode = item.unitCode ?? product.unitCode;
+    const unit = getUnitByCode(unitCode);
     const shortName = unit?.shortName ?? 'ед.';
     const multiplicity = Number(product.multiplicity) || 1;
 
@@ -117,7 +118,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         minPackageUnit,
         purchaseItemMinQty: item.minQty != null ? Number(item.minQty) : null,
         unitShort: shortName,
-        unitCode: product.unitCode,
+        unitCode,
     });
 
     const activeStep = getActiveStep({
@@ -139,6 +140,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             currencyId: item.currencyId ?? null,
             packAmount: item.packAmount != null ? Number(item.packAmount) : null,
             packUnit: item.packUnit ?? null,
+            unitCode: item.unitCode ?? null,
             orgFeePercentOverride:
                 item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
             deliveryPercentOverride:
@@ -174,7 +176,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
             ? `Можно добавить: ${availablePool} ${shortName}`
             : null;
 
-    const isWeight = isWeightUnit(product.unitCode);
+    const isWeight = isWeightUnit(unitCode);
     const hasSupplierPackage = packSize != null && packSize > 0;
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
     const showPackageButtons = canAddPackage && hasSupplierPackage && isWeight;

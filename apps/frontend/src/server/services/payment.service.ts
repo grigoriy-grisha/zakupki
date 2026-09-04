@@ -1,8 +1,10 @@
-import { ForbiddenError, ValidationError } from '@zakupki/types';
 import { createLogger } from '@zakupki/logger';
+import { ForbiddenError, ValidationError } from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
-import { PaymentRepository } from '../domain/payment.repository';
+
+import type { PaymentRepository } from '../domain/payment.repository';
+import type { BotPaymentService } from './bot-payment.service';
 import type { NotificationService } from './notification.service';
 
 const log = createLogger('payment-service');
@@ -11,6 +13,7 @@ export class PaymentService {
     constructor(
         private repo: PaymentRepository,
         private notification: NotificationService,
+        private paymentInfo: BotPaymentService,
     ) {}
 
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
@@ -35,6 +38,8 @@ export class PaymentService {
         if (existingPending) {
             throw new ValidationError('Оплата уже отправлена и ожидает подтверждения администратором');
         }
+
+        await this.assertWithinRemaining(data.userId, data.purchaseId, data.amount);
 
         // Upload proof to storage before creating the payment record
         let proofObjectKey: string | undefined;
@@ -121,6 +126,12 @@ export class PaymentService {
         data: { amount?: number; userComment?: string; proofData?: Buffer; proofMimeType?: string },
     ) {
         await this.assertOwnership(id, userId);
+        if (data.amount !== undefined) {
+            const payment = await this.repo.getById(id);
+            if (payment) {
+                await this.assertWithinRemaining(userId, payment.purchaseId, data.amount);
+            }
+        }
 
         let proofObjectKey: string | undefined;
         if (data.proofData) {
@@ -146,6 +157,16 @@ export class PaymentService {
         if (data.userComment !== undefined) updateData.userComment = data.userComment;
         if (proofObjectKey !== undefined) updateData.proofObjectKey = proofObjectKey;
         return this.repo.update(id, updateData);
+    }
+
+    private async assertWithinRemaining(userId: number, purchaseId: number, amount: number): Promise<void> {
+        const info = await this.paymentInfo.getPurchasePaymentInfo(userId, purchaseId);
+        if (!info) {
+            throw new ValidationError('Закупка не найдена');
+        }
+        if (amount <= 0 || amount > info.remaining) {
+            throw new ValidationError(`Сумма должна быть от 1 до ${info.remaining.toLocaleString('ru-RU')} ₽`);
+        }
     }
 
     private async assertOwnership(id: number, userId: number) {

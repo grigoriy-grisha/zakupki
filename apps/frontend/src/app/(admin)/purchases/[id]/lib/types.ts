@@ -78,6 +78,7 @@ export interface PurchaseItem {
     // Новая модель цен (валюта + курс + оргсбор):
     packAmount?: string | number | null;
     packUnit?: string | null;
+    unitCode?: string | null;
     currencyId?: number | null;
     currency?: CurrencyRef | null;
     pricePerPackCurrency?: string | number | null;

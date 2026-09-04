@@ -102,9 +102,9 @@ export function UserPurchaseGroupBlock({ group, userId }: UserPurchaseGroupProps
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                        {order.purchaseItem?.product?.unitCode
-                                            ? (getUnitByCode(order.purchaseItem.product.unitCode)?.shortName ?? '')
-                                            : ''}
+                                        {getUnitByCode(
+                                            order.purchaseItem?.unitCode ?? order.purchaseItem?.product?.unitCode,
+                                        )?.shortName ?? ''}
                                     </TableCell>
                                     <TableCell className="text-right text-14-semibold tabular-nums">
                                         {formatRub(Number(order.amountDue))}

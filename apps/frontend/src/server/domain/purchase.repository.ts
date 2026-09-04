@@ -145,7 +145,8 @@ export class PurchaseRepository {
         const row = await dbClient.purchaseItem.findUnique({
             where: { id },
             select: {
-                product: { select: { name: true, unitCode: true } },
+                unitCode: true,
+                product: { select: { name: true } },
                 purchase: { select: { id: true, tag: true } },
             },
         });
@@ -154,7 +155,7 @@ export class PurchaseRepository {
             purchaseId: row.purchase.id,
             purchaseTag: row.purchase.tag,
             productLabel: row.product.name,
-            unitShort: getUnitShortName(row.product.unitCode),
+            unitShort: getUnitShortName(row.unitCode),
         };
     }
 
@@ -221,6 +222,14 @@ export class PurchaseRepository {
         });
     }
 
+    async getProductUnitCodes(productIds: number[]) {
+        if (productIds.length === 0) return [];
+        return dbClient.product.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, unitCode: true },
+        });
+    }
+
     async addItem(
         purchaseId: number,
         config: {
@@ -232,9 +241,14 @@ export class PurchaseRepository {
             supplementStep?: number | null;
             packAmount?: number | null;
             packUnit?: string | null;
+            unitCode: string;
             currencyId?: number | null;
             pricePerPackCurrency?: number | null;
             orgFeePercentOverride?: number | null;
+            deliveryPercentOverride?: number | null;
+            supplierLimit?: number | null;
+            supplierLimitUnit?: string | null;
+            targetRemainder?: number | null;
         },
     ) {
         return dbClient.purchaseItem.create({
@@ -248,9 +262,14 @@ export class PurchaseRepository {
                 supplementStep: config.supplementStep ?? null,
                 packAmount: config.packAmount ?? null,
                 packUnit: config.packUnit ?? null,
+                unitCode: config.unitCode,
                 currencyId: config.currencyId ?? null,
                 pricePerPackCurrency: config.pricePerPackCurrency ?? null,
                 orgFeePercentOverride: config.orgFeePercentOverride ?? null,
+                deliveryPercentOverride: config.deliveryPercentOverride ?? null,
+                supplierLimit: config.supplierLimit ?? null,
+                supplierLimitUnit: config.supplierLimitUnit ?? null,
+                targetRemainder: config.targetRemainder ?? null,
             },
         });
     }
@@ -396,6 +415,7 @@ export class PurchaseRepository {
                 supplierLimit: true,
                 supplierLimitUnit: true,
                 product: { select: { unitCode: true } },
+                purchase: { select: { status: true } },
             },
         });
     }

@@ -97,7 +97,7 @@ export function ItemsTableRow({
     const packSizeRaw = item.packAmount == null ? null : Number(item.packAmount);
     const packSize = packSizeRaw != null && Number.isFinite(packSizeRaw) ? packSizeRaw : null;
     const unitEditable = rubEditable && packSize != null && packSize > 0;
-    const isPiece = isPieceUnit(item.product.unitCode);
+    const isPiece = isPieceUnit(item.unitCode ?? item.product.unitCode);
 
     function commitRubPrice(solved: number | null) {
         if (solved != null) onCommit({ pricePerPackCurrency: solved });
@@ -115,7 +115,7 @@ export function ItemsTableRow({
                 packAmount={item.packAmount}
                 packUnit={item.packUnit}
                 fallbackUnit={unit}
-                unitCode={item.product.unitCode}
+                unitCode={item.unitCode ?? item.product.unitCode}
                 onCommit={onCommit}
             />
 

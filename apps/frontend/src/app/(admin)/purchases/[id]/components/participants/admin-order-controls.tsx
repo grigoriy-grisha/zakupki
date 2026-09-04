@@ -46,6 +46,8 @@ export interface PurchaseItemOption {
     packAmount?: string | number | null;
     /** Единица веса упаковки. */
     packUnit?: string | null;
+    /** Снапшот единицы позиции (гр/шт/туба); фолбэк — product.unitCode. */
+    unitCode?: string | null;
     product: ProductLabelSource & {
         unitCode?: string | null;
         multiplicity?: string | number | null;

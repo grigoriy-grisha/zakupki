@@ -1,18 +1,18 @@
-import { InlineKeyboard } from 'grammy';
 import {
     getUnitByCode,
     isPurchasePaymentOpen,
     mergeLines,
     PURCHASE_FULFILLMENT_LABELS,
-    toOrderLinesVO,
     type PurchaseFulfillmentStatus,
+    toOrderLinesVO,
 } from '@zakupki/types';
+import { InlineKeyboard } from 'grammy';
 
+import type { ServiceContainer } from '../../container/service-container';
+import type { CallbackAction } from '../../domain/callback-data';
+import type { CallbackHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import { escapeHtml } from '../../lib/html';
-import type { CallbackHandler } from '../../domain/handler';
-import type { CallbackAction } from '../../domain/callback-data';
-import type { ServiceContainer } from '../../container/service-container';
 import type { BotPurchaseListItem } from '../../services/bot/bot-order.service';
 
 function buildPurchasesKeyboard(purchases: BotPurchaseListItem[]) {
@@ -103,7 +103,7 @@ function formatPurchaseDetail(
         const product = line.purchaseItem?.product;
         const piId = line.purchaseItem?.id ?? 0;
         const name = product?.name ?? 'Товар';
-        const unit = product ? (getUnitByCode(product.unitCode)?.shortName ?? '') : '';
+        const unit = line.purchaseItem ? (getUnitByCode(line.purchaseItem.unitCode)?.shortName ?? '') : '';
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const aggregated = mergeLines(toOrderLinesVO([line as any]));

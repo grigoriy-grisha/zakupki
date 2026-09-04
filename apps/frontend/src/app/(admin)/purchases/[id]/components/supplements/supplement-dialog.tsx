@@ -106,7 +106,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                 (sum: number, ol: { quantity: unknown }) => sum + Number(ol.quantity),
                                 0,
                             );
-                            const shortName = getUnitByCode(item.product.unitCode)?.shortName ?? '';
+                            const shortName = getUnitByCode(item.unitCode ?? item.product.unitCode)?.shortName ?? '';
                             const val = quantities[item.id] ?? '';
                             const stepVal = supplementSteps[item.id] ?? '';
                             return (

@@ -26,12 +26,13 @@ interface PackingItemCardProps {
 
 export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
     const product = item.product;
+    const unitCode = item.unitCode ?? product.unitCode;
 
-    // isWeight: проверяем и product.unitCode (плоское поле из Product),
+    // isWeight: проверяем и unitCode позиции (снапшот, фолбэк — каталог),
     // и minPackageUnit — на случай, когда нужно резать по упаковке в граммах.
-    const isWeight = isWeightUnit(product.unitCode) || isWeightUnit(item.minPackageUnit ?? null);
+    const isWeight = isWeightUnit(unitCode) || isWeightUnit(item.minPackageUnit ?? null);
     const unitShort =
-        normalizeUnitShortName(product.unitCode) ?? normalizeUnitShortName(item.minPackageUnit ?? null) ?? '';
+        normalizeUnitShortName(unitCode) ?? normalizeUnitShortName(item.minPackageUnit ?? null) ?? '';
 
     // Размер упаковки — чтобы развернуть целые пачки в эффективное
     // количество (россыпь): 1 уп. 500 г = +500 г к весу пользователя.

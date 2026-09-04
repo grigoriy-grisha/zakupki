@@ -40,6 +40,11 @@ export type OrderCollectionResult =
 
 type ResolvedItem = NonNullable<Awaited<ReturnType<PurchaseItemResolver['resolvePurchaseItem']>>>;
 
+export function stepAlignedDelta(amount: number, step: number, kind: 'add' | 'subtract'): number {
+    const steps = Math.floor(amount / step);
+    return kind === 'add' ? steps * step : -steps * step;
+}
+
 export class OrderCollectionService {
     private resolver: PurchaseItemResolver;
     private container: ServiceContainer | null;
@@ -72,7 +77,7 @@ export class OrderCollectionService {
             });
             return getOrderQuantityHint(
                 purchaseItem?.purchase?.fulfillmentStatus,
-                isWeightUnit(purchaseItem?.product?.unitCode),
+                isWeightUnit(purchaseItem?.unitCode),
             );
         } catch {
             return getOrderQuantityHint(null);
@@ -203,7 +208,7 @@ export class OrderCollectionService {
     }
 
     private async getItemPricing(item: ResolvedItem) {
-        const unitShort = getUnitByCode(item.product.unitCode)?.shortName ?? 'ед.';
+        const unitShort = getUnitByCode(item.unitCode)?.shortName ?? 'ед.';
         const orgFeeDefaultPercent = this.container
             ? await this.container.pricingSettings.getOrgFeeDefaultPercent()
             : 0;
@@ -261,11 +266,10 @@ export class OrderCollectionService {
                 minPackageAmount:
                     purchaseItem.minPackageAmount != null ? Number(purchaseItem.minPackageAmount) : null,
                 minPackageUnit: null,
-                unitCode: purchaseItem.product.unitCode ?? null,
+                unitCode: purchaseItem.unitCode ?? null,
             }),
         );
-        const steps = Math.round(parsed.amount / step);
-        const delta = parsed.kind === 'add' ? steps * step : -steps * step;
+        const delta = stepAlignedDelta(parsed.amount, step, parsed.kind);
         return this.container.orderService.adjustQuantity(purchaseItem.id, userId, delta);
     }
 
@@ -283,7 +287,7 @@ export class OrderCollectionService {
                 multiplicity: Number(item.product.multiplicity) || 1,
                 minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
                 minPackageUnit: null,
-                unitCode: item.product.unitCode ?? null,
+                unitCode: item.unitCode ?? null,
             }),
         });
         if (parsed.amount >= step) return null;

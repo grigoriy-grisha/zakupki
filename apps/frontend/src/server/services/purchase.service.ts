@@ -1,7 +1,10 @@
+import { createLogger } from '@zakupki/logger';
 import type { EventBus } from '@zakupki/queue';
 import {
+    applyPieceUnitInvariants,
     canAddItemsAtStage,
     computeAmountDueWithPackages,
+    isPieceUnit,
     mapToPurchaseItem,
     NotFoundError,
     PURCHASE_FULFILLMENT_LABELS,
@@ -14,8 +17,11 @@ import type { ProductRepository } from '../domain/product.repository';
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import type { PurchaseRepository } from '../domain/purchase.repository';
 import { handleDbConflict } from '../lib/error-utils';
+import type { NotificationService } from './notification.service';
 import type { PricingSettingsService } from './settings/pricing-settings';
 import type { TelegramPublishService } from './telegram-publish.service';
+
+const log = createLogger('purchase-service');
 
 export class PurchaseService {
     constructor(
@@ -25,6 +31,7 @@ export class PurchaseService {
         private orderRepo: OrderRepository,
         private eventBus: EventBus,
         private pricingSettings: PricingSettingsService,
+        private notification: NotificationService,
     ) {}
 
     async list(status?: string, includeHidden = false) {
@@ -143,11 +150,6 @@ export class PurchaseService {
         const item = await this.repo.findItemWithProductAndTg(purchaseItemId);
         if (!item) throw new NotFoundError('Товар закупки', purchaseItemId);
 
-        const nextUnitCode = itemData.productUnitCode;
-        if (typeof nextUnitCode === 'string' && nextUnitCode !== item.product.unitCode) {
-            await this.productRepo.update(item.productId, { unitCode: nextUnitCode });
-        }
-
         const itemUpdate: Record<string, unknown> = {};
         const allowedKeys = [
             'supplierId',
@@ -174,6 +176,29 @@ export class PurchaseService {
             if (itemData[key] !== undefined) itemUpdate[key] = itemData[key];
         }
 
+        const nextUnitCode = itemData.productUnitCode;
+        if (typeof nextUnitCode === 'string') {
+            itemUpdate.unitCode = nextUnitCode;
+            applyPieceUnitInvariants(nextUnitCode, itemUpdate);
+        }
+
+        const pricingKeys = [
+            'packAmount',
+            'currencyId',
+            'pricePerPackCurrency',
+            'orgFeePercentOverride',
+            'deliveryPercentOverride',
+            'unitCode',
+        ];
+        const pricingChanged = pricingKeys.some((key) => itemUpdate[key] !== undefined);
+        if (pricingChanged && item.purchase?.status === 'DONE') {
+            throw new ValidationError('В завершённой закупке нельзя менять цены');
+        }
+
+        if (typeof nextUnitCode === 'string' && nextUnitCode !== item.product.unitCode) {
+            await this.productRepo.update(item.productId, { unitCode: nextUnitCode });
+        }
+
         const hidingPublishedItem = itemData.hidden === true && item.tgMessageId != null;
         if (hidingPublishedItem) {
             itemUpdate.tgMessageId = null;
@@ -183,14 +208,6 @@ export class PurchaseService {
 
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
 
-        const pricingKeys = [
-            'packAmount',
-            'currencyId',
-            'pricePerPackCurrency',
-            'orgFeePercentOverride',
-            'deliveryPercentOverride',
-        ];
-        const pricingChanged = pricingKeys.some((key) => itemUpdate[key] !== undefined);
         if (pricingChanged) {
             await this.recalculateAmounts(item.purchaseId);
         }
@@ -227,6 +244,10 @@ export class PurchaseService {
             currencyId?: number | null;
             pricePerPackCurrency?: number | null;
             orgFeePercentOverride?: number | null;
+            deliveryPercentOverride?: number | null;
+            supplierLimit?: number | null;
+            supplierLimitUnit?: string | null;
+            targetRemainder?: number | null;
             productUnitCode?: string;
         }[],
     ) {
@@ -264,9 +285,20 @@ export class PurchaseService {
 
         const toCreate = uniqueConfigs.filter((c) => !existingSet.has(`${c.productId}::${c.supplierId ?? ''}`));
 
+        const productUnits = await this.repo.getProductUnitCodes(
+            Array.from(new Set(toCreate.map((c) => c.productId))),
+        );
+        const unitByProduct = new Map(productUnits.map((p) => [p.id, p.unitCode]));
+
         const created = [];
-        for (const config of toCreate) {
-            const item = await this.repo.addItem(purchaseId, config);
+        for (const source of toCreate) {
+            const config = { ...source };
+            const unitCode = config.productUnitCode ?? unitByProduct.get(config.productId) ?? 'piece';
+            applyPieceUnitInvariants(unitCode, config);
+            if (isPieceUnit(unitCode) && config.packAmount == null) {
+                config.packAmount = 1;
+            }
+            const item = await this.repo.addItem(purchaseId, { ...config, unitCode });
             created.push(item);
         }
 
@@ -288,6 +320,12 @@ export class PurchaseService {
     async removeItem(id: number) {
         const item = await this.repo.findItemWithPurchase(id);
         if (!item) throw new NotFoundError('Позиция закупки', id);
+        if (item.purchase?.status === 'DONE') {
+            throw new ValidationError('В завершённой закупке нельзя удалять позиции');
+        }
+
+        const affectedUserIds = await this.orderRepo.findActiveLineUserIds(id);
+        const label = await this.repo.findItemLabel(id);
 
         if (item.tgMessageId) {
             await this.telegramPublish.enqueueDeleteChannelPost(
@@ -297,7 +335,30 @@ export class PurchaseService {
             );
         }
 
-        return this.repo.removeItem(id);
+        const result = await this.repo.removeItem(id);
+
+        if (label && affectedUserIds.length > 0) {
+            await Promise.all(
+                affectedUserIds.map((userId) =>
+                    this.notification
+                        .notify({
+                            userId,
+                            type: 'ORDER_LINE_DELETED',
+                            payload: {
+                                purchaseId: label.purchaseId,
+                                purchaseTag: label.purchaseTag,
+                                purchaseItemId: id,
+                                productLabel: label.productLabel,
+                            },
+                        })
+                        .catch((err) =>
+                            log.warn({ purchaseItemId: id, userId, err }, 'failed to notify item removal'),
+                        ),
+                ),
+            );
+        }
+
+        return result;
     }
 
     async setAvailableQuantities(
@@ -332,6 +393,7 @@ export class PurchaseService {
             rateToRub: Number(r.rateToRub),
         }));
         const touchedItemIds = new Set<number>();
+        const changedByUser = new Map<number, { prev: number; next: number }>();
         for (const item of purchase.items) {
             // Доменный PurchaseItem для canonical-прайсинга. getById не вкладывает
             // purchase в каждый item — инжектим fulfillmentStatus из родителя.
@@ -352,13 +414,44 @@ export class PurchaseService {
                 // С учётом упаковок: amountDue(qty) + packageCount * packagePrice.
                 // Раньше упаковки обнулялись (calculateOrderAmount без packageCount).
                 const amountDue = computeAmountDueWithPackages(qty, pkgCount, domainItem);
+                const prevAmountDue = Number(line.amountDue);
                 await this.orderRepo.updateAmountDue(line.id, amountDue);
                 touched = true;
+                if (Math.abs(amountDue - prevAmountDue) > 0.005) {
+                    const agg = changedByUser.get(line.userId) ?? { prev: 0, next: 0 };
+                    agg.prev += prevAmountDue;
+                    agg.next += amountDue;
+                    changedByUser.set(line.userId, agg);
+                }
             }
             if (touched) touchedItemIds.add(item.id);
         }
 
         await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+        await this.notifyAmountRecalculated(purchase.id, purchase.tag, changedByUser);
+    }
+
+    private async notifyAmountRecalculated(
+        purchaseId: number,
+        purchaseTag: string,
+        changedByUser: Map<number, { prev: number; next: number }>,
+    ): Promise<void> {
+        for (const [userId, agg] of changedByUser) {
+            try {
+                await this.notification.notify({
+                    userId,
+                    type: 'ORDER_AMOUNT_RECALCULATED',
+                    payload: {
+                        purchaseId,
+                        purchaseTag,
+                        prevAmountDue: Math.round(agg.prev * 100) / 100,
+                        newAmountDue: Math.round(agg.next * 100) / 100,
+                    },
+                });
+            } catch (err) {
+                log.warn({ purchaseId, userId, err }, 'failed to notify about amount recalculation');
+            }
+        }
     }
 
     /**
@@ -373,6 +466,9 @@ export class PurchaseService {
     ) {
         const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
+        if (purchase.status === 'DONE') {
+            throw new ValidationError('В завершённой закупке нельзя менять курсы и доставку');
+        }
         await this.repo.setCurrencyRates(purchaseId, rates, deliveryPercent);
         // Курс или % доставки изменились → пересчитываем суммы заказов по новой модели цен.
         await this.recalculateAmounts(purchaseId);

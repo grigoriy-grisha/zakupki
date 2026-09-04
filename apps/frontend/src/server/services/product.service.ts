@@ -1,8 +1,9 @@
-import { getUnitByCode, NotFoundError } from '@zakupki/types';
 import { dbClient } from '@zakupki/database';
-
-import { ProductRepository, type ProductCreateData, type ProductWriteData } from '../domain/product.repository';
 import type { EventBus } from '@zakupki/queue';
+import { NotFoundError } from '@zakupki/types';
+
+import type { ProductRepository} from '../domain/product.repository';
+import { type ProductCreateData, type ProductWriteData } from '../domain/product.repository';
 
 export class ProductService {
     constructor(
@@ -27,10 +28,6 @@ export class ProductService {
     async update(id: number, data: ProductWriteData) {
         const result = await this.repo.update(id, data);
 
-        if (data.unitCode !== undefined) {
-            await this.syncUnitOnPurchaseItems(id, data.unitCode);
-        }
-
         const linkedItems = await dbClient.purchaseItem.findMany({
             where: { productId: id, tgMessageId: { not: null } },
             select: { id: true },
@@ -38,39 +35,6 @@ export class ProductService {
         await Promise.all(linkedItems.map((it) => this.eventBus.emitPurchaseItemChanged(it.id)));
 
         return result;
-    }
-
-    private async syncUnitOnPurchaseItems(productId: number, unitCode: string) {
-        const unit = getUnitByCode(unitCode);
-        const shortName = unit?.shortName ?? null;
-        if (shortName == null) return;
-
-        const items = await dbClient.purchaseItem.findMany({
-            where: { productId },
-            select: {
-                id: true,
-                minPackageUnit: true,
-                supplierLimitUnit: true,
-                packUnit: true,
-            },
-        });
-
-        for (const item of items) {
-            const needUpdateMinPkg = item.minPackageUnit != null && item.minPackageUnit !== shortName;
-            const needUpdateSupplier = item.supplierLimitUnit != null && item.supplierLimitUnit !== shortName;
-            const needUpdatePack = item.packUnit != null && item.packUnit !== shortName;
-
-            if (!needUpdateMinPkg && !needUpdateSupplier && !needUpdatePack) continue;
-
-            await dbClient.purchaseItem.update({
-                where: { id: item.id },
-                data: {
-                    ...(needUpdateMinPkg ? { minPackageUnit: shortName } : {}),
-                    ...(needUpdateSupplier ? { supplierLimitUnit: shortName } : {}),
-                    ...(needUpdatePack ? { packUnit: shortName } : {}),
-                },
-            });
-        }
     }
 
     async updateWithVersionCheck(id: number, data: ProductWriteData, expectedVersion: number) {

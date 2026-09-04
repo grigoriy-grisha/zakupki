@@ -19,13 +19,14 @@ import {
 } from '../src';
 
 describe('NOTIFICATION_TYPES', () => {
-    it('includes all 11 expected types', () => {
+    it('includes all 12 expected types', () => {
         expect(NOTIFICATION_TYPES).toEqual([
             'PAYMENT_CONFIRMED',
             'PAYMENT_REJECTED',
             'ORDER_QTY_CHANGED',
             'ORDER_LINE_DELETED',
             'ORDER_CLEARED',
+            'ORDER_AMOUNT_RECALCULATED',
             'ORDER_HANDOFF_STATUS',
             'ORDER_ASSEMBLED',
             'ORDER_HANDOFF_STORED',
@@ -596,32 +597,32 @@ describe('getNotificationFields', () => {
     });
 
     it('always puts Закупка first so the purchase is identifiable at a glance', () => {
+        // Minimal valid payload per type — fields() reads only what it needs.
+        const minimalPayloads: Record<NotificationType, Record<string, unknown>> = {
+            PAYMENT_CONFIRMED: { purchaseId: 1, purchaseTag: 'T', amount: 1 },
+            PAYMENT_REJECTED: { purchaseId: 1, purchaseTag: 'T', amount: 1 },
+            ORDER_QTY_CHANGED: {
+                purchaseId: 1,
+                purchaseTag: 'T',
+                purchaseItemId: 1,
+                productLabel: 'P',
+                prevQty: 0,
+                newQty: 1,
+                unitShort: 'шт',
+            },
+            ORDER_LINE_DELETED: { purchaseId: 1, purchaseTag: 'T', purchaseItemId: 1, productLabel: 'P' },
+            ORDER_CLEARED: { purchaseId: 1, purchaseTag: 'T' },
+            ORDER_AMOUNT_RECALCULATED: { purchaseId: 1, purchaseTag: 'T', prevAmountDue: 100, newAmountDue: 120 },
+            ORDER_HANDOFF_STATUS: { purchaseId: 1, purchaseTag: 'T', status: 'SENT' },
+            ORDER_ASSEMBLED: { purchaseId: 1, purchaseTag: 'T', purchaseOrderId: 1 },
+            ORDER_HANDOFF_STORED: { purchaseId: 1, purchaseTag: 'T' },
+            ORDER_HANDOFF_SHIP_REQUEST: { purchaseId: 1, purchaseTag: 'T' },
+            PURCHASE_FULFILLMENT_STAGE: { purchaseId: 1, purchaseTag: 'T', stage: 'PAYMENT' },
+            PURCHASE_STATUS_CHANGED: { purchaseId: 1, purchaseTag: 'T', status: 'DONE' },
+        };
+
         for (const type of NOTIFICATION_TYPES) {
-            // Build a minimal valid payload per type — fields() reads only what it needs.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const payload: any =
-                type === 'ORDER_CLEARED'
-                    ? { purchaseId: 1, purchaseTag: 'T' }
-                    : type === 'ORDER_LINE_DELETED'
-                      ? { purchaseId: 1, purchaseTag: 'T', purchaseItemId: 1, productLabel: 'P' }
-                      : type === 'ORDER_QTY_CHANGED'
-                        ? {
-                              purchaseId: 1,
-                              purchaseTag: 'T',
-                              purchaseItemId: 1,
-                              productLabel: 'P',
-                              prevQty: 0,
-                              newQty: 1,
-                              unitShort: 'шт',
-                          }
-                        : type === 'PAYMENT_CONFIRMED' || type === 'PAYMENT_REJECTED'
-                          ? { purchaseId: 1, purchaseTag: 'T', amount: 1 }
-                          : type === 'PURCHASE_FULFILLMENT_STAGE'
-                            ? { purchaseId: 1, purchaseTag: 'T', stage: 'PAYMENT' }
-                            : type === 'ORDER_HANDOFF_STATUS'
-                              ? { purchaseId: 1, purchaseTag: 'T', status: 'SENT' }
-                              : { purchaseId: 1, purchaseTag: 'T', status: 'DONE' };
-            const fields = getNotificationFields(type, payload);
+            const fields = getNotificationFields(type, minimalPayloads[type] as never);
             expect(fields[0]?.label).toBe('Закупка');
             expect(fields[0]?.value).toMatch(/^#T$/);
         }

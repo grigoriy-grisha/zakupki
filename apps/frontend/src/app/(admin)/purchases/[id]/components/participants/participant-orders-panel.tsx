@@ -75,7 +75,7 @@ export function ParticipantOrdersPanel({
                             minPackageAmount:
                                 sourceItem?.minPackageAmount != null ? Number(sourceItem.minPackageAmount) : null,
                             minPackageUnit: null,
-                            unitCode: product?.unitCode ?? null,
+                            unitCode: sourceItem?.unitCode ?? product?.unitCode ?? null,
                         }),
                     );
                     return (
@@ -113,7 +113,7 @@ export function ParticipantOrdersPanel({
                                     totalQty={qty}
                                     packageCount={group.packageCount}
                                     packAmount={sourceItem?.packAmount ?? null}
-                                    unitCode={product?.unitCode ?? null}
+                                    unitCode={sourceItem?.unitCode ?? product?.unitCode ?? null}
                                 />
                             </div>
                             <AdminOrderLineEditor
@@ -137,7 +137,7 @@ export function ParticipantOrdersPanel({
                                 }
                                 packageCount={group.packageCount}
                                 packAmount={sourceItem?.packAmount ?? null}
-                                unitCode={product?.unitCode ?? null}
+                                unitCode={sourceItem?.unitCode ?? product?.unitCode ?? null}
                                 onAdjustPackage={(purchaseItemId, delta) =>
                                     orderActions.adminAdjustPackage({ purchaseItemId, userId, delta })
                                 }

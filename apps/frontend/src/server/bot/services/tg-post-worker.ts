@@ -65,7 +65,7 @@ function buildPostHeader(renderer: BotProductRenderer, item: Item, unitPriceRub:
         unitPriceRub,
         minPackageAmount: item.minPackageAmount,
         minPackageUnit: item.minPackageUnit,
-        unitCode: item.product.unitCode,
+        unitCode: item.unitCode,
     });
 }
 
@@ -94,13 +94,13 @@ function computeFreeToOrder(item: Item): number | null {
         targetRemainder: item.targetRemainder != null ? Number(item.targetRemainder) : null,
         packSize: item.packAmount != null ? Number(item.packAmount) : null,
         aggregation,
-        unitCode: item.product.unitCode ?? null,
+        unitCode: item.unitCode ?? null,
     });
 }
 
 /** Short name ед. продукта (напр. «гр») для строки «Свободно к заказу». */
 function unitShortName(item: Item): string | null {
-    return getUnitByCode(item.product.unitCode)?.shortName ?? null;
+    return getUnitByCode(item.unitCode)?.shortName ?? null;
 }
 
 function joinPostText(renderer: BotProductRenderer, item: Item, orderLinesSum: number, unitPriceRub: number | null): string {

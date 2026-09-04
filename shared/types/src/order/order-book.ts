@@ -221,6 +221,15 @@ export class OrderBook {
     /** Admin: изменить кол-во упаковок на delta (в обход stage-правил/пула/лимита). */
     adminAdjustPackages(userId: number, delta: number): AdjustResult {
         if (delta === 0) return ok(this);
+        if (isPieceUnit(this.item.unitCode)) {
+            return {
+                ok: false,
+                error: {
+                    code: 'no_package',
+                    message: 'Товар штучный — упаковок нет, заказывайте количеством',
+                },
+            };
+        }
         if (!this.item.packAmount) {
             return { ok: false, error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' } };
         }

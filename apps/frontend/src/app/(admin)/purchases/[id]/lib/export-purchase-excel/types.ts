@@ -56,6 +56,7 @@ export type ExportOrder = {
         id?: number;
         packAmount?: unknown;
         packUnit?: string | null;
+        unitCode?: string | null;
         product?: ExportProduct;
     };
 };

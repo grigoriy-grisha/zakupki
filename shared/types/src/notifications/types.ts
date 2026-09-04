@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPES = [
     'ORDER_QTY_CHANGED',
     'ORDER_LINE_DELETED',
     'ORDER_CLEARED',
+    'ORDER_AMOUNT_RECALCULATED',
     'ORDER_HANDOFF_STATUS',
     'ORDER_ASSEMBLED',
     'ORDER_HANDOFF_STORED',
@@ -64,6 +65,12 @@ export interface NotificationPayloads {
     ORDER_CLEARED: {
         purchaseId: number;
         purchaseTag: string;
+    };
+    ORDER_AMOUNT_RECALCULATED: {
+        purchaseId: number;
+        purchaseTag: string;
+        prevAmountDue: number;
+        newAmountDue: number;
     };
     ORDER_HANDOFF_STATUS: {
         purchaseId: number;

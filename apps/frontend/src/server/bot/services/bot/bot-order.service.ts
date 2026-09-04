@@ -29,6 +29,7 @@ export type BotPurchaseOrderDetail = {
         status: string;
         purchaseItem: {
             id: number;
+            unitCode: string;
             product: { name: string; unitCode: string } | null;
             purchase: { fulfillmentStatus: string };
         } | null;

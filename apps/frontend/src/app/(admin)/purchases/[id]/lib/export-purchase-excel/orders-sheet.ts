@@ -40,8 +40,12 @@ const ORDERS_EXPORT_PRICE_HEADERS = [
     'цена за 1 гр. в рублях',
 ] as const;
 
-function isGramProduct(product: ExportProduct | undefined): boolean {
-    return product?.unitCode?.toLowerCase() === 'gram';
+function isGramItem(
+    purchaseItem: { unitCode?: string | null } | undefined,
+    product: ExportProduct | undefined,
+): boolean {
+    const unitCode = purchaseItem?.unitCode ?? product?.unitCode;
+    return unitCode?.toLowerCase() === 'gram';
 }
 
 function isFullPackOrder(
@@ -217,14 +221,14 @@ export function addParticipantOrdersTable(
         const product =
             (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
             order.purchaseItem?.product;
-        const gramItem = isGramProduct(product) ? order.purchaseItem : undefined;
+        const gramItem = isGramItem(order.purchaseItem, product) ? order.purchaseItem : undefined;
         const [packPrice, price510, price1] = purchaseItemPriceCells(order.purchaseItem as never);
         const [partialQty, fullPackQty] = orderQuantitySplitColumns(gramItem, order.quantity);
         const amounts = orderAmountSplit(gramItem, order.amountDue, order.quantity);
         amountTotals.partial += amounts.partial;
         amountTotals.fullPack += amounts.fullPack;
 
-        if (isGramProduct(product)) {
+        if (gramItem) {
             const qty = formatMoney(order.quantity);
             if (isFullPackOrder(gramItem, order.quantity)) {
                 gramTotals.fullPackGr += qty;

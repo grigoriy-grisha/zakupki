@@ -1,20 +1,22 @@
+import { createLogger } from '@zakupki/logger';
+import type { EventBus } from '@zakupki/queue';
 import {
     canTransitionFulfillment,
+    canTransitionPurchaseStatus,
     FULFILLMENT_TRANSITIONS,
     isFreezePoint,
     isPaymentPlusFreezePoint,
     isUnfreezePoint,
-    NOTIFIABLE_FULFILLMENT_STAGES,
     NotFoundError,
-    ValidationError,
+    NOTIFIABLE_FULFILLMENT_STAGES,
+    PURCHASE_STATUS_TRANSITIONS,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
+    ValidationError,
 } from '@zakupki/types';
-import type { EventBus } from '@zakupki/queue';
-import { createLogger } from '@zakupki/logger';
 
-import { OrderRepository } from '../domain/order.repository';
-import { PurchaseRepository } from '../domain/purchase.repository';
+import type { OrderRepository } from '../domain/order.repository';
+import type { PurchaseRepository } from '../domain/purchase.repository';
 import type { NotificationService } from './notification.service';
 
 const log = createLogger('purchase-status-service');
@@ -43,15 +45,26 @@ export class PurchaseStatusService {
     ) {}
 
     async updateStatus(id: number, status: string) {
-        // Compare against the current value first so no-op calls (same status)
-        // don't spam participants with duplicate notifications. `getById` is the
-        // same lookup `updateFulfillmentStatus` does; cheap relative to fan-out.
-        const before = await this.repo.getById(id);
-        const result = await this.repo.updateStatus(id, status);
+        const purchase = await this.repo.getById(id);
+        if (!purchase) throw new NotFoundError('Закупка', id);
+        const current = purchase.status as PurchaseStatus;
         const next = status as PurchaseStatus;
-        if (next !== 'DRAFT' && before?.status !== next) {
-            await this.notifyStatusChanged(id, next);
+
+        // No-op call (same status): keep it silent — no event, no fan-out spam.
+        if (current === next) {
+            return this.repo.updateStatus(id, status);
         }
+
+        if (!canTransitionPurchaseStatus(current, next)) {
+            const allowed = PURCHASE_STATUS_TRANSITIONS[current] ?? [];
+            throw new ValidationError(
+                `Недопустимый переход статуса: ${current} → ${next}. Разрешено: ${allowed.join(', ') || '(нет)'}`,
+            );
+        }
+
+        const result = await this.repo.updateStatus(id, status);
+        await this.eventBus.emitPurchaseStatusChanged(id, current, next);
+        await this.notifyStatusChanged(id, next);
         return result;
     }
 
