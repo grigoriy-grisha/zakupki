@@ -1,10 +1,20 @@
 import { InlineKeyboard } from 'grammy';
 
+import { PAYMENT_DETAILS } from '@/lib/payment-utils';
+
 import type { ServiceContainer } from '../../container/service-container';
 import type { CallbackAction } from '../../domain/callback-data';
 import type { CallbackHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import type { BotPurchasePaymentInfo } from '../../services/bot/bot-payment.service';
+
+const PAYMENT_DETAILS_TEXT = [
+    'Реквизиты для оплаты:',
+    `Способ оплаты: ${PAYMENT_DETAILS.method}`,
+    `Номер телефона: ${PAYMENT_DETAILS.phone}`,
+    `Получатель: ${PAYMENT_DETAILS.recipient}`,
+    `Банк: ${PAYMENT_DETAILS.banks}`,
+].join('\n');
 
 function formatBreakdown(info: BotPurchasePaymentInfo): string {
     const breakdown = info.breakdown;
@@ -75,6 +85,7 @@ export class PayCallbackQueryHandler implements CallbackHandler {
             `Закупка «${info.tag}»\n` +
                 `К оплате: ${info.remaining.toLocaleString('ru-RU')} ₽\n\n` +
                 (breakdownText ? `${breakdownText}\n\n` : '') +
+                `${PAYMENT_DETAILS_TEXT}\n\n` +
                 `Введите сумму в рублях или нажмите кнопку ниже.`,
             { reply_markup: keyboard },
         );

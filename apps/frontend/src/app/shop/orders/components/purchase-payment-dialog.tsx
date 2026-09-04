@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRub } from '@/lib/format/money';
+import { PAYMENT_DETAILS } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 export type PurchasePaymentDialogProps = {
@@ -18,7 +19,6 @@ export type PurchasePaymentDialogProps = {
     remaining: number;
     hasPending: boolean;
     paymentOpen: boolean;
-    /** «button» — полная кнопка; «link» — текстовая ссылка (заказы). */
     triggerVariant?: 'button' | 'link';
     buttonClassName?: string;
     buttonSize?: 'sm' | 'default';
@@ -81,7 +81,7 @@ export function PurchasePaymentDialog({
     return (
         <Dialog open={form.open} onOpenChange={form.handleOpenChange}>
             {payButton}
-            <DialogContent>
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Оплата — прикрепите чек</DialogTitle>
                 </DialogHeader>
@@ -90,6 +90,23 @@ export function PurchasePaymentDialog({
                     <span>
                         Осталось оплатить: <strong>{formatRub(remaining)}</strong>
                     </span>
+                </div>
+                <div className="rounded-lg bg-bg-soft p-3">
+                    <p className="text-13-semibold text-fg-primary">Реквизиты для оплаты</p>
+                    <div className="mt-1.5 space-y-0.5 text-13-regular text-fg-secondary">
+                        <p>
+                            Способ оплаты: <span className="text-fg-primary">{PAYMENT_DETAILS.method}</span>
+                        </p>
+                        <p>
+                            Номер телефона: <span className="text-fg-primary tabular-nums">{PAYMENT_DETAILS.phone}</span>
+                        </p>
+                        <p>
+                            Получатель: <span className="text-fg-primary">{PAYMENT_DETAILS.recipient}</span>
+                        </p>
+                        <p>
+                            Банк: <span className="text-fg-primary">{PAYMENT_DETAILS.banks}</span>
+                        </p>
+                    </div>
                 </div>
                 <form onSubmit={form.handleSubmit} className="space-y-4">
                     <div className="space-y-2">
