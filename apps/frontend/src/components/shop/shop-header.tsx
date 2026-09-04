@@ -1,5 +1,6 @@
 'use client';
 
+import { ClipboardList } from 'lucide-react';
 import { signOut,useSession } from 'next-auth/react';
 import { useState } from 'react';
 
@@ -8,7 +9,6 @@ import {
     BrandLogo,
     HeaderBellIcon,
     HeaderLogoutIcon,
-    HeaderOrdersIcon,
     HeaderProfileIcon,
 } from '@/components/icons';
 import { NotificationBell } from '@/components/shop/notification-bell';
@@ -69,7 +69,7 @@ export function ShopHeader() {
                             <span className="hidden sm:inline">Профиль</span>
                         </AppLink>
                         <AppLink href="/shop/orders" className={navLinkClass}>
-                            <HeaderOrdersIcon className="size-5" />
+                            <ClipboardList className="size-5" strokeWidth={1.5} />
                             <span className="hidden sm:inline">Заказы</span>
                         </AppLink>
                         <NotificationBell icon={HeaderBellIcon} iconClassName="size-5 text-fg-primary" />
