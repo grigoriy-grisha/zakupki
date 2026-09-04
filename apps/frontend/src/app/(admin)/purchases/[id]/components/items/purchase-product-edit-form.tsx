@@ -382,6 +382,10 @@ export function PurchaseProductEditForm({
             setPackAmount(1);
             setMinPkgAmount(null);
             setSupplementStep(null);
+            // Для штучных товаров эти единицы locked в UI и форсятся на save —
+            // синхронизируем их сразу, иначе locked-подпись показывает старую ед.
+            setSupplierLimitUnit(next);
+            setMinPkgUnit(next);
         }
         setUnit(next);
     }
