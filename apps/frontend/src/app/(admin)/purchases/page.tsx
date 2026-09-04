@@ -13,10 +13,19 @@ import { trpc } from '@/lib/client/trpc';
 import { PurchaseCard, PurchaseForm } from './components';
 
 export default function PurchasesPage() {
-    const [tab, setTab] = useState('all');
+    const [tab, setTab] = useState('ACTIVE');
     const [newOpen, setNewOpen] = useState(false);
 
-    const { data: purchases, isLoading } = trpc.purchases.list.useQuery(tab === 'all' ? undefined : { status: tab });
+    const isDeletedTab = tab === 'deleted';
+    const { data: purchases, isLoading } = trpc.purchases.list.useQuery(
+        tab === 'all' ? undefined : { status: tab },
+        { enabled: !isDeletedTab },
+    );
+    const { data: deletedPurchases, isLoading: deletedLoading } = trpc.purchases.listDeleted.useQuery(undefined, {
+        enabled: isDeletedTab,
+    });
+    const items = isDeletedTab ? deletedPurchases : purchases;
+    const loading = isDeletedTab ? deletedLoading : isLoading;
 
     return (
         <div className="space-y-6">
@@ -36,10 +45,11 @@ export default function PurchasesPage() {
                     <TabsTrigger value="DRAFT">Черновики</TabsTrigger>
                     <TabsTrigger value="ACTIVE">Активные</TabsTrigger>
                     <TabsTrigger value="DONE">Завершённые</TabsTrigger>
+                    <TabsTrigger value="deleted">Удалённые</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value={tab} className="mt-4">
-                    {isLoading ? (
+                    {loading ? (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {Array.from({ length: 6 }).map((_, i) => (
                                 <Skeleton key={i} className="h-40" />
@@ -47,11 +57,11 @@ export default function PurchasesPage() {
                         </div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {purchases?.length === 0 && (
+                            {items?.length === 0 && (
                                 <p className="col-span-full py-12 text-center text-14-regular text-fg-secondary">Нет закупок</p>
                             )}
-                            {purchases?.map((purchase) => (
-                                <PurchaseCard key={purchase.id} purchase={purchase} />
+                            {items?.map((purchase) => (
+                                <PurchaseCard key={purchase.id} purchase={purchase} deleted />
                             ))}
                         </div>
                     )}

@@ -39,6 +39,10 @@ export class PurchaseService {
         return this.repo.listByStatusesForUser(userId, statuses, includeHidden);
     }
 
+    async listDeleted() {
+        return this.repo.listDeleted();
+    }
+
     async getById(id: number, includeHidden = false) {
         const purchase = await this.repo.getById(id, includeHidden);
         if (!purchase) throw new NotFoundError('Закупка', id);

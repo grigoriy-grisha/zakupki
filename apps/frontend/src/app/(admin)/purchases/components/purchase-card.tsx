@@ -18,9 +18,10 @@ interface AdminPurchaseListCardProps {
         fulfillmentStatus?: PurchaseFulfillmentStatus | null;
         items?: { orderLines: { amountDue: unknown }[] }[];
     };
+    deleted?: boolean;
 }
 
-export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
+export function PurchaseCard({ purchase, deleted = false }: AdminPurchaseListCardProps) {
     const items = purchase.items ?? [];
     const { updateFulfillmentStatus } = usePurchaseActions(purchase.id);
 
@@ -42,6 +43,11 @@ export function PurchaseCard({ purchase }: AdminPurchaseListCardProps) {
                     <Badge variant={STATUS_VARIANT[purchase.status] ?? 'secondary'} type="subtle" size="sm">
                         {STATUS_LABELS[purchase.status] ?? purchase.status}
                     </Badge>
+                    {deleted && (
+                        <Badge variant="critical" type="subtle" size="sm">
+                            Удалена
+                        </Badge>
+                    )}
                 </AppLink>
             </div>
 

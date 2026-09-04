@@ -59,6 +59,10 @@ export const purchasesRouter = router({
             return ctx.services.purchase.list(input?.status, includeHidden);
         }),
 
+    listDeleted: adminProcedure.query(async ({ ctx }) => {
+        return ctx.services.purchase.listDeleted();
+    }),
+
     listMyCompleted: protectedProcedure.query(async ({ ctx }) => {
         return ctx.services.purchase.listByStatusesForUser(ctx.userId, ['DONE'], false);
     }),

@@ -19,7 +19,7 @@ export class PurchaseRepository {
         return dbClient.purchase.findMany({
             where: {
                 ...(status ? { status: status as PurchaseStatus } : {}),
-                ...PurchaseRepository.visibilityWhere(includeHidden),
+                deletedAt: null,
             },
             include: {
                 items: {
@@ -41,7 +41,7 @@ export class PurchaseRepository {
         return dbClient.purchase.findMany({
             where: {
                 status: { in: statuses as PurchaseStatus[] },
-                ...PurchaseRepository.visibilityWhere(includeHidden),
+                deletedAt: null,
             },
             include: {
                 items: {
@@ -64,7 +64,7 @@ export class PurchaseRepository {
             where: {
                 status: { in: statuses as PurchaseStatus[] },
                 items: { some: { orderLines: { some: { userId } } } },
-                ...PurchaseRepository.visibilityWhere(includeHidden),
+                deletedAt: null,
             },
             include: {
                 items: {
@@ -79,6 +79,24 @@ export class PurchaseRepository {
                 },
             },
             orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async listDeleted() {
+        return dbClient.purchase.findMany({
+            where: { deletedAt: { not: null } },
+            include: {
+                items: {
+                    orderBy: { id: 'asc' },
+                    include: {
+                        product: { include: productInclude },
+                        orderLines: {
+                            select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
+                        },
+                    },
+                },
+            },
+            orderBy: { deletedAt: 'desc' },
         });
     }
 
