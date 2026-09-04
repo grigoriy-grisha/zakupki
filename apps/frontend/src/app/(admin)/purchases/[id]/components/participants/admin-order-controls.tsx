@@ -1,5 +1,6 @@
 'use client';
 
+import { isWeightUnit } from '@zakupki/types';
 import { Check, Minus, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -70,6 +71,8 @@ interface AdminOrderLineEditorProps {
     packageCount?: number;
     /** Вес упаковки в базовых единицах. null — упаковок нет, блок скрыт. */
     packAmount?: string | number | null;
+    /** Код единицы товара: блок ±уп только для весовых (гр). */
+    unitCode?: string | null;
     /** ± на кол-во упаковок (admin-override). */
     onAdjustPackage?: (purchaseItemId: number, delta: number) => void;
 }
@@ -93,6 +96,7 @@ export function AdminOrderLineEditor({
     onDelete,
     packageCount = 0,
     packAmount,
+    unitCode,
     onAdjustPackage,
 }: AdminOrderLineEditorProps) {
     const [value, setValue] = useState(String(quantity));
@@ -113,6 +117,7 @@ export function AdminOrderLineEditor({
     };
 
     const hasPackages =
+        isWeightUnit(unitCode ?? null) &&
         packAmount != null &&
         Number(packAmount) > 0 &&
         Number.isFinite(Number(packAmount)) &&

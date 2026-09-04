@@ -137,6 +137,7 @@ export function ParticipantOrdersPanel({
                                 }
                                 packageCount={group.packageCount}
                                 packAmount={sourceItem?.packAmount ?? null}
+                                unitCode={product?.unitCode ?? null}
                                 onAdjustPackage={(purchaseItemId, delta) =>
                                     orderActions.adminAdjustPackage({ purchaseItemId, userId, delta })
                                 }
