@@ -12,6 +12,7 @@ import {
 } from '@zakupki/types';
 import {
     Archive,
+    ArrowLeft,
     Boxes,
     ChevronRight,
     ClipboardList,
@@ -452,6 +453,12 @@ export default function OrdersPage() {
     if (!myOrders?.length) {
         return (
             <div className="flex flex-col gap-5 sm:gap-8">
+                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
+                    <AppLink href="/shop">
+                        <ArrowLeft className="size-4" />
+                        Назад
+                    </AppLink>
+                </Button>
                 <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
                 <div className="rounded-[10px] bg-bg-soft sm:rounded-[20px]">
                     <EmptyState
@@ -469,7 +476,15 @@ export default function OrdersPage() {
 
     return (
         <div className="flex flex-col gap-5 sm:gap-8">
-            <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
+            <div className="flex flex-col gap-3 sm:gap-4">
+                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
+                    <AppLink href="/shop">
+                        <ArrowLeft className="size-4" />
+                        Назад
+                    </AppLink>
+                </Button>
+                <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
+            </div>
 
             <div className="rounded-[10px] bg-bg-soft p-4 sm:rounded-[20px] sm:p-6">
                 <OrdersSegmentedTabs

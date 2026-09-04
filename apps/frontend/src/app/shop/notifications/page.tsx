@@ -1,10 +1,11 @@
 'use client';
 
-import { Bell, CheckCheck } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCheck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
+import { AppLink } from '@/components/app-link';
 import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,6 +91,14 @@ function NotificationsPageInner() {
     return (
         <div className="flex flex-col gap-5 sm:gap-6">
 
+            <div className="flex flex-col gap-3 sm:gap-4">
+                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
+                    <AppLink href="/shop">
+                        <ArrowLeft className="size-4" />
+                        Назад
+                    </AppLink>
+                </Button>
+
             <header className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
                     <h1 className="text-h1 text-center text-secondary sm:text-left">Уведомления</h1>
@@ -112,6 +121,7 @@ function NotificationsPageInner() {
                     </Button>
                 )}
             </header>
+            </div>
 
             {isLoading ? (
                 <NotificationsSkeleton />
