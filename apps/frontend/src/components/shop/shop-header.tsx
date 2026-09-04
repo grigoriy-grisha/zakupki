@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardList, ShoppingBasket } from 'lucide-react';
+import { ShoppingBasket } from 'lucide-react';
 import { signOut,useSession } from 'next-auth/react';
 import { useState } from 'react';
 
@@ -71,10 +71,6 @@ export function ShopHeader() {
                         <AppLink href="/shop/orders" className={navLinkClass} aria-label="Корзина">
                             <ShoppingBasket className="size-5" strokeWidth={1.5} />
                             <span className="hidden sm:inline">Корзина</span>
-                        </AppLink>
-                        <AppLink href="/shop/orders" className={navLinkClass}>
-                            <ClipboardList className="size-5" strokeWidth={1.5} />
-                            <span className="hidden sm:inline">Заказы</span>
                         </AppLink>
                         <NotificationBell icon={HeaderBellIcon} iconClassName="size-5 text-fg-primary" />
                         {!isTelegramWebApp && (
