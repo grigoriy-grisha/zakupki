@@ -27,10 +27,10 @@ export function PurchaseSelect({ currentPurchaseId }: { currentPurchaseId: numbe
                     type="button"
                     className="flex h-12 w-full items-center justify-between gap-3 rounded-full bg-bg-soft px-5 text-left"
                 >
-                    <span className="font-display text-18-semibold leading-none text-secondary">
+                    <span className="min-w-0 truncate font-display text-18-semibold leading-none text-secondary">
                         {current?.tag ?? '#…'}
                     </span>
-                    <span className="flex min-w-0 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-2">
                         {current && (
                             <span className="inline-flex h-7 items-center rounded-full border border-secondary px-3.5 text-12-medium text-secondary">
                                 {getPurchaseStageLabel(currentStatus)}
