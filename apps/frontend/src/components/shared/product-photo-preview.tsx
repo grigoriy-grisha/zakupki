@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Package, X, ZoomIn } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useLightboxGallery } from '@/lib/hooks/use-lightbox-gallery';
@@ -15,12 +15,11 @@ function blockClickThroughAfterClose() {
         e.stopPropagation();
         e.stopImmediatePropagation();
     };
-    document.addEventListener('click', swallow, true);
-    document.addEventListener('pointerup', swallow, true);
+    const types = ['click', 'pointerup', 'touchend', 'mousedown', 'mouseup'] as const;
+    for (const type of types) document.addEventListener(type, swallow, true);
     window.setTimeout(() => {
-        document.removeEventListener('click', swallow, true);
-        document.removeEventListener('pointerup', swallow, true);
-    }, 400);
+        for (const type of types) document.removeEventListener(type, swallow, true);
+    }, 700);
 }
 
 interface ProductPhotoPreviewProps {
@@ -144,6 +143,8 @@ export function ProductPhotoPreview({
                     onPointerDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        blockClickThroughAfterClose();
+                        close();
                     }}
                     onClick={closeAndSwallowClick}
                     aria-label="Закрыть"
