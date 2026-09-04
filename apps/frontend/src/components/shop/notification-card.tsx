@@ -50,19 +50,20 @@ export function NotificationCard({
     const visual = getNotificationVisual(type);
     const fields = density === 'full' ? getNotificationFields(type, payload) : [];
     const tag = payload?.purchaseTag as string | undefined;
+    const tagLabel = tag ? `#${tag.replace(/^#+/, '')}` : undefined;
     const purchaseId = payload?.purchaseId as number | undefined;
     const purchaseHref = purchaseId != null ? `/shop/purchase/${purchaseId}` : null;
 
     const renderTag = () => {
-        if (!tag) return null;
-        if (!purchaseHref) return <span className="text-13-medium text-primary">#{tag}</span>;
+        if (!tagLabel) return null;
+        if (!purchaseHref) return <span className="text-13-medium text-primary">{tagLabel}</span>;
         return (
             <AppLink
                 href={purchaseHref}
                 onClick={(e) => e.stopPropagation()}
                 className="text-13-medium text-primary transition-opacity hover:opacity-80"
             >
-                #{tag}
+                {tagLabel}
             </AppLink>
         );
     };
@@ -90,7 +91,7 @@ export function NotificationCard({
                     <span className="shrink-0 text-12-regular text-fg-tertiary">{formatRelative(createdAt)}</span>
                 </div>
 
-                {density === 'compact' && tag && <div className="mt-0.5 truncate text-12-regular">{renderTag()}</div>}
+                {density === 'compact' && tagLabel && <div className="mt-0.5 truncate text-12-regular">{renderTag()}</div>}
 
                 {density === 'full' && fields.length > 0 && (
                     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
