@@ -1,9 +1,11 @@
 'use client';
 
-import { ClipboardList } from 'lucide-react';
+import { isPurchaseCompleted } from '@zakupki/types';
+import { ClipboardList, ShoppingCart } from 'lucide-react';
 import { signOut,useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { type GroupableOrderLine,groupOrdersByPurchase } from '@/app/shop/lib/order-grouping';
 import { AppLink } from '@/components/app-link';
 import {
     BrandLogo,
@@ -22,6 +24,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { withPlatformPrefix } from '@/lib/app-path';
+import { trpc } from '@/lib/client/trpc';
 import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
 import { usePlatform } from '@/lib/hooks/use-platform';
 import { cn } from '@/lib/utils';
@@ -37,6 +40,15 @@ export function ShopHeader() {
     const isTelegramWebApp = useIsTelegramWebApp();
     const isAuthenticated = !!session?.user || isTelegramWebApp;
     const [logoutOpen, setLogoutOpen] = useState(false);
+    const { data: myOrders } = trpc.orders.getMyOrders.useQuery(undefined, {
+        enabled: isAuthenticated,
+    });
+    const cartCount = useMemo(() => {
+        const groups = groupOrdersByPurchase((myOrders ?? []) as GroupableOrderLine[]);
+        return groups
+            .filter((group) => !isPurchaseCompleted(group.status))
+            .reduce((sum, group) => sum + group.orders.length, 0);
+    }, [myOrders]);
 
     const handleLogout = () => {
         setLogoutOpen(false);
@@ -67,6 +79,23 @@ export function ShopHeader() {
                         <AppLink href="/shop/profile" className={navLinkClass}>
                             <HeaderProfileIcon className="size-5" />
                             <span className="hidden sm:inline">Профиль</span>
+                        </AppLink>
+                        <AppLink href="/shop/orders" className={navLinkClass} aria-label="Корзина">
+                            <span className="relative">
+                                <ShoppingCart className="size-5" strokeWidth={1.5} />
+                                {cartCount > 0 && (
+                                    <span
+                                        className={cn(
+                                            'absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center',
+                                            'justify-center rounded-full bg-primary px-1 text-[10px] font-semibold',
+                                            'leading-none text-primary-foreground',
+                                        )}
+                                    >
+                                        {cartCount > 99 ? '99+' : cartCount}
+                                    </span>
+                                )}
+                            </span>
+                            <span className="hidden sm:inline">Корзина</span>
                         </AppLink>
                         <AppLink href="/shop/orders" className={navLinkClass}>
                             <ClipboardList className="size-5" strokeWidth={1.5} />
