@@ -9,6 +9,7 @@ export const UNITS: readonly UnitDef[] = [
         code: 'gram',
         name: 'Граммы',
         shortName: 'гр',
+        pluralForms: ['гр', 'гр', 'гр'],
         kind: 'WEIGHT',
         aliases: ['гр', 'г', 'g', 'грамм', 'gram', 'grams'],
     },
@@ -16,6 +17,7 @@ export const UNITS: readonly UnitDef[] = [
         code: 'piece',
         name: 'Штуки',
         shortName: 'шт',
+        pluralForms: ['шт', 'шт', 'шт'],
         kind: 'PIECE',
         aliases: ['шт', 'штука', 'штук', 'piece', 'pieces'],
     },
@@ -23,6 +25,7 @@ export const UNITS: readonly UnitDef[] = [
         code: 'tube',
         name: 'Туба',
         shortName: 'туба',
+        pluralForms: ['туба', 'тубы', 'туб'],
         kind: 'PIECE',
         aliases: ['туба', 'туб', 'tube', 'тубус', 'tubus'],
     },
@@ -33,6 +36,15 @@ export const UNITS: readonly UnitDef[] = [
  */
 export function getUnitByCode(code: string): UnitDef | undefined {
     return UNITS.find((unit) => unit.code === code);
+}
+
+/** Форма единицы для числа: 1 туба / 2 тубы / 27 туб */
+export function unitPluralForm(quantity: number, def: UnitDef): string {
+    const mod10 = Math.abs(quantity) % 10;
+    const mod100 = Math.abs(quantity) % 100;
+    if (mod10 === 1 && mod100 !== 11) return def.pluralForms[0];
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return def.pluralForms[1];
+    return def.pluralForms[2];
 }
 
 /**

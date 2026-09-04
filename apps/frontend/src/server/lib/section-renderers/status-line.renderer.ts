@@ -1,6 +1,11 @@
-import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import {
+    PURCHASE_FULFILLMENT_LABELS,
+    type PurchaseFulfillmentStatus,
+    resolveUnit,
+    unitPluralForm,
+} from '@zakupki/types';
 
-import { escapeHtmlLocal, formatNumberRu, BaseSectionRenderer, type SectionProps } from './base-section-renderer';
+import { BaseSectionRenderer, escapeHtmlLocal, formatNumberRu, type SectionProps } from './base-section-renderer';
 
 export interface StatusLineData {
     item: {
@@ -39,7 +44,9 @@ export class StatusLineRenderer extends BaseSectionRenderer<StatusLineData> {
         const lines: string[] = [`<b>${escapeHtmlLocal(statusLabel)}</b>`];
 
         if (supplierLimit != null && unit) {
-            lines.push(`Лимит поставщика: <b>${formatNumberRu(supplierLimit)} ${escapeHtmlLocal(unit)}</b>`);
+            const limitDef = resolveUnit(unit);
+            const limitWord = limitDef ? unitPluralForm(supplierLimit, limitDef) : escapeHtmlLocal(unit);
+            lines.push(`Лимит поставщика: <b>${formatNumberRu(supplierLimit)} ${limitWord}</b>`);
         }
 
         // «Свободно к заказу» — это пул добора, он имеет смысл только начиная с
@@ -47,7 +54,9 @@ export class StatusLineRenderer extends BaseSectionRenderer<StatusLineData> {
         const free = data.freeToOrder ?? (supplierLimit != null ? Math.max(0, supplierLimit - orderLinesSum) : null);
         const freeUnit = data.unit ?? unit;
         if (status !== 'COLLECTION' && free != null && freeUnit) {
-            lines.push(`Свободно к заказу: <b>${formatNumberRu(free)} ${escapeHtmlLocal(freeUnit)}</b>`);
+            const freeDef = resolveUnit(freeUnit);
+            const freeWord = freeDef ? unitPluralForm(free, freeDef) : escapeHtmlLocal(freeUnit);
+            lines.push(`Свободно к заказу: <b>${formatNumberRu(free)} ${freeWord}</b>`);
         }
 
         return lines.join('\n');

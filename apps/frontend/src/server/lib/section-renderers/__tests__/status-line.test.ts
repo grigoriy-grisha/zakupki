@@ -63,6 +63,43 @@ describe('StatusLineRenderer', () => {
         expect(result).toMatchSnapshot();
     });
 
+    it('pluralizes known units (туба/тубы/туб) and falls back for unknown ones', () => {
+        const pluralized = renderById(
+            'STATUS_LINE',
+            createMockStatusLineData({
+                purchase: { fulfillmentStatus: 'REORDER' },
+                item: { supplierLimit: 27, supplierLimitUnit: 'туба' },
+                orderLinesSum: 1,
+                freeToOrder: 26,
+                unit: 'туба',
+            }),
+        );
+        expect(pluralized).toContain('Лимит поставщика: <b>27 туб</b>');
+        expect(pluralized).toContain('Свободно к заказу: <b>26 туб</b>');
+
+        const single = renderById(
+            'STATUS_LINE',
+            createMockStatusLineData({
+                purchase: { fulfillmentStatus: 'REORDER' },
+                item: { supplierLimit: 1, supplierLimitUnit: 'туба' },
+                orderLinesSum: 0,
+                freeToOrder: 21,
+                unit: 'туба',
+            }),
+        );
+        expect(single).toContain('Лимит поставщика: <b>1 туба</b>');
+        expect(single).toContain('Свободно к заказу: <b>21 туба</b>');
+
+        const unknown = renderById(
+            'STATUS_LINE',
+            createMockStatusLineData({
+                item: { supplierLimit: 5, supplierLimitUnit: '<script>' },
+                orderLinesSum: 0,
+            }),
+        );
+        expect(unknown).toContain('5 &lt;script&gt;');
+    });
+
     it('hides "Свободно к заказу" on COLLECTION even when supplierLimit + unit are set', () => {
         // Пул добора имеет смысл только с REORDER. На этапе «Сбор заказов»
         // строка не должна появляться, даже если данных для неё достаточно.

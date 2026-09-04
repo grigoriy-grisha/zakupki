@@ -15,6 +15,8 @@ export type UnitDef = {
     name: string;
     /** Краткое обозначение (например, 'гр', 'шт', 'туба') */
     shortName: string;
+    /** Формы для плюрализации с числом: [1, 2, 5] — «туба», «тубы», «туб» */
+    pluralForms: readonly [string, string, string];
     /** Тип единицы: WEIGHT или PIECE */
     kind: UnitKind;
     /** Варианты написания для нормализации (lowercase) */

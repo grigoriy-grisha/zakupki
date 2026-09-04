@@ -203,6 +203,7 @@ export {
     normalizeUnitCode,
     normalizeUnitShortName,
     resolveUnit,
+    unitPluralForm,
     type UnitDef,
     type UnitKind,
     UNITS,
