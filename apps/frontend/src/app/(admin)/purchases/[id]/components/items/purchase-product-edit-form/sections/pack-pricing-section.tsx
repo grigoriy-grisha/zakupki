@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import {
+    formatRub,
     formatUnitRub,
-    formatWholeRub,
     getPackPriceRub,
     getPackPriceWithOrgFeeRub,
     getUnitPriceWithDeliveryRub,
@@ -250,7 +250,7 @@ export function PackPricingSection({
                         min={0}
                         ariaLabel="Цена за упаковку в рублях"
                         placeholder="—"
-                        format={formatWholeRub}
+                        format={formatRub}
                         className={rubInputClassName}
                     />
                 </div>
@@ -265,7 +265,7 @@ export function PackPricingSection({
                         min={0}
                         ariaLabel="Цена за упаковку с оргсбором в рублях"
                         placeholder="—"
-                        format={formatWholeRub}
+                        format={formatRub}
                         className={rubInputClassName}
                     />
                 </div>
@@ -285,7 +285,7 @@ export function PackPricingSection({
                         min={0}
                         ariaLabel="Цена за упаковку с доставкой в рублях"
                         placeholder="—"
-                        format={formatWholeRub}
+                        format={formatRub}
                         className={rubInputClassName}
                     />
                 </div>

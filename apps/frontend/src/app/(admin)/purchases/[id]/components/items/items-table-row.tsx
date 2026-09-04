@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import type { ProductLabelSource } from '@/lib/product-label';
 
-import { formatUnitRub, formatWholeRub, getRateToRub } from '../../lib/items-table-pricing';
+import { formatRub, formatUnitRub, getRateToRub } from '../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef, PurchaseItem } from '../../lib/types';
 import { CommentCell } from './comment-cell';
 import { InlineCell } from './inline-cell';
@@ -135,7 +135,7 @@ export function ItemsTableRow({
                     ariaLabel="Цена за упаковку в рублях"
                     align="right"
                     placeholder="—"
-                    format={formatWholeRub}
+                    format={formatRub}
                     className="w-full"
                 />
             </TableCell>
@@ -150,7 +150,7 @@ export function ItemsTableRow({
                         ariaLabel="Цена за упаковку с оргсбором в рублях"
                         align="right"
                         placeholder="—"
-                        format={formatWholeRub}
+                        format={formatRub}
                         className="w-full"
                     />
                     <span className="w-10 shrink-0 text-13-regular text-fg-tertiary">+{orgFeePercent}%</span>
@@ -171,7 +171,7 @@ export function ItemsTableRow({
                         ariaLabel="Цена за упаковку с доставкой в рублях"
                         align="right"
                         placeholder="—"
-                        format={formatWholeRub}
+                        format={formatRub}
                         className="w-full"
                     />
                     <span className="w-10 shrink-0 text-13-regular text-fg-tertiary">+{deliveryPercent}%</span>

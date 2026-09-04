@@ -44,12 +44,13 @@ export function getRateToRub(item: ItemPricingFields, rates: PurchaseCurrencyRat
     return resolveCurrencyRate(toRates(rates), item.currencyId ?? null);
 }
 
-export function formatWholeRub(value: number): string {
-    return String(Math.round(value));
+export function formatRub(value: number): string {
+    const rounded = Math.round(value * 100) / 100;
+    return Number.isInteger(rounded) ? String(rounded) : String(parseFloat(rounded.toFixed(2)));
 }
 
 export function formatUnitRub(value: number): string {
-    return Number.isInteger(value) ? String(value) : String(parseFloat(value.toFixed(2)));
+    return formatRub(value);
 }
 
 /** Кол. 5: цена упаковки с оргсбором = цена в ₽ × (1 + оргсбор/100). */
