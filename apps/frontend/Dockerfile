@@ -69,16 +69,6 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
 
-# sharp's native binding dlopens libvips via a RUNPATH that only matches npm /
-# lambda layouts; Next.js standalone tracing copies the binding into the pnpm
-# store where those paths don't exist. Collect the bundled shared objects in a
-# fixed directory and expose it through LD_LIBRARY_PATH instead.
-RUN --mount=from=builder,source=/app/node_modules/.pnpm,target=/mnt/builder-pnpm \
-    mkdir -p /opt/sharp-libs \
-    && cp -aL /mnt/builder-pnpm/@img+sharp-libvips-linuxmusl-x64@*/node_modules/@img/sharp-libvips-linuxmusl-x64/lib/*.so* /opt/sharp-libs/ \
-    && ls /opt/sharp-libs
-ENV LD_LIBRARY_PATH=/opt/sharp-libs
-
 USER nextjs
 
 EXPOSE 3000

@@ -3,7 +3,6 @@ import { loadProductPhoto } from '@zakupki/storage';
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
 import type { InlineKeyboardMarkup } from 'grammy/types';
-import sharp from 'sharp';
 
 import type { BotConfig } from '../config/bot-config';
 import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
@@ -157,7 +156,7 @@ export class TgClient {
             const data = await loadProductPhoto(photo.objectKey);
             if (data?.length) {
                 log.debug({ photoId: photo.id, source: 'storage' }, 'photo loaded');
-                return await toSupportedPhoto({ data, mimeType: photo.mimeType || 'image/jpeg' }, photo.id);
+                return warnIfUnsupportedPhoto({ data, mimeType: photo.mimeType || 'image/jpeg' }, photo.id);
             }
         } catch (err) {
             log.warn({ photoId: photo.id, err }, 'loadProductPhoto failed');
@@ -171,7 +170,7 @@ export class TgClient {
                     const arrayBuf = await resp.arrayBuffer();
                     log.debug({ photoId: photo.id, source: 'webapp' }, 'photo loaded');
                     const loaded = { data: Buffer.from(arrayBuf), mimeType: photo.mimeType || 'image/jpeg' };
-                    return await toSupportedPhoto(loaded, photo.id);
+                    return warnIfUnsupportedPhoto(loaded, photo.id);
                 }
                 log.warn({ photoId: photo.id, status: resp.status }, 'webapp photo fetch failed');
             } catch (err) {
@@ -184,22 +183,23 @@ export class TgClient {
     }
 }
 
-/** Mime types Telegram accepts in sendPhoto without conversion. */
+/** Mime types Telegram accepts in sendPhoto. */
 const TELEGRAM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 /**
  * Telegram Bot API rejects anything but JPEG/PNG/WebP/GIF in sendPhoto with
  * IMAGE_PROCESS_FAILED (AVIF saved by modern browsers and phones is a common
- * case), so convert unsupported uploads to JPEG before sending.
+ * case), so warn loudly — the post will fail to publish until the photo is
+ * re-uploaded in a supported format.
  */
-async function toSupportedPhoto(photo: ChannelPostPhoto, photoId: number): Promise<ChannelPostPhoto> {
-    if (TELEGRAM_PHOTO_MIME_TYPES.has(photo.mimeType)) return photo;
-    const jpeg = await sharp(photo.data).jpeg({ quality: 90 }).toBuffer();
-    log.info(
-        { photoId, from: photo.mimeType, bytes: `${photo.data.length}->${jpeg.length}` },
-        'photo converted to jpeg',
-    );
-    return { data: jpeg, mimeType: 'image/jpeg' };
+function warnIfUnsupportedPhoto(photo: ChannelPostPhoto, photoId: number): ChannelPostPhoto {
+    if (!TELEGRAM_PHOTO_MIME_TYPES.has(photo.mimeType)) {
+        log.warn(
+            { photoId, mimeType: photo.mimeType },
+            'photo format is not supported by Telegram (JPEG/PNG/WebP/GIF only) — re-upload the photo',
+        );
+    }
+    return photo;
 }
 
 function photoFilename(mimeType: string): string {

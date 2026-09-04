@@ -18,6 +18,9 @@ interface PhotoUploaderProps {
 
 type LocalPreview = { key: string; preview: string };
 
+/** Mime types Telegram accepts in sendPhoto; anything else would fail to publish. */
+const TELEGRAM_SUPPORTED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
 export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeletePhoto }: PhotoUploaderProps) {
     const utils = trpc.useUtils();
     const [uploading, setUploading] = useState(false);
@@ -45,8 +48,21 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
         const files = e.target.files;
         if (!files?.length) return;
 
+        // Telegram Bot API rejects other formats (AVIF from phones is a common
+        // case) with IMAGE_PROCESS_FAILED, so skip them and warn right away.
+        const supported = Array.from(files).filter((file) => TELEGRAM_SUPPORTED_PHOTO_TYPES.has(file.type));
+        for (const file of Array.from(files)) {
+            if (file.type && !TELEGRAM_SUPPORTED_PHOTO_TYPES.has(file.type)) {
+                toast.warning(`«${file.name}»: формат не поддерживается Telegram. Используйте JPEG, PNG или WebP`);
+            }
+        }
+        if (!supported.length) {
+            e.target.value = '';
+            return;
+        }
+
         setUploading(true);
-        const added: LocalPreview[] = Array.from(files).map((file) => ({
+        const added: LocalPreview[] = supported.map((file) => ({
             key: crypto.randomUUID(),
             preview: URL.createObjectURL(file),
         }));
@@ -56,8 +72,8 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
 
         try {
             let nextIds = photoIds;
-            for (let i = 0; i < files.length; i++) {
-                const id = await uploadProductPhoto(files[i], productId, nextIds.length);
+            for (let i = 0; i < supported.length; i++) {
+                const id = await uploadProductPhoto(supported[i], productId, nextIds.length);
                 nextIds = [...nextIds, id];
                 onPhotoIdsChange(nextIds);
                 uploadedPreviewById.set(id, added[i]?.preview ?? '');
