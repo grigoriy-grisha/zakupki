@@ -18,7 +18,6 @@ interface PhotoUploaderProps {
 
 type LocalPreview = { key: string; preview: string };
 
-/** Mime types Telegram accepts in sendPhoto; anything else would fail to publish. */
 const TELEGRAM_SUPPORTED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeletePhoto }: PhotoUploaderProps) {
@@ -48,8 +47,6 @@ export function PhotoUploader({ photoIds, onPhotoIdsChange, productId, onDeleteP
         const files = e.target.files;
         if (!files?.length) return;
 
-        // Telegram Bot API rejects other formats (AVIF from phones is a common
-        // case) with IMAGE_PROCESS_FAILED, so skip them and warn right away.
         const supported = Array.from(files).filter((file) => TELEGRAM_SUPPORTED_PHOTO_TYPES.has(file.type));
         for (const file of Array.from(files)) {
             if (file.type && !TELEGRAM_SUPPORTED_PHOTO_TYPES.has(file.type)) {

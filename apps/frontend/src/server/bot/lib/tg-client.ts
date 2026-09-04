@@ -183,15 +183,8 @@ export class TgClient {
     }
 }
 
-/** Mime types Telegram accepts in sendPhoto. */
 const TELEGRAM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-/**
- * Telegram Bot API rejects anything but JPEG/PNG/WebP/GIF in sendPhoto with
- * IMAGE_PROCESS_FAILED (AVIF saved by modern browsers and phones is a common
- * case), so warn loudly — the post will fail to publish until the photo is
- * re-uploaded in a supported format.
- */
 function warnIfUnsupportedPhoto(photo: ChannelPostPhoto, photoId: number): ChannelPostPhoto {
     if (!TELEGRAM_PHOTO_MIME_TYPES.has(photo.mimeType)) {
         log.warn(
