@@ -1,5 +1,6 @@
 'use client';
 
+import { formatQtyUnit } from '@zakupki/types';
 import { Ban, Package, Percent } from 'lucide-react';
 
 import { QuantityStepper } from '@/components/shared/quantity-stepper';
@@ -31,7 +32,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         <div className="mt-2.5 flex items-center gap-2 rounded-full bg-secondary/10 px-3.5 py-2">
                             <Percent className="size-3.5 shrink-0 text-secondary" />
                             <p className="min-w-0 flex-1 text-12-medium text-fg-secondary">
-                                Пачка {formatQty(packInfo.packSize)} {ctx.shortName} —{' '}
+                                Пачка {formatQtyUnit(packInfo.packSize, ctx.shortName)} —{' '}
                                 <span className="line-through text-fg-tertiary">
                                     {formatPriceRub(packInfo.packPrice)}
                                 </span>{' '}
@@ -52,7 +53,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                     <div className="flex items-center justify-between gap-2">
                         <span className="text-12-medium text-fg-secondary">В заказе</span>
                         <span className="text-14-semibold text-fg-primary tabular-nums">
-                            {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                            {formatQtyUnit(ctx.currentQuantity, ctx.shortName)}
                             {ctx.currentPackageCount > 0 && (
                                 <span className="text-fg-secondary"> + {ctx.currentPackageCount} упак.</span>
                             )}
@@ -89,11 +90,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         <QuantityStepper
                             size="md"
                             wrapClassName="hidden lg:flex"
-                            value={
-                                <>
-                                    {formatQty(ctx.currentQuantity)} {ctx.shortName}
-                                </>
-                            }
+                            value={formatQtyUnit(ctx.currentQuantity, ctx.shortName)}
                             onRemove={ctx.handleRemove}
                             onAdd={ctx.handleAdd}
                             canRemove={ctx.canDecrease}

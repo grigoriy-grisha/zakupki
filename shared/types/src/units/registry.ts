@@ -47,6 +47,14 @@ export function unitPluralForm(quantity: number, def: UnitDef): string {
     return def.pluralForms[2];
 }
 
+/** «18 туб» / «1 туба»: число + плюрализованная единица. Неизвестная единица — как есть. */
+export function formatQtyUnit(quantity: number, rawUnit: string | null | undefined): string {
+    const def = resolveUnit(rawUnit);
+    const word = def ? unitPluralForm(quantity, def) : rawUnit;
+    const formatted = quantity % 1 === 0 ? String(quantity) : quantity.toFixed(3).replace(/\.?0+$/, '');
+    return word ? `${formatted} ${word}` : formatted;
+}
+
 /**
  * Получить определение единицы по краткому названию
  */

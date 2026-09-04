@@ -1,5 +1,6 @@
 'use client';
 
+import { formatQtyUnit } from '@zakupki/types';
 import { Plus } from 'lucide-react';
 
 import { QuantityStepper } from '@/components/shared/quantity-stepper';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatPriceRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
 
-import { formatQty,type ItemOrderControls } from './item-ctx';
+import type { ItemOrderControls } from './item-ctx';
 
 export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
     return (
@@ -35,7 +36,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                             wrapClassName="shrink-0"
                             value={
                                 <>
-                                    {formatQty(ctx.currentQuantity)} {ctx.shortName}
+                                    {formatQtyUnit(ctx.currentQuantity, ctx.shortName)}
                                     {ctx.currentPackageCount > 0 ? ` + ${ctx.currentPackageCount} упак.` : ''}
                                 </>
                             }

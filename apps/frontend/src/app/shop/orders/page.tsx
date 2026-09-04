@@ -2,6 +2,7 @@
 
 import {
     computeOrderLinePriceBreakdown,
+    formatQtyUnit,
     getUnitByCode,
     HANDOFF_STATUS_LABELS,
     type HandoffStatus,
@@ -250,7 +251,7 @@ function PurchaseOrderCard({
                     const qty = order.quantity;
                     const amount = order.amountDue;
                     const qtyParts: string[] = [];
-                    if (qty > 0) qtyParts.push(`${qty} ${shortName}`);
+                    if (qty > 0) qtyParts.push(formatQtyUnit(qty, shortName));
                     if (order.packageCount > 0) qtyParts.push(`${order.packageCount} упак.`);
                     const qtyLabel = qtyParts.join(' + ');
 

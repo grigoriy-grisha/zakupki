@@ -1,6 +1,6 @@
 'use client';
 
-import type { CurrencyRate } from '@zakupki/types';
+import { type CurrencyRate,formatQtyUnit } from '@zakupki/types';
 import { useRouter } from 'next/navigation';
 import { memo, useCallback } from 'react';
 
@@ -96,7 +96,7 @@ function ProductCardImpl({
     const showMinHint = minHint != null && !hasOrder && looseOrderable;
 
     const orderQtyParts: string[] = [];
-    if (ctx.currentQuantity > 0) orderQtyParts.push(`${ctx.currentQuantity} ${ctx.shortName}`);
+    if (ctx.currentQuantity > 0) orderQtyParts.push(formatQtyUnit(ctx.currentQuantity, ctx.shortName));
     if (ctx.currentPackageCount > 0) orderQtyParts.push(`${ctx.currentPackageCount} упак.`);
 
     return (

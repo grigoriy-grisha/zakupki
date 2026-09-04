@@ -1,4 +1,4 @@
-import type { CurrencyRate, OrderLineRowLike, PackDiscountPricingInfo, PurchaseItem } from '@zakupki/types';
+import { type CurrencyRate, formatQtyUnit, type OrderLineRowLike, type PackDiscountPricingInfo, type PurchaseItem } from '@zakupki/types';
 import {
     buildOrderQtyOptions,
     computeAmountDueWithPackages,
@@ -173,7 +173,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const poolEmptyForUser = isSupplement && availablePool != null && availablePool <= 1e-9 && currentQuantity <= 0;
     const freeRemainderLabel =
         isSupplement && availablePool != null && availablePool < Number.POSITIVE_INFINITY && !poolEmptyForUser
-            ? `Можно добавить: ${availablePool} ${shortName}`
+            ? `Можно добавить: ${formatQtyUnit(availablePool, shortName)}`
             : null;
 
     const isWeight = isWeightUnit(unitCode);

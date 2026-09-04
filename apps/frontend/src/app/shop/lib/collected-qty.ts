@@ -4,6 +4,8 @@ type OrderLineLike = {
     status?: string | null;
 };
 
+import { formatQtyUnit } from '@zakupki/types';
+
 export type CollectedQtyItem = {
     packAmount?: string | number | null;
     orderLines?: OrderLineLike[] | null;
@@ -29,5 +31,5 @@ export function getCollectedQty(item: CollectedQtyItem): number {
 export function getCollectedLabel(item: CollectedQtyItem, unitShort: string): string | null {
     const collected = getCollectedQty(item);
     if (collected <= 0) return null;
-    return `Собрано ${formatQty(collected)}${unitShort ? ` ${unitShort}` : ''}`;
+    return `Собрано ${formatQtyUnit(collected, unitShort)}`;
 }

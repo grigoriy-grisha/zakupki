@@ -1,5 +1,6 @@
 'use client';
 
+import { formatQtyUnit } from '@zakupki/types';
 import { Ban, Minus, Package, Plus } from 'lucide-react';
 
 import type { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
@@ -71,7 +72,7 @@ export function ProductCardControls({
                         1 упаковка
                         <span className="hidden sm:inline">
                             {' '}
-                            ({ctx.packSize} {ctx.shortName})
+                            ({formatQtyUnit(ctx.packSize, ctx.shortName)})
                         </span>
                     </span>
                 </Button>
@@ -108,9 +109,7 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                             'border-2 border-primary px-2 text-12-bold text-primary tabular-nums',
                         )}
                     >
-                        <span className="truncate">
-                            {ctx.currentQuantity} {ctx.shortName}
-                        </span>
+                        <span className="truncate">{formatQtyUnit(ctx.currentQuantity, ctx.shortName)}</span>
                     </div>
                     <button
                         type="button"

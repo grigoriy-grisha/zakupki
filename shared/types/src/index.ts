@@ -196,6 +196,7 @@ export { formatQtyLabel,isPositive, positiveOrNull } from './utils';
 // Units
 export {
     applyPieceUnitInvariants,
+    formatQtyUnit,
     getUnitByCode,
     getUnitByShortName,
     isPieceUnit,
