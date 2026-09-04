@@ -6,17 +6,6 @@ import type { CallbackHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import type { BotPurchasePaymentInfo } from '../../services/bot/bot-payment.service';
 
-/**
- * Обрабатывает callback'и с префиксом `pay:`.
- *
- * Шаги flow: pick → amount → promo → proof.
- *   • `pay:pick:{id}` — старт с шага amount (пользователь вводит сумму).
- *   • `pay:all:{id}`  — сумма = remaining, старт сразу с шагом promo.
- *   • `pay:promo`     — открыть ввод промокода (переход amount → promo).
- *   • `pay:skip`      — продолжить без промокода (promo/amount → proof).
- */
-
-/** Расшифровка суммы отдельными строками; пусто, если считать не из чего. */
 function formatBreakdown(info: BotPurchasePaymentInfo): string {
     const breakdown = info.breakdown;
     if (!breakdown || (breakdown.org <= 0 && breakdown.delivery <= 0)) return '';

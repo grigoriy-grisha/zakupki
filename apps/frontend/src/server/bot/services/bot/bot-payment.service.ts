@@ -1,28 +1,9 @@
 import type { PurchaseFulfillmentStatus } from '@zakupki/types';
 
 import { serviceContainer } from '@/server/lib/service-container';
+import type { PurchasePaymentInfo } from '@/server/services/bot-payment.service';
 
-/**
- * Bot-специфичный payment service. Тонкая обёртка над `serviceContainer.botPayment`.
- *
- * Phase E: фасад. Phase E+: копия `services/bot-payment.service.ts` с собственным
- * `PaymentRepository`-like классом и собственным `IStorage` инстансом.
- */
-
-export type BotPurchasePaymentBreakdown = {
-    base: number;
-    org: number;
-    delivery: number;
-};
-
-export type BotPurchasePaymentInfo = {
-    due: number;
-    paid: number;
-    hasPending: boolean;
-    remaining: number;
-    tag: string;
-    breakdown: BotPurchasePaymentBreakdown | null;
-};
+export type BotPurchasePaymentInfo = PurchasePaymentInfo;
 
 export type BotPayablePurchase = {
     purchaseId: number;

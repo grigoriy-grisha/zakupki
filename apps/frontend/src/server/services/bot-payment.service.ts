@@ -40,13 +40,6 @@ const PAYMENT_STATUS: Record<string, { label: string }> = {
     REJECTED: { label: 'Отклонено' },
 };
 
-/**
- * Bot-специфичная оплата: списки оплат/закупок для отображения в Telegram и
- * отправка чека через бот. Public-API оплаты (админ/web) живёт в `PaymentService`.
- *
- * Читает заказы пользователя через `OrderService` (не создавая свой репозиторий),
- * хранилище чеков — через единый `storage` приложения.
- */
 export class BotPaymentService {
     constructor(
         private repo: PaymentRepository,
@@ -163,12 +156,6 @@ export class BotPaymentService {
         });
     }
 
-    /**
-     * Validates a promo code against an order amount. Delegates to
-     * `PromoCodeService` and surfaces its Russian error messages to the user
-     * (NotFoundError / ValidationError). On success returns the discount
-     * details used to drive the promo → proof transition.
-     */
     async validatePromoCode(
         code: string,
         purchaseId: number,
@@ -185,50 +172,38 @@ export class BotPaymentService {
 
         const breakdownByPurchase = this.summarizeBreakdowns(orders);
         const map = new Map<number, PurchasePaymentInfo>();
+        const getEntry = (purchaseId: number, tag: string): PurchasePaymentInfo =>
+            map.get(purchaseId) ?? {
+                due: 0,
+                paid: 0,
+                hasPending: false,
+                remaining: 0,
+                tag,
+                breakdown: breakdownByPurchase.get(purchaseId) ?? null,
+            };
 
         for (const order of orders) {
             const purchaseId = order.purchaseItem?.purchaseId;
             const tag = order.purchaseItem?.purchase?.tag ?? '—';
             if (!purchaseId) continue;
 
-            const existing =
-                map.get(purchaseId) ??
-                {
-                    due: 0,
-                    paid: 0,
-                    hasPending: false,
-                    remaining: 0,
-                    tag,
-                    breakdown: breakdownByPurchase.get(purchaseId) ?? null,
-                };
-            existing.due += Number(order.amountDue);
-            if (tag !== '—') existing.tag = tag;
-            map.set(purchaseId, existing);
+            const entry = getEntry(purchaseId, tag);
+            entry.due += Number(order.amountDue);
+            if (tag !== '—') entry.tag = tag;
+            map.set(purchaseId, entry);
         }
 
         for (const payment of payments) {
-            const purchaseId = payment.purchaseId;
             const tag = payment.purchase?.tag ?? '—';
-            const total = Number(payment.amount) + this.sumChildAmount(payment.children);
-
-            const existing =
-                map.get(purchaseId) ??
-                {
-                    due: 0,
-                    paid: 0,
-                    hasPending: false,
-                    remaining: 0,
-                    tag,
-                    breakdown: breakdownByPurchase.get(purchaseId) ?? null,
-                };
+            const entry = getEntry(payment.purchaseId, tag);
             if (payment.status === 'CONFIRMED') {
-                existing.paid += total;
+                entry.paid += Number(payment.amount) + this.sumChildAmount(payment.children);
             }
             if (payment.status === 'PENDING') {
-                existing.hasPending = true;
+                entry.hasPending = true;
             }
-            if (tag !== '—') existing.tag = tag;
-            map.set(purchaseId, existing);
+            if (tag !== '—') entry.tag = tag;
+            map.set(payment.purchaseId, entry);
         }
 
         map.forEach((val) => {
@@ -238,20 +213,16 @@ export class BotPaymentService {
         return map;
     }
 
-    /**
-     * Суммарная расшифровка «база/оргсбор/доставка» по закупкам на основе строк
-     * с priceInfo. null — если хоть по одной строке закупки расшифровку посчитать
-     * нельзя (нет цены/курса/веса упаковки): тогда показываем только итог.
-     */
     private summarizeBreakdowns(
         orders: Awaited<ReturnType<OrderService['findAllByUserWithPriceInfo']>>,
     ): Map<number, PurchasePaymentBreakdown | null> {
-        const result = new Map<number, PurchasePaymentBreakdown | null>();
+        type BreakdownAcc = PurchasePaymentBreakdown & { complete: boolean };
+
+        const acc = new Map<number, BreakdownAcc>();
 
         for (const order of orders) {
             const purchaseId = order.purchaseItem?.purchaseId;
             if (!purchaseId) continue;
-            const prev = result.get(purchaseId);
             const line = order.priceInfo
                 ? computeOrderLinePriceBreakdown({
                       amountDue: Number(order.amountDue),
@@ -264,27 +235,28 @@ export class BotPaymentService {
                       deliveryPercent: order.priceInfo.deliveryPercent,
                   })
                 : null;
-            if (!line || prev === null) {
-                result.set(purchaseId, null);
-                continue;
-            }
-            result.set(purchaseId, {
-                base: (prev?.base ?? 0) + line.baseRub,
-                org: (prev?.org ?? 0) + line.orgFeeRub,
-                delivery: (prev?.delivery ?? 0) + line.deliveryRub,
+            const prev = acc.get(purchaseId) ?? { base: 0, org: 0, delivery: 0, complete: true };
+            acc.set(purchaseId, {
+                base: prev.base + (line?.baseRub ?? 0),
+                org: prev.org + (line?.orgFeeRub ?? 0),
+                delivery: prev.delivery + (line?.deliveryRub ?? 0),
+                complete: prev.complete && line != null,
             });
         }
 
-        result.forEach((value, key) => {
-            if (value) {
-                result.set(key, {
-                    base: Math.round(value.base * 100) / 100,
-                    org: Math.round(value.org * 100) / 100,
-                    delivery: Math.round(value.delivery * 100) / 100,
-                });
-            }
+        const result = new Map<number, PurchasePaymentBreakdown | null>();
+        acc.forEach((value, key) => {
+            result.set(
+                key,
+                value.complete
+                    ? {
+                          base: Math.round(value.base * 100) / 100,
+                          org: Math.round(value.org * 100) / 100,
+                          delivery: Math.round(value.delivery * 100) / 100,
+                      }
+                    : null,
+            );
         });
-
         return result;
     }
 
