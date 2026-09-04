@@ -11,11 +11,11 @@ import { formatQty,type ItemOrderControls } from './item-ctx';
 
 export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
     return (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border-low bg-bg-base/95 backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:hidden">
             <div
                 className={cn(
-                    'mx-auto flex w-full max-w-6xl items-center gap-3 px-4 pt-2.5',
-                    'pb-[calc(0.625rem+env(safe-area-inset-bottom))]',
+                    'mx-auto flex w-full max-w-6xl items-center gap-3 rounded-2xl border border-border-low',
+                    'bg-bg-card/90 p-3 pl-4 shadow-[0_10px_36px_-8px_rgba(0,0,0,0.28)] backdrop-blur-xl',
                 )}
             >
                 <div className="min-w-0 flex-1">
