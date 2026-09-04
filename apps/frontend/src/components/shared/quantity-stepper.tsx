@@ -11,13 +11,13 @@ type QuantityStepperSize = 'sm' | 'md';
 const STEPPER_SIZES: Record<QuantityStepperSize, { button: string; cell: string; icon: string; wrap: string }> = {
     sm: {
         button: 'size-8 rounded-lg sm:size-9',
-        cell: 'px-1 text-12-semibold',
+        cell: 'h-8 rounded-lg px-1 text-12-semibold sm:h-9 sm:rounded-xl',
         icon: 'size-3.5',
         wrap: 'gap-1',
     },
     md: {
         button: 'size-9 rounded-xl',
-        cell: 'min-w-20 px-2 text-13-semibold',
+        cell: 'h-9 min-w-20 rounded-xl px-2 text-13-semibold',
         icon: 'size-3.5',
         wrap: 'gap-1.5',
     },
@@ -63,7 +63,6 @@ export function QuantityStepper({
             <div
                 className={cn(
                     'flex min-w-0 flex-auto items-center justify-center border border-border bg-bg-base text-fg-primary tabular-nums',
-                    s.button,
                     s.cell,
                 )}
             >
