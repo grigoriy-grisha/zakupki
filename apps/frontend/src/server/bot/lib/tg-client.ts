@@ -1,12 +1,13 @@
+import { createLogger } from '@zakupki/logger';
+import { loadProductPhoto } from '@zakupki/storage';
 import type { Api } from 'grammy';
 import { GrammyError, InputFile } from 'grammy';
 import type { InlineKeyboardMarkup } from 'grammy/types';
-import { loadProductPhoto } from '@zakupki/storage';
-import { createLogger } from '@zakupki/logger';
+import sharp from 'sharp';
 
+import type { BotConfig } from '../config/bot-config';
 import { TELEGRAM_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from '../domain/constants';
 import type { ChannelPostPhoto } from '../domain/types';
-import type { BotConfig } from '../config/bot-config';
 
 const log = createLogger('tg-client');
 
@@ -156,7 +157,7 @@ export class TgClient {
             const data = await loadProductPhoto(photo.objectKey);
             if (data?.length) {
                 log.debug({ photoId: photo.id, source: 'storage' }, 'photo loaded');
-                return { data, mimeType: photo.mimeType || 'image/jpeg' };
+                return await toSupportedPhoto({ data, mimeType: photo.mimeType || 'image/jpeg' }, photo.id);
             }
         } catch (err) {
             log.warn({ photoId: photo.id, err }, 'loadProductPhoto failed');
@@ -169,7 +170,8 @@ export class TgClient {
                 if (resp.ok) {
                     const arrayBuf = await resp.arrayBuffer();
                     log.debug({ photoId: photo.id, source: 'webapp' }, 'photo loaded');
-                    return { data: Buffer.from(arrayBuf), mimeType: photo.mimeType || 'image/jpeg' };
+                    const loaded = { data: Buffer.from(arrayBuf), mimeType: photo.mimeType || 'image/jpeg' };
+                    return await toSupportedPhoto(loaded, photo.id);
                 }
                 log.warn({ photoId: photo.id, status: resp.status }, 'webapp photo fetch failed');
             } catch (err) {
@@ -180,6 +182,24 @@ export class TgClient {
         log.warn({ photoId: photo.id }, 'photo unavailable');
         return null;
     }
+}
+
+/** Mime types Telegram accepts in sendPhoto without conversion. */
+const TELEGRAM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+/**
+ * Telegram Bot API rejects anything but JPEG/PNG/WebP/GIF in sendPhoto with
+ * IMAGE_PROCESS_FAILED (AVIF saved by modern browsers and phones is a common
+ * case), so convert unsupported uploads to JPEG before sending.
+ */
+async function toSupportedPhoto(photo: ChannelPostPhoto, photoId: number): Promise<ChannelPostPhoto> {
+    if (TELEGRAM_PHOTO_MIME_TYPES.has(photo.mimeType)) return photo;
+    const jpeg = await sharp(photo.data).jpeg({ quality: 90 }).toBuffer();
+    log.info(
+        { photoId, from: photo.mimeType, bytes: `${photo.data.length}->${jpeg.length}` },
+        'photo converted to jpeg',
+    );
+    return { data: jpeg, mimeType: 'image/jpeg' };
 }
 
 function photoFilename(mimeType: string): string {
