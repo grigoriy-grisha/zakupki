@@ -377,7 +377,7 @@ function PurchaseOrderCard({
                             <Button
                                 variant="brand"
                                 size="sm"
-                                className="flex-1"
+                                className="w-full sm:flex-1 sm:w-auto"
                                 disabled={handoffChoice.isPending}
                                 onClick={() =>
                                     handoffChoice.mutate({
@@ -392,7 +392,7 @@ function PurchaseOrderCard({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1"
+                                className="w-full sm:flex-1 sm:w-auto"
                                 disabled={handoffChoice.isPending}
                                 onClick={() =>
                                     handoffChoice.mutate({
