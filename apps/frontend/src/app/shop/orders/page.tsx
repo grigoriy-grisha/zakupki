@@ -317,18 +317,18 @@ function PurchaseOrderCard({
                     <div className="flex flex-col gap-1.5 text-14-medium text-fg-secondary tabular-nums">
                         <div className="flex items-baseline justify-between gap-4">
                             <span>Стоимость выбранных товаров</span>
-                            <span>{formatPriceRub(totals.base)}</span>
+                            <span className="whitespace-nowrap">{formatPriceRub(totals.base)}</span>
                         </div>
                         {totals.org > 0 && (
                             <div className="flex items-baseline justify-between gap-4">
                                 <span>Оргсбор</span>
-                                <span>{formatPriceRub(totals.org)}</span>
+                                <span className="whitespace-nowrap">{formatPriceRub(totals.org)}</span>
                             </div>
                         )}
                         {totals.delivery > 0 && (
                             <div className="flex items-baseline justify-between gap-4">
                                 <span>Доставка</span>
-                                <span>{formatPriceRub(totals.delivery)}</span>
+                                <span className="whitespace-nowrap">{formatPriceRub(totals.delivery)}</span>
                             </div>
                         )}
                     </div>
@@ -344,7 +344,7 @@ function PurchaseOrderCard({
                     <span className="text-13-semibold uppercase tracking-wide text-fg-secondary sm:text-14-semibold">
                         Итоговая сумма
                     </span>
-                    <span className="text-20-semibold text-primary tabular-nums sm:text-24-semibold">
+                    <span className="whitespace-nowrap text-20-semibold text-primary tabular-nums sm:text-24-semibold">
                         {formatRub(group.total)}
                     </span>
                 </div>
