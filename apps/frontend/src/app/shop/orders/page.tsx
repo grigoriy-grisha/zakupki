@@ -243,7 +243,8 @@ function PurchaseOrderCard({
                 {ordersWithBreakdown.map(({ order, breakdown }) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
-                    const shortName = product?.unitCode ? (getUnitByCode(product.unitCode)?.shortName ?? '') : '';
+                    const purchaseItemUnit = order.source.purchaseItem?.unitCode;
+                    const shortName = getUnitByCode(purchaseItemUnit ?? product?.unitCode)?.shortName ?? '';
                     const photo = product?.photos?.[0];
                     const qty = order.quantity;
                     const amount = order.amountDue;
@@ -310,18 +311,45 @@ function PurchaseOrderCard({
                 })}
             </div>
 
-            <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:gap-4">
-                <p className="text-right text-20-medium text-primary tabular-nums sm:text-24-medium">
-                    Итоговая сумма {formatRub(group.total)}
-                </p>
+            <div className="mt-5 rounded-2xl border border-border-low bg-bg-soft p-4 sm:mt-6 sm:p-5">
                 {totals && (totals.org > 0 || totals.delivery > 0) && (
-                    <div className="-mt-2 flex flex-col gap-0.5 text-right text-14-medium text-fg-secondary tabular-nums">
-                        <p>Стоимость выбранных товаров: {formatPriceRub(totals.base)}</p>
-                        {totals.org > 0 && <p>Оргсбор: {formatPriceRub(totals.org)}</p>}
-                        {totals.delivery > 0 && <p>Доставка: {formatPriceRub(totals.delivery)}</p>}
+                    <div className="flex flex-col gap-1.5 text-14-medium text-fg-secondary tabular-nums">
+                        <div className="flex items-baseline justify-between gap-4">
+                            <span>Стоимость выбранных товаров</span>
+                            <span>{formatPriceRub(totals.base)}</span>
+                        </div>
+                        {totals.org > 0 && (
+                            <div className="flex items-baseline justify-between gap-4">
+                                <span>Оргсбор</span>
+                                <span>{formatPriceRub(totals.org)}</span>
+                            </div>
+                        )}
+                        {totals.delivery > 0 && (
+                            <div className="flex items-baseline justify-between gap-4">
+                                <span>Доставка</span>
+                                <span>{formatPriceRub(totals.delivery)}</span>
+                            </div>
+                        )}
                     </div>
                 )}
+                <div
+                    className={cn(
+                        'flex items-baseline justify-between gap-4',
+                        totals && (totals.org > 0 || totals.delivery > 0)
+                            ? 'mt-3 border-t border-border-low pt-3'
+                            : '',
+                    )}
+                >
+                    <span className="text-13-semibold uppercase tracking-wide text-fg-secondary sm:text-14-semibold">
+                        Итоговая сумма
+                    </span>
+                    <span className="text-20-semibold text-primary tabular-nums sm:text-24-semibold">
+                        {formatRub(group.total)}
+                    </span>
+                </div>
+            </div>
 
+            <div className="mt-3 flex flex-col gap-3 sm:gap-4">
                 {(handoffStatus === 'READY_TO_SHIP' || handoffStatus === 'STORED') && (
                     <HandoffMessageCard status={handoffStatus} />
                 )}
