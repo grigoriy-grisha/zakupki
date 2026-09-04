@@ -9,6 +9,7 @@ import {
     isPurchasePaymentOpen,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
+    renderNotificationBody,
 } from '@zakupki/types';
 import {
     Archive,
@@ -314,10 +315,36 @@ function PurchaseOrderCard({
                     Итоговая сумма {formatRub(group.total)}
                 </p>
                 {totals && (totals.org > 0 || totals.delivery > 0) && (
-                    <div className="-mt-2 flex flex-col gap-0.5 text-right text-16-medium text-fg-secondary tabular-nums">
+                    <div className="-mt-2 flex flex-col gap-0.5 text-right text-14-medium text-fg-secondary tabular-nums">
                         <p>Стоимость выбранных товаров: {formatPriceRub(totals.base)}</p>
                         {totals.org > 0 && <p>Оргсбор: {formatPriceRub(totals.org)}</p>}
                         {totals.delivery > 0 && <p>Доставка: {formatPriceRub(totals.delivery)}</p>}
+                    </div>
+                )}
+
+                {(handoffStatus === 'READY_TO_SHIP' || handoffStatus === 'STORED') && (
+                    <div className="rounded-2xl bg-bg-soft p-4">
+                        <p className="flex items-center gap-2 text-14-semibold text-fg-primary">
+                            {handoffStatus === 'READY_TO_SHIP' ? (
+                                <>
+                                    <Send className="size-4 shrink-0 text-accent-teal" />
+                                    Готовим отправку
+                                </>
+                            ) : (
+                                <>
+                                    <Archive className="size-4 shrink-0 text-warning" />
+                                    Заказ на хранении
+                                </>
+                            )}
+                        </p>
+                        <p className="mt-1.5 whitespace-pre-line text-13-regular text-fg-secondary">
+                            {renderNotificationBody(
+                                handoffStatus === 'READY_TO_SHIP'
+                                    ? 'ORDER_HANDOFF_SHIP_REQUEST'
+                                    : 'ORDER_HANDOFF_STORED',
+                                { purchaseId: group.id, purchaseTag: group.tag },
+                            )}
+                        </p>
                     </div>
                 )}
 
