@@ -25,12 +25,12 @@ export function ProductCardControls({
         return (
             <div
                 className={cn(
-                    'flex h-10 w-full items-center justify-center gap-1.5 rounded-full sm:h-12',
-                    'border border-border-low text-13-medium text-fg-tertiary',
+                    'flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full px-3 py-1.5 sm:min-h-12',
+                    'border border-border-low text-center text-12-medium leading-tight text-fg-tertiary sm:text-13-medium',
                 )}
             >
-                {ctx.orderingClosed ? <Ban className="size-3.5" /> : <Package className="size-3.5" />}
-                {ctx.orderingClosed ? 'Приём заказов завершён' : 'Разобрано'}
+                {ctx.orderingClosed ? <Ban className="size-3.5 shrink-0" /> : <Package className="size-3.5 shrink-0" />}
+                <span>{ctx.orderingClosed ? 'Приём заказов завершён' : 'Разобрано'}</span>
             </div>
         );
     }
