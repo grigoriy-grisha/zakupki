@@ -75,8 +75,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps
 # fixed directory and expose it through LD_LIBRARY_PATH instead.
 RUN --mount=from=builder,source=/app/node_modules/.pnpm,target=/mnt/builder-pnpm \
     mkdir -p /opt/sharp-libs \
-    && find /mnt/builder-pnpm -maxdepth 1 -type d -name '@img+sharp-libvips-linuxmusl-x64@*' \
-        -exec cp -aL {}/node_modules/@img/sharp-libvips-linuxmusl-x64/lib/*.so* /opt/sharp-libs/ \; \
+    && cp -aL /mnt/builder-pnpm/@img+sharp-libvips-linuxmusl-x64@*/node_modules/@img/sharp-libvips-linuxmusl-x64/lib/*.so* /opt/sharp-libs/ \
     && ls /opt/sharp-libs
 ENV LD_LIBRARY_PATH=/opt/sharp-libs
 
