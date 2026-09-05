@@ -37,24 +37,24 @@ export function UserPurchaseGroupBlock({ group, userId }: UserPurchaseGroupProps
 
     return (
         <div className="overflow-hidden rounded-md border bg-bg-base">
-            <div className="flex items-center gap-2 pr-3">
+            <div className="flex flex-wrap items-center gap-2 gap-y-2 py-1.5 pr-3">
                 <Button
                     variant="ghost"
                     size="default"
                     aria-expanded={open}
                     onClick={() => setOpen((prev) => !prev)}
-                    className="h-auto min-w-0 flex-1 justify-start gap-3 px-3 py-2.5 text-left"
+                    className="h-auto min-w-0 flex-[1_1_18rem] justify-start gap-3 px-3 py-1.5 text-left"
                 >
                     <span className="shrink-0 text-fg-tertiary">
                         {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     </span>
                     <div className="min-w-0 flex-1">
                         {group.orderNumber != null && (
-                            <p className="text-12-medium tabular-nums text-fg-tertiary">
+                            <p className="truncate text-12-medium tabular-nums text-fg-tertiary">
                                 Заказ №{group.orderNumber}
                             </p>
                         )}
-                        <p className="text-14-medium leading-tight text-fg-primary">{group.tag}</p>
+                        <p className="truncate text-14-medium leading-tight text-fg-primary">{group.tag}</p>
                     </div>
                     <Badge variant="outline" className="shrink-0 font-normal">
                         {group.orders.length} поз.
@@ -64,13 +64,13 @@ export function UserPurchaseGroupBlock({ group, userId }: UserPurchaseGroupProps
                     </span>
                 </Button>
                 {group.purchaseOrderId != null && (
-                    <HandoffStatusSelect
-                        value={group.handoffStatus}
-                        disabled={setHandoffStatus.isPending}
-                        onSelect={(status) =>
-                            setHandoffStatus.mutate({ id: group.purchaseOrderId!, status })
-                        }
-                    />
+                    <div className="ml-auto shrink-0">
+                        <HandoffStatusSelect
+                            value={group.handoffStatus}
+                            disabled={setHandoffStatus.isPending}
+                            onSelect={(status) => setHandoffStatus.mutate({ id: group.purchaseOrderId!, status })}
+                        />
+                    </div>
                 )}
             </div>
 
