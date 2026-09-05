@@ -12,17 +12,13 @@ function splitName(name: string) {
     return { firstName, lastName: rest.join(' ') || undefined };
 }
 
-const ROLE_CACHE_TTL_MS = 60_000; // 1 minute
+const ROLE_CACHE_TTL_MS = 60_000;
 
 export class UserService {
     private roleCache = new Map<number, { role: RoleKind; expiresAt: number }>();
 
     constructor(private repo: UserRepository) {}
 
-    /**
-     * Returns the user's role with in-memory TTL caching.
-     * Used by auth middleware to avoid a DB query on every request.
-     */
     async getCachedRole(userId: number): Promise<RoleKind | null> {
         const cached = this.roleCache.get(userId);
         if (cached && cached.expiresAt > Date.now()) {
@@ -138,25 +134,16 @@ export class UserService {
         await this.repo.unlinkTelegram(userId);
     }
 
-    /** Bot: create or get user by Telegram ID (delegates to repository) */
     async createOrGetUser(telegramId: string, info: { firstName: string; lastName?: string; username?: string }) {
         return this.repo.upsertFromTelegramBot(telegramId, info);
     }
 
-    /** Bot: refresh user profile from Telegram */
     async refreshProfile(userId: number, data: { firstName: string; lastName?: string; username?: string }) {
         return this.repo.updateProfileByUserId(userId, data).catch((err) => {
-            // Session may reference a just-deleted user — refresh is best-effort.
             log.warn({ err, userId }, 'profile refresh skipped');
         });
     }
 
-    /**
-     * Delete a user with no orders or payments. OrderLine/Payment FKs are
-     * restricting, so deletion is only allowed for "empty" accounts
-     * (phantom duplicates, test sign-ups). Credentials, notifications and
-     * purchase orders cascade via schema.
-     */
     async deleteUser(id: number) {
         const counts = await this.repo.getCountsById(id);
         if (!counts) throw new NotFoundError('Участник', id);

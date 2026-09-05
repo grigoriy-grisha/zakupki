@@ -8,7 +8,6 @@ interface ListPaginationProps {
     page: number;
     totalPages: number;
     onPageChange: (page: number) => void;
-    /** Label for aria — напр. «Страницы товаров». */
     label: string;
     className?: string;
 }

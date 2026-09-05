@@ -26,27 +26,20 @@ interface AdminParticipantRowProps {
     userId: number;
     name: string;
     username?: string;
-    /** Дата согласия на обработку ПД (null — согласие не получено). */
     consentAt?: Date | null;
     purchaseId: number;
     onOpenProfile: (userId: number) => void;
-    /** ID PurchaseOrder — для P1 (отображение номера заказа) и для мутации комментария. */
     purchaseOrderId?: number | null;
-    /** Комментарий к участнику (PurchaseOrder) — для индикатора и модалки. */
     orderComment: OrderComment | null;
-    /** Статус выдачи заказа участника (null = «Ожидает выдачи»). */
     handoffStatus: HandoffStatus | null;
     orders: ParticipantOrder[];
     payments: PaymentRef[];
-    /** Позиции закупки — для шага ± и пикера «добавить позицию». */
     purchaseItems: PurchaseItemOption[];
     due: number;
     paid: number;
     pending: number;
     onPaymentClick: (id: number) => void;
-    /** Активный поисковый запрос — для подсветки совпадений в карточке. */
     searchQuery?: string;
-    /** Раскрыть карточку по умолчанию (например, для списка всех участников). */
     defaultOpen?: boolean;
 }
 
@@ -72,11 +65,8 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
 }: AdminParticipantRowProps) {
     const [open, setOpen] = useState(defaultOpen);
     const [deleteOpen, setDeleteOpen] = useState(false);
-    // Подтверждение удаления товара целиком (все строки участника на purchaseItem). null = диалог закрыт.
     const [deleteLineTarget, setDeleteLineTarget] = useState<{ purchaseItemId: number; name: string } | null>(null);
 
-    // Ручное управление позициями (в обход бизнес-логики) + удаление
-    // участника и комментарий.
     const orderActions = useParticipantOrderActions(purchaseId);
     const actionPending =
         orderActions.adminAdjust.isPending ||
@@ -84,13 +74,9 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
         orderActions.adminAdjustPackage.isPending ||
         orderActions.deleteAllByUserItem.isPending;
 
-    // Статус оплаты по суммам (общий helper для бейджа и фильтра списка).
     const paymentStatus = getPaymentStatus(due, paid);
     const isPaid = paymentStatus === 'paid';
     const hasPending = pending > 0 && !isPaid;
-    // Полоса комментария показывается только если PurchaseOrder создан (нужен id
-    // для мутации). Если purchaseOrderId == null — у пользователя ещё нет
-    // записи, комментарий не к чему привязать.
     const canComment = purchaseOrderId != null;
 
     const q = searchQuery.trim().toLowerCase().replace(/^@/, '');
@@ -100,12 +86,10 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
     const commentMatched = q !== '' && participantComment.toLowerCase().includes(q);
     const matchedItems =
         q === '' ? [] : orders.filter((o) => (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q));
-    // Пояснительные строки нужны только когда заголовок сам не объясняет совпадение.
     const showMatchStrips = q !== '' && !nameMatched && !usernameMatched && (commentMatched || matchedItems.length > 0);
 
     return (
         <div className="overflow-hidden rounded-2xl border-2 border-primary/15 bg-bg-soft">
-            {/* Header (всегда виден) */}
             <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
                 <Button
                     variant="ghost"
@@ -245,7 +229,6 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                 </div>
             )}
 
-            {/* Раскрытая панель: комментарий + 2 ListView-секции (заказы / оплаты) */}
             <div
                 className={cn(
                     'grid transition-all duration-300 ease-in-out',

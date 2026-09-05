@@ -45,8 +45,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     const [handoffFilter, setHandoffFilter] = useState<HandoffFilter>('all');
 
     const data = useParticipantsData(purchaseId);
-    // Позиции закупки — для шага ± и пикера «добавить позицию» в карточке.
-    // React Query дедуплицирует с таким же запросом из items-вкладки.
     const { detail: purchase } = usePurchaseDetail(purchaseId);
     const purchaseItems = purchase?.items ?? EMPTY_ITEMS;
     const deferredSearch = useDeferredValue(search);
@@ -85,7 +83,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
 
     const selectedPayment = data.payments.find((p) => p.id === selectedPaymentId) ?? null;
 
-    // Фильтр участников по имени/@username, статусу оплаты и статусу выдачи.
     const filteredUserIds = useMemo(() => {
         const q = deferredSearch.trim().toLowerCase().replace(/^@/, '');
         return data.userIds.filter((uid) => {
@@ -125,7 +122,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
         handoffFilter,
     ]);
 
-    // Счётчики для фильтра-статуса (по всем участникам, без текстового поиска).
     const statusCounts = useMemo(() => {
         const counts = { all: data.userIds.length, paid: 0, partial: 0, unpaid: 0 } as Record<StatusFilter, number>;
         for (const uid of data.userIds) {
@@ -186,8 +182,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
             </div>
 
             <div className="space-y-2">
-                {/* Поиск участников по имени/@username. Все карточки раскрыты по умолчанию,
-                    чтобы видеть заказы сразу без раскрытия каждой. */}
                 <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-tertiary" />
                     <Input
@@ -198,8 +192,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                     />
                 </div>
 
-                {/* Фильтр по статусу оплаты. Счётчики — по всем участникам,
-                    независимо от текстового поиска. */}
                 <div className="flex flex-wrap items-center gap-1.5">
                     <StatusChip
                         label="Все"
@@ -367,7 +359,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     );
 }
 
-/** Чип фильтра по статусу оплаты с счётчиком. */
 function StatusChip({
     label,
     count,
