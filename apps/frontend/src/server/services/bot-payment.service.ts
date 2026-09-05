@@ -231,6 +231,7 @@ export class BotPaymentService {
                       pricePerPackCurrency: order.priceInfo.pricePerPackCurrency,
                       rateToRub: order.priceInfo.rateToRub,
                       packSize: order.priceInfo.packSize,
+                      packDiscountPercent: order.priceInfo.packDiscountPercent,
                       orgFeePercent: order.priceInfo.orgFeePercent,
                       deliveryPercent: order.priceInfo.deliveryPercent,
                   })

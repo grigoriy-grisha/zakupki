@@ -184,6 +184,7 @@ function PurchaseOrderCard({
                   pricePerPackCurrency: number | null;
                   rateToRub: number | null;
                   packSize: number | null;
+                  packDiscountPercent: number;
                   orgFeePercent: number;
                   deliveryPercent: number;
               }
@@ -197,6 +198,7 @@ function PurchaseOrderCard({
                   pricePerPackCurrency: priceInfo.pricePerPackCurrency,
                   rateToRub: priceInfo.rateToRub,
                   packSize: priceInfo.packSize,
+                  packDiscountPercent: priceInfo.packDiscountPercent,
                   orgFeePercent: priceInfo.orgFeePercent,
                   deliveryPercent: priceInfo.deliveryPercent,
               })

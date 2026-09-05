@@ -1,4 +1,4 @@
-import { SETTINGS_SCHEMA, isSettingKey, ValidationError, type SettingDef } from '@zakupki/types';
+import { isSettingKey, type SettingDef,SETTINGS_SCHEMA, ValidationError } from '@zakupki/types';
 import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
@@ -19,6 +19,9 @@ export const settingsRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             await ctx.services.pricingSettings.setBeadPackPriceDiscountPercent(input.percent);
+            // Скидка участвует в amountDue записанных заказов — пересчитываем все
+            // закупки с активными строками, иначе суммы остаются в старых ценах.
+            await ctx.services.purchase.recalculateAllAmounts();
             return { beadPackPriceDiscountPercent: input.percent };
         }),
 

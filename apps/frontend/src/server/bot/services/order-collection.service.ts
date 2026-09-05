@@ -1,5 +1,6 @@
 import {
     buildOrderQtyOptions,
+    computePackagePrice,
     computeUnitPriceRubNewModel,
     getActiveStep,
     getOrderQuantityStep,
@@ -64,23 +65,22 @@ export class OrderCollectionService {
     /**
      * Подсказка по формату количества для чата закупки: зависит от этапа
      * (на доборе — расширенный текст про граммы и «п»).
+     * Возвращает null, если reply не привязан к посту закупки — обычное
+     * общение клиентов не должно получать ответ бота.
      */
     async getQuantityHint(params: {
         chatId: number;
         replyTo?: import('../lib/resolve-reply-purchase-item').ReplyToMessage;
         threadId?: number;
-    }): Promise<string> {
+    }): Promise<string | null> {
         try {
             const purchaseItem = await this.resolver.resolvePurchaseItem(params.chatId, {
                 reply_to_message: params.replyTo,
                 message_thread_id: params.threadId,
             });
-            return getOrderQuantityHint(
-                purchaseItem?.purchase?.fulfillmentStatus,
-                isWeightUnit(purchaseItem?.unitCode),
-            );
+            return this.hintForItem(purchaseItem);
         } catch {
-            return getOrderQuantityHint(null);
+            return null;
         }
     }
 
@@ -93,15 +93,9 @@ export class OrderCollectionService {
         userInfo: { firstName: string; lastName?: string; username?: string };
         messageId?: number;
     }): Promise<OrderCollectionResult> {
-        const parsed = parseOrderQuantity(params.text);
-        if (parsed === null) {
-            return {
-                ok: false,
-                reason: 'invalid_quantity',
-                message: await this.getQuantityHint(params),
-            };
-        }
-
+        // Сначала резолвим товар: reply, не привязанный к посту закупки, — это
+        // обычное общение клиентов. Возвращаем product_not_found, чтобы хендлер
+        // молчал, вместо того чтобы отвечать на каждое сообщение в чате.
         const purchaseItem = await this.resolver.resolvePurchaseItem(params.chatId, {
             reply_to_message: params.replyTo,
             message_thread_id: params.threadId,
@@ -112,6 +106,15 @@ export class OrderCollectionService {
                 ok: false,
                 reason: 'product_not_found',
                 message: 'Не найден товар для этого сообщения',
+            };
+        }
+
+        const parsed = parseOrderQuantity(params.text);
+        if (parsed === null) {
+            return {
+                ok: false,
+                reason: 'invalid_quantity',
+                message: this.hintForItem(purchaseItem) ?? '',
             };
         }
 
@@ -180,6 +183,12 @@ export class OrderCollectionService {
 
     // ── Private helpers ───────────────────────────────────────────
 
+    /** Подсказка формата для найденного товара; null — товар не резолвился. */
+    private hintForItem(item: ResolvedItem | null): string | null {
+        if (!item) return null;
+        return getOrderQuantityHint(item.purchase?.fulfillmentStatus, isWeightUnit(item.unitCode));
+    }
+
     private buildResult(
         item: ResolvedItem,
         userId: number,
@@ -227,7 +236,8 @@ export class OrderCollectionService {
 
         const unitPriceRub = computeUnitPriceRubNewModel(domainItem) ?? 0;
         const packSize = item.packAmount != null ? Number(item.packAmount) : null;
-        const packagePrice = packSize != null ? packSize * unitPriceRub : 0;
+        // Фактическая цена пачки (со скидкой за целую пачку, когда применима).
+        const packagePrice = computePackagePrice(domainItem);
         return { unitShort, packSize, unitPriceRub, packagePrice };
     }
 

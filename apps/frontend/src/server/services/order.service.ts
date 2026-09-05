@@ -132,19 +132,27 @@ export class OrderService {
     }
 
     async getUserOrders(userId: number) {
-        const [lines, orgFeeDefaultPercent] = await Promise.all([
+        const [lines, orgFeeDefaultPercent, packDiscountPercent] = await Promise.all([
             this.repo.getByUser(userId),
             this.pricingSettings.getOrgFeeDefaultPercent(),
+            this.pricingSettings.getBeadPackPriceDiscountPercent(),
         ]);
-        return lines.map((line) => ({ ...line, priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent) }));
+        return lines.map((line) => ({
+            ...line,
+            priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent, packDiscountPercent),
+        }));
     }
 
     async findAllByUserWithPriceInfo(userId: number) {
-        const [lines, orgFeeDefaultPercent] = await Promise.all([
+        const [lines, orgFeeDefaultPercent, packDiscountPercent] = await Promise.all([
             this.repo.findAllByUserId(userId),
             this.pricingSettings.getOrgFeeDefaultPercent(),
+            this.pricingSettings.getBeadPackPriceDiscountPercent(),
         ]);
-        return lines.map((line) => ({ ...line, priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent) }));
+        return lines.map((line) => ({
+            ...line,
+            priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent, packDiscountPercent),
+        }));
     }
 
     private priceInfoForLine(
@@ -162,6 +170,7 @@ export class OrderService {
             } | null;
         },
         orgFeeDefaultPercent: number,
+        packDiscountPercent: number,
     ) {
         const item = line.purchaseItem;
         const purchase = item?.purchase;
@@ -178,6 +187,7 @@ export class OrderService {
                 item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
             rateToRub,
             packSize: item.packAmount != null ? Number(item.packAmount) : null,
+            packDiscountPercent,
             orgFeePercent: resolveOrgFeePercent(
                 item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
                 orgFeeDefaultPercent,

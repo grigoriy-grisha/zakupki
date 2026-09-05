@@ -225,8 +225,11 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const packagePrice = computePackagePrice(purchaseItem);
     const packageTotal = currentPackageCount * packagePrice;
     const total = computeAmountDueWithPackages(currentQuantity, currentPackageCount, purchaseItem);
+    // В info идёт БАЗОВАЯ цена пачки (без скидки) — discountedPackPrice считает её сама,
+    // иначе скидка задвоится. computePackagePrice теперь возвращает цену со скидкой.
+    const basePackPrice = unitPriceRub != null && packSize != null ? unitPriceRub * packSize : null;
     const packDiscountInfo = isWeight
-        ? getPackDiscountPricingInfo(packSize, packagePrice, packDiscountPercent)
+        ? getPackDiscountPricingInfo(packSize, basePackPrice, packDiscountPercent)
         : null;
     const effectiveQty = currentQuantity + currentPackageCount * (packSize ?? 0);
     const fullPacks = packDiscountInfo != null ? countFullSupplierPacks(effectiveQty, packDiscountInfo.packSize) : 0;

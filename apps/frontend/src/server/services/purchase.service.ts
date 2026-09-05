@@ -431,6 +431,18 @@ export class PurchaseService {
         await this.notifyAmountRecalculated(purchase.id, purchase.tag, changedByUser);
     }
 
+    /**
+     * Пересчитать amountDue во всех закупках, где есть активные заказы.
+     * Нужен после изменения глобальных настроек цен (скидка за пачку, оргсбор) —
+     * записанные суммы иначе остаются в старых ценах до следующего пересчёта.
+     */
+    async recalculateAllAmounts(): Promise<void> {
+        const purchaseIds = await this.orderRepo.findPurchaseIdsWithActiveLines();
+        for (const purchaseId of purchaseIds) {
+            await this.recalculateAmounts(purchaseId);
+        }
+    }
+
     private async notifyAmountRecalculated(
         purchaseId: number,
         purchaseTag: string,

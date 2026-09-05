@@ -91,3 +91,107 @@ describe('OrderBook.adjustPackages — amountDue через новую моде�
         expect(line?.amountDue).toBe(120);
     });
 });
+
+describe('pack discount — скидка за целые пачки', () => {
+    it('computePackagePrice со скидкой: 120 × 0.97 = 116.4', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 3,
+        });
+        expect(computePackagePrice(item)).toBe(116.4);
+    });
+
+    it('целая пачка в amountDue: 1 упаковка = цена со скидкой', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 3,
+        });
+        expect(computeAmountDueWithPackages(0, 1, item)).toBe(116.4);
+    });
+
+    it('россыпь по полной цене + пачка со скидкой', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 3,
+        });
+        // 5 ед. россыпи (5×10=50) + пачка со скидкой (116.4) = 166.4
+        expect(computeAmountDueWithPackages(5, 1, item)).toBe(166.4);
+    });
+
+    it('россыпь, кратная пачке, тоже получает скидку', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 3,
+        });
+        // 24 ед. = ровно 2 пачки: 2 × 116.4 = 232.8 (без скидки было бы 240)
+        expect(computeAmountDueWithPackages(24, 0, item)).toBe(232.8);
+    });
+
+    it('пачки + хвост: 30 ед. = 2 пачки со скидкой + 6 ед. россыпи', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 3,
+        });
+        // 2 × 116.4 + 6 × 10 = 292.8
+        expect(computeAmountDueWithPackages(30, 0, item)).toBe(292.8);
+    });
+
+    it('копейки: пачка 100 гр × 21.95 ₽ со скидкой 3% = 2129.15', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 100,
+            pricePerPackCurrency: 2195,
+            packDiscountPercent: 3,
+        });
+        // unitPriceRub = 21.95; упаковка: 2195 × 0.97 = 2129.15
+        expect(computePackagePrice(item)).toBe(2129.15);
+        expect(computeAmountDueWithPackages(105, 0, item)).toBe(109.75 + 2129.15);
+    });
+
+    it('скидка не применяется к штучным товарам', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 1,
+            pricePerPackCurrency: 100,
+            packDiscountPercent: 3,
+            unitCode: 'piece',
+        });
+        expect(computePackagePrice(item)).toBe(100);
+        expect(computeAmountDueWithPackages(0, 1, item)).toBe(100);
+    });
+
+    it('скидка не применяется к тубам', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 1,
+            pricePerPackCurrency: 376.2,
+            packDiscountPercent: 3,
+            unitCode: 'tube',
+        });
+        expect(computePackagePrice(item)).toBe(376.2);
+    });
+
+    it('d=0 — прежние ожидания без скидки (регресс)', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 0,
+        });
+        expect(computePackagePrice(item)).toBe(120);
+        expect(computeAmountDueWithPackages(5, 1, item)).toBe(170);
+    });
+
+    it('end-to-end: OrderBook.adjustPackages пишет amountDue со скидкой', () => {
+        const item = makeItem('COLLECTION', {
+            packAmount: 12,
+            pricePerPackCurrency: 120,
+            packDiscountPercent: 3,
+        });
+        const result = OrderBook.create(item).adjustPackages(1, 1);
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.book.baseLineFor(1)?.amountDue).toBe(116.4);
+    });
+});

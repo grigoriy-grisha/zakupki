@@ -43,6 +43,13 @@ const addItemInputSchema = z.object({
 }).merge(purchaseItemFieldsSchema);
 
 export const purchasesRouter = router({
+    recalculateAllAmounts: adminProcedure.mutation(async ({ ctx }) => {
+        // Разовый пересчёт amountDue всех закупок (например, после деплоя
+        // новой логики цен или правки настроек в обход мутации settings).
+        await ctx.services.purchase.recalculateAllAmounts();
+        return { ok: true };
+    }),
+
     list: protectedProcedure
         .input(
             z

@@ -214,6 +214,40 @@ describe('computeOrderLinePriceBreakdown — расшифровка для кл�
         expect(bd!.deliveryRub).toBe(0);
     });
 
+    it('скидка за пачку уменьшает базу, компоненты сходятся к amountDue', () => {
+        // Пачка 100, rate=1 → unitBase = 1; 1 упаковка = 100 ед.
+        // Скидка 3% на всю пачку: фактор = 1 − 0.03×(100/100) = 0.97 → база 97.
+        // amountDue (новая модель): unitPriceRub = 1.17 (орг 10 + дост 7),
+        // пачка со скидкой = 117 × 0.97 = 113.49.
+        const bd = computeOrderLinePriceBreakdown({
+            quantity: 0,
+            packageCount: 1,
+            pricePerPackCurrency: 100,
+            rateToRub: 1,
+            packSize: 100,
+            amountDue: 113.49,
+            orgFeePercent: 10,
+            deliveryPercent: 7,
+            packDiscountPercent: 3,
+        });
+        expect(bd).not.toBeNull();
+        expect(bd!.baseRub).toBe(97);
+        expect(bd!.orgFeeRub).toBe(9.7);
+        expect(bd!.baseRub + bd!.orgFeeRub + bd!.deliveryRub).toBeCloseTo(113.49, 2);
+    });
+
+    it('скидка без целых пачек не меняет базу', () => {
+        const bd = computeOrderLinePriceBreakdown({
+            ...mossLike,
+            amountDue: 88.92,
+            orgFeePercent: 0,
+            deliveryPercent: 0,
+            packDiscountPercent: 3,
+        });
+        // 60 ед. < пачки 1000 — fullPacks = 0, фактор = 1
+        expect(bd!.baseRub).toBe(88.92);
+    });
+
     it('нет курса или веса упаковки — null', () => {
         expect(
             computeOrderLinePriceBreakdown({

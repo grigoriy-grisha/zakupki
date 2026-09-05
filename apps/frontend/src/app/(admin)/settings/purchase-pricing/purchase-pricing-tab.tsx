@@ -22,13 +22,25 @@ export function PurchasePricingTab() {
         onError: (error) => toast.error(error.message),
     });
 
+    const updateBeadPackDiscount = trpc.settings.updateBeadPackDiscount.useMutation({
+        onSuccess: async () => {
+            await utils.settings.getPricing.invalidate();
+            toast.success('Скидка сохранена, суммы заказов пересчитываются');
+        },
+        onError: (error) => toast.error(error.message),
+    });
+
     const [orgFee, setOrgFee] = useState('0');
+    const [packDiscount, setPackDiscount] = useState('0');
 
     useEffect(() => {
         if (serverValue?.orgFeeDefaultPercent != null) {
             setOrgFee(String(serverValue.orgFeeDefaultPercent));
         }
-    }, [serverValue?.orgFeeDefaultPercent]);
+        if (serverValue?.beadPackPriceDiscountPercent != null) {
+            setPackDiscount(String(serverValue.beadPackPriceDiscountPercent));
+        }
+    }, [serverValue?.orgFeeDefaultPercent, serverValue?.beadPackPriceDiscountPercent]);
 
     const handleSaveOrgFee = () => {
         const value = Number(orgFee.replace(',', '.'));
@@ -37,6 +49,15 @@ export function PurchasePricingTab() {
             return;
         }
         updateOrgFee.mutate({ percent: value });
+    };
+
+    const handleSavePackDiscount = () => {
+        const value = Number(packDiscount.replace(',', '.'));
+        if (!Number.isFinite(value)) {
+            toast.error('Введите число');
+            return;
+        }
+        updateBeadPackDiscount.mutate({ percent: value });
     };
 
     if (isLoading) {
@@ -73,6 +94,30 @@ export function PurchasePricingTab() {
                         />
                         <Button onClick={handleSaveOrgFee} disabled={updateOrgFee.isPending}>
                             {updateOrgFee.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                            Сохранить
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="pack-discount-percent">Скидка за целую пачку, %</Label>
+                    <p className="text-14-regular text-fg-secondary">
+                        Применяется к целым пачкам весовых товаров (бисер и т.п.) во всех закупках.
+                        При сохранении суммы всех активных заказов пересчитываются.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                            id="pack-discount-percent"
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.1}
+                            className="w-28"
+                            value={packDiscount}
+                            onChange={(event) => setPackDiscount(event.target.value)}
+                        />
+                        <Button onClick={handleSavePackDiscount} disabled={updateBeadPackDiscount.isPending}>
+                            {updateBeadPackDiscount.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                             Сохранить
                         </Button>
                     </div>

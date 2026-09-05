@@ -11,6 +11,10 @@ const log = createLogger('order-reply');
 
 /**
  * OrderReplyHandler — обработка `+10`, `+2п`, `-5` в order collection chat.
+ *
+ * Отвечает только на сообщения, привязанные к посту закупки (пост канала,
+ * его форвард, shop-комментарий или ветка под ними). Обычное общение
+ * клиентов (reply мимо постов) игнорируется молча.
  */
 export class OrderReplyHandler implements MessageHandler {
     readonly filter = 'order_reply' as const;
@@ -44,12 +48,16 @@ export class OrderReplyHandler implements MessageHandler {
         const service = OrderCollectionService.fromContainer(this.container);
 
         if (!/^[-+]?\d/.test(ctx.message.text.trim())) {
+            // Hint only when the reply points at a purchase post; otherwise it's
+            // ordinary chat — stay silent.
             const hint = await service.getQuantityHint({
                 chatId: ctx.chat.id,
                 replyTo,
                 threadId,
             });
-            await ctx.reply(hint, { reply_parameters: { message_id: ctx.message.message_id } });
+            if (hint) {
+                await ctx.reply(hint, { reply_parameters: { message_id: ctx.message.message_id } });
+            }
             return;
         }
 
@@ -68,6 +76,14 @@ export class OrderReplyHandler implements MessageHandler {
         });
 
         if (!result.ok) {
+            if (result.reason === 'product_not_found') {
+                // Not tied to any purchase post — users are just chatting.
+                log.debug(
+                    { telegramId: ctx.from.id, chatId: ctx.chat.id, message: result.message },
+                    'ignoring reply without purchase item',
+                );
+                return;
+            }
             log.warn(
                 { telegramId: ctx.from.id, chatId: ctx.chat.id, reason: result.reason, message: result.message },
                 'order failed',

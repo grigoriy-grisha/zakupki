@@ -145,6 +145,9 @@ export interface OrderLinePriceBreakdown {
  * Расшифровка суммы строки заказа для клиента: база + оргсбор + доставка.
  * Компоненты считаются от базовой цены, последняя ненулевая наценка —
  * балансом от amountDue, чтобы сумма компонентов сходилась до копейки.
+ * Скидка за целые пачки (packDiscountPercent) уменьшает базу пропорционально
+ * доле пачечного количества — иначе components не сошлись бы с уменьшенным
+ * amountDue (скидка уже сидит внутри него).
  * Возвращает null, если цена не задана (нет курса/цены/веса упаковки).
  */
 export function computeOrderLinePriceBreakdown(input: {
@@ -156,6 +159,8 @@ export function computeOrderLinePriceBreakdown(input: {
     packSize: number | null;
     orgFeePercent: number;
     deliveryPercent: number;
+    /** % скидки за целые пачки. 0/undefined — без скидки. */
+    packDiscountPercent?: number;
 }): OrderLinePriceBreakdown | null {
     if (
         input.pricePerPackCurrency == null ||
@@ -171,7 +176,14 @@ export function computeOrderLinePriceBreakdown(input: {
     if (!Number.isFinite(effectiveQty) || effectiveQty <= 0) return null;
 
     const unitBase = (input.pricePerPackCurrency * input.rateToRub) / input.packSize;
-    const baseRub = roundMoney(effectiveQty * unitBase);
+    // Скидка касается только пачечных граммов: base × (1 − d × packQty/effectiveQty).
+    let discountFactor = 1;
+    if (input.packDiscountPercent != null && input.packDiscountPercent > 0) {
+        const fullPacks = Math.floor((effectiveQty + 1e-9) / input.packSize);
+        const packQty = fullPacks * input.packSize;
+        discountFactor = 1 - (input.packDiscountPercent / 100) * (packQty / effectiveQty);
+    }
+    const baseRub = roundMoney(effectiveQty * unitBase * discountFactor);
     const hasOrg = input.orgFeePercent > 0;
     const hasDelivery = input.deliveryPercent > 0;
 

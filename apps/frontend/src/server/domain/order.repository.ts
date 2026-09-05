@@ -277,6 +277,15 @@ export class OrderRepository {
         return rows.map((r) => r.purchaseItemId);
     }
 
+    /** id закупок, где есть хотя бы одна ACTIVE строка заказа (для пересчёта сумм). */
+    async findPurchaseIdsWithActiveLines(): Promise<number[]> {
+        const rows = await dbClient.orderLine.findMany({
+            where: { status: 'ACTIVE' },
+            select: { purchaseItem: { select: { purchaseId: true } } },
+        });
+        return [...new Set(rows.map((r) => r.purchaseItem.purchaseId))];
+    }
+
     /** All distinct user ids who have at least one order line in a purchase. */
     async findParticipantUserIds(purchaseId: number): Promise<number[]> {
         const rows = await dbClient.orderLine.findMany({

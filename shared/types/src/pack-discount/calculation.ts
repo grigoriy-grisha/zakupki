@@ -56,6 +56,6 @@ export function splitQtyIntoPackages(
 /**
  * Цена упаковки со скидкой: packPrice × (1 − discount/100).
  */
-function computeDiscountedPackPrice(packPrice: number, discountPercent: number): number {
+export function computeDiscountedPackPrice(packPrice: number, discountPercent: number): number {
     return Math.round(packPrice * (1 - discountPercent / 100) * 100) / 100;
 }
