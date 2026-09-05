@@ -85,4 +85,11 @@ export const usersRouter = router({
             }
             return ctx.services.user.updateRole(input.userId, input.role);
         }),
+
+    delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+        if (input.id === ctx.userId) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нельзя удалить свой аккаунт' });
+        }
+        return ctx.services.user.deleteUser(input.id);
+    }),
 });

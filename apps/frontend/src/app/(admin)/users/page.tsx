@@ -38,12 +38,13 @@ export default function UsersPage() {
                                     <TableHead>Роль</TableHead>
                                     <TableHead>Согласие ПД</TableHead>
                                     <TableHead>Закупки</TableHead>
+                                    <TableHead className="w-12" />
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {users?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center text-fg-secondary">
+                                        <TableCell colSpan={6} className="h-24 text-center text-fg-secondary">
                                             Нет участников
                                         </TableCell>
                                     </TableRow>

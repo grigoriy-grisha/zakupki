@@ -1,14 +1,16 @@
 'use client';
 
-import { ChevronDown, ChevronRight, CircleCheck, CircleX } from 'lucide-react';
+import { ChevronDown, ChevronRight, CircleCheck, CircleX, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
+import { mutationOptions } from '@/lib/query/mutation-options';
 import { displayName,resolveAvatarUrl } from '@/lib/utils/user';
 
 import { countUniquePurchases, groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
@@ -23,14 +25,24 @@ interface UserOrdersRowProps {
 
 export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
     const [open, setOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
     const name = displayName(user);
     const avatarUrl = resolveAvatarUrl(user);
     const tgUsername = user.telegramCredential?.username ?? user.username;
     const purchaseCount = countUniquePurchases(user.orderLines);
+    const hasOrders = user.orderLines.length > 0;
 
     const { data: orders, isLoading: ordersLoading } = trpc.orders.getByUser.useQuery(
         { userId: user.id },
         { enabled: open },
+    );
+
+    const utils = trpc.useUtils();
+    const deleteUser = trpc.users.delete.useMutation(
+        mutationOptions({
+            invalidate: () => void utils.users.list.invalidate(),
+            success: 'Участник удалён',
+        }),
     );
 
     const purchaseGroups = useMemo(() => (orders ? groupOrdersByPurchase(orders) : []), [orders]);
@@ -95,11 +107,24 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                             : `${user.orderLines.length} поз.`}
                     </Badge>
                 </TableCell>
+                <TableCell>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Удалить участника ${name}`}
+                        disabled={hasOrders}
+                        title={hasOrders ? 'Есть заказы — удаление недоступно' : undefined}
+                        onClick={() => setDeleteOpen(true)}
+                        className="text-fg-tertiary hover:text-error"
+                    >
+                        <Trash2 className="size-4" />
+                    </Button>
+                </TableCell>
             </TableRow>
 
             {open && (
                 <TableRow>
-                    <TableCell colSpan={5} className="bg-bg-soft/50 p-0">
+                    <TableCell colSpan={6} className="bg-bg-soft/50 p-0">
                         <div className="p-4">
                             <p className="mb-3 text-14-semibold text-fg-secondary">Закупки участника</p>
                             {ordersLoading ? (
@@ -123,6 +148,21 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                     </TableCell>
                 </TableRow>
             )}
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                title="Удалить участника?"
+                description={
+                    <>
+                        Участник <strong>{name}</strong> будет удалён вместе с привязками Telegram/VK и уведомлениями.
+                        Действие необратимо. Удалить можно только участника без заказов и платежей.
+                    </>
+                }
+                confirmLabel="Удалить"
+                loading={deleteUser.isPending}
+                onConfirm={() => deleteUser.mutate({ id: user.id }, { onSuccess: () => setDeleteOpen(false) })}
+            />
         </>
     );
 }
