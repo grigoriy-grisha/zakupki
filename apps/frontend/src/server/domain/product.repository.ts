@@ -4,7 +4,12 @@ import { storage } from '@/lib/server/storage';
 import { productInclude } from './product-include';
 import { assertProductNotInActivePurchase, findProductIdsInActivePurchases } from './product-purchase-lock';
 
-export type ProductCharacteristicInput = { characteristicId: number; value: string; sortOrder?: number };
+export type ProductCharacteristicInput = {
+    characteristicId: number;
+    value: string;
+    showOnCard?: boolean;
+    sortOrder?: number;
+};
 
 export interface ProductWriteData {
     name?: string;
@@ -136,6 +141,12 @@ export class ProductRepository {
         });
     }
 
+    async replaceCharacteristicValues(productId: number, characteristics: ProductCharacteristicInput[]) {
+        await dbClient.$transaction(async (tx) => {
+            await this.replaceCharacteristicRows(tx, productId, characteristics);
+        });
+    }
+
     async getPhoto(id: number) {
         return dbClient.productPhoto.findUnique({ where: { id } });
     }
@@ -178,19 +189,32 @@ export class ProductRepository {
         }
 
         if (characteristics !== undefined) {
-            await tx.productCharacteristicValue.deleteMany({ where: { productId: id } });
-            const rows = characteristics
-                .filter((c) => c.value.trim())
-                .map((c, index) => ({
-                    productId: id,
-                    characteristicId: c.characteristicId,
-                    value: c.value.trim(),
-                    sortOrder: c.sortOrder ?? index,
-                }));
-            if (rows.length > 0) {
-                await tx.productCharacteristicValue.createMany({ data: rows });
-            }
+            await this.replaceCharacteristicRows(tx, id, characteristics);
         }
+    }
+
+    private async replaceCharacteristicRows(
+        tx: Prisma.TransactionClient,
+        productId: number,
+        characteristics: ProductCharacteristicInput[],
+    ): Promise<void> {
+        await tx.productCharacteristicValue.deleteMany({ where: { productId } });
+        const rows = this.buildCharacteristicRows(productId, characteristics);
+        if (rows.length > 0) {
+            await tx.productCharacteristicValue.createMany({ data: rows });
+        }
+    }
+
+    private buildCharacteristicRows(productId: number, characteristics: ProductCharacteristicInput[]) {
+        return characteristics
+            .filter((c) => c.value.trim())
+            .map((c, index) => ({
+                productId,
+                characteristicId: c.characteristicId,
+                value: c.value.trim(),
+                showOnCard: c.showOnCard ?? false,
+                sortOrder: c.sortOrder ?? index,
+            }));
     }
 
     private toPrismaCreate(data: ProductCreateData): Prisma.ProductCreateInput {
@@ -257,13 +281,7 @@ export class ProductRepository {
         characteristics: ProductCharacteristicInput[] | undefined,
     ): Pick<Prisma.ProductCreateInput, 'characteristicValues'> {
         if (!characteristics?.length) return { characteristicValues: undefined };
-        const rows = characteristics
-            .filter((c) => c.value.trim())
-            .map((c, index) => ({
-                characteristicId: c.characteristicId,
-                value: c.value.trim(),
-                sortOrder: c.sortOrder ?? index,
-            }));
+        const rows = this.buildCharacteristicRows(0, characteristics).map(({ productId: _productId, ...row }) => row);
         if (!rows.length) return { characteristicValues: undefined };
         return { characteristicValues: { create: rows } };
     }

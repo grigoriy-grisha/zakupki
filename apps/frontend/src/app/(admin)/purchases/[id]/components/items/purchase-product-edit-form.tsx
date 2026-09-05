@@ -24,6 +24,7 @@ import { persistTemplateChoice, resolveDefaultTemplateId } from '../../lib/templ
 import type { PurchaseCurrencyRateRef } from '../../lib/types';
 import { defaultUnitField } from '../../lib/unit-defaults';
 import { gramsOrDefault, mergeTemplateIntoDescription, roundCurrency4, toNum } from './purchase-product-edit-form/form-utils';
+import { CharacteristicsSection } from './purchase-product-edit-form/sections/characteristics-section';
 import { DescriptionSection } from './purchase-product-edit-form/sections/description-section';
 import {
     GRAM_DEFAULT_MIN_PACKAGE,
@@ -33,6 +34,12 @@ import {
 } from './purchase-product-edit-form/sections/pack-pricing-section';
 import { SupplementLimitsSection } from './purchase-product-edit-form/sections/supplement-limits-section';
 import { SupplierSection } from './purchase-product-edit-form/sections/supplier-section';
+
+export type PurchaseCharacteristicSaveData = {
+    characteristicId: number;
+    value: string;
+    showOnCard: boolean;
+};
 
 export type PurchaseProductSaveData = {
     supplierId?: number | null;
@@ -50,12 +57,19 @@ export type PurchaseProductSaveData = {
     supplierLimitUnit: string | null;
     targetRemainder: number | null;
     productUnitCode: 'gram' | 'piece' | 'tube';
+    characteristics?: PurchaseCharacteristicSaveData[];
 };
 
 interface PurchaseProductEditFormProps {
     product: ProductLabelSource & {
         id: number;
         unitCode: string;
+        characteristicValues?: {
+            characteristicId?: number;
+            value: string;
+            showOnCard?: boolean;
+            characteristic: { name: string };
+        }[];
     };
     initialPurchaseFields?: {
         supplierId?: number | null;
@@ -263,6 +277,54 @@ export function PurchaseProductEditForm({
         return { attributes: allAttributes, characteristics: allCharacteristics };
     }, [allAttributes, allCharacteristics]);
 
+    const characteristicsReady = (allCharacteristics?.length ?? 0) > 0;
+    const [charValues, setCharValues] = useState<Record<number, string>>({});
+    const [charShowOnCard, setCharShowOnCard] = useState<Record<number, boolean>>({});
+
+    const baseProductCharacteristics = useMemo(
+        () =>
+            productDescriptionBuilder.fromProduct(
+                product,
+                showInTitleByTypeId,
+                attributeTypes,
+                characteristicsCatalog,
+            ).productCharacteristics,
+        [product, showInTitleByTypeId, attributeTypes, characteristicsCatalog],
+    );
+
+    const charInitSignatureRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!characteristicsReady) return;
+        if (charInitSignatureRef.current === String(product.id)) return;
+        charInitSignatureRef.current = String(product.id);
+
+        const savedById = new Map<number, { value: string; showOnCard: boolean }>();
+        for (const cv of product.characteristicValues ?? []) {
+            if (cv.characteristicId == null) continue;
+            savedById.set(cv.characteristicId, { value: cv.value ?? '', showOnCard: cv.showOnCard ?? false });
+        }
+        const autoByName = new Map(
+            (baseProductCharacteristics ?? []).map((c) => [c.name.trim().toLowerCase(), c.value]),
+        );
+        const nextValues: Record<number, string> = {};
+        const nextShowOnCard: Record<number, boolean> = {};
+        for (const c of allCharacteristics ?? []) {
+            const saved = savedById.get(c.id);
+            nextValues[c.id] = saved?.value || autoByName.get(c.name.trim().toLowerCase()) || '';
+            nextShowOnCard[c.id] = saved?.showOnCard ?? false;
+        }
+        setCharValues(nextValues);
+        setCharShowOnCard(nextShowOnCard);
+    }, [product.id, product.characteristicValues, allCharacteristics, baseProductCharacteristics, characteristicsReady]);
+
+    const liveProductCharacteristics = useMemo(
+        () =>
+            (allCharacteristics ?? [])
+                .map((c) => ({ name: c.name, value: (charValues[c.id] ?? '').trim() }))
+                .filter((c) => c.value),
+        [allCharacteristics, charValues],
+    );
+
     const descriptionFields = useMemo(
         () => ({
             ...productDescriptionBuilder.fromProduct(
@@ -272,6 +334,7 @@ export function PurchaseProductEditForm({
                 characteristicsCatalog,
             ),
             name: product.name,
+            ...(characteristicsReady ? { productCharacteristics: liveProductCharacteristics } : {}),
             pricePerPackCurrency,
             currencyName: currencyName ?? undefined,
             packAmount: isWeight ? packAmount : null,
@@ -287,6 +350,8 @@ export function PurchaseProductEditForm({
             showInTitleByTypeId,
             attributeTypes,
             characteristicsCatalog,
+            characteristicsReady,
+            liveProductCharacteristics,
             pricePerPackCurrency,
             currencyName,
             packAmount,
@@ -411,6 +476,16 @@ export function PurchaseProductEditForm({
         setPendingUnit(null);
     }
 
+    function characteristicsSaveData() {
+        return (allCharacteristics ?? [])
+            .map((c) => ({
+                characteristicId: c.id,
+                value: (charValues[c.id] ?? '').trim(),
+                showOnCard: charShowOnCard[c.id] ?? false,
+            }))
+            .filter((c) => c.value);
+    }
+
     function handleSave() {
         onSave({
             supplierId,
@@ -428,6 +503,7 @@ export function PurchaseProductEditForm({
             supplierLimitUnit: isWeight ? supplierLimitUnit : unit,
             targetRemainder,
             productUnitCode: (resolveUnit(unit)?.code ?? product.unitCode) as 'gram' | 'piece' | 'tube',
+            characteristics: characteristicsReady ? characteristicsSaveData() : undefined,
         });
     }
 
@@ -478,6 +554,13 @@ export function PurchaseProductEditForm({
                 onSupplierLimitUnitChange={setSupplierLimitUnit}
                 onMinPkgUnitChange={setMinPkgUnit}
                 onTargetRemainderChange={setTargetRemainder}
+            />
+            <CharacteristicsSection
+                fields={(allCharacteristics ?? []).map((c) => ({ id: c.id, name: c.name }))}
+                values={charValues}
+                showOnCard={charShowOnCard}
+                onChange={(id, value) => setCharValues((prev) => ({ ...prev, [id]: value }))}
+                onShowOnCardChange={(id, show) => setCharShowOnCard((prev) => ({ ...prev, [id]: show }))}
             />
             <DescriptionSection
                 productId={product.id}

@@ -25,9 +25,10 @@ export function useCharacteristicValues(
     attributesList: AttributeListItem[] | undefined,
     attributeTypes: AttributeTypeRow[] | undefined,
     allCharacteristics: CharacteristicSource[] | undefined,
-    existingCharValues?: { characteristicId: number; value: string }[],
+    existingCharValues?: { characteristicId: number; value: string; showOnCard?: boolean }[],
 ) {
     const [charValues, setCharValues] = useState<Record<number, string>>({});
+    const [charShowOnCard, setCharShowOnCard] = useState<Record<number, boolean>>({});
 
     const linkedCharIdsOrdered = useMemo(
         () => collectLinkedCharacteristicIds(selectedAttrs, attributesList ?? []),
@@ -47,6 +48,14 @@ export function useCharacteristicValues(
         for (const cv of existingCharValues ?? []) {
             const value = cv.value?.trim();
             if (value) map.set(cv.characteristicId, cv.value);
+        }
+        return map;
+    }, [existingCharValues]);
+
+    const savedShowOnCardById = useMemo(() => {
+        const map = new Map<number, boolean>();
+        for (const cv of existingCharValues ?? []) {
+            map.set(cv.characteristicId, cv.showOnCard ?? false);
         }
         return map;
     }, [existingCharValues]);
@@ -83,6 +92,14 @@ export function useCharacteristicValues(
             }
             return next;
         });
+
+        setCharShowOnCard((prev) => {
+            const next: Record<number, boolean> = {};
+            for (const cid of linkedCharIdsOrdered) {
+                next[cid] = prev[cid] ?? savedShowOnCardById.get(cid) ?? false;
+            }
+            return next;
+        });
     }, [
         selectedAttrsKey,
         linkedCharIdsKey,
@@ -91,6 +108,7 @@ export function useCharacteristicValues(
         attributesList,
         linkedCharIdsOrdered,
         savedCharValuesById,
+        savedShowOnCardById,
     ]);
 
     function characteristicsPayload() {
@@ -98,10 +116,23 @@ export function useCharacteristicValues(
             .map((id, index) => ({
                 characteristicId: id,
                 value: (charValues[id] ?? '').trim(),
+                showOnCard: charShowOnCard[id] ?? false,
                 sortOrder: index,
             }))
             .filter((c) => c.value);
     }
 
-    return { charValues, setCharValues, activeCharFields, linkedCharIdsOrdered, characteristicsPayload };
+    function setShowOnCard(characteristicId: number, show: boolean) {
+        setCharShowOnCard((prev) => ({ ...prev, [characteristicId]: show }));
+    }
+
+    return {
+        charValues,
+        setCharValues,
+        charShowOnCard,
+        setShowOnCard,
+        activeCharFields,
+        linkedCharIdsOrdered,
+        characteristicsPayload,
+    };
 }

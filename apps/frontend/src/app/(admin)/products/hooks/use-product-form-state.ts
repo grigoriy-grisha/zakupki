@@ -19,6 +19,7 @@ type ProductAttributeValueShape = {
 type ProductCharacteristicValueShape = {
     characteristicId: number;
     value: string;
+    showOnCard?: boolean;
     sortOrder?: number;
     characteristic: { id: number; name: string };
 };
@@ -87,18 +88,21 @@ export function useProductFormState(editId: number | null, existing: ProductForm
     pendingFilesRef.current = pendingFiles;
 
     // Characteristic values
-    const { charValues, setCharValues, activeCharFields, characteristicsPayload } = useCharacteristicValues(
-        selectedAttrs,
-        allAttributes,
-        attributeTypes as { id: number; name: string; parentId: number | null; position: number }[] | undefined,
-        allCharacteristics as { id: number; name: string }[] | undefined,
-        existing?.characteristicValues,
-    );
+    const { charValues, setCharValues, charShowOnCard, setShowOnCard, activeCharFields, characteristicsPayload } =
+        useCharacteristicValues(
+            selectedAttrs,
+            allAttributes,
+            attributeTypes as { id: number; name: string; parentId: number | null; position: number }[] | undefined,
+            allCharacteristics as { id: number; name: string }[] | undefined,
+            existing?.characteristicValues,
+        );
 
     // Build snapshot for detecting real changes
     function buildExistingSnapshot(product: ProductFormExisting) {
         const attrIds = (product.attributeValues ?? []).map((v) => v.attribute.id).join(',');
-        const charIds = (product.characteristicValues ?? []).map((v) => `${v.characteristicId}:${v.value}`).join(',');
+        const charIds = (product.characteristicValues ?? [])
+            .map((v) => `${v.characteristicId}:${v.value}:${v.showOnCard ? 1 : 0}`)
+            .join(',');
         const photoIdsStr = product.photos.map((p) => p.id).join(',');
         return `${product.name}|${product.unitCode ?? ''}|${product.articleNumber ?? ''}|${attrIds}|${charIds}|${photoIdsStr}`;
     }
@@ -193,6 +197,8 @@ export function useProductFormState(editId: number | null, existing: ProductForm
         selectedAttrs,
         charValues,
         setCharValues,
+        charShowOnCard,
+        setShowOnCard,
         activeCharFields,
         handleSelectType,
         photoIds,

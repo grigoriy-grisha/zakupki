@@ -13,6 +13,7 @@ import {
 } from '@zakupki/types';
 
 import type { OrderRepository } from '../domain/order.repository';
+import type { ProductCharacteristicInput } from '../domain/product.repository';
 import type { ProductRepository } from '../domain/product.repository';
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import type { PurchaseRepository } from '../domain/purchase.repository';
@@ -182,6 +183,17 @@ export class PurchaseService {
             applyPieceUnitInvariants(nextUnitCode, itemUpdate);
         }
 
+        if (Array.isArray(itemData.characteristics)) {
+            const characteristics: ProductCharacteristicInput[] = (
+                itemData.characteristics as Record<string, unknown>[]
+            ).map((c) => ({
+                characteristicId: Number(c.characteristicId),
+                value: String(c.value ?? ''),
+                showOnCard: c.showOnCard === true,
+            }));
+            await this.productRepo.replaceCharacteristicValues(item.productId, characteristics);
+        }
+
         const pricingKeys = [
             'packAmount',
             'currencyId',
@@ -249,6 +261,7 @@ export class PurchaseService {
             supplierLimitUnit?: string | null;
             targetRemainder?: number | null;
             productUnitCode?: string;
+            characteristics?: ProductCharacteristicInput[];
         }[],
     ) {
         const purchase = await this.repo.getById(purchaseId, true);
@@ -309,6 +322,16 @@ export class PurchaseService {
         );
         for (const [productId, unitCode] of unitUpdates) {
             await this.productRepo.update(productId, { unitCode });
+        }
+
+        const characteristicUpdates = new Map<number, ProductCharacteristicInput[]>();
+        for (const c of toCreate) {
+            if (c.characteristics !== undefined) {
+                characteristicUpdates.set(c.productId, c.characteristics);
+            }
+        }
+        for (const [productId, characteristics] of characteristicUpdates) {
+            await this.productRepo.replaceCharacteristicValues(productId, characteristics);
         }
 
         return {

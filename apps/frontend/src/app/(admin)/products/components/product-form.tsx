@@ -4,6 +4,7 @@ import { UNITS } from '@zakupki/types';
 import { Loader2, Plus, X } from 'lucide-react';
 import { Controller } from 'react-hook-form';
 
+import { ProductCharacteristicsFields } from '@/components/shared/product-characteristics-fields';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { FormFooter } from '@/components/ui/form-footer';
@@ -21,7 +22,6 @@ import { cn } from '@/lib/utils';
 import { type ProductFormExisting,useProductFormState, useProductFormSubmit } from '../hooks';
 import { AttributeTreePicker } from './attribute-tree-picker';
 import { PhotoUploader } from './photo-uploader';
-import { ProductCharacteristicsFields } from './product-characteristics-fields';
 
 interface ProductFormProps {
     editId: number | null;
@@ -115,9 +115,11 @@ export function ProductForm({ editId, existing, onSuccess }: ProductFormProps) {
                 <ProductCharacteristicsFields
                     fields={state.activeCharFields}
                     values={state.charValues}
+                    showOnCard={state.charShowOnCard}
                     onChange={(id, value) =>
                         state.setCharValues((prev) => ({ ...prev, [id]: value }))
                     }
+                    onShowOnCardChange={state.setShowOnCard}
                 />
             </FormSection>
 

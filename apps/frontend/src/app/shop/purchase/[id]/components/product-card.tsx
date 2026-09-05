@@ -66,6 +66,10 @@ function ProductCardImpl({
     const photoIds = product.photos?.map((p: { id: number }) => p.id);
     const detailHref = `/shop/purchase/${purchaseId}/item/${purchaseItemId}`;
 
+    const cardCharacteristics = (product.characteristicValues ?? [])
+        .filter((cv: { value?: string; showOnCard?: boolean }) => cv.showOnCard && !!cv.value?.trim())
+        .slice(0, 3);
+
     const goToDetail = useCallback(() => {
         router.push(detailHref);
     }, [router, detailHref]);
@@ -134,6 +138,21 @@ function ProductCardImpl({
                         secondaryClassName="mt-1 block line-clamp-2 text-11-regular text-fg-tertiary sm:text-12-regular"
                     />
                 </button>
+
+                {cardCharacteristics.length > 0 && (
+                    <div className="space-y-0.5">
+                        {cardCharacteristics.map(
+                            (cv: { characteristicId: number; value: string; characteristic: { name: string } }) => (
+                                <p
+                                    key={cv.characteristicId}
+                                    className="line-clamp-1 text-11-regular text-fg-tertiary sm:text-12-regular"
+                                >
+                                    <span className="text-fg-secondary">{cv.characteristic.name}:</span> {cv.value}
+                                </p>
+                            ),
+                        )}
+                    </div>
+                )}
 
                 {showMinHint && <p className="text-11-regular text-fg-tertiary sm:text-12-regular">{minHint}</p>}
 

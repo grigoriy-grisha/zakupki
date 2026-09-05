@@ -15,6 +15,12 @@ const purchaseFulfillmentStatusSchema = z.enum([
     'READY_FOR_PICKUP',
 ]);
 
+const productCharacteristicInputSchema = z.object({
+    characteristicId: z.number(),
+    value: z.string(),
+    showOnCard: z.boolean().optional(),
+});
+
 const purchaseItemFieldsSchema = z.object({
     supplierId: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
@@ -36,6 +42,7 @@ const purchaseItemFieldsSchema = z.object({
     adminComment: z.string().max(2000).nullable().optional(),
     hidden: z.boolean().optional(),
     productUnitCode: z.enum(['gram', 'piece', 'tube']).optional(),
+    characteristics: z.array(productCharacteristicInputSchema).optional(),
 });
 
 const addItemInputSchema = z.object({

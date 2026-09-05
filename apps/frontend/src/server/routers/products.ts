@@ -7,6 +7,12 @@ import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 const unitCodeSchema = z.enum(['gram', 'piece', 'tube']);
 
+const productCharacteristicSchema = z.object({
+    characteristicId: z.number(),
+    value: z.string(),
+    showOnCard: z.boolean().optional(),
+});
+
 const productCreateInput = z.object({
     name: z.string().min(1),
     articleNumber: z.string().nullable().optional(),
@@ -14,7 +20,7 @@ const productCreateInput = z.object({
     unitCode: unitCodeSchema.optional(),
     multiplicity: z.number().optional(),
     attributeIds: z.array(z.number()).optional(),
-    characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
+    characteristics: z.array(productCharacteristicSchema).optional(),
 });
 
 const productUpdateInput = z.object({
@@ -26,7 +32,7 @@ const productUpdateInput = z.object({
     unitCode: unitCodeSchema.optional(),
     multiplicity: z.number().optional(),
     attributeIds: z.array(z.number()).optional(),
-    characteristics: z.array(z.object({ characteristicId: z.number(), value: z.string() })).optional(),
+    characteristics: z.array(productCharacteristicSchema).optional(),
 });
 
 export const productsRouter = router({
