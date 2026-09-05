@@ -41,7 +41,8 @@ export function QuantityDisplay({
     const packSize = packAmount != null ? Number(packAmount) : null;
     const hasValidPackSize = packSize != null && packSize > 0 && Number.isFinite(packSize);
     const isWeight = isWeightUnit(unitCode ?? null);
-    const unit = getUnitShortName(unitCode ?? 'piece');
+    // Unknown/missing unit renders as «ед.» — never silently «шт».
+    const unit = getUnitShortName(unitCode ?? '');
 
     // Суммарное количество в базовых единицах (россыпь + явные упаковки × packSize).
     const effective =

@@ -59,7 +59,6 @@ interface PackPricingSectionProps {
     onPackAmountChange: (value: number | null) => void;
     onOrgFeeChange: (value: number | null) => void;
     onDeliveryPercentChange: (value: number | null) => void;
-    onGramsSelected?: () => void;
     unitWarning?: string | null;
     priceNote?: string | null;
 }
@@ -81,17 +80,11 @@ export function PackPricingSection({
     onPackAmountChange,
     onOrgFeeChange,
     onDeliveryPercentChange,
-    onGramsSelected,
     unitWarning,
     priceNote,
 }: PackPricingSectionProps) {
     const isWeight = resolveUnit(unit)?.kind === 'WEIGHT';
     const sectionTitle = isWeight ? 'Цена за упаковку' : (PIECE_SECTION_TITLES[unit] ?? 'Цена за единицу');
-
-    const handleUnitChange = (v: string) => {
-        if (v === GRAM_UNIT) onGramsSelected?.();
-        onUnitChange(v);
-    };
 
     const rateToRub = resolveCurrencyRate(
         (currencyRates ?? []).map((r) => ({
@@ -127,7 +120,7 @@ export function PackPricingSection({
         <FormSection card title={sectionTitle}>
             <div className="shrink-0">
                 <label className="mb-1 block text-13-regular text-fg-tertiary">Единица товара</label>
-                <PackageUnitSelect value={unit} onChange={handleUnitChange} className="h-9 rounded-xl" />
+                <PackageUnitSelect value={unit} onChange={onUnitChange} className="h-9 rounded-xl" />
                 {unitWarning && <p className="mt-1.5 text-12-regular text-warning">{unitWarning}</p>}
             </div>
 

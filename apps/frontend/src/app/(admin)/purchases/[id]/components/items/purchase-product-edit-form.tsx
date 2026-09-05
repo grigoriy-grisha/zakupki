@@ -5,6 +5,14 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { FormFooter } from '@/components/ui/form-footer';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
@@ -132,6 +140,8 @@ export function PurchaseProductEditForm({
     const [description, setDescription] = useState(f.description ?? '');
     const [templateId, setTemplateId] = useState('none');
     const [descriptionRevision, setDescriptionRevision] = useState(0);
+    /** Unit picked in the select but not yet confirmed via the dialog. */
+    const [pendingUnit, setPendingUnit] = useState<string | null>(null);
 
     const gramPackAmountRef = useRef<number | null>(initialIsWeight ? savedPackAmount : null);
     const initialUnitRef = useRef(initialUnit);
@@ -228,6 +238,7 @@ export function PurchaseProductEditForm({
         lastAutoDescriptionRef.current = preserveSavedDescriptionRef.current ? (nextF.description ?? '') : null;
         setTemplateId('none');
         setDescriptionRevision(0);
+        setPendingUnit(null);
         lastAppliedSignatureRef.current = null;
         // eslint-disable-next-line react-hooks/exhaustive-deps -- сброс только при смене товара
     }, [product.id, initialPurchaseFields?.supplierId]);
@@ -373,21 +384,31 @@ export function PurchaseProductEditForm({
         syncDescriptionFromTemplate(value, { replace: true, bumpEditor: true });
     }
 
-    function handleUnitChange(next: string) {
+    /** Select change gate: the change applies only after the user confirms in the dialog. */
+    function handleUnitSelect(next: string) {
+        if (next === unit) return;
+        setPendingUnit(next);
+    }
+
+    function commitUnitChange(next: string) {
         const nextIsWeight = resolveUnit(next)?.kind === 'WEIGHT';
         if (nextIsWeight) {
             setPackAmount(gramPackAmountRef.current);
+            setMinPkgAmount(GRAM_DEFAULT_MIN_PACKAGE);
+            setSupplementStep(GRAM_DEFAULT_SUPPLEMENT_STEP);
         } else {
             if (isWeight) gramPackAmountRef.current = packAmount;
             setPackAmount(1);
             setMinPkgAmount(null);
             setSupplementStep(null);
-            // Для штучных товаров эти единицы locked в UI и форсятся на save —
-            // синхронизируем их сразу, иначе locked-подпись показывает старую ед.
-            setSupplierLimitUnit(next);
-            setMinPkgUnit(next);
         }
+        // These label fields are locked in the UI and forced on save, so they must
+        // always follow the selected unit — otherwise a stale label gets persisted
+        // (e.g. 'шт' left behind on an item switched to grams).
+        setSupplierLimitUnit(next);
+        setMinPkgUnit(next);
         setUnit(next);
+        setPendingUnit(null);
     }
 
     function handleSave() {
@@ -420,7 +441,7 @@ export function PurchaseProductEditForm({
             <SupplierSection supplierId={supplierId} onChange={setSupplierId} />
             <PackPricingSection
                 unit={unit}
-                onUnitChange={handleUnitChange}
+                onUnitChange={handleUnitSelect}
                 pricePerPackCurrency={pricePerPackCurrency}
                 currencyId={currencyId}
                 packAmount={packAmount}
@@ -442,11 +463,6 @@ export function PurchaseProductEditForm({
                 onDeliveryPercentChange={setDeliveryPercentOverride}
                 unitWarning={unitWarning}
                 priceNote={priceNote}
-                onGramsSelected={() => {
-                    setMinPkgAmount(GRAM_DEFAULT_MIN_PACKAGE);
-                    setMinPkgUnit(GRAM_UNIT);
-                    setSupplementStep(GRAM_DEFAULT_SUPPLEMENT_STEP);
-                }}
             />
             <SupplementLimitsSection
                 unit={unit}
@@ -492,6 +508,45 @@ export function PurchaseProductEditForm({
                     {submitLabel}
                 </Button>
             </FormFooter>
+
+            <Dialog
+                open={pendingUnit != null}
+                onOpenChange={(open) => {
+                    if (!open) setPendingUnit(null);
+                }}
+            >
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Сменить единицу товара?</DialogTitle>
+                        <DialogDescription>
+                            Единица изменится: {unit} → {pendingUnit}. Товар в каталоге тоже обновится для всех новых
+                            позиций.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {hasOrders && (
+                        <p className="text-13-regular text-warning">
+                            У позиции уже есть заказы — смена единицы не пересчитает их количества.
+                        </p>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-full"
+                            onClick={() => setPendingUnit(null)}
+                        >
+                            Отмена
+                        </Button>
+                        <Button
+                            type="button"
+                            className="rounded-full"
+                            onClick={() => pendingUnit && commitUnitChange(pendingUnit)}
+                        >
+                            Изменить
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
