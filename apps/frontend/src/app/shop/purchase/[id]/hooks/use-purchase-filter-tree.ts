@@ -41,9 +41,6 @@ export function usePurchaseFilterTree(items: PurchaseItem[] | undefined, externa
         setExpandedIds(new Set(collectExpandableIds(tree)));
     }, [tree]);
 
-    // One-way sync: a category id coming from the URL selects the matching tree
-    // node once the tree is built. User clicks are not overridden — the page
-    // mirrors selectedId back into the URL, so the ref guard sees no change.
     useEffect(() => {
         if (lastExternalIdRef.current === externalSelectedId) return;
         if (tree.length === 0) return;

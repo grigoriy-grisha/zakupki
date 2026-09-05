@@ -31,7 +31,6 @@ import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 
 const PAGE_SIZE = 20;
 
-/** Debounce for mirroring catalog filter state into the URL. */
 const URL_SYNC_DELAY_MS = 400;
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
@@ -130,7 +129,6 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
         setPage(1);
     }, [query, selectedId, onlyMine, id]);
 
-    // Reset filters when switching to another purchase without a remount.
     const prevIdRef = useRef(id);
     useEffect(() => {
         if (prevIdRef.current === id) return;
@@ -140,9 +138,6 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
         setPage(1);
     }, [id]);
 
-    // Mirror filter state into the URL so back from an item page restores it.
-    // While the category from the URL has not been resolved against the tree
-    // yet, syncing would immediately drop it — wait for the tree.
     const categoryFromUrlPending = urlCategoryId != null && tree.length === 0;
     const catalogBasePath = `/shop/purchase/${id}`;
     useEffect(() => {

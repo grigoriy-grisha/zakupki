@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button';
 import { useSmartBack } from '@/lib/hooks/use-app-back';
 
 interface AppBackButtonProps {
-    /** Where to go when there is no in-app history (deep link, direct open). */
     fallbackHref: string;
     label: string;
 }
 
-/** Shop "Назад" button: real history back when possible, fallback href otherwise. */
 export function AppBackButton({ fallbackHref, label }: AppBackButtonProps) {
     const onBack = useSmartBack(fallbackHref);
 

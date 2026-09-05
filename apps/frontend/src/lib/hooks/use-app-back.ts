@@ -13,10 +13,6 @@ import {
 
 import { useAppRouter } from './use-app-router';
 
-/**
- * Tracks in-app soft navigation and reports whether `router.back()` has an
- * in-app entry to return to. Mount once in the shop shell.
- */
 export function useAppBackTracker(): boolean {
     const pathname = usePathname();
     const [canGoBack, setCanGoBack] = useState(false);
@@ -43,10 +39,6 @@ export function useAppBackTracker(): boolean {
     return canGoBack;
 }
 
-/**
- * Back handler for "Назад" buttons: uses real history when the user
- * navigated within the app, falls back to the given href for deep links.
- */
 export function useSmartBack(fallbackHref: string) {
     const { back, push } = useAppRouter();
 
