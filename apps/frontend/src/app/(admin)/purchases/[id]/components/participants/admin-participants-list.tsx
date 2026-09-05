@@ -2,9 +2,10 @@
 
 import { HANDOFF_DEFAULT_LABEL, HANDOFF_STATUS_LABELS, type HandoffStatus } from '@zakupki/types';
 import { Search, SearchX, UsersIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 
 import { UserProfileSheet } from '@/app/(admin)/users/components';
+import { ListPagination } from '@/components/shared/list-pagination';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,14 @@ import { useParticipantsData, usePurchaseDetail } from '../../hooks';
 import type { PaymentRef } from '../../lib/types';
 import { PaymentDetailDialog } from '../payment-detail-dialog';
 import { AddParticipantDialog } from './add-participant-dialog';
+import type { PurchaseItemOption } from './admin-order-controls';
 import { AdminParticipantRow } from './admin-participant-row';
+import type { ParticipantOrder } from './types';
+
+const EMPTY_ORDERS: ParticipantOrder[] = [];
+const EMPTY_PAYMENTS: PaymentRef[] = [];
+const EMPTY_ITEMS: PurchaseItemOption[] = [];
+const PARTICIPANTS_PAGE_SIZE = 20;
 
 interface AdminParticipantsListProps {
     purchaseId: number;
@@ -32,6 +40,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     const [detailOpen, setDetailOpen] = useState(false);
     const [profileUserId, setProfileUserId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [handoffFilter, setHandoffFilter] = useState<HandoffFilter>('all');
 
@@ -39,7 +48,17 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     // Позиции закупки — для шага ± и пикера «добавить позицию» в карточке.
     // React Query дедуплицирует с таким же запросом из items-вкладки.
     const { detail: purchase } = usePurchaseDetail(purchaseId);
-    const purchaseItems = purchase?.items ?? [];
+    const purchaseItems = purchase?.items ?? EMPTY_ITEMS;
+    const deferredSearch = useDeferredValue(search);
+
+    const handlePaymentClick = useCallback((id: number) => {
+        setSelectedPaymentId(id);
+        setDetailOpen(true);
+    }, []);
+
+    useEffect(() => {
+        setPage(1);
+    }, [deferredSearch, statusFilter, handoffFilter]);
 
     if (data.isLoading) {
         return <div className="h-32 animate-pulse rounded-2xl bg-bg-soft" />;
@@ -68,7 +87,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
 
     // Фильтр участников по имени/@username, статусу оплаты и статусу выдачи.
     const filteredUserIds = useMemo(() => {
-        const q = search.trim().toLowerCase().replace(/^@/, '');
+        const q = deferredSearch.trim().toLowerCase().replace(/^@/, '');
         return data.userIds.filter((uid) => {
             const info = data.userMap.get(uid);
             const name = (info?.name ?? `Участник #${uid}`).toLowerCase();
@@ -101,7 +120,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
         data.paidByUser,
         data.handoffByUser,
         data.orderComments,
-        search,
+        deferredSearch,
         statusFilter,
         handoffFilter,
     ]);
@@ -137,6 +156,13 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     }, [data.userIds, data.handoffByUser]);
 
     const handoffDone = data.userIds.length - handoffCounts.none;
+
+    const totalPages = Math.max(1, Math.ceil(filteredUserIds.length / PARTICIPANTS_PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const pagedUserIds = filteredUserIds.slice(
+        (currentPage - 1) * PARTICIPANTS_PAGE_SIZE,
+        currentPage * PARTICIPANTS_PAGE_SIZE,
+    );
 
     return (
         <div className="space-y-4">
@@ -254,16 +280,16 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                 {filteredUserIds.length === 0 && (
                     <div className="rounded-2xl bg-bg-soft">
                         <EmptyState
-                            icon={search.trim() ? SearchX : UsersIcon}
+                            icon={deferredSearch.trim() ? SearchX : UsersIcon}
                             title={
-                                search.trim()
+                                deferredSearch.trim()
                                     ? 'Ничего не найдено'
                                     : statusFilter !== 'all' || handoffFilter !== 'all'
                                       ? 'Нет участников с этим статусом'
                                       : 'Участников нет'
                             }
                             description={
-                                search.trim()
+                                deferredSearch.trim()
                                     ? 'Попробуйте изменить запрос — поиск идёт по имени, @username и комментариям.'
                                     : statusFilter !== 'all' || handoffFilter !== 'all'
                                       ? 'Смените фильтр или сбросьте его, чтобы увидеть всех участников.'
@@ -273,14 +299,14 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                     </div>
                 )}
 
-                {filteredUserIds.map((userId) => {
-                    const userOrdersList = data.userOrders.get(userId) ?? [];
+                {pagedUserIds.map((userId) => {
+                    const userOrdersList = data.userOrders.get(userId) ?? EMPTY_ORDERS;
                     const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
                     const paid = data.paidByUser.get(userId) ?? 0;
                     const pending = data.pendingByUser.get(userId) ?? 0;
                     const info = data.userMap.get(userId);
                     const name = info?.name ?? `Участник #${userId}`;
-                    const userPaymentsList = data.userPayments.get(userId) ?? [];
+                    const userPaymentsList = data.userPayments.get(userId) ?? EMPTY_PAYMENTS;
                     const orderComment = data.orderComments.get(userId) ?? null;
                     const purchaseOrderId = orderComment?.id ?? null;
                     const handoffStatus = data.handoffByUser.get(userId) ?? null;
@@ -296,7 +322,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             purchaseOrderId={purchaseOrderId}
                             orderComment={orderComment}
                             handoffStatus={handoffStatus}
-                            searchQuery={search}
+                            searchQuery={deferredSearch}
                             onOpenProfile={setProfileUserId}
                             orders={userOrdersList}
                             payments={userPaymentsList}
@@ -305,13 +331,17 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             paid={paid}
                             pending={pending}
                             defaultOpen
-                            onPaymentClick={(id) => {
-                                setSelectedPaymentId(id);
-                                setDetailOpen(true);
-                            }}
+                            onPaymentClick={handlePaymentClick}
                         />
                     );
                 })}
+
+                <ListPagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    label="Страницы участников"
+                />
             </div>
 
             {selectedPayment && (

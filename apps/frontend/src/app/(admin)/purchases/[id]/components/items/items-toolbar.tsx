@@ -50,7 +50,7 @@ export function ItemsToolbar({
                     <Input
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        placeholder="Поиск: название, бренд или комментарий…"
+                        placeholder="Поиск: артикул, название, бренд или комментарий…"
                         className="rounded-full pl-9 text-13-regular"
                     />
                 </div>

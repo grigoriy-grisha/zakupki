@@ -45,6 +45,14 @@ export function ProductCell({
                         </TruncatedText>
                         {item.hidden && <EyeOff className="size-3 shrink-0 text-fg-tertiary" />}
                     </div>
+                    {item.product.articleNumber?.trim() && (
+                        <TruncatedText
+                            fullText={item.product.articleNumber}
+                            className="text-12-regular text-fg-tertiary"
+                        >
+                            <Highlight text={item.product.articleNumber} query={searchQuery} />
+                        </TruncatedText>
+                    )}
                     {item.supplier && (
                         <TruncatedText fullText={item.supplier.name} className="text-12-regular text-fg-tertiary">
                             {item.supplier.name}

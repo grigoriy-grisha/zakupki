@@ -2,7 +2,7 @@
 
 import type { HandoffStatus } from '@zakupki/types';
 import { ChevronDown, ChevronRight, CircleCheck, CircleX, Clock, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 import { HandoffStatusSelect } from '@/components/admin/handoff-status-select';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -50,7 +50,7 @@ interface AdminParticipantRowProps {
     defaultOpen?: boolean;
 }
 
-export function AdminParticipantRow({
+export const AdminParticipantRow = memo(function AdminParticipantRow({
     userId,
     name,
     username,
@@ -356,4 +356,4 @@ export function AdminParticipantRow({
             />
         </div>
     );
-}
+});

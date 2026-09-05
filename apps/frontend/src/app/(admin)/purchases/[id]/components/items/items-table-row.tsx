@@ -6,6 +6,7 @@ import {
     solvePricePerPackFromPackRub,
     solvePricePerPackFromUnitRub,
 } from '@zakupki/types';
+import { memo, useCallback } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -56,12 +57,12 @@ interface ItemsTableRowProps {
     onEdit: (id: number) => void;
     onPublish: (id: number) => void;
     onDelete: (target: { id: number; product: ProductLabelSource; orderCount: number; published: boolean }) => void;
-    onCommit: (patch: ItemPatch) => void;
+    onCommitItem: (purchaseItemId: number, patch: ItemPatch) => void;
     onDeletePost?: (itemId: number) => void;
     onRegenerate?: (target: { itemId: number }) => void;
 }
 
-export function ItemsTableRow({
+export const ItemsTableRow = memo(function ItemsTableRow({
     item,
     derived,
     currencyRates,
@@ -71,7 +72,7 @@ export function ItemsTableRow({
     onEdit,
     onPublish,
     onDelete,
-    onCommit,
+    onCommitItem,
     onDeletePost,
     onRegenerate,
 }: ItemsTableRowProps) {
@@ -91,6 +92,8 @@ export function ItemsTableRow({
     } = derived;
 
     const unit = item.packUnit ?? item.minPackageUnit ?? shortName;
+
+    const onCommit = useCallback((patch: ItemPatch) => onCommitItem(item.id, patch), [item.id, onCommitItem]);
 
     const rateToRub = getRateToRub(item, currencyRates);
     const rubEditable = rateToRub != null && rateToRub > 0;
@@ -253,4 +256,4 @@ export function ItemsTableRow({
             />
         </TableRow>
     );
-}
+});

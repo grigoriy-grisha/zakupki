@@ -2,9 +2,10 @@
 
 import { canAddItemsAtStage } from '@zakupki/types';
 import { ClipboardList, SearchX } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { ListPagination } from '@/components/shared/list-pagination';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Table, TableBody } from '@/components/ui/table';
@@ -20,7 +21,7 @@ import { CurrencyRatesPanel } from './currency-rates-panel';
 import { deriveRow } from './derive-row';
 import { ItemEditSheet } from './item-edit-sheet';
 import { ItemsTableHeader } from './items-table-header';
-import { ItemsTableRow } from './items-table-row';
+import { ItemsTableRow, type ItemsTableRowDerived } from './items-table-row';
 import { ItemsToolbar, type PublishedFilter } from './items-toolbar';
 import { RegeneratePostDialog } from './regenerate-post-dialog';
 
@@ -28,6 +29,8 @@ interface ItemsTabProps {
     purchaseId: number;
     onSelectionChange?: (count: number) => void;
 }
+
+const ITEMS_PAGE_SIZE = 50;
 
 export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const { detail: purchase, isLoading } = usePurchaseDetail(purchaseId);
@@ -38,6 +41,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const deletePost = useDeleteItemPost(purchaseId);
 
     const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
     const [publishedFilter, setPublishedFilter] = useState<PublishedFilter>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [editItemId, setEditItemId] = useState<number | null>(null);
@@ -61,17 +65,60 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
         typedPurchase != null && typedPurchase.status !== 'DONE' && canAddItemsAtStage(typedPurchase.fulfillmentStatus);
     const isActive = typedPurchase?.status === 'ACTIVE';
     const isDone = typedPurchase?.status === 'DONE';
+    const deferredSearch = useDeferredValue(search);
+    const deliveryPercent = Number(typedPurchase?.deliveryPercent ?? 0);
 
     const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
+        const q = deferredSearch.trim().toLowerCase();
         return items.filter((it) => {
             if (publishedFilter === 'published' && !it.tgMessageId) return false;
             if (publishedFilter === 'unpublished' && it.tgMessageId) return false;
             if (!q) return true;
-            const name = `${it.product.name ?? ''} ${it.product.brand ?? ''} ${it.adminComment ?? ''}`.toLowerCase();
+            const name =
+                `${it.product.name ?? ''} ${it.product.brand ?? ''} ${it.product.articleNumber ?? ''} ${it.adminComment ?? ''}`.toLowerCase();
             return name.includes(q);
         });
-    }, [items, search, publishedFilter]);
+    }, [items, deferredSearch, publishedFilter]);
+
+    const { derivedById, productIdById } = useMemo(() => {
+        const derivedMap = new Map<number, ItemsTableRowDerived>();
+        const productIdMap = new Map<number, number>();
+        for (const it of items) {
+            derivedMap.set(
+                it.id,
+                deriveRow(
+                    it,
+                    currencyRates,
+                    orgFeeDefaultPercent,
+                    deliveryPercent,
+                    typedPurchase?.fulfillmentStatus ?? 'COLLECTION',
+                    typedPurchase?.status ?? 'DRAFT',
+                    isActive,
+                ),
+            );
+            productIdMap.set(it.id, it.productId);
+        }
+        return { derivedById: derivedMap, productIdById: productIdMap };
+    }, [items, currencyRates, orgFeeDefaultPercent, deliveryPercent, typedPurchase, isActive]);
+
+    const rows = useMemo(
+        () =>
+            filtered.map((item) => ({
+                item,
+                derived:
+                    derivedById.get(item.id) ??
+                    deriveRow(
+                        item,
+                        currencyRates,
+                        orgFeeDefaultPercent,
+                        deliveryPercent,
+                        typedPurchase?.fulfillmentStatus ?? 'COLLECTION',
+                        typedPurchase?.status ?? 'DRAFT',
+                        isActive,
+                    ),
+            })),
+        [filtered, derivedById, currencyRates, orgFeeDefaultPercent, deliveryPercent, typedPurchase, isActive],
+    );
 
     const selectableIds = useMemo(
         () => filtered.filter((it) => !it.tgMessageId && !it.hidden && !isDone).map((it) => it.id),
@@ -84,36 +131,76 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
     const allSelected = selectableIds.length > 0 && selectedSelectableCount === selectableIds.length;
     const someSelected = selectedSelectableCount > 0 && !allSelected;
 
-    if (isLoading || !purchase) {
-        return <div className="h-64 animate-pulse rounded-2xl bg-bg-soft" />;
-    }
+    const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const pagedRows = useMemo(
+        () => rows.slice((currentPage - 1) * ITEMS_PAGE_SIZE, currentPage * ITEMS_PAGE_SIZE),
+        [rows, currentPage],
+    );
 
-    const detail = purchase as PurchaseDetail;
+    useEffect(() => {
+        setPage(1);
+    }, [deferredSearch, publishedFilter]);
 
-    function toggleSelect(id: number, v: boolean) {
+    const toggleSelect = useCallback((id: number, v: boolean) => {
         setSelectedIds((prev) => {
             const next = new Set(prev);
             if (v) next.add(id);
             else next.delete(id);
             return next;
         });
-    }
+    }, []);
 
-    function toggleAll(v: boolean) {
+    const toggleAll = useCallback(
+        (v: boolean) => {
+            setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (v) {
+                    selectableIds.forEach((id) => next.add(id));
+                } else {
+                    selectableIds.forEach((id) => next.delete(id));
+                }
+                return next;
+            });
+        },
+        [selectableIds],
+    );
+
+    const { mutate: inlineUpdateMutate } = inlineUpdate;
+    const handleInlineCommit = useCallback(
+        (purchaseItemId: number, patch: Record<string, unknown>) => {
+            inlineUpdateMutate({ purchaseItemId, product: patch });
+        },
+        [inlineUpdateMutate],
+    );
+
+    const { mutate: deletePostMutate } = deletePost;
+    const handleDeletePost = useCallback(
+        (itemId: number) => deletePostMutate({ purchaseItemId: itemId }),
+        [deletePostMutate],
+    );
+
+    const handlePublishRow = useCallback((id: number) => {
         setSelectedIds((prev) => {
             const next = new Set(prev);
-            if (v) {
-                selectableIds.forEach((id) => next.add(id));
-            } else {
-                selectableIds.forEach((id) => next.delete(id));
-            }
+            next.add(id);
             return next;
         });
+        setPublishOpen(true);
+    }, []);
+
+    const handleRegenerate = useCallback(
+        (target: { itemId: number }) => {
+            setRegenerateTarget({ itemId: target.itemId, productId: productIdById.get(target.itemId) ?? 0 });
+        },
+        [productIdById],
+    );
+
+    if (isLoading || !purchase) {
+        return <div className="h-64 animate-pulse rounded-2xl bg-bg-soft" />;
     }
 
-    function handleInlineCommit(purchaseItemId: number, patch: Record<string, unknown>) {
-        inlineUpdate.mutate({ purchaseItemId, product: patch });
-    }
+    const detail = purchase as PurchaseDetail;
 
     const publishCount = selectedIds.size;
 
@@ -139,11 +226,11 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                 {filtered.length === 0 ? (
                     <div className="rounded-2xl bg-bg-soft">
                         <EmptyState
-                            icon={search.trim() ? SearchX : ClipboardList}
-                            title={search.trim() ? 'Ничего не найдено' : 'Нет товаров в закупке'}
+                            icon={deferredSearch.trim() ? SearchX : ClipboardList}
+                            title={deferredSearch.trim() ? 'Ничего не найдено' : 'Нет товаров в закупке'}
                             description={
-                                search.trim()
-                                    ? 'Попробуйте изменить запрос — поиск идёт по названию, бренду и комментарию.'
+                                deferredSearch.trim()
+                                    ? 'Попробуйте изменить запрос — поиск идёт по артикулу, названию, бренду и комментарию.'
                                     : 'Добавьте товары, чтобы они появились здесь.'
                             }
                         />
@@ -158,41 +245,21 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                                 onToggleAll={toggleAll}
                             />
                             <TableBody>
-                                {filtered.map((item) => (
+                                {pagedRows.map(({ item, derived }) => (
                                     <ItemsTableRow
                                         key={item.id}
                                         item={item}
-                                        derived={deriveRow(
-                                            item,
-                                            currencyRates,
-                                            orgFeeDefaultPercent,
-                                            Number(detail.deliveryPercent ?? 0),
-                                            detail.fulfillmentStatus,
-                                            detail.status,
-                                            isActive,
-                                        )}
+                                        derived={derived}
                                         currencyRates={currencyRates}
                                         selected={selectedIds.has(item.id)}
-                                        searchQuery={search}
+                                        searchQuery={deferredSearch}
                                         onToggleSelect={toggleSelect}
                                         onEdit={setEditItemId}
-                                        onPublish={(id) => {
-                                            setSelectedIds((prev) => {
-                                                const next = new Set(prev);
-                                                next.add(id);
-                                                return next;
-                                            });
-                                            setPublishOpen(true);
-                                        }}
+                                        onPublish={handlePublishRow}
                                         onDelete={setDeleteTarget}
-                                        onCommit={(patch) => handleInlineCommit(item.id, patch)}
-                                        onDeletePost={(itemId) => deletePost.mutate({ purchaseItemId: itemId })}
-                                        onRegenerate={(target) =>
-                                            setRegenerateTarget({
-                                                itemId: target.itemId,
-                                                productId: item.productId,
-                                            })
-                                        }
+                                        onCommitItem={handleInlineCommit}
+                                        onDeletePost={handleDeletePost}
+                                        onRegenerate={handleRegenerate}
                                     />
                                 ))}
                             </TableBody>
@@ -200,6 +267,13 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                     </div>
                 )}
             </TooltipProvider>
+
+            <ListPagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                label="Страницы товаров"
+            />
 
             <ItemEditSheet
                 purchaseItemId={editItemId}
