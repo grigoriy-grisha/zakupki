@@ -36,6 +36,7 @@ export class UserRepository {
                 orderLines: {
                     select: {
                         id: true,
+                        amountDue: true,
                         purchaseItem: { select: { purchaseId: true } },
                     },
                 },

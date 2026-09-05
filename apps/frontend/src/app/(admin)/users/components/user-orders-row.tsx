@@ -10,8 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
+import { formatRub } from '@/lib/format/money';
 import { mutationOptions } from '@/lib/query/mutation-options';
-import { displayName,resolveAvatarUrl } from '@/lib/utils/user';
+import { safeNumber } from '@/lib/utils';
+import { displayName, resolveAvatarUrl } from '@/lib/utils/user';
 
 import { countUniquePurchases, groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
 import { type UserListItem } from './user-profile-sheet';
@@ -32,6 +34,8 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
     const purchaseCount = countUniquePurchases(user.orderLines);
     const hasOrders = user.orderLines.length > 0;
     const paymentsCount = user.payments?.length ?? 0;
+    const ordersTotal = user.orderLines.reduce((sum, line) => sum + safeNumber(line.amountDue), 0);
+    const paymentsTotal = (user.payments ?? []).reduce((sum, payment) => sum + safeNumber(payment.amount), 0);
 
     const { data: orders, isLoading: ordersLoading } = trpc.orders.getByUser.useQuery(
         { userId: user.id },
@@ -153,19 +157,33 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                 onOpenChange={setDeleteOpen}
                 title="Удалить участника?"
                 description={
-                    hasOrders || paymentsCount > 0 ? (
-                        <>
-                            Участник <strong>{name}</strong> будет удалён вместе со своими заказами (
-                            {user.orderLines.length} поз.
-                            {paymentsCount > 0 ? <> и {paymentsCount} платежами</> : ''}), привязками Telegram/VK и
-                            уведомлениями. Суммы в закупках пересчитаются. Действие необратимо.
-                        </>
-                    ) : (
-                        <>
-                            Участник <strong>{name}</strong> будет удалён вместе с привязками Telegram/VK и
-                            уведомлениями. Действие необратимо.
-                        </>
-                    )
+                    <div className="space-y-2">
+                        <p>
+                            Будет удалён участник <strong>{name}</strong>
+                            {tgUsername ? ` (@${tgUsername.replace(/^@/, '')})` : ''}:
+                        </p>
+                        {hasOrders || paymentsCount > 0 ? (
+                            <ul className="list-disc space-y-1 pl-5">
+                                {purchaseCount > 0 && (
+                                    <li>
+                                        закупок: {purchaseCount}, позиций: {user.orderLines.length} на{' '}
+                                        {formatRub(ordersTotal)}
+                                    </li>
+                                )}
+                                {paymentsCount > 0 && (
+                                    <li>
+                                        платежей: {paymentsCount} на {formatRub(paymentsTotal)}
+                                    </li>
+                                )}
+                            </ul>
+                        ) : (
+                            <p>Заказов и платежей нет.</p>
+                        )}
+                        <p>
+                            Будут удалены все его заказы, платежи, привязки Telegram/VK и уведомления. Суммы в
+                            закупках пересчитаются. Действие необратимо.
+                        </p>
+                    </div>
                 }
                 confirmLabel="Удалить"
                 loading={deleteUser.isPending}

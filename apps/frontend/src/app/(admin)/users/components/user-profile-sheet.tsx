@@ -25,8 +25,8 @@ export type UserListItem = {
     role: 'ADMIN' | 'CLIENT';
     createdAt: Date | string;
     personalDataConsentAt?: Date | string | null;
-    orderLines: { id: number; purchaseItem?: { purchaseId: number } | null }[];
-    payments?: { id: number }[];
+    orderLines: { id: number; amountDue: number | string; purchaseItem?: { purchaseId: number } | null }[];
+    payments?: { id: number; amount: number | string }[];
     telegramCredential: {
         telegramId: string;
         username: string | null;
