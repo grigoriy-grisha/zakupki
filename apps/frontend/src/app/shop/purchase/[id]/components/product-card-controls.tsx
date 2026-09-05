@@ -56,7 +56,7 @@ export function ProductCardControls({
                     Добавить
                 </Button>
             )}
-            {ctx.showPackageButtons && ctx.packSize != null && (
+            {ctx.showPackageButtons && ctx.packSize != null && ctx.canAddPackage && (
                 <Button
                     variant="outline"
                     size="sm"
@@ -126,44 +126,46 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                     </button>
                 </div>
             )}
-            {ctx.showPackageButtons && ctx.packSize != null && (
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={ctx.handleRemovePackage}
-                        disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
-                        aria-label="Убрать упаковку"
-                        className={cn(
-                            'flex size-8 shrink-0 items-center justify-center rounded-full',
-                            'border-2 border-primary text-primary transition-colors',
-                            'hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40',
-                        )}
-                    >
-                        <Minus className="size-3.5" />
-                    </button>
-                    <div
-                        className={cn(
-                            'flex h-8 min-w-0 flex-1 items-center justify-center rounded-full',
-                            'border-2 border-primary px-2 text-12-bold text-primary tabular-nums',
-                        )}
-                    >
-                        <span className="truncate">{ctx.currentPackageCount} упак.</span>
+            {ctx.showPackageButtons &&
+                ctx.packSize != null &&
+                (ctx.canAddPackage || ctx.currentPackageCount > 0) && (
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={ctx.handleRemovePackage}
+                            disabled={ctx.currentPackageCount <= 0 || ctx.isPending}
+                            aria-label="Убрать упаковку"
+                            className={cn(
+                                'flex size-8 shrink-0 items-center justify-center rounded-full',
+                                'border-2 border-primary text-primary transition-colors',
+                                'hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40',
+                            )}
+                        >
+                            <Minus className="size-3.5" />
+                        </button>
+                        <div
+                            className={cn(
+                                'flex h-8 min-w-0 flex-1 items-center justify-center rounded-full',
+                                'border-2 border-primary px-2 text-12-bold text-primary tabular-nums',
+                            )}
+                        >
+                            <span className="truncate">{ctx.currentPackageCount} упак.</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={ctx.handleAddPackage}
+                            disabled={!ctx.canAddPackage || ctx.isPending}
+                            aria-label="Добавить упаковку"
+                            className={cn(
+                                'flex size-8 shrink-0 items-center justify-center rounded-full',
+                                'bg-primary text-primary-foreground transition-colors',
+                                'hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40',
+                            )}
+                        >
+                            <Plus className="size-3.5" />
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={ctx.handleAddPackage}
-                        disabled={!ctx.canAddPackage || ctx.isPending}
-                        aria-label="Добавить упаковку"
-                        className={cn(
-                            'flex size-8 shrink-0 items-center justify-center rounded-full',
-                            'bg-primary text-primary-foreground transition-colors',
-                            'hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40',
-                        )}
-                    >
-                        <Plus className="size-3.5" />
-                    </button>
-                </div>
-            )}
+                )}
         </div>
     );
 }

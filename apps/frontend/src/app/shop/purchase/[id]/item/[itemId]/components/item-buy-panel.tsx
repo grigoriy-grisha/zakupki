@@ -97,18 +97,20 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                             canAdd={ctx.canAdd}
                         />
                     )}
-                    {ctx.showPackageButtons && ctx.packSize != null && (
-                        <QuantityStepper
-                            size="md"
-                            value={<>{formatQty(ctx.currentPackageCount)} упак.</>}
-                            onRemove={ctx.handleRemovePackage}
-                            onAdd={ctx.handleAddPackage}
-                            canRemove={ctx.currentPackageCount > 0 && !ctx.isPending}
-                            canAdd={ctx.canAddPackage && !ctx.isPending}
-                            removeAriaLabel="Убрать упаковку"
-                            addAriaLabel="Добавить упаковку"
-                        />
-                    )}
+                    {ctx.showPackageButtons &&
+                        ctx.packSize != null &&
+                        (ctx.canAddPackage || ctx.currentPackageCount > 0) && (
+                            <QuantityStepper
+                                size="md"
+                                value={<>{formatQty(ctx.currentPackageCount)} упак.</>}
+                                onRemove={ctx.handleRemovePackage}
+                                onAdd={ctx.handleAddPackage}
+                                canRemove={ctx.currentPackageCount > 0 && !ctx.isPending}
+                                canAdd={ctx.canAddPackage && !ctx.isPending}
+                                removeAriaLabel="Убрать упаковку"
+                                addAriaLabel="Добавить упаковку"
+                            />
+                        )}
                     {(ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity) && minHint && (
                         <p className="text-center text-12-regular text-fg-tertiary">{minHint}</p>
                     )}
