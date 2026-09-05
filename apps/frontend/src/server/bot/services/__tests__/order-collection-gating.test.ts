@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PurchaseItemResolver } from '../purchase-item-resolver';
 import { OrderCollectionService } from '../order-collection.service';
+import type { PurchaseItemResolver } from '../purchase-item-resolver';
 
 function stubResolver(item: unknown): PurchaseItemResolver {
     return {

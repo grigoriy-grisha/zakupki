@@ -15,6 +15,7 @@ import {
 import type { ServiceContainer } from '../container/service-container';
 import { getOrderQuantityHint } from '../lib/order-hints';
 import { parseOrderQuantity } from '../lib/parse-order-quantity';
+import type { ReplyToMessage } from '../lib/resolve-reply-purchase-item';
 import { PurchaseItemResolver } from './purchase-item-resolver';
 
 export type OrderCollectionAction = { amount: number; unit: 'remainder' | 'packs' };
@@ -55,30 +56,22 @@ export class OrderCollectionService {
         this.container = container ?? null;
     }
 
-    /**
-     * Вспомогательный: создать сервис с инстансом из ServiceContainer.
-     */
     static fromContainer(container: ServiceContainer): OrderCollectionService {
         return new OrderCollectionService(container.purchaseItemResolver, container);
     }
 
-    /**
-     * Подсказка по формату количества для чата закупки: зависит от этапа
-     * (на доборе — расширенный текст про граммы и «п»).
-     * Возвращает null, если reply не привязан к посту закупки — обычное
-     * общение клиентов не должно получать ответ бота.
-     */
     async getQuantityHint(params: {
         chatId: number;
-        replyTo?: import('../lib/resolve-reply-purchase-item').ReplyToMessage;
+        replyTo?: ReplyToMessage;
         threadId?: number;
     }): Promise<string | null> {
         try {
-            const purchaseItem = await this.resolver.resolvePurchaseItem(params.chatId, {
+            const item = await this.resolver.resolvePurchaseItem(params.chatId, {
                 reply_to_message: params.replyTo,
                 message_thread_id: params.threadId,
             });
-            return this.hintForItem(purchaseItem);
+            if (!item) return null;
+            return getOrderQuantityHint(item.purchase?.fulfillmentStatus, isWeightUnit(item.unitCode));
         } catch {
             return null;
         }
@@ -86,16 +79,13 @@ export class OrderCollectionService {
 
     async collectFromReply(params: {
         chatId: number;
-        replyTo?: import('../lib/resolve-reply-purchase-item').ReplyToMessage;
+        replyTo?: ReplyToMessage;
         threadId?: number;
         text: string;
         telegramId: string;
         userInfo: { firstName: string; lastName?: string; username?: string };
         messageId?: number;
     }): Promise<OrderCollectionResult> {
-        // Сначала резолвим товар: reply, не привязанный к посту закупки, — это
-        // обычное общение клиентов. Возвращаем product_not_found, чтобы хендлер
-        // молчал, вместо того чтобы отвечать на каждое сообщение в чате.
         const purchaseItem = await this.resolver.resolvePurchaseItem(params.chatId, {
             reply_to_message: params.replyTo,
             message_thread_id: params.threadId,
@@ -114,12 +104,13 @@ export class OrderCollectionService {
             return {
                 ok: false,
                 reason: 'invalid_quantity',
-                message: this.hintForItem(purchaseItem) ?? '',
+                message: getOrderQuantityHint(
+                    purchaseItem.purchase?.fulfillmentStatus,
+                    isWeightUnit(purchaseItem.unitCode),
+                ),
             };
         }
 
-        // Hidden items are not orderable — resolver already filters them out,
-        // but guard here as well (defense in depth for cached resolutions).
         if (purchaseItem.hidden) {
             return {
                 ok: false,
@@ -181,14 +172,6 @@ export class OrderCollectionService {
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────
-
-    /** Подсказка формата для найденного товара; null — товар не резолвился. */
-    private hintForItem(item: ResolvedItem | null): string | null {
-        if (!item) return null;
-        return getOrderQuantityHint(item.purchase?.fulfillmentStatus, isWeightUnit(item.unitCode));
-    }
-
     private buildResult(
         item: ResolvedItem,
         userId: number,
@@ -236,7 +219,6 @@ export class OrderCollectionService {
 
         const unitPriceRub = computeUnitPriceRubNewModel(domainItem) ?? 0;
         const packSize = item.packAmount != null ? Number(item.packAmount) : null;
-        // Фактическая цена пачки (со скидкой за целую пачку, когда применима).
         const packagePrice = computePackagePrice(domainItem);
         return { unitShort, packSize, unitPriceRub, packagePrice };
     }
@@ -283,7 +265,6 @@ export class OrderCollectionService {
         return this.container.orderService.adjustQuantity(purchaseItem.id, userId, delta);
     }
 
-    /** На этапе добора запрещаем добавлять количество меньше шага (supplementStep). */
     private belowStepResult(
         item: ResolvedItem,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
