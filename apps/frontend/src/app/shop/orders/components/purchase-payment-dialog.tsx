@@ -1,6 +1,7 @@
 'use client';
 
-import { AlertCircle, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
+import { AlertCircle, Check, Copy, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { usePaymentForm } from '@/app/shop/hooks/use-payment-form';
 import { AppLink } from '@/components/app-link';
@@ -13,6 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatRub } from '@/lib/format/money';
 import { PAYMENT_DETAILS } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
+
+const COPYABLE_PAYMENT_FIELDS = [
+    { key: 'phone', label: 'Номер телефона', value: PAYMENT_DETAILS.phone },
+    { key: 'recipient', label: 'Получатель', value: PAYMENT_DETAILS.recipient },
+] as const;
 
 export type PurchasePaymentDialogProps = {
     purchaseId: number;
@@ -34,6 +40,21 @@ export function PurchasePaymentDialog({
     buttonSize = 'sm',
 }: PurchasePaymentDialogProps) {
     const form = usePaymentForm(purchaseId, remaining);
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
+    const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        };
+    }, []);
+
+    function handleCopy(key: string, value: string) {
+        void navigator.clipboard.writeText(value);
+        setCopiedKey(key);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = setTimeout(() => setCopiedKey(null), 1500);
+    }
 
     const payLabel = hasPending ? 'Ожидает подтверждения' : `Оплатить ${formatRub(remaining)}`;
 
@@ -87,20 +108,46 @@ export function PurchasePaymentDialog({
                 </DialogHeader>
                 <div className="rounded-lg bg-bg-soft p-3">
                     <p className="text-13-semibold text-fg-primary">Реквизиты для оплаты</p>
-                    <div className="mt-1.5 space-y-0.5 text-13-regular text-fg-secondary">
-                        <p>
-                            Способ оплаты: <span className="text-fg-primary">{PAYMENT_DETAILS.method}</span>
-                        </p>
-                        <p>
-                            Номер телефона: <span className="text-fg-primary tabular-nums">{PAYMENT_DETAILS.phone}</span>
-                        </p>
-                        <p>
-                            Получатель: <span className="text-fg-primary">{PAYMENT_DETAILS.recipient}</span>
-                        </p>
-                        <p>
-                            Банк: <span className="text-fg-primary">{PAYMENT_DETAILS.banks}</span>
-                        </p>
+                    <p className="mt-1.5 text-13-regular text-fg-secondary">
+                        Способ оплаты: <span className="text-fg-primary">{PAYMENT_DETAILS.method}</span>
+                    </p>
+                    <div className="mt-1 space-y-0.5">
+                        {COPYABLE_PAYMENT_FIELDS.map((field) => {
+                            const copied = copiedKey === field.key;
+                            return (
+                                <button
+                                    key={field.key}
+                                    type="button"
+                                    onClick={() => handleCopy(field.key, field.value)}
+                                    aria-label={`Скопировать: ${field.label}`}
+                                    className={cn(
+                                        '-mx-1.5 flex w-[calc(100%+0.75rem)] items-center gap-1.5 rounded-md px-1.5 py-1 text-left',
+                                        'transition-colors hover:bg-bg-card active:bg-bg-card',
+                                    )}
+                                >
+                                    <span className="min-w-0 text-13-regular text-fg-secondary">
+                                        {field.label}:{' '}
+                                        <span
+                                            className={cn(
+                                                'text-fg-primary',
+                                                field.key === 'phone' && 'tabular-nums',
+                                            )}
+                                        >
+                                            {field.value}
+                                        </span>
+                                    </span>
+                                    {copied ? (
+                                        <Check className="size-3.5 shrink-0 text-success" />
+                                    ) : (
+                                        <Copy className="size-3.5 shrink-0 text-fg-tertiary" />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
+                    <p className="mt-1 text-13-regular text-fg-secondary">
+                        Банк: <span className="text-fg-primary">{PAYMENT_DETAILS.banks}</span>
+                    </p>
                 </div>
                 <div className="rounded-lg bg-warning/10 p-3 flex items-center gap-2 text-warning text-13-regular">
                     <AlertCircle className="h-4 w-4 shrink-0" />
