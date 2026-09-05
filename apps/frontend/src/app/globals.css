@@ -585,9 +585,6 @@
 .novel-editor p:empty {
     display: none;
 }
-.novel-editor p:has(> br:only-child) {
-    display: none;
-}
 .novel-editor p + p,
 .novel-editor h1 + *,
 .novel-editor h2 + *,

@@ -19,23 +19,22 @@ export function normalizeNovelHtml(html: string): string {
                 });
             }
 
-            body.querySelectorAll('p, div, h1, h2, h3, blockquote').forEach((el) => {
+            body.querySelectorAll('div, h1, h2, h3, blockquote').forEach((el) => {
                 const hasMedia = el.querySelector('img, hr, iframe');
                 const text = (el.textContent ?? '').replace(/ /g, ' ').trim();
                 if (!hasMedia && text === '') el.remove();
             });
             return body.innerHTML.trim();
         } catch {
-            return stripEmptyParagraphs(out);
+            return stripEmptyBlocks(out);
         }
     }
 
-    return stripEmptyParagraphs(out);
+    return stripEmptyBlocks(out);
 }
 
-function stripEmptyParagraphs(html: string): string {
-    let res = html.replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '<p></p>');
-    res = res.replace(/<p>(?:\s|&nbsp;|&#160;| )*<\/p>/gi, '<p></p>');
-    res = res.replace(/<p>\s*<\/p>\s*/gi, '');
-    return res.trim();
+function stripEmptyBlocks(html: string): string {
+    return html
+        .replace(/<(div|h[1-3]|blockquote)>\s*(<br\s*\/?>)?\s*<\/\1>/gi, '')
+        .trim();
 }

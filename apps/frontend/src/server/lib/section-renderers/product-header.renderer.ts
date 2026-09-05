@@ -1,6 +1,6 @@
 import { getUnitByCode } from '@zakupki/types';
 
-import { escapeHtmlLocal, formatNumberRu, BaseSectionRenderer, type SectionProps } from './base-section-renderer';
+import { BaseSectionRenderer, escapeHtmlLocal, formatNumberRu, type SectionProps } from './base-section-renderer';
 
 export interface ProductHeaderData {
     name: string;
@@ -19,7 +19,9 @@ export interface ProductHeaderData {
  * HTML-разметка описания приводится к Telegram-HTML через простую нормализацию.
  */
 function htmlToTelegramHtml(html: string): string {
+    const EMPTY_P_SENTINEL = '@@EMPTY_P@@';
     let s = html
+        .replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, EMPTY_P_SENTINEL)
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>\s*<p>/gi, '\n\n')
         .replace(/<p[^>]*>/gi, '')
@@ -51,7 +53,7 @@ function htmlToTelegramHtml(html: string): string {
     s = s.replace(/&nbsp;/g, ' ');
     s = s.replace(/<(?!\/?(b|i|u|s|code|pre|a)(\s|>|\/))[^>]*>/gi, '');
     s = s.replace(/\n{3,}/g, '\n\n').trim();
-    return s;
+    return s.split(EMPTY_P_SENTINEL).join('\n\n');
 }
 
 export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData> {

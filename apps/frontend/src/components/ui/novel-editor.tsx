@@ -87,6 +87,7 @@ export function NovelEditor({
             Placeholder.configure({
                 placeholder: ({ node }) => (node.type.name === 'heading' ? 'Заголовок' : placeholder),
                 includeChildren: true,
+                showOnlyCurrent: false,
             }),
         ],
         [placeholder],

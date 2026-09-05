@@ -4,10 +4,10 @@ import { Extension } from '@tiptap/core';
 import TiptapLink from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import TiptapUnderline from '@tiptap/extension-underline';
-import { type Editor,EditorContent, useEditor } from '@tiptap/react';
+import { type Editor, EditorContent, useEditor,type UseEditorOptions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Link2, List, ListOrdered } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { normalizeNovelHtml,POST_TEMPLATE_PLACEHOLDERS } from '@/lib/product-description';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ const ModEnterNewLine = Extension.create({
     addKeyboardShortcuts() {
         return {
             'Mod-Enter': () => this.editor.commands.splitBlock(),
+            'Ctrl-Enter': () => this.editor.commands.splitBlock(),
         };
     },
 });
@@ -37,54 +38,58 @@ const ModEnterNewLine = Extension.create({
 const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph' }] };
 
 export function PostTemplateEditor({ initialHtml, onChange }: PostTemplateEditorProps) {
-    const extensions = useMemo(
-        () => [
-            StarterKit.configure({
-                heading: false,
-                codeBlock: false,
-                code: false,
-                blockquote: false,
-                horizontalRule: false,
-            }),
-            ModEnterNewLine,
-            TiptapUnderline.configure({}),
-            TiptapLink.configure({
-                openOnClick: false,
-                autolink: true,
-                HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' },
-            }),
-            Placeholder.configure({ placeholder: 'Текст шаблона поста…' }),
-        ],
-        [],
-    );
+    const [initialContent] = useState(() => (initialHtml?.trim() ? initialHtml : EMPTY_DOC));
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
 
-    const editor = useEditor({
-        extensions,
-        content: initialHtml?.trim() ? initialHtml : EMPTY_DOC,
-        immediatelyRender: false,
-        editorProps: {
-            attributes: {
-                class: 'novel-editor focus:outline-none px-3 py-2 text-base md:text-sm',
-                style: 'min-height: 14rem',
-            },
-            handlePaste: (view, event) => {
-                const text = event.clipboardData?.getData('text/plain') ?? '';
-                if (!text.trim()) return false;
-                const before = view.state.doc.textContent;
-                requestAnimationFrame(() => {
-                    const after = view.state.doc.textContent;
-                    const marker = text.trim().slice(0, 12);
-                    if (marker && !after.includes(marker) && before === after) {
-                        view.dispatch(view.state.tr.insertText(text));
-                    }
-                });
-                return false;
-            },
-        },
-        onUpdate: ({ editor: ed }) => {
-            onChange(ed.isEmpty ? '' : normalizeNovelHtml(ed.getHTML()));
-        },
-    });
+    const editor = useEditor(
+        useMemo<UseEditorOptions>(
+            () => ({
+                extensions: [
+                    StarterKit.configure({
+                        heading: false,
+                        codeBlock: false,
+                        code: false,
+                        blockquote: false,
+                        horizontalRule: false,
+                    }),
+                    ModEnterNewLine,
+                    TiptapUnderline.configure({}),
+                    TiptapLink.configure({
+                        openOnClick: false,
+                        autolink: true,
+                        HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' },
+                    }),
+                    Placeholder.configure({ placeholder: 'Текст шаблона поста…', showOnlyCurrent: false }),
+                ],
+                content: initialContent,
+                immediatelyRender: false,
+                editorProps: {
+                    attributes: {
+                        class: 'novel-editor focus:outline-none px-3 py-2 text-base md:text-sm',
+                        style: 'min-height: 14rem',
+                    },
+                    handlePaste: (view, event) => {
+                        const text = event.clipboardData?.getData('text/plain') ?? '';
+                        if (!text.trim()) return false;
+                        const before = view.state.doc.textContent;
+                        requestAnimationFrame(() => {
+                            const after = view.state.doc.textContent;
+                            const marker = text.trim().slice(0, 12);
+                            if (marker && !after.includes(marker) && before === after) {
+                                view.dispatch(view.state.tr.insertText(text));
+                            }
+                        });
+                        return false;
+                    },
+                },
+                onUpdate: ({ editor: ed }) => {
+                    onChangeRef.current(ed.isEmpty ? '' : normalizeNovelHtml(ed.getHTML()));
+                },
+            }),
+            [initialContent],
+        ),
+    );
 
     if (!editor) {
         return <div className="h-56 animate-pulse rounded-md border border-input bg-bg-soft" />;
