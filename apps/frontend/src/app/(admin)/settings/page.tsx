@@ -1,6 +1,8 @@
 'use client';
 
-import { Coins,FileText, Layers, ListChecks, Percent, Settings, Tag, Truck } from 'lucide-react';
+import { Coins, FileText, Layers, ListChecks, Percent, Settings, Tag, Truck } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +15,27 @@ import { PromoCodesTab } from './promo-codes/promo-codes-tab';
 import { PurchasePricingTab } from './purchase-pricing/purchase-pricing-tab';
 import { SuppliersTab } from './suppliers/suppliers-tab';
 
-export default function SettingsPage() {
+const TAB_VALUES = [
+    'attributes',
+    'characteristics',
+    'suppliers',
+    'currencies',
+    'templates',
+    'promocodes',
+    'pricing',
+] as const;
+
+type TabValue = (typeof TAB_VALUES)[number];
+
+function resolveTab(raw: string | null): TabValue {
+    return (TAB_VALUES as readonly string[]).includes(raw ?? '') ? (raw as TabValue) : 'attributes';
+}
+
+function SettingsPageInner() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const tab = resolveTab(searchParams.get('tab'));
+
     return (
         <div className="space-y-6">
             <PageHeader
@@ -24,7 +46,11 @@ export default function SettingsPage() {
                 descriptionMobile="Справочники и параметры системы"
             />
 
-            <Tabs defaultValue="attributes" className="gap-4">
+            <Tabs
+                value={tab}
+                onValueChange={(value) => router.replace(`/settings?tab=${value}`)}
+                className="gap-4"
+            >
                 <TabsList className="!h-fit w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto overflow-y-hidden p-1 sm:w-fit">
                     <TabsTrigger value="attributes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
                         <Layers className="size-4 shrink-0" />
@@ -86,5 +112,13 @@ export default function SettingsPage() {
                 </TabsContent>
             </Tabs>
         </div>
+    );
+}
+
+export default function SettingsPage() {
+    return (
+        <Suspense fallback={null}>
+            <SettingsPageInner />
+        </Suspense>
     );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2,Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -20,6 +20,7 @@ export function PostTemplatesTab() {
     const [createOpen, setCreateOpen] = useState(false);
     const [newName, setNewName] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+    const [expandedId, setExpandedId] = useState<number | null>(null);
 
     function handleCreate() {
         const trimmed = newName.trim();
@@ -27,9 +28,10 @@ export function PostTemplatesTab() {
         createMutation.mutate(
             { name: trimmed, body: '' },
             {
-                onSuccess: () => {
+                onSuccess: (created: { id: number }) => {
                     setNewName('');
                     setCreateOpen(false);
+                    setExpandedId(created.id);
                 },
             },
         );
@@ -60,6 +62,8 @@ export function PostTemplatesTab() {
                         <PostTemplateRow
                             key={t.id}
                             template={t}
+                            expanded={expandedId === t.id}
+                            onToggle={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
                             onDelete={() => setDeleteTarget({ id: t.id, name: t.name })}
                         />
                     ))}
