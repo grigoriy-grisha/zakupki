@@ -26,6 +26,7 @@ export type UserListItem = {
     createdAt: Date | string;
     personalDataConsentAt?: Date | string | null;
     orderLines: { id: number; purchaseItem?: { purchaseId: number } | null }[];
+    payments?: { id: number }[];
     telegramCredential: {
         telegramId: string;
         username: string | null;

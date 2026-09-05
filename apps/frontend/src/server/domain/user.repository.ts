@@ -133,15 +133,12 @@ export class UserRepository {
         });
     }
 
-    async getCountsById(id: number) {
-        return dbClient.user.findUnique({
-            where: { id },
-            select: { _count: { select: { orderLines: true, payments: true } } },
-        });
-    }
-
     async deleteById(id: number) {
-        return dbClient.user.delete({ where: { id } });
+        return dbClient.$transaction(async (tx) => {
+            await tx.orderLine.deleteMany({ where: { userId: id } });
+            await tx.payment.deleteMany({ where: { userId: id } });
+            await tx.user.delete({ where: { id } });
+        });
     }
 
     async upsertFromTelegramBot(telegramId: string, data: { username?: string; firstName: string; lastName?: string }) {

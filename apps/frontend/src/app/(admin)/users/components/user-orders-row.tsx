@@ -31,6 +31,7 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
     const tgUsername = user.telegramCredential?.username ?? user.username;
     const purchaseCount = countUniquePurchases(user.orderLines);
     const hasOrders = user.orderLines.length > 0;
+    const paymentsCount = user.payments?.length ?? 0;
 
     const { data: orders, isLoading: ordersLoading } = trpc.orders.getByUser.useQuery(
         { userId: user.id },
@@ -112,8 +113,6 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                         variant="ghost"
                         size="icon-sm"
                         aria-label={`Удалить участника ${name}`}
-                        disabled={hasOrders}
-                        title={hasOrders ? 'Есть заказы — удаление недоступно' : undefined}
                         onClick={() => setDeleteOpen(true)}
                         className="text-fg-tertiary hover:text-error"
                     >
@@ -154,10 +153,19 @@ export function UserOrdersRow({ user, onOpenProfile }: UserOrdersRowProps) {
                 onOpenChange={setDeleteOpen}
                 title="Удалить участника?"
                 description={
-                    <>
-                        Участник <strong>{name}</strong> будет удалён вместе с привязками Telegram/VK и уведомлениями.
-                        Действие необратимо. Удалить можно только участника без заказов и платежей.
-                    </>
+                    hasOrders || paymentsCount > 0 ? (
+                        <>
+                            Участник <strong>{name}</strong> будет удалён вместе со своими заказами (
+                            {user.orderLines.length} поз.
+                            {paymentsCount > 0 ? <> и {paymentsCount} платежами</> : ''}), привязками Telegram/VK и
+                            уведомлениями. Суммы в закупках пересчитаются. Действие необратимо.
+                        </>
+                    ) : (
+                        <>
+                            Участник <strong>{name}</strong> будет удалён вместе с привязками Telegram/VK и
+                            уведомлениями. Действие необратимо.
+                        </>
+                    )
                 }
                 confirmLabel="Удалить"
                 loading={deleteUser.isPending}

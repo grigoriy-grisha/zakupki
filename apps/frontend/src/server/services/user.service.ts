@@ -145,15 +145,10 @@ export class UserService {
     }
 
     async deleteUser(id: number) {
-        const counts = await this.repo.getCountsById(id);
-        if (!counts) throw new NotFoundError('Участник', id);
+        const user = await this.repo.getById(id);
+        if (!user) throw new NotFoundError('Участник', id);
 
-        const { orderLines, payments } = counts._count;
-        if (orderLines > 0 || payments > 0) {
-            throw new ValidationError('У участника есть заказы или платежи — удаление недоступно');
-        }
-
-        return this.repo.deleteById(id);
+        await this.repo.deleteById(id);
     }
 
     async updateRole(userId: number, role: 'ADMIN' | 'CLIENT') {
