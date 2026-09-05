@@ -121,6 +121,30 @@ export class UserRepository {
         return credential?.userId ?? null;
     }
 
+    async updateProfileByUserId(userId: number, data: { firstName: string; lastName?: string; username?: string }) {
+        return dbClient.user.update({
+            where: { id: userId },
+            data: {
+                firstName: data.firstName,
+                lastName: data.lastName,
+                username: data.username,
+                telegramCredential: { update: { username: data.username } },
+            },
+            ...userWithCredentials,
+        });
+    }
+
+    async getCountsById(id: number) {
+        return dbClient.user.findUnique({
+            where: { id },
+            select: { _count: { select: { orderLines: true, payments: true } } },
+        });
+    }
+
+    async deleteById(id: number) {
+        return dbClient.user.delete({ where: { id } });
+    }
+
     async upsertFromTelegramBot(telegramId: string, data: { username?: string; firstName: string; lastName?: string }) {
         const existingUserId = await this.findUserIdByTelegramId(telegramId);
         if (existingUserId != null) {

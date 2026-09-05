@@ -1,8 +1,11 @@
 import type { RoleKind } from '@zakupki/database';
+import { createLogger } from '@zakupki/logger';
 import { NotFoundError, ValidationError } from '@zakupki/types';
 
 import type { UserRepository } from '../domain/user.repository';
 import type { VerifiedAccount } from '../domain/user.types';
+
+const log = createLogger('user-service');
 
 function splitName(name: string) {
     const [firstName, ...rest] = name.split(' ');
@@ -142,9 +145,28 @@ export class UserService {
 
     /** Bot: refresh user profile from Telegram */
     async refreshProfile(userId: number, data: { firstName: string; lastName?: string; username?: string }) {
-        return this.repo.upsertFromTelegramBot(String(userId), data).catch(() => {
-            /* ignore if user deleted */
+        return this.repo.updateProfileByUserId(userId, data).catch((err) => {
+            // Session may reference a just-deleted user — refresh is best-effort.
+            log.warn({ err, userId }, 'profile refresh skipped');
         });
+    }
+
+    /**
+     * Delete a user with no orders or payments. OrderLine/Payment FKs are
+     * restricting, so deletion is only allowed for "empty" accounts
+     * (phantom duplicates, test sign-ups). Credentials, notifications and
+     * purchase orders cascade via schema.
+     */
+    async deleteUser(id: number) {
+        const counts = await this.repo.getCountsById(id);
+        if (!counts) throw new NotFoundError('Участник', id);
+
+        const { orderLines, payments } = counts._count;
+        if (orderLines > 0 || payments > 0) {
+            throw new ValidationError('У участника есть заказы или платежи — удаление недоступно');
+        }
+
+        return this.repo.deleteById(id);
     }
 
     async updateRole(userId: number, role: 'ADMIN' | 'CLIENT') {
