@@ -13,7 +13,6 @@ import {
 } from '@zakupki/types';
 import {
     Archive,
-    ArrowLeft,
     Boxes,
     ChevronRight,
     ClipboardList,
@@ -31,6 +30,7 @@ import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { AppBackButton } from '@/components/shop/app-back-button';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -456,12 +456,7 @@ export default function OrdersPage() {
     if (!myOrders?.length) {
         return (
             <div className="flex flex-col gap-5 sm:gap-8">
-                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
-                    <AppLink href="/shop">
-                        <ArrowLeft className="size-4" />
-                        Назад
-                    </AppLink>
-                </Button>
+                <AppBackButton fallbackHref="/shop" label="Назад" />
                 <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
                 <div className="rounded-[10px] bg-bg-soft sm:rounded-[20px]">
                     <EmptyState
@@ -480,12 +475,7 @@ export default function OrdersPage() {
     return (
         <div className="flex flex-col gap-5 sm:gap-8">
             <div className="flex flex-col gap-3 sm:gap-4">
-                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
-                    <AppLink href="/shop">
-                        <ArrowLeft className="size-4" />
-                        Назад
-                    </AppLink>
-                </Button>
+                <AppBackButton fallbackHref="/shop" label="Назад" />
                 <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
             </div>
 

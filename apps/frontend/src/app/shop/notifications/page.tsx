@@ -1,17 +1,18 @@
 'use client';
 
-import { ArrowLeft, Bell, CheckCheck } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Bell, CheckCheck } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
-import { AppLink } from '@/components/app-link';
+import { AppBackButton } from '@/components/shop/app-back-button';
 import { NotificationCard, type NotificationRowData } from '@/components/shop/notification-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { pluralRu } from '@/lib/format/plural';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 30;
@@ -36,7 +37,7 @@ export default function NotificationsPage() {
 
 function NotificationsPageInner() {
     const [cursor, setCursor] = useState<number | undefined>(undefined);
-    const router = useRouter();
+    const router = useAppRouter();
     const searchParams = useSearchParams();
     const targetIdRaw = searchParams.get('id');
     const targetId = targetIdRaw ? Number(targetIdRaw) : null;
@@ -92,12 +93,7 @@ function NotificationsPageInner() {
         <div className="flex flex-col gap-5 sm:gap-6">
 
             <div className="flex flex-col gap-3 sm:gap-4">
-                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
-                    <AppLink href="/shop">
-                        <ArrowLeft className="size-4" />
-                        Назад
-                    </AppLink>
-                </Button>
+                <AppBackButton fallbackHref="/shop" label="Назад" />
 
             <header className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2">
                 <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">

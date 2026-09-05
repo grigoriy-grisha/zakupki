@@ -1,7 +1,6 @@
 'use client';
 
 import { type CurrencyRate,formatQtyUnit } from '@zakupki/types';
-import { useRouter } from 'next/navigation';
 import { memo, useCallback } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
@@ -10,6 +9,7 @@ import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { formatPriceRub } from '@/lib/format/money';
 import { pluralRu } from '@/lib/format/plural';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 
 import { ProductCardControls } from './product-card-controls';
@@ -44,7 +44,7 @@ function ProductCardImpl({
     fulfillmentStatus,
     deliveryPercent,
 }: ShopPurchaseItemProductCardProps) {
-    const router = useRouter();
+    const router = useAppRouter();
     const purchaseItemId = item.purchaseItemId ?? item.id;
     const product = item.product;
 

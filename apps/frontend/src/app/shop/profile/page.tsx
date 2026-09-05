@@ -1,11 +1,11 @@
 'use client';
 
-import { ArrowLeft, Paperclip, ShieldCheck, Unlink } from 'lucide-react';
+import { Paperclip, ShieldCheck, Unlink } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { AppLink } from '@/components/app-link';
 import { TelegramIcon, VkIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/shared/user-avatar';
+import { AppBackButton } from '@/components/shop/app-back-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -111,12 +111,7 @@ export default function ProfilePage() {
     return (
         <div className="flex flex-col gap-6 sm:gap-8">
             <div className="flex flex-col gap-3 sm:gap-4">
-                <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
-                    <AppLink href="/shop">
-                        <ArrowLeft className="size-4" />
-                        Назад
-                    </AppLink>
-                </Button>
+                <AppBackButton fallbackHref="/shop" label="Назад" />
                 <h1 className="text-h1 text-secondary">Личный кабинет</h1>
             </div>
 

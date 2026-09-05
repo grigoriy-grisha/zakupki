@@ -40,7 +40,7 @@ export function buildOpenPurchaseKeyboard(payload: unknown, cfg: BotConfig): Inl
     }
     return {
         inline_keyboard: [
-            [{ text: 'Открыть закупку', web_app: { url: `${base}/tg/webapp/shop/purchase/${purchaseId}` } }],
+            [{ text: 'Открыть закупку', web_app: { url: `${base}/tg/shop/purchase/${purchaseId}` } }],
         ],
     };
 }

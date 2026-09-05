@@ -1,6 +1,8 @@
 'use client';
 
+import { useAppBackTracker } from '@/lib/hooks/use-app-back';
 import { useTelegramAutoLogin } from '@/lib/hooks/use-telegram-auto-login';
+import { useTelegramBackButton } from '@/lib/hooks/use-telegram-back-button';
 
 import { ShopFooter } from './shop-footer';
 import { ShopHeader } from './shop-header';
@@ -10,6 +12,8 @@ import { SidebarSlotProvider } from './sidebar-slot';
 
 export function ShopShell({ children }: { children: React.ReactNode }) {
     useTelegramAutoLogin();
+    const canGoBack = useAppBackTracker();
+    useTelegramBackButton(canGoBack);
 
     return (
         <SidebarSlotProvider>

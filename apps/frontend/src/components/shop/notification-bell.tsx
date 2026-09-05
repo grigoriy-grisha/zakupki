@@ -1,7 +1,6 @@
 'use client';
 
 import { Bell, Eye } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { type ComponentType, useState } from 'react';
 
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '@/app/shop/hooks/use-notifications';
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 
 type BellSurface = 'popover' | 'sheet';
@@ -25,7 +25,7 @@ export function NotificationBell({
 } = {}) {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
-    const router = useRouter();
+    const router = useAppRouter();
     const { data: count, isLoading: countLoading } = useUnreadCount();
     const { data, isLoading: listLoading } = useNotifications();
     const markRead = useMarkRead();

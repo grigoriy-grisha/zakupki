@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
     buildAttributeTree,
@@ -16,9 +16,10 @@ type PurchaseItem = {
     product: AttrProduct;
 };
 
-export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
+export function usePurchaseFilterTree(items: PurchaseItem[] | undefined, externalSelectedId?: string | null) {
     const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const lastExternalIdRef = useRef<string | null | undefined>(undefined);
 
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
     const { data: allAttributes } = trpc.productAttributes.list.useQuery();
@@ -39,6 +40,21 @@ export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
         if (tree.length === 0) return;
         setExpandedIds(new Set(collectExpandableIds(tree)));
     }, [tree]);
+
+    // One-way sync: a category id coming from the URL selects the matching tree
+    // node once the tree is built. User clicks are not overridden — the page
+    // mirrors selectedId back into the URL, so the ref guard sees no change.
+    useEffect(() => {
+        if (lastExternalIdRef.current === externalSelectedId) return;
+        if (tree.length === 0) return;
+        lastExternalIdRef.current = externalSelectedId;
+        if (externalSelectedId == null) {
+            setSelectedNode(null);
+            return;
+        }
+        const node = findTreeNode(tree, externalSelectedId);
+        if (node) setSelectedNode(node);
+    }, [externalSelectedId, tree]);
 
     const filteredItems = useMemo(() => {
         if (!items) return [];
@@ -84,4 +100,13 @@ export function usePurchaseFilterTree(items: PurchaseItem[] | undefined) {
         clearSelection,
         totalCount: items?.length ?? 0,
     };
+}
+
+function findTreeNode(nodes: TreeNode[], id: string): TreeNode | null {
+    for (const node of nodes) {
+        if (node.id === id) return node;
+        const child = findTreeNode(node.children, id);
+        if (child) return child;
+    }
+    return null;
 }

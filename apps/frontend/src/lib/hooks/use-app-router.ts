@@ -16,9 +16,10 @@ export function useAppRouter() {
         [platform],
     );
 
-    return {
-        push: (path: string) => router.push(resolvePath(path)),
-        replace: (path: string) => router.replace(resolvePath(path)),
-        refresh: () => router.refresh(),
-    };
+    const push = useCallback((path: string) => router.push(resolvePath(path)), [router, resolvePath]);
+    const replace = useCallback((path: string) => router.replace(resolvePath(path)), [router, resolvePath]);
+    const back = useCallback(() => router.back(), [router]);
+    const refresh = useCallback(() => router.refresh(), [router]);
+
+    return { push, replace, back, refresh };
 }

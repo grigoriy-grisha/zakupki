@@ -1,22 +1,21 @@
 'use client';
 
 import type { CurrencyRate } from '@zakupki/types';
-import { ArrowLeft, Building2, PackageCheck, PackageSearch } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Building2, PackageCheck, PackageSearch } from 'lucide-react';
 import { use, useMemo } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
 import { getCollectedLabel } from '@/app/shop/lib/collected-qty';
 import { buildStepHint } from '@/app/shop/lib/format-step-hint';
 import type { ShopPurchaseItem } from '@/app/shop/lib/types';
-import { AppLink } from '@/components/app-link';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
+import { AppBackButton } from '@/components/shop/app-back-button';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import {
     buildShopItemDescriptionRows,
     type ProductCatalogCardSource,
@@ -88,7 +87,7 @@ function ItemDetailContent({
     packDiscountPercent: number;
     orgFeeDefaultPercent: number;
 }) {
-    const router = useRouter();
+    const router = useAppRouter();
     const { data: attributeTypes } = trpc.attributeTypes.list.useQuery();
     const { data: myOrders } = trpc.orders.getMyOrders.useQuery();
 
@@ -200,12 +199,7 @@ function ItemDetailLoaded({
 
     return (
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 sm:gap-5">
-            <Button variant="ghost" size="sm" asChild className="-ml-2 self-start text-fg-secondary">
-                <AppLink href={`/shop/purchase/${purchaseId}`}>
-                    <ArrowLeft className="size-4" />
-                    {purchase.tag}
-                </AppLink>
-            </Button>
+            <AppBackButton fallbackHref={`/shop/purchase/${purchaseId}`} label={purchase.tag} />
 
             <div
                 className={cn(

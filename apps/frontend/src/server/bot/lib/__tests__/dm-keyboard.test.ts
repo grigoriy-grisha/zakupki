@@ -27,7 +27,7 @@ describe('buildOpenPurchaseKeyboard', () => {
 
         expect(keyboard).toEqual({
             inline_keyboard: [
-                [{ text: 'Открыть закупку', web_app: { url: 'https://zakupki.example.com/tg/webapp/shop/purchase/7' } }],
+                [{ text: 'Открыть закупку', web_app: { url: 'https://zakupki.example.com/tg/shop/purchase/7' } }],
             ],
         });
     });
@@ -45,7 +45,7 @@ describe('buildOpenPurchaseKeyboard', () => {
                 [
                     {
                         text: 'Открыть закупку',
-                        web_app: { url: 'https://mini.example.com/tg/webapp/shop/purchase/7' },
+                        web_app: { url: 'https://mini.example.com/tg/shop/purchase/7' },
                     },
                 ],
             ],

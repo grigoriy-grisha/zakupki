@@ -1,23 +1,19 @@
 'use client';
 
-import {
-    computeUnitPriceRubNewModel,
-    type CurrencyRate,
-    isSupplementPhase,
-    mapToPurchaseItem,
-        type PurchaseFulfillmentStatus,
-} from '@zakupki/types';
+import { type CurrencyRate, isSupplementPhase, type PurchaseFulfillmentStatus } from '@zakupki/types';
 import { ChevronLeft, ChevronRight, Package, PackageSearch, SlidersHorizontal } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 
 import { FilterTree } from '@/components/shared/filter-tree';
 import { useSidebarSlotContent } from '@/components/shop/sidebar-slot';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { currentUrl } from '@/lib/app-history';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { trpc } from '@/lib/client/trpc';
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 
 import { aggregateByItem } from '../../lib/order-aggregation';
@@ -27,7 +23,6 @@ import {
     ProductGrid,
     PurchaseGridSkeleton,
     PurchaseSelect,
-    type SortMode,
 } from './components';
 import type { ProductGridItem } from './components/product-grid';
 import { getPurchaseStageLabel } from './components/purchase-stepper';
@@ -36,39 +31,30 @@ import { usePurchaseFilterTree } from './hooks/use-purchase-filter-tree';
 
 const PAGE_SIZE = 20;
 
-function getSortPriceRub(
-    item: ProductGridItem,
-    fulfillmentStatus: PurchaseFulfillmentStatus,
-    packDiscountPercent: number,
-    orgFeeDefaultPercent: number,
-    currencyRates: CurrencyRate[],
-): number | null {
-    const purchaseItem = mapToPurchaseItem({ ...item, purchase: { fulfillmentStatus } }, packDiscountPercent, {
-        orgFeeDefaultPercent,
-        currencyRates,
-    });
-    return computeUnitPriceRubNewModel(purchaseItem);
-}
-
-function comparePrices(a: number | null, b: number | null): number {
-    if (a == null && b == null) return 0;
-    if (a == null) return 1;
-    if (b == null) return -1;
-    return a - b;
-}
+/** Debounce for mirroring catalog filter state into the URL. */
+const URL_SYNC_DELAY_MS = 400;
 
 export default function ShopPurchasePage({ params }: { params: Promise<{ id: string }> }) {
+    return (
+        <Suspense fallback={null}>
+            <ShopPurchasePageInner params={params} />
+        </Suspense>
+    );
+}
+
+function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) {
     const { id: idStr } = use(params);
     const id = Number(idStr);
-    const router = useRouter();
+    const { push: pushRoute, replace: replaceRoute } = useAppRouter();
+    const searchParams = useSearchParams();
 
     const { data: purchase, isLoading } = trpc.purchases.getById.useQuery({ id });
     const paymentDetail = usePurchasePaymentDetail(id);
     const { beadPackPriceDiscountPercent: packDiscountPercent, orgFeeDefaultPercent } = usePricingSettings();
 
-    const [query, setQuery] = useState('');
-    const sortMode: SortMode = 'default';
-    const [onlyMine, setOnlyMine] = useState(false);
+    const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+    const [onlyMine, setOnlyMine] = useState(() => searchParams.get('mine') === '1');
+    const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
 
     const fulfillmentStatus = (purchase?.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
 
@@ -82,6 +68,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     );
 
     const items = (purchase?.items ?? []) as ProductGridItem[];
+    const urlCategoryId = searchParams.get('cat');
     const {
         tree,
         selectedId,
@@ -93,7 +80,7 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         handleSelectNode,
         clearSelection,
         totalCount,
-    } = usePurchaseFilterTree(items);
+    } = usePurchaseFilterTree(items, urlCategoryId);
     const filteredItems = treeItems as ProductGridItem[];
 
     const aggregatedByItem = useMemo(
@@ -125,49 +112,12 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
         });
     }, [filteredItems, query]);
 
-    const [page, setPage] = useState(1);
     const gridRef = useRef<HTMLDivElement | null>(null);
 
     const visibleItems = useMemo(() => {
-        let result = searchedItems;
-        if (onlyMine) {
-            result = result.filter((item) => myItemIds.has(item.purchaseItemId ?? item.id));
-        }
-        if (sortMode === 'default') {
-            return result;
-        }
-        const withKeys = result.map((item) => ({
-            item,
-            price:
-                sortMode === 'name-asc'
-                    ? null
-                    : getSortPriceRub(
-                          item,
-                          fulfillmentStatus,
-                          packDiscountPercent,
-                          orgFeeDefaultPercent,
-                          currencyRates,
-                      ),
-            name: String(item.product?.name ?? ''),
-        }));
-        if (sortMode === 'name-asc') {
-            withKeys.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-        } else if (sortMode === 'price-asc') {
-            withKeys.sort((a, b) => comparePrices(a.price, b.price));
-        } else {
-            withKeys.sort((a, b) => comparePrices(b.price, a.price));
-        }
-        return withKeys.map((entry) => entry.item);
-    }, [
-        searchedItems,
-        onlyMine,
-        myItemIds,
-        sortMode,
-        currencyRates,
-        orgFeeDefaultPercent,
-        fulfillmentStatus,
-        packDiscountPercent,
-    ]);
+        if (!onlyMine) return searchedItems;
+        return searchedItems.filter((item) => myItemIds.has(item.purchaseItemId ?? item.id));
+    }, [searchedItems, onlyMine, myItemIds]);
 
     const totalPages = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -179,6 +129,35 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
     useEffect(() => {
         setPage(1);
     }, [query, selectedId, onlyMine, id]);
+
+    // Reset filters when switching to another purchase without a remount.
+    const prevIdRef = useRef(id);
+    useEffect(() => {
+        if (prevIdRef.current === id) return;
+        prevIdRef.current = id;
+        setQuery('');
+        setOnlyMine(false);
+        setPage(1);
+    }, [id]);
+
+    // Mirror filter state into the URL so back from an item page restores it.
+    // While the category from the URL has not been resolved against the tree
+    // yet, syncing would immediately drop it — wait for the tree.
+    const categoryFromUrlPending = urlCategoryId != null && tree.length === 0;
+    const catalogBasePath = `/shop/purchase/${id}`;
+    useEffect(() => {
+        if (categoryFromUrlPending) return;
+        const params = new URLSearchParams();
+        if (query.trim() !== '') params.set('q', query.trim());
+        if (selectedId != null) params.set('cat', selectedId);
+        if (onlyMine) params.set('mine', '1');
+        if (currentPage > 1) params.set('page', String(currentPage));
+        const qs = params.toString();
+        const nextUrl = qs !== '' ? `${catalogBasePath}?${qs}` : catalogBasePath;
+        if (nextUrl === currentUrl()) return;
+        const timer = window.setTimeout(() => replaceRoute(nextUrl), URL_SYNC_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, [catalogBasePath, categoryFromUrlPending, currentPage, onlyMine, query, replaceRoute, selectedId]);
 
     const handlePageChange = (next: number) => {
         setPage(next);
@@ -238,8 +217,8 @@ export default function ShopPurchasePage({ params }: { params: Promise<{ id: str
                     icon={Package}
                     title="Закупка не найдена"
                     description="Возможно, она была удалена или ссылка неверная"
-                    actionLabel="Назад к закупкам"
-                    onAction={() => router.push('/shop')}
+                        actionLabel="Назад к закупкам"
+                        onAction={() => pushRoute('/shop')}
                 />
             </div>
         );
