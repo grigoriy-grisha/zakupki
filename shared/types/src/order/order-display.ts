@@ -20,7 +20,7 @@ import { computeOrderedStockInfo } from './ordered-stock';
 import { aggregateForPool } from './strategies/atomic';
 import { mergeLines } from './aggregation';
 import { getUnitShortName } from './utils';
-import { isPieceUnit } from '../units/normalize';
+import { isWeightUnit } from '../units/normalize';
 import type { OrderDisplayContext, OrderLineVO, PoolInfo, PurchaseItem } from './types';
 import type { OrderLine } from './order-line';
 
@@ -55,7 +55,7 @@ export function buildDisplayContext(
     const poolInfo = buildPoolInfo(item, lines, userId);
     const availablePool = poolInfo.pool;
     const isSupplement = isSupplementPhase(item.fulfillmentStatus);
-    const isWeight = !isPieceUnit(item.unitCode);
+    const isWeight = isWeightUnit(item.unitCode);
     const hasSupplierPackage = packSize != null && packSize > 0;
     const showPackageButtons = cfg.canAddPackages && hasSupplierPackage && isWeight;
     const unitPriceRub = computeUnitPriceRubNewModel(item);

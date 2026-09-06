@@ -1,4 +1,10 @@
-import { isSupplementPhase, PURCHASE_FULFILLMENT_STATUSES } from '@zakupki/types';
+import {
+    formatUnitQty,
+    getUnitPrepositional,
+    isSupplementPhase,
+    isWeightUnit,
+    PURCHASE_FULFILLMENT_STATUSES,
+} from '@zakupki/types';
 
 const GENERAL_QUANTITY_HINT =
     'Напишите количество числом. Например:\n• 10 — добавить 10\n• +10 — добавить 10\n• +2п — добавить 2 пачки\n• -5 — убрать 5\n• -1п — убрать пачку';
@@ -17,12 +23,6 @@ const DOBOR_QUANTITY_HINT = [
     '1п = 1 целая пачка поставщика',
 ].join('\n');
 
-const DOBOR_QUANTITY_HINT_PIECE = [
-    'На этапе «Добор» можно добавить только оставшееся количество товара.',
-    'Указывайте количество в штуках.',
-    'Например: 2 = 2 шт.',
-].join('\n');
-
 const PAYMENT_QUANTITY_HINT = [
     '‼️ Пора оплачивать заказ ‼️',
     '',
@@ -31,12 +31,22 @@ const PAYMENT_QUANTITY_HINT = [
     'Например: 5 = 5 гр, 10 = 10 гр, 20 = 20 гр.',
 ].join('\n');
 
-const PAYMENT_QUANTITY_HINT_PIECE = [
-    '‼️ Пора оплачивать заказ ‼️',
-    '',
-    'На этом этапе можно добавить только остатки товара.',
-    'Указывайте количество в штуках (например: 2 = 2 шт).',
-].join('\n');
+function doborPieceHint(unitCode: string | null | undefined): string {
+    return [
+        'На этапе «Добор» можно добавить только оставшееся количество товара.',
+        `Указывайте количество в ${getUnitPrepositional(unitCode) ?? 'штуках'}.`,
+        `Например: 2 = ${formatUnitQty(2, unitCode ?? 'piece')}.`,
+    ].join('\n');
+}
+
+function paymentPieceHint(unitCode: string | null | undefined): string {
+    return [
+        '‼️ Пора оплачивать заказ ‼️',
+        '',
+        'На этом этапе можно добавить только остатки товара.',
+        `Указывайте количество в ${getUnitPrepositional(unitCode) ?? 'штуках'} (например: 2 = ${formatUnitQty(2, unitCode ?? 'piece')}).`,
+    ].join('\n');
+}
 
 function isPaymentPhase(fulfillmentStatus: string): boolean {
     const order = PURCHASE_FULFILLMENT_STATUSES as readonly string[];
@@ -45,13 +55,14 @@ function isPaymentPhase(fulfillmentStatus: string): boolean {
     return idx >= 0 && paymentIdx >= 0 && idx >= paymentIdx;
 }
 
-export function getOrderQuantityHint(fulfillmentStatus: string | null | undefined, isWeightUnit = true): string {
+export function getOrderQuantityHint(fulfillmentStatus: string | null | undefined, unitCode?: string | null): string {
     const status = fulfillmentStatus ?? '';
+    const weight = unitCode == null ? true : isWeightUnit(unitCode);
     if (isPaymentPhase(status)) {
-        return isWeightUnit ? PAYMENT_QUANTITY_HINT : PAYMENT_QUANTITY_HINT_PIECE;
+        return weight ? PAYMENT_QUANTITY_HINT : paymentPieceHint(unitCode);
     }
     if (isSupplementPhase(status)) {
-        return isWeightUnit ? DOBOR_QUANTITY_HINT : DOBOR_QUANTITY_HINT_PIECE;
+        return weight ? DOBOR_QUANTITY_HINT : doborPieceHint(unitCode);
     }
-    return isWeightUnit ? GENERAL_QUANTITY_HINT : GENERAL_QUANTITY_HINT_PIECE;
+    return weight ? GENERAL_QUANTITY_HINT : GENERAL_QUANTITY_HINT_PIECE;
 }

@@ -5,7 +5,7 @@ import {
     PURCHASE_FULFILLMENT_LABELS,
     PURCHASE_STATUS_LABELS,
 } from '../index';
-import { formatQtyLabel } from '../utils';
+import { formatQtyUnit } from '../units';
 import type { NotificationPayload, NotificationType } from './types';
 
 /**
@@ -106,10 +106,10 @@ export function renderNotificationBody<T extends NotificationType>(
             // have it. Treat absent/invalid as "unknown" and skip the "было" part
             // rather than crashing on Number(undefined).toFixed().
             const hasPrev = Number.isFinite(p.prevQty as number | undefined);
-            const prevPart = hasPrev ? `было ${formatQtyLabel(p.prevQty)} ${p.unitShort}, ` : '';
+            const prevPart = hasPrev ? `было ${formatQtyUnit(p.prevQty, p.unitShort)}, ` : '';
             return (
                 `Закупка ${formatTag(p.purchaseTag)}: администратор изменил количество ` +
-                `«${p.productLabel}»: ${prevPart}стало ${formatQtyLabel(p.newQty)} ${p.unitShort}.`
+                `«${p.productLabel}»: ${prevPart}стало ${formatQtyUnit(p.newQty, p.unitShort)}.`
             );
         }
         case 'ORDER_LINE_DELETED': {
@@ -192,9 +192,9 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
             const pp = p as NotificationPayload<'ORDER_QTY_CHANGED'>;
             lines.push(`<b>Товар:</b> ${escapeHtml(pp.productLabel)}`);
             if (Number.isFinite(pp.prevQty as number | undefined)) {
-                lines.push(`<b>Было:</b> ${escapeHtml(formatQtyLabel(pp.prevQty))} ${escapeHtml(pp.unitShort)}`);
+                lines.push(`<b>Было:</b> ${escapeHtml(formatQtyUnit(pp.prevQty, pp.unitShort))}`);
             }
-            lines.push(`<b>Стало:</b> ${escapeHtml(formatQtyLabel(pp.newQty))} ${escapeHtml(pp.unitShort)}`);
+            lines.push(`<b>Стало:</b> ${escapeHtml(formatQtyUnit(pp.newQty, pp.unitShort))}`);
             break;
         }
         case 'ORDER_LINE_DELETED': {
@@ -399,12 +399,12 @@ export function getNotificationFields<T extends NotificationType>(
             if (Number.isFinite(p.prevQty as number | undefined)) {
                 fields.push({
                     label: 'Было',
-                    value: `${formatQtyLabel(p.prevQty)} ${p.unitShort}`,
+                    value: formatQtyUnit(p.prevQty, p.unitShort),
                 });
             }
             fields.push({
                 label: 'Стало',
-                value: `${formatQtyLabel(p.newQty)} ${p.unitShort}`,
+                value: formatQtyUnit(p.newQty, p.unitShort),
             });
             break;
         }

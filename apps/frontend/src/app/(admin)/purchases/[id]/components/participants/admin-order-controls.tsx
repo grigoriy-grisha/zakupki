@@ -1,6 +1,6 @@
 'use client';
 
-import { isWeightUnit } from '@zakupki/types';
+import { getUnitShortName, isWeightUnit } from '@zakupki/types';
 import { Check, Minus, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -168,7 +168,7 @@ export function AdminOrderLineEditor({
                     </Button>
                 </div>
                 {hasPackages && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1" title={`1 уп = ${Number(packAmount)} ${getUnitShortName(unitCode ?? '')}`}>
                         <Button
                             variant="outline"
                             size="icon-xs"

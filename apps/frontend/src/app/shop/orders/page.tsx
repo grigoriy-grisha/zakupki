@@ -1,9 +1,8 @@
 'use client';
 
 import {
+    buildQuantityDisplay,
     computeOrderLinePriceBreakdown,
-    formatQtyUnit,
-    getUnitByCode,
     HANDOFF_STATUS_LABELS,
     type HandoffStatus,
     isPurchaseCompleted,
@@ -247,15 +246,17 @@ function PurchaseOrderCard({
                 {ordersWithBreakdown.map(({ order, breakdown }) => {
                     const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
                         order.source.purchaseItem?.product;
-                    const purchaseItemUnit = order.source.purchaseItem?.unitCode;
-                    const shortName = getUnitByCode(purchaseItemUnit ?? product?.unitCode)?.shortName ?? '';
+                    const purchaseItem = order.source.purchaseItem;
                     const photo = product?.photos?.[0];
                     const qty = order.quantity;
                     const amount = order.amountDue;
-                    const qtyParts: string[] = [];
-                    if (qty > 0) qtyParts.push(formatQtyUnit(qty, shortName));
-                    if (order.packageCount > 0) qtyParts.push(`${order.packageCount} упак.`);
-                    const qtyLabel = qtyParts.join(' + ');
+                    const qtyLabel = buildQuantityDisplay({
+                        quantity: qty,
+                        packageCount: order.packageCount,
+                        packSize:
+                            purchaseItem?.packAmount != null ? Number(purchaseItem.packAmount) : null,
+                        unitCode: purchaseItem?.unitCode ?? product?.unitCode ?? null,
+                    }).main;
 
                     return (
                         <AppLink

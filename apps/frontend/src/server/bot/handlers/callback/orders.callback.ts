@@ -1,5 +1,5 @@
 import {
-    getUnitByCode,
+    buildQuantityDisplay,
     isPurchasePaymentOpen,
     mergeLines,
     PURCHASE_FULFILLMENT_LABELS,
@@ -98,28 +98,53 @@ function formatPurchaseDetail(
     const status = (fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[status] ?? status;
 
-    const groupedLines = new Map<number, { name: string; unit: string; totalQty: number; totalAmount: number }>();
+    const groupedLines = new Map<
+        number,
+        {
+            name: string;
+            unitCode: string | null;
+            packSize: number | null;
+            qty: number;
+            packs: number;
+            totalAmount: number;
+        }
+    >();
     for (const line of detail.lines) {
         const product = line.purchaseItem?.product;
         const piId = line.purchaseItem?.id ?? 0;
         const name = product?.name ?? 'Товар';
-        const unit = line.purchaseItem ? (getUnitByCode(line.purchaseItem.unitCode)?.shortName ?? '') : '';
+        const unitCode = line.purchaseItem?.unitCode ?? null;
+        const packSize =
+            line.purchaseItem?.packAmount != null ? Number(line.purchaseItem.packAmount) : null;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const aggregated = mergeLines(toOrderLinesVO([line as any]));
         const existing = groupedLines.get(piId);
         if (existing) {
-            existing.totalQty += aggregated.quantity;
+            existing.qty += aggregated.quantity;
+            existing.packs += aggregated.packageCount;
             existing.totalAmount += aggregated.amountDue;
         } else {
-            groupedLines.set(piId, { name, unit, totalQty: aggregated.quantity, totalAmount: aggregated.amountDue });
+            groupedLines.set(piId, {
+                name,
+                unitCode,
+                packSize,
+                qty: aggregated.quantity,
+                packs: aggregated.packageCount,
+                totalAmount: aggregated.amountDue,
+            });
         }
     }
 
     const lineTexts = Array.from(groupedLines.values()).map((g) => {
-        const qty = g.totalQty.toLocaleString('ru-RU');
+        const qtyLabel = buildQuantityDisplay({
+            quantity: g.qty,
+            packageCount: g.packs,
+            packSize: g.packSize,
+            unitCode: g.unitCode,
+        }).main;
         const amount = g.totalAmount.toLocaleString('ru-RU');
-        return `• <b>${escapeHtml(g.name)}</b>\n<code>${qty}${g.unit ? ` ${escapeHtml(g.unit)}` : ''} · ${amount} ₽</code>`;
+        return `• <b>${escapeHtml(g.name)}</b>\n<code>${escapeHtml(qtyLabel)} · ${amount} ₽</code>`;
     });
 
     const parts = [

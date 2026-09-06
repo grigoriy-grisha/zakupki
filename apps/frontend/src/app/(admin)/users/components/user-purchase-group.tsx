@@ -1,6 +1,6 @@
 'use client';
 
-import { getUnitByCode } from '@zakupki/types';
+import { buildQuantityDisplay } from '@zakupki/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
@@ -101,10 +101,20 @@ export function UserPurchaseGroupBlock({ group, userId }: UserPurchaseGroupProps
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {Number(order.quantity).toLocaleString('ru-RU')}{' '}
-                                        {getUnitByCode(
-                                            order.purchaseItem?.unitCode ?? order.purchaseItem?.product?.unitCode,
-                                        )?.shortName ?? ''}
+                                        {
+                                            buildQuantityDisplay({
+                                                quantity: Number(order.quantity),
+                                                packageCount: order.packageCount ?? 0,
+                                                packSize:
+                                                    order.purchaseItem?.packAmount != null
+                                                        ? Number(order.purchaseItem.packAmount)
+                                                        : null,
+                                                unitCode:
+                                                    order.purchaseItem?.unitCode ??
+                                                    order.purchaseItem?.product?.unitCode ??
+                                                    null,
+                                            }).main
+                                        }
                                     </TableCell>
                                     <TableCell className="text-right text-14-semibold tabular-nums">
                                         {formatRub(Number(order.amountDue))}

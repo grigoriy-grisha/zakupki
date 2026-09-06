@@ -1,4 +1,4 @@
-import { getUnitByCode } from '@zakupki/types';
+import { formatQtyUnit, getUnitByCode } from '@zakupki/types';
 
 import { BaseSectionRenderer, escapeHtmlLocal, formatNumberRu, type SectionProps } from './base-section-renderer';
 
@@ -72,8 +72,9 @@ export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData
         }
 
         if (data.minPackageAmount != null && data.minPackageUnit) {
+            const amount = Number(data.minPackageAmount);
             lines.push(
-                `<b>Минимальная фасовка - ${Number(data.minPackageAmount)} ${escapeHtmlLocal(data.minPackageUnit)}</b>`,
+                `<b>Минимальная фасовка - ${escapeHtmlLocal(formatQtyUnit(amount, data.minPackageUnit))}</b>`,
             );
         }
 

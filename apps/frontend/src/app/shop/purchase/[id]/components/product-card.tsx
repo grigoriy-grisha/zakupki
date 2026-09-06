@@ -1,6 +1,6 @@
 'use client';
 
-import { type CurrencyRate,formatQtyUnit } from '@zakupki/types';
+import { type CurrencyRate } from '@zakupki/types';
 import { memo, useCallback } from 'react';
 
 import { useItemOrderControls } from '@/app/shop/hooks/use-item-order-controls';
@@ -98,10 +98,7 @@ function ProductCardImpl({
     const looseOrderable = ctx.currentQuantity > 0 || ctx.maxAllowed > ctx.currentQuantity;
     const showPackHint = packInfo != null && (hasOrder ? ctx.fullPacks > 0 : true);
     const showMinHint = minHint != null && !hasOrder && looseOrderable;
-
-    const orderQtyParts: string[] = [];
-    if (ctx.currentQuantity > 0) orderQtyParts.push(formatQtyUnit(ctx.currentQuantity, ctx.shortName));
-    if (ctx.currentPackageCount > 0) orderQtyParts.push(`${ctx.currentPackageCount} упак.`);
+    const showOrderQty = hasOrder && (ctx.currentQuantity > 0 || ctx.currentPackageCount > 0);
 
     return (
         <div
@@ -183,9 +180,9 @@ function ProductCardImpl({
                     )}
                 </div>
 
-                {hasOrder && orderQtyParts.length > 0 && (
+                {showOrderQty && (
                     <p className="text-12-medium text-fg-secondary tabular-nums sm:text-13-medium">
-                        {orderQtyParts.join(' + ')} · {formatPriceRub(ctx.total)}
+                        {ctx.qtyDisplay.main} · {formatPriceRub(ctx.total)}
                     </p>
                 )}
 

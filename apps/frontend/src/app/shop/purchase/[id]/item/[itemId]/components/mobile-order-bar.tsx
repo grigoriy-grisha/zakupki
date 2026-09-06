@@ -1,6 +1,5 @@
 'use client';
 
-import { formatQtyUnit } from '@zakupki/types';
 import { Plus } from 'lucide-react';
 
 import { QuantityStepper } from '@/components/shared/quantity-stepper';
@@ -34,12 +33,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                         <QuantityStepper
                             size="md"
                             wrapClassName="shrink-0"
-                            value={
-                                <>
-                                    {formatQtyUnit(ctx.currentQuantity, ctx.shortName)}
-                                    {ctx.currentPackageCount > 0 ? ` + ${ctx.currentPackageCount} упак.` : ''}
-                                </>
-                            }
+                            value={ctx.qtyDisplay.main}
                             onRemove={ctx.handleRemove}
                             onAdd={ctx.handleAdd}
                             canRemove={ctx.canDecrease}

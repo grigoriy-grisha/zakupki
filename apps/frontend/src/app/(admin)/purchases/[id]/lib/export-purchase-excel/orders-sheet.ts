@@ -119,10 +119,10 @@ function purchaseItemPriceCells(_purchaseItem: unknown) {
     return ['', '', ''] as const;
 }
 
-function addParticipantGramTotalRow(sheet: ExcelJS.Worksheet, totals: { partialGr: number; fullPackGr: number }) {
+function addParticipantQtyTotalRow(sheet: ExcelJS.Worksheet, totals: { partialGr: number; fullPackGr: number }) {
     if (totals.partialGr + totals.fullPackGr <= 0) return;
 
-    const row = sheet.addRow(['', '', '', '', 'грамм всего', totals.partialGr || '', totals.fullPackGr || '']);
+    const row = sheet.addRow(['', '', '', '', 'всего заказано', totals.partialGr || '', totals.fullPackGr || '']);
     const labelCell = row.getCell(ORDERS_EXPORT_COL_PRICE_1GR);
     labelCell.font = { bold: true };
     labelCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -190,7 +190,7 @@ export function addParticipantOrdersTable(
     applyOrdersCellFill(participantNumberCell, ORDERS_EXPORT_FILL.participantNumber);
     styleNumericCell(participantNumberCell);
 
-    const headerRow = sheet.addRow(['', 'Фасовка поставщика, гр', ...ORDERS_EXPORT_PRICE_HEADERS, '', '']);
+    const headerRow = sheet.addRow(['', 'Фасовка поставщика', ...ORDERS_EXPORT_PRICE_HEADERS, '', '']);
     sheet.mergeCells(
         headerRow.number,
         ORDERS_EXPORT_COL_ORDER_PARTIAL,
@@ -256,7 +256,7 @@ export function addParticipantOrdersTable(
         styleNumericCell(row.getCell(ORDERS_EXPORT_COL_ORDER_FULL_PACK));
     });
 
-    addParticipantGramTotalRow(sheet, gramTotals);
+    addParticipantQtyTotalRow(sheet, gramTotals);
 
     const balance = Math.max(0, payment.due - payment.paid);
 

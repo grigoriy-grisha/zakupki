@@ -1,17 +1,16 @@
+import { resolveUnit } from '@zakupki/types';
+
 export type PurchaseItemOrderStatsSource = {
     orderLines: { quantity: unknown }[];
     packAmount?: unknown;
     packUnit?: string | null;
 };
 
-export type PackOrderUnit = 'гр' | 'шт';
+export type PackOrderUnit = 'гр' | 'шт' | 'туба';
 
 function normalizePackUnit(unit: string | null | undefined): PackOrderUnit | null {
-    if (!unit) return null;
-    const normalized = unit.trim().toLowerCase().replace(/\./g, '');
-    if (normalized === 'гр' || normalized === 'g') return 'гр';
-    if (normalized === 'шт') return 'шт';
-    return null;
+    const def = resolveUnit(unit);
+    return def ? (def.shortName as PackOrderUnit) : null;
 }
 
 export function unitsInPack(item: {

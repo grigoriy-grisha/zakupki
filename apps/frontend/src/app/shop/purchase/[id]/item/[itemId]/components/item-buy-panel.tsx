@@ -53,10 +53,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                     <div className="flex items-center justify-between gap-2">
                         <span className="text-12-medium text-fg-secondary">В заказе</span>
                         <span className="text-14-semibold text-fg-primary tabular-nums">
-                            {formatQtyUnit(ctx.currentQuantity, ctx.shortName)}
-                            {ctx.currentPackageCount > 0 && (
-                                <span className="text-fg-secondary"> + {ctx.currentPackageCount} упак.</span>
-                            )}
+                            {ctx.qtyDisplay.main}
                         </span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-low pt-2">
@@ -102,7 +99,7 @@ export function ItemBuyPanel({ ctx, minHint }: { ctx: ItemOrderControls; minHint
                         (ctx.canAddPackage || ctx.currentPackageCount > 0) && (
                             <QuantityStepper
                                 size="md"
-                                value={<>{formatQty(ctx.currentPackageCount)} упак.</>}
+                                value={<>{formatQty(ctx.currentPackageCount)} уп</>}
                                 onRemove={ctx.handleRemovePackage}
                                 onAdd={ctx.handleAddPackage}
                                 canRemove={ctx.currentPackageCount > 0 && !ctx.isPending}

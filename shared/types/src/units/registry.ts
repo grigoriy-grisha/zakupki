@@ -11,6 +11,7 @@ export const UNITS: readonly UnitDef[] = [
         shortName: 'гр',
         pluralForms: ['гр', 'гр', 'гр'],
         kind: 'WEIGHT',
+        prepositional: 'граммах',
         aliases: ['гр', 'г', 'g', 'грамм', 'gram', 'grams'],
     },
     {
@@ -19,6 +20,7 @@ export const UNITS: readonly UnitDef[] = [
         shortName: 'шт',
         pluralForms: ['шт', 'шт', 'шт'],
         kind: 'PIECE',
+        prepositional: 'штуках',
         aliases: ['шт', 'штука', 'штук', 'piece', 'pieces'],
     },
     {
@@ -27,6 +29,7 @@ export const UNITS: readonly UnitDef[] = [
         shortName: 'туба',
         pluralForms: ['туба', 'тубы', 'туб'],
         kind: 'PIECE',
+        prepositional: 'тубах',
         aliases: ['туба', 'туб', 'tube', 'тубус', 'tubus'],
     },
 ] as const;

@@ -72,7 +72,7 @@ export function ProductCardControls({
                         1 упаковка
                         <span className="hidden sm:inline">
                             {' '}
-                            ({formatQtyUnit(ctx.packSize, ctx.shortName)})
+                            ({ctx.packLabel})
                         </span>
                     </span>
                 </Button>
@@ -149,7 +149,7 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                                 'border-2 border-primary px-2 text-12-bold text-primary tabular-nums',
                             )}
                         >
-                            <span className="truncate">{ctx.currentPackageCount} упак.</span>
+                            <span className="truncate">{ctx.currentPackageCount} уп</span>
                         </div>
                         <button
                             type="button"

@@ -19,6 +19,7 @@ export type UnitDef = {
     pluralForms: readonly [string, string, string];
     /** Тип единицы: WEIGHT или PIECE */
     kind: UnitKind;
+    prepositional: string;
     /** Варианты написания для нормализации (lowercase) */
     aliases: string[];
 };

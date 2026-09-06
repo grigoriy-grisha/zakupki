@@ -16,6 +16,7 @@ export interface DescriptionFields {
     currencyName?: string;
     packAmount?: number | null;
     packUnit?: string | null;
+    unitCode?: string | null;
     orgFeePercent?: number | null;
     unitPriceRub?: number | null;
 }

@@ -33,24 +33,32 @@ describe('getOrderQuantityHint', () => {
     });
 
     it('piece goods: general hint has no pack suffix examples', () => {
-        const hint = getOrderQuantityHint('COLLECTION', false);
+        const hint = getOrderQuantityHint('COLLECTION', 'piece');
         expect(hint).toContain('Напишите количество числом');
         expect(hint).not.toContain('+2п');
         expect(hint).not.toContain('пачку');
     });
 
     it('piece goods: dobor hint counts in pieces', () => {
-        const hint = getOrderQuantityHint('REORDER', false);
+        const hint = getOrderQuantityHint('REORDER', 'piece');
         expect(hint).toContain('На этапе «Добор»');
         expect(hint).toContain('2 = 2 шт');
         expect(hint).not.toContain('гр');
     });
 
     it('piece goods: payment hint counts in pieces', () => {
-        const hint = getOrderQuantityHint('PAYMENT', false);
+        const hint = getOrderQuantityHint('PAYMENT', 'piece');
         expect(hint).toContain('Пора оплачивать заказ');
         expect(hint).toContain('в штуках');
         expect(hint).not.toContain('гр');
+    });
+
+    it('tube goods: hints speak in tubes', () => {
+        const doborHint = getOrderQuantityHint('REORDER', 'tube');
+        expect(doborHint).toContain('в тубах');
+        expect(doborHint).toContain('2 = 2 тубы');
+        const paymentHint = getOrderQuantityHint('PAYMENT', 'tube');
+        expect(paymentHint).toContain('в тубах (например: 2 = 2 тубы)');
     });
 
     it('weight default keeps pack examples', () => {

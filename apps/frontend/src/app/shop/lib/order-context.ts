@@ -1,4 +1,4 @@
-import { type CurrencyRate, formatQtyUnit, type OrderLineRowLike, type PackDiscountPricingInfo, type PurchaseItem } from '@zakupki/types';
+import { buildQuantityDisplay, type CurrencyRate, formatQtyUnit, type OrderLineRowLike, type PackDiscountPricingInfo, type PurchaseItem, type QuantityDisplay } from '@zakupki/types';
 import {
     buildOrderQtyOptions,
     computeAmountDueWithPackages,
@@ -33,6 +33,7 @@ export interface ItemOrderContextInput {
 export interface ItemOrderContext {
     /** Короткое название единицы (гр, шт, ...) */
     shortName: string;
+    unitCode: string;
     /** Цена за единицу: новая модель (валюта × курс × оргсбор) приоритетнее старой
      * (priceOverride/pricePerUnit). 0 если обе модели не заданы. */
     price: number;
@@ -56,6 +57,8 @@ export interface ItemOrderContext {
 
     // Упаковка
     packSize: number | null;
+    packUnit: string | null;
+    packLabel: string | null;
     showPackageButtons: boolean;
     /** Можно ли добавить упаковку. Ограничено только supplierLimit, НЕ пулом/остатком
      *  (упаковки — базовая фасовка, а не добор). Совпадает с бэком (validateSupplierLimit). */
@@ -68,6 +71,7 @@ export interface ItemOrderContext {
     fullPacks: number;
     /** Скидка за целую пачку (null — нет скидки/нет данных). */
     packDiscountInfo: PackDiscountPricingInfo | null;
+    qtyDisplay: QuantityDisplay;
 
     // Разрешения
     canAdd: boolean;
@@ -208,6 +212,8 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const hasSupplierPackage = packSize != null && packSize > 0;
     const canAddPackage = fulfillmentStatus === 'COLLECTION' || fulfillmentStatus === 'REORDER';
     const showPackageButtons = canAddPackage && hasSupplierPackage && isWeight;
+    const packUnit = item.packUnit ?? null;
+    const packLabel = packSize != null ? formatQtyUnit(packSize, packUnit ?? shortName) : null;
 
     // Лимит на упаковки — supplierLimit + orderedQty (жёсткие глобальные капы).
     // Остаток/пул добора НЕ ограничивает упаковки: упаковка = базовая фасовка,
@@ -242,6 +248,13 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
     const maxAllowed = Math.min(poolMaxAllowed, ...globalStocks.map((s) => s + currentQuantity));
     const minAllowed = fulfillmentStatus !== 'COLLECTION' && fulfillmentStatus !== 'REORDER' ? baseQuantity : 0;
 
+    const qtyDisplay = buildQuantityDisplay({
+        quantity: currentQuantity,
+        packageCount: currentPackageCount,
+        packSize,
+        unitCode,
+    });
+
     // Разрешения
     const orderingClosed = isOrderingClosedStage(fulfillmentStatus);
     const hasOrder = currentQuantity > 0 || currentPackageCount > 0;
@@ -254,6 +267,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
 
     return {
         shortName,
+        unitCode,
         price,
         unitPriceRub,
         currentQuantity,
@@ -264,6 +278,8 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         isSoldOut,
         freeRemainderLabel,
         packSize,
+        packUnit,
+        packLabel,
         showPackageButtons,
         canAddPackage: canAddMorePackages,
         packagePrice,
@@ -271,6 +287,7 @@ export function buildItemOrderContext(input: ItemOrderContextInput): ItemOrderCo
         total,
         fullPacks,
         packDiscountInfo,
+        qtyDisplay,
         canAdd,
         canDecrease,
         hasOrder,

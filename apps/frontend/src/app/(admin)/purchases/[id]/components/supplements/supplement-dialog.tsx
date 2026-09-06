@@ -1,6 +1,6 @@
 'use client';
 
-import { getUnitByCode } from '@zakupki/types';
+import { formatUnitQty, getUnitWord } from '@zakupki/types';
 import { Loader2 } from 'lucide-react';
 import { useEffect,useState } from 'react';
 
@@ -102,11 +102,13 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
 
                     <div className="space-y-2 py-1">
                         {supplementItems.map((item) => {
+                            const packSize = item.packAmount != null ? Number(item.packAmount) : null;
                             const orderedTotal = item.orderLines.reduce(
-                                (sum: number, ol: { quantity: unknown }) => sum + Number(ol.quantity),
+                                (sum: number, ol: { quantity: unknown; packageCount?: unknown }) =>
+                                    sum + Number(ol.quantity) + Number(ol.packageCount ?? 0) * (packSize ?? 0),
                                 0,
                             );
-                            const shortName = getUnitByCode(item.unitCode ?? item.product.unitCode)?.shortName ?? '';
+                            const unitCode = item.unitCode ?? item.product.unitCode;
                             const val = quantities[item.id] ?? '';
                             const stepVal = supplementSteps[item.id] ?? '';
                             return (
@@ -125,7 +127,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                             {item.product.name}
                                         </p>
                                         <p className="truncate text-12-regular text-fg-tertiary">
-                                            Заказано: {orderedTotal} {shortName}
+                                            Заказано: {formatUnitQty(orderedTotal, unitCode)}
                                         </p>
                                     </div>
                                     <div className="flex items-end gap-2">
@@ -168,7 +170,7 @@ export function SupplementDialog({ purchaseId, open, onOpenChange }: SupplementD
                                             />
                                         </div>
                                         <span className="w-8 shrink-0 pb-2 text-center text-12-regular text-fg-tertiary">
-                                            {shortName}
+                                            {getUnitWord(1, unitCode)}
                                         </span>
                                     </div>
                                 </div>

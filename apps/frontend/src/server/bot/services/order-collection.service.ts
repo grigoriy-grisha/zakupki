@@ -2,11 +2,11 @@ import {
     buildOrderQtyOptions,
     computePackagePrice,
     computeUnitPriceRubNewModel,
+    formatUnitQty,
     getActiveStep,
     getOrderQuantityStep,
     getUnitByCode,
     isOrderingClosedStage,
-    isWeightUnit,
     mapToPurchaseItem,
     mergeLines,
     toOrderLinesVO,
@@ -71,7 +71,7 @@ export class OrderCollectionService {
                 message_thread_id: params.threadId,
             });
             if (!item) return null;
-            return getOrderQuantityHint(item.purchase?.fulfillmentStatus, isWeightUnit(item.unitCode));
+            return getOrderQuantityHint(item.purchase?.fulfillmentStatus, item.unitCode);
         } catch {
             return null;
         }
@@ -106,7 +106,7 @@ export class OrderCollectionService {
                 reason: 'invalid_quantity',
                 message: getOrderQuantityHint(
                     purchaseItem.purchase?.fulfillmentStatus,
-                    isWeightUnit(purchaseItem.unitCode),
+                    purchaseItem.unitCode,
                 ),
             };
         }
@@ -142,7 +142,7 @@ export class OrderCollectionService {
         const user = await this.container.userService.upsertFromTelegramBot(params.telegramId, params.userInfo);
         const pricing = await this.getItemPricing(purchaseItem);
 
-        const belowStep = this.belowStepResult(purchaseItem, parsed, pricing.unitShort);
+        const belowStep = this.belowStepResult(purchaseItem, parsed);
         if (belowStep) return belowStep;
 
         try {
@@ -268,7 +268,6 @@ export class OrderCollectionService {
     private belowStepResult(
         item: ResolvedItem,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
-        unitShort: string,
     ): OrderCollectionResult | null {
         if (parsed.kind !== 'add' || parsed.unit !== 'remainder') return null;
         const step = getActiveStep({
@@ -285,7 +284,7 @@ export class OrderCollectionService {
         return {
             ok: false,
             reason: 'below_step',
-            message: `Минимальный шаг заказа — ${step} ${unitShort}. Например: ${step}`,
+            message: `Минимальный шаг заказа — ${formatUnitQty(step, item.unitCode ?? null)}. Например: ${step}`,
         };
     }
 }

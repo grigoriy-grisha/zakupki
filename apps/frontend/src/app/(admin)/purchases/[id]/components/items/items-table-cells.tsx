@@ -1,6 +1,6 @@
 'use client';
 
-import { isPieceUnit } from '@zakupki/types';
+import { getUnitByCode, isPieceUnit } from '@zakupki/types';
 import { EyeOff } from 'lucide-react';
 
 import { Highlight } from '@/components/shared/highlight';
@@ -67,13 +67,11 @@ export function ProductCell({
 export function PackSizeCell({
     packAmount,
     packUnit,
-    fallbackUnit,
     unitCode,
     onCommit,
 }: {
     packAmount: string | number | null | undefined;
     packUnit: string | null | undefined;
-    fallbackUnit: string | null | undefined;
     unitCode?: string | null;
     onCommit: (patch: { packAmount?: number | null; packUnit?: string | null }) => void;
 }) {
@@ -84,6 +82,7 @@ export function PackSizeCell({
             </TableCell>
         );
     }
+    const resolvedUnit = packUnit ?? getUnitByCode(unitCode ?? '')?.shortName ?? 'гр';
     return (
         <TableCell className="px-2 py-1 text-right">
             <div className="flex items-center justify-end gap-1">
@@ -97,7 +96,7 @@ export function PackSizeCell({
                     className="w-14"
                 />
                 <PackageUnitSelect
-                    value={packUnit ?? fallbackUnit ?? 'гр'}
+                    value={resolvedUnit}
                     onChange={(v) => onCommit({ packUnit: v })}
                     className="h-7"
                 />

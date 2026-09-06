@@ -78,7 +78,7 @@ function buildStatusBlock(renderer: BotProductRenderer, item: Item, orderLinesSu
         purchase: { fulfillmentStatus: item.purchase.fulfillmentStatus },
         orderLinesSum,
         freeToOrder: computeFreeToOrder(item),
-        unit: item.supplierLimitUnit ?? unitShortName(item),
+        unit: unitShortName(item),
     });
 }
 

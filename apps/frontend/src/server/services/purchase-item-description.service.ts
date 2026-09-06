@@ -105,6 +105,7 @@ export class PurchaseItemDescriptionService {
             currencyName,
             packAmount: item.packAmount != null ? Number(item.packAmount) : null,
             packUnit: item.packUnit,
+            unitCode: item.unitCode,
             orgFeePercent,
             unitPriceRub,
             minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,

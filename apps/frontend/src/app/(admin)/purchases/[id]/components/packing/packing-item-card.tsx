@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { useLocalStorageState } from '@/lib/client/use-local-storage-state';
-import { computePacks, type PackRow } from '@/lib/packing/compute-packs';
+import { computePacks, type PackRow,resolveWeightCutStep } from '@/lib/packing/compute-packs';
 import { cn } from '@/lib/utils';
 
 import type { PurchaseItem } from '../../lib/types';
@@ -28,15 +28,11 @@ export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
     const product = item.product;
     const unitCode = item.unitCode ?? product.unitCode;
 
-    // isWeight: проверяем и unitCode позиции (снапшот, фолбэк — каталог),
-    // и minPackageUnit — на случай, когда нужно резать по упаковке в граммах.
-    const isWeight = isWeightUnit(unitCode) || isWeightUnit(item.minPackageUnit ?? null);
-    const unitShort =
-        normalizeUnitShortName(unitCode) ?? normalizeUnitShortName(item.minPackageUnit ?? null) ?? '';
+    const isWeight = isWeightUnit(unitCode);
+    const unitShort = normalizeUnitShortName(unitCode) ?? '';
 
-    // Размер упаковки — чтобы развернуть целые пачки в эффективное
-    // количество (россыпь): 1 уп. 500 г = +500 г к весу пользователя.
     const packSize = Number(item.packAmount ?? 0);
+    const cutStep = resolveWeightCutStep(item.packAmount != null ? Number(item.packAmount) : null);
 
     // ACTIVE-строки с заказом (россыпь ИЛИ хотя бы одна упаковка).
     const activeOrders = useMemo(
@@ -50,7 +46,10 @@ export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
         [item.orderLines, packSize],
     );
 
-    const packs = useMemo(() => computePacks({ isWeight, orders: activeOrders }), [isWeight, activeOrders]);
+    const packs = useMemo(
+        () => computePacks({ isWeight, packSize: item.packAmount != null ? Number(item.packAmount) : null, orders: activeOrders }),
+        [isWeight, item.packAmount, activeOrders],
+    );
 
     const storageKey = packingKey(purchaseId, item.id);
     const [progress, setProgress] = useLocalStorageState<Record<string, number>>(storageKey, {});
@@ -98,7 +97,9 @@ export function PackingItemCard({ purchaseId, item }: PackingItemCardProps) {
                         secondaryClassName="block truncate text-12-regular text-fg-tertiary"
                     />
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-12-regular text-fg-tertiary">
-                        <span>{isWeight ? 'Весовой — режем по 50' : 'Штучный — по пользователям'}</span>
+                        <span>
+                            {isWeight ? `Весовой — режем по ${cutStep} ${unitShort}` : 'Штучный — по пользователям'}
+                        </span>
                         <span>·</span>
                         <span>
                             Участников: <span className="tabular-nums text-fg-primary">{activeOrders.length}</span>

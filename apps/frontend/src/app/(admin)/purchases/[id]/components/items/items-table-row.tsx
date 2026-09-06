@@ -1,6 +1,7 @@
 'use client';
 
 import {
+    getUnitWord,
     isPieceUnit,
     solvePricePerPackFromPackOrgRub,
     solvePricePerPackFromPackRub,
@@ -91,7 +92,8 @@ export const ItemsTableRow = memo(function ItemsTableRow({
         isActive,
     } = derived;
 
-    const unit = item.packUnit ?? item.minPackageUnit ?? shortName;
+    const unit = shortName;
+    const unitCode = item.unitCode ?? item.product.unitCode;
 
     const onCommit = useCallback((patch: ItemPatch) => onCommitItem(item.id, patch), [item.id, onCommitItem]);
 
@@ -117,7 +119,6 @@ export const ItemsTableRow = memo(function ItemsTableRow({
             <PackSizeCell
                 packAmount={item.packAmount}
                 packUnit={item.packUnit}
-                fallbackUnit={unit}
                 unitCode={item.unitCode ?? item.product.unitCode}
                 onCommit={onCommit}
             />
@@ -208,7 +209,7 @@ export const ItemsTableRow = memo(function ItemsTableRow({
 
             <TableCell className="px-3 text-right text-14-medium tabular-nums text-fg-secondary">
                 {numOrDash(collectedQty)}
-                <span className="ml-1 text-13-regular text-fg-tertiary">{unit || 'ед'}</span>
+                <span className="ml-1 text-13-regular text-fg-tertiary">{getUnitWord(collectedQty, unitCode)}</span>
             </TableCell>
 
             <QtyCell value={item.orderedQty} field="orderedQty" ariaLabel="Заказано" onCommit={onCommit} />

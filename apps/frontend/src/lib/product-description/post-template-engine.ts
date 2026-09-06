@@ -1,12 +1,14 @@
+import { formatQtyUnit } from '@zakupki/types';
+
 import { stripAttributesFromName } from '@/lib/product-label';
 import { formatNumber, formatRubles, isPositive } from '@/lib/utils/format';
 import { escapeHtml } from '@/lib/utils/html';
 
-import type { DescriptionFields } from './types';
 import { normalizeNovelHtml } from './normalize-html';
-import { productDescriptionBuilder } from './product-description-builder';
 import { linesInline } from './paragraphs';
+import { productDescriptionBuilder } from './product-description-builder';
 import { formatStockLine } from './stock-line';
+import type { DescriptionFields } from './types';
 
 export const POST_TEMPLATE_PLACEHOLDERS: { key: string }[] = [
     { key: 'название' },
@@ -138,7 +140,7 @@ export class PostTemplateEngine {
             характеристики: chars.length > 0 ? linesInline(chars.map((c) => `${c.name}: ${c.value}`)) : '',
             мин_фасовка:
                 isPositive(fields.minPackageAmount) && fields.minPackageUnit
-                    ? escapeHtml(`${formatNumber(fields.minPackageAmount)} ${fields.minPackageUnit}`)
+                    ? escapeHtml(formatQtyUnit(Number(fields.minPackageAmount), fields.minPackageUnit))
                     : '',
             цена_за_пачку:
                 isPositive(fields.pricePerPackCurrency) && fields.currencyName
@@ -146,7 +148,7 @@ export class PostTemplateEngine {
                     : '',
             вес_упаковки:
                 isPositive(fields.packAmount) && fields.packUnit
-                    ? escapeHtml(`${formatNumber(fields.packAmount!)} ${fields.packUnit}`)
+                    ? escapeHtml(formatQtyUnit(Number(fields.packAmount), fields.packUnit))
                     : '',
             свободно: formatStockLine(fields) ? escapeHtml(formatStockLine(fields) as string) : '',
             тег: tag ? escapeHtml(tag) : '',
@@ -154,12 +156,13 @@ export class PostTemplateEngine {
             цены: (() => {
                 const u = fields.unitPriceRub;
                 if (!isPositive(u)) return '';
-                const unit = fields.packUnit ?? fields.minPackageUnit ?? '';
-                const lines = [`1 ${unit} - ${formatRubles(u)} руб`];
+                const unit = fields.unitCode ?? fields.packUnit ?? fields.minPackageUnit ?? null;
+                const lines = [`${formatQtyUnit(1, unit)} - ${formatRubles(u)} руб`];
                 const min = fields.minPackageAmount;
                 if (isPositive(min)) {
                     const minTotal = Number(u) * Number(min);
-                    lines.push(`${formatNumber(min)} ${unit} - ${formatRubles(minTotal)} руб`);
+                    const minUnit = fields.minPackageUnit ?? unit;
+                    lines.push(`${formatQtyUnit(Number(min), minUnit)} - ${formatRubles(minTotal)} руб`);
                 }
                 return linesInline(lines);
             })(),
@@ -169,7 +172,10 @@ export class PostTemplateEngine {
                 const unit = fields.packUnit;
                 if (!isPositive(amt) || !unit || !isPositive(u)) return '';
                 const total = Number(u) * Number(amt);
-                return linesInline(['ФАСОВКА ПОСТАВЩИКА:', `${formatNumber(amt)} ${unit} - ${formatRubles(total)} руб`]);
+                return linesInline([
+                    'ФАСОВКА ПОСТАВЩИКА:',
+                    `${formatQtyUnit(Number(amt), unit)} - ${formatRubles(total)} руб`,
+                ]);
             })(),
             цена_со_скидкой_за_пачку:
                 isPositive(fields.pricePerPackCurrency) && fields.currencyName

@@ -30,6 +30,7 @@ export type BotPurchaseOrderDetail = {
         purchaseItem: {
             id: number;
             unitCode: string;
+            packAmount?: string | number | null;
             product: { name: string; unitCode: string } | null;
             purchase: { fulfillmentStatus: string };
         } | null;
