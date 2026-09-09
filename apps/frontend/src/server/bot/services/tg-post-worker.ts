@@ -2,7 +2,8 @@ import type { Prisma, PrismaClient } from '@zakupki/database';
 import { dbClient } from '@zakupki/database';
 import { createLogger } from '@zakupki/logger';
 import type { TgPostJob } from '@zakupki/queue';
-import { getTgPostJobsQueue } from '@zakupki/queue';
+import type { TgPostJobsQueue } from '@zakupki/queue';
+import { getTgPostFastJobsQueue, getTgPostJobsQueue } from '@zakupki/queue';
 import {
     computeRawPool,
     computeUnitPriceRubNewModel,
@@ -24,6 +25,10 @@ import { shopInlineKeyboardForGroup } from '../lib/webapp-url';
 import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 
 const log = createLogger('tg-post-worker');
+
+const SHOP_COMMENT_FIRST_DELAY_MS = 3_000;
+const SHOP_COMMENT_RETRY_DELAY_MS = 10_000;
+const SHOP_COMMENT_MAX_ATTEMPTS = 3;
 
 const ITEM_INCLUDE = {
     product: {
@@ -55,6 +60,17 @@ type Item = Prisma.PurchaseItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
 async function loadPostPhoto(tg: TgClient, item: Item): Promise<ChannelPostPhoto | null> {
     const first = item.product.photos[0];
     return first ? tg.loadPhoto(first) : null;
+}
+
+async function tryEditItemPost(tg: TgClient, renderer: BotProductRenderer, item: Item): Promise<void> {
+    if (!item.tgMessageId || !item.tgChannelId) return;
+    const photo = await loadPostPhoto(tg, item);
+    await tg.editPost(
+        item.tgChannelId,
+        Number(item.tgMessageId),
+        joinPostText(renderer, item, sumOrderLines(item), computeItemUnitPriceRub(item)),
+        photo,
+    );
 }
 
 function buildPostHeader(renderer: BotProductRenderer, item: Item, unitPriceRub: number | null): string {
@@ -143,24 +159,6 @@ function computeItemUnitPriceRub(item: Item): number | null {
     );
 }
 
-async function tryEditItemPost(tg: TgClient, renderer: BotProductRenderer, item: Item): Promise<void> {
-    if (!item.tgMessageId || !item.tgChannelId) return;
-    const hadPhoto = item.product.photos.length > 0;
-    const photo = await loadPostPhoto(tg, item);
-    // Если у поста было фото, но оно не загрузилось — пропускаем, иначе Telegram кидает
-    // "message can't be edited" (caption-пост нельзя отредактировать как text-only).
-    if (hadPhoto && !photo) {
-        log.warn({ itemId: item.id, messageId: item.tgMessageId }, 'photo missing, skipping edit');
-        return;
-    }
-    await tg.editPost(
-        item.tgChannelId,
-        Number(item.tgMessageId),
-        joinPostText(renderer, item, sumOrderLines(item), computeItemUnitPriceRub(item)),
-        photo,
-    );
-}
-
 /**
  * Один воркер для всех операций с постами/комментариями в канале.
  * Пайплайн handler'а: загрузить данные → отрендерить → отправить через TgClient.
@@ -176,57 +174,76 @@ export class TgPostWorker {
 
     setupWorker(): void {
         const queue = getTgPostJobsQueue();
+        const fastQueue = getTgPostFastJobsQueue();
         if (!getChannelIdFromEnv()) {
             log.warn('TG_CHANNEL_ID not set — worker disabled');
             queue.setupWorker({ handler: async () => undefined });
+            fastQueue.setupWorker({ handler: async () => undefined });
             return;
         }
-        queue.setupWorker({
-            handler: async (job) => this.process(job),
-            onFailed: (job, err, final) => {
-                const attempts = job?.opts?.attempts ?? 1;
-                const made = job?.attemptsMade ?? 0;
-                if (final) {
-                    log.error(
-                        { jobId: job?.id, attempts: `${made}/${attempts}`, err, data: job?.data },
-                        'job FAILED (final)',
-                    );
-                } else {
-                    log.warn(
-                        {
-                            jobId: job?.id,
-                            attempts: `${made}/${attempts}`,
-                            err: { name: err.name, message: err.message },
-                            data: job?.data,
-                        },
-                        'job failed, will retry',
-                    );
-                }
-            },
-        });
-        log.info('Worker started');
+        const onFailed: NonNullable<Parameters<TgPostJobsQueue['setupWorker']>[0]['onFailed']> = (
+            job,
+            err,
+            final,
+        ) => {
+            const attempts = job?.opts?.attempts ?? 1;
+            const made = job?.attemptsMade ?? 0;
+            if (final) {
+                log.error(
+                    { jobId: job?.id, attempts: `${made}/${attempts}`, err, data: job?.data },
+                    'job FAILED (final)',
+                );
+            } else {
+                log.warn(
+                    {
+                        jobId: job?.id,
+                        attempts: `${made}/${attempts}`,
+                        err: { name: err.name, message: err.message },
+                        data: job?.data,
+                    },
+                    'job failed, will retry',
+                );
+            }
+        };
+        queue.setupWorker({ handler: (job) => this.process(job), onFailed });
+        fastQueue.setupWorker({ handler: (job) => this.process(job), onFailed });
+        log.info('Worker started (regular + fast lanes)');
     }
 
     private async process(job: { id?: string; data: TgPostJob }): Promise<void> {
-        const ctx = { jobId: job.id, type: job.data.type };
+        const ctx = { queueJobId: job.id, type: job.data.type };
+        const startedAt = Date.now();
         log.debug(ctx, 'job received');
         try {
             switch (job.data.type) {
                 case 'POST_CREATE':
-                    return this.createPost(job.data.itemId);
+                    await this.createPost(job.data.itemId);
+                    break;
                 case 'POST_DELETE':
-                    return this.deletePost(job.data);
+                    await this.deletePost(job.data);
+                    break;
                 case 'USER_ORDERS_REJECT':
-                    return this.rejectUserOrders(job.data.messageIds);
+                    await this.rejectUserOrders(job.data.messageIds);
+                    break;
                 case 'ITEM_CHANGED':
-                    return this.editItemPost(job.data.itemId);
+                    await this.editItemPost(job.data.itemId);
+                    break;
+                case 'SHOP_COMMENT_ATTACH':
+                    await this.attachShopComment(job.data);
+                    break;
                 case 'PURCHASE_FULFILLMENT_CHANGED':
-                    return this.onPurchaseChanged(job.data.purchaseId, 'fulfillment', job.data.next);
+                    await this.fanOutPurchaseItems(job.data.purchaseId, 'fulfillment', job.data.next);
+                    break;
                 case 'PURCHASE_STATUS_CHANGED':
-                    return this.onPurchaseChanged(job.data.purchaseId, 'status', job.data.next);
+                    await this.fanOutPurchaseItems(job.data.purchaseId, 'status', job.data.next);
+                    break;
+                case 'PURCHASE_ITEM_SYNC':
+                    await this.syncPurchaseItem(job.data);
+                    break;
             }
+            log.info({ ...ctx, durationMs: Date.now() - startedAt }, 'job done');
         } catch (err) {
-            log.error({ ...ctx, err }, 'job failed');
+            log.error({ ...ctx, durationMs: Date.now() - startedAt, err }, 'job failed');
             throw err;
         }
     }
@@ -249,6 +266,15 @@ export class TgPostWorker {
         }
 
         const photo = await loadPostPhoto(this.tg, item);
+        log.info(
+            {
+                itemId,
+                purchaseId: item.purchaseId,
+                product: item.product.name,
+                photoBytes: photo?.data.length ?? 0,
+            },
+            'createPost: publishing',
+        );
         const channelId = getChannelIdFromEnv()!;
         const { messageId } = await this.tg.sendPost(
             channelId,
@@ -260,38 +286,78 @@ export class TgPostWorker {
             where: { id: itemId },
             data: { tgMessageId: String(messageId), tgChannelId: channelId, publicationState: 'PUBLISHED' },
         });
+        log.info({ itemId, messageId, channelId }, 'createPost: published and saved');
 
-        // Shop-комментарий в обсуждении: ждём, пока handler is_automatic_forward
-        // проиндексирует discussionMessageId (обычно <1s, но Telegram задерживает доставку).
         const discussionId = await getOrInitDiscussionChatId(this.api);
         if (!discussionId) {
             log.warn({ itemId, messageId }, 'no discussion chat, shop comment skipped');
             return;
         }
-        const autoForwardId = await getDiscussionMessageStore().waitFor(channelId, messageId);
-        log.info(
-            { itemId, messageId, autoForwardId, attached: autoForwardId != null },
-            'createPost: shop comment attempt',
+        await getTgPostJobsQueue().addDelayed(
+            { type: 'SHOP_COMMENT_ATTACH', itemId, attempt: 0 },
+            `shop-comment-${itemId}-0`,
+            SHOP_COMMENT_FIRST_DELAY_MS,
         );
-        if (autoForwardId == null) {
-            log.warn(
-                { itemId, messageId },
-                'createPost: autoforward not indexed in time, shop comment sent unattached',
-            );
+        log.info({ itemId, messageId }, 'createPost: shop comment scheduled');
+    }
+
+    private async attachShopComment(data: Extract<TgPostJob, { type: 'SHOP_COMMENT_ATTACH' }>): Promise<void> {
+        const { itemId, attempt } = data;
+        log.info({ itemId, attempt }, 'attachShopComment: checking autoforward');
+        const item = await this.db.purchaseItem.findUnique({
+            where: { id: itemId },
+            select: { tgMessageId: true, tgChannelId: true },
+        });
+        if (!item?.tgMessageId || !item.tgChannelId) {
+            log.warn({ itemId, attempt }, 'attachShopComment: post missing, skipping');
+            return;
         }
-        await this.tg
-            .sendComment(
+        const discussionId = await getOrInitDiscussionChatId(this.api);
+        if (!discussionId) {
+            log.warn({ itemId, attempt }, 'attachShopComment: no discussion chat');
+            return;
+        }
+
+        const channelId = getChannelIdFromEnv()!;
+        const autoForwardId = await getDiscussionMessageStore().get(channelId, Number(item.tgMessageId));
+        if (autoForwardId != null) {
+            await this.tg.sendComment(
                 discussionId,
                 this.renderer.shopCommentText,
-                autoForwardId ?? undefined,
+                autoForwardId,
                 shopInlineKeyboardForGroup(),
-            )
-            .catch((err) => log.error({ itemId, messageId, err }, 'shop comment failed'));
+            );
+            log.info({ itemId, messageId: item.tgMessageId, autoForwardId, attempt }, 'attachShopComment: attached');
+            return;
+        }
 
-        log.info({ itemId, messageId }, 'createPost done');
+        if (attempt < SHOP_COMMENT_MAX_ATTEMPTS) {
+            await getTgPostJobsQueue().addDelayed(
+                { type: 'SHOP_COMMENT_ATTACH', itemId, attempt: attempt + 1 },
+                `shop-comment-${itemId}-${attempt + 1}`,
+                SHOP_COMMENT_RETRY_DELAY_MS,
+            );
+            log.info(
+                { itemId, messageId: item.tgMessageId, attempt },
+                'attachShopComment: autoforward not indexed yet, requeued',
+            );
+            return;
+        }
+
+        log.warn(
+            { itemId, messageId: item.tgMessageId, attempt },
+            'attachShopComment: autoforward not indexed in time, shop comment sent unattached',
+        );
+        await this.tg.sendComment(
+            discussionId,
+            this.renderer.shopCommentText,
+            undefined,
+            shopInlineKeyboardForGroup(),
+        );
     }
 
     private async deletePost(job: Extract<TgPostJob, { type: 'POST_DELETE' }>): Promise<void> {
+        log.info({ itemId: job.itemId, channelId: job.channelId, messageId: job.messageId }, 'deletePost: start');
         let channelId = job.channelId ?? null;
         let messageId = job.messageId ?? null;
         if (!channelId || !messageId) {
@@ -313,6 +379,7 @@ export class TgPostWorker {
     // ── Реакции ────────────────────────────────────────────────
 
     private async rejectUserOrders(messageIds: string[]): Promise<void> {
+        log.info({ count: messageIds.length }, 'rejectUserOrders: start');
         const ordersChatId = getOrdersChatIdFromEnv();
         if (!ordersChatId) {
             log.warn('rejectUserOrders: no orders chat configured');
@@ -333,6 +400,7 @@ export class TgPostWorker {
     // ── Посты: редактирование ─────────────────────────────────
 
     private async editItemPost(itemId: number): Promise<void> {
+        log.info({ itemId }, 'editItemPost: start');
         const item = await this.db.purchaseItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
         if (!item) {
             log.warn({ itemId }, 'editItemPost: item not found');
@@ -362,54 +430,55 @@ export class TgPostWorker {
 
     // ── Закупка: статус изменился ─────────────────────────────
 
-    private async onPurchaseChanged(
+    private async fanOutPurchaseItems(
         purchaseId: number,
         kind: 'fulfillment' | 'status',
         next: string,
     ): Promise<void> {
-        const purchase = await this.db.purchase.findUnique({
-            where: { id: purchaseId },
-            include: { items: { include: ITEM_INCLUDE } },
+        log.info({ purchaseId, kind, next }, 'fanOutPurchaseItems: start');
+        const items = await this.db.purchaseItem.findMany({
+            where: { purchaseId, tgMessageId: { not: null }, hidden: false },
+            select: { id: true },
         });
-        if (!purchase) {
-            log.warn({ purchaseId }, 'onPurchaseChanged: purchase not found');
+        const queue = getTgPostJobsQueue();
+        for (const item of items) {
+            await queue.addImmediate(
+                { type: 'PURCHASE_ITEM_SYNC', purchaseId, itemId: item.id, kind, next },
+                `purchase-sync-${purchaseId}-${item.id}-${kind}`,
+            );
+        }
+        log.info({ purchaseId, kind, next, items: items.length }, 'fanOutPurchaseItems done');
+    }
+
+    private async syncPurchaseItem(data: Extract<TgPostJob, { type: 'PURCHASE_ITEM_SYNC' }>): Promise<void> {
+        const { purchaseId, itemId, kind, next } = data;
+        log.info({ purchaseId, itemId, kind, next }, 'syncPurchaseItem: start');
+        const item = await this.db.purchaseItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+        if (!item) {
+            log.warn({ itemId }, 'syncPurchaseItem: item not found');
+            return;
+        }
+        if (!item.tgMessageId || item.hidden) {
+            log.info({ itemId }, 'syncPurchaseItem: no post or hidden, skip');
             return;
         }
 
-        let postsEdited = 0;
-        for (const item of purchase.items) {
-            if (!item.tgMessageId) continue;
-            if (item.hidden) continue;
-            await tryEditItemPost(this.tg, this.renderer, item);
-            postsEdited++;
-        }
+        await tryEditItemPost(this.tg, this.renderer, item);
 
-        const channelId = getChannelIdFromEnv()!;
         const discussionId = await getOrInitDiscussionChatId(this.api);
         if (!discussionId) {
-            log.warn({ purchaseId, kind, next, postsEdited }, 'onPurchaseChanged: no discussion chat');
+            log.warn({ purchaseId, itemId, kind }, 'syncPurchaseItem: no discussion chat');
             return;
         }
-
-        const store = getDiscussionMessageStore();
-        let commentsSent = 0;
-        for (const item of purchase.items) {
-            if (!item.tgMessageId) continue;
-            if (item.hidden) continue;
-            const postId = Number(item.tgMessageId);
-            const autoForwardId = await store.get(channelId, postId);
-            const data = { status: next, channelPostMessageId: postId };
-            const text =
-                kind === 'fulfillment'
-                    ? this.renderer.buildFulfillmentComment(data)
-                    : this.renderer.buildPurchaseStatusComment(data);
-            if (!text) continue;
-            await this.tg.sendComment(discussionId, text, autoForwardId ?? undefined);
-            commentsSent++;
-        }
-        log.info(
-            { purchaseId, kind, next, items: purchase.items.length, postsEdited, commentsSent },
-            'onPurchaseChanged done',
-        );
+        const channelId = getChannelIdFromEnv()!;
+        const autoForwardId = await getDiscussionMessageStore().get(channelId, Number(item.tgMessageId));
+        const commentData = { status: next, channelPostMessageId: Number(item.tgMessageId) };
+        const text =
+            kind === 'fulfillment'
+                ? this.renderer.buildFulfillmentComment(commentData)
+                : this.renderer.buildPurchaseStatusComment(commentData);
+        if (!text) return;
+        await this.tg.sendComment(discussionId, text, autoForwardId ?? undefined);
+        log.info({ purchaseId, itemId, kind, next }, 'syncPurchaseItem done');
     }
 }

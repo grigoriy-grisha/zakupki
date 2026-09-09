@@ -1,4 +1,4 @@
-import { getTgPostJobsQueue, type TgPostJobsQueue } from './queues/tg-post-jobs';
+import { getTgPostFastJobsQueue, getTgPostJobsQueue, type TgPostJobsQueue } from './queues/tg-post-jobs';
 
 /**
  * Тонкая обёртка над tg-post-jobs очередью. Сервисы вызывают emit-методы,
@@ -10,14 +10,17 @@ import { getTgPostJobsQueue, type TgPostJobsQueue } from './queues/tg-post-jobs'
  *     window = 7s. BullMQ jobId обеспечивает coalesce.
  */
 export class EventBus {
-    constructor(private readonly queue: TgPostJobsQueue = getTgPostJobsQueue()) {}
+    constructor(
+        private readonly queue: TgPostJobsQueue = getTgPostJobsQueue(),
+        private readonly fastQueue: TgPostJobsQueue = getTgPostFastJobsQueue(),
+    ) {}
 
     emitPostCreate(itemId: number) {
-        return this.queue.addImmediate({ type: 'POST_CREATE', itemId }, `post-create-${itemId}`);
+        return this.fastQueue.addImmediate({ type: 'POST_CREATE', itemId }, `post-create-${itemId}`);
     }
 
     emitPostDelete(itemId: number, messageId?: string, channelId?: string) {
-        return this.queue.addImmediate(
+        return this.fastQueue.addImmediate(
             { type: 'POST_DELETE', itemId, messageId, channelId },
             `post-delete-${itemId}`,
         );

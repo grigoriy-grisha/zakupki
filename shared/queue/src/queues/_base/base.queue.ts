@@ -1,6 +1,9 @@
+import { createLogger } from '@zakupki/logger';
 import type { Job, Processor, QueueOptions, WorkerOptions } from 'bullmq';
 import { Queue, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
+
+const log = createLogger('queue');
 
 export type BaseQueueOptions = {
     queueOptions?: Partial<QueueOptions>;
@@ -34,6 +37,14 @@ export abstract class BaseQueue<DataType = unknown, ResultType = unknown, NameTy
         if (this.worker) throw new Error('Worker is already initialized');
 
         this.worker = new Worker<DataType, ResultType, NameType>(this.queue.name, handler, this.workerConfig);
+        log.info(
+            {
+                queue: this.queue.name,
+                concurrency: this.workerConfig.concurrency ?? 1,
+                limiter: this.workerConfig.limiter ?? null,
+            },
+            'worker started',
+        );
 
         if (onCompleted) {
             this.worker.on('completed', onCompleted);

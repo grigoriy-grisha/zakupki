@@ -1,14 +1,17 @@
+import { createLogger } from '@zakupki/logger';
 import type { Redis } from 'ioredis';
 
 import { BaseQueue } from '../_base/base.queue';
 import type { TgPostJob } from './tg-post-jobs.types';
 
+const log = createLogger('tg-post-queue');
+
 const QUEUE_NAME = 'tg-post-jobs';
 const DEBOUNCE_MS = 7_000;
 
 export class TgPostJobsQueue extends BaseQueue<TgPostJob> {
-    constructor(connection: Redis) {
-        super(QUEUE_NAME, connection, {
+    constructor(connection: Redis, queueName: string = QUEUE_NAME) {
+        super(queueName, connection, {
             workerOptions: {
                 concurrency: 1,
                 limiter: { max: 10, duration: 30_000 },
@@ -26,16 +29,35 @@ export class TgPostJobsQueue extends BaseQueue<TgPostJob> {
      * трогаем — сворачивание дублей «в полёте» сохраняется.
      */
     async addImmediate(data: TgPostJob, jobId?: string) {
+        let replacedExisting = false;
         if (jobId) {
-            await this.removeExistingNonActive(jobId);
+            replacedExisting = await this.removeExistingNonActive(jobId);
         }
-        return this.queue.add('tg-post-job', data, {
+        const job = await this.queue.add('tg-post-job', data, {
             jobId,
             attempts: 5,
             backoff: { type: 'exponential', delay: 2000, jitter: 0.5 },
             removeOnComplete: 500,
             removeOnFail: 1000,
         });
+        log.info(
+            { queue: this.queue.name, jobId: job.id, type: data.type, replacedExisting },
+            'job enqueued (immediate)',
+        );
+        return job;
+    }
+
+    async addDelayed(data: TgPostJob, jobId: string, delayMs: number) {
+        const job = await this.queue.add('tg-post-job', data, {
+            jobId,
+            delay: delayMs,
+            attempts: 5,
+            backoff: { type: 'exponential', delay: 2000, jitter: 0.5 },
+            removeOnComplete: 500,
+            removeOnFail: 1000,
+        });
+        log.info({ queue: this.queue.name, jobId: job.id, type: data.type, delayMs }, 'job enqueued (delayed)');
+        return job;
     }
 
     /**
@@ -44,9 +66,9 @@ export class TgPostJobsQueue extends BaseQueue<TgPostJob> {
      * ПОСЛЕДНЕГО emit'а.
      */
     async addDebounced(jobId: string, data: TgPostJob) {
-        await this.removeExistingNonActive(jobId);
+        const replacedExisting = await this.removeExistingNonActive(jobId);
 
-        return this.queue.add('tg-post-job', data, {
+        const job = await this.queue.add('tg-post-job', data, {
             jobId,
             delay: DEBOUNCE_MS,
             attempts: 5,
@@ -54,6 +76,11 @@ export class TgPostJobsQueue extends BaseQueue<TgPostJob> {
             removeOnComplete: 500,
             removeOnFail: 1000,
         });
+        log.info(
+            { queue: this.queue.name, jobId: job.id, type: data.type, debounceMs: DEBOUNCE_MS, replacedExisting },
+            'job enqueued (debounced)',
+        );
+        return job;
     }
 
     /**
@@ -64,12 +91,14 @@ export class TgPostJobsQueue extends BaseQueue<TgPostJob> {
      * с тем же jobId и новый worker handler не запустится (обновления
      * постов «зависают», републикация молча теряется).
      */
-    private async removeExistingNonActive(jobId: string): Promise<void> {
+    private async removeExistingNonActive(jobId: string): Promise<boolean> {
         const existing = await this.queue.getJob(jobId);
-        if (!existing) return;
+        if (!existing) return false;
         const state = await existing.getState();
         if (state !== 'active') {
             await existing.remove();
+            return true;
         }
+        return false;
     }
 }

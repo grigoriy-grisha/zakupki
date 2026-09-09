@@ -225,6 +225,9 @@ importers:
 
   shared/queue:
     dependencies:
+      '@zakupki/logger':
+        specifier: workspace:*
+        version: link:../logger
       bullmq:
         specifier: ^5.47.2
         version: 5.77.3

@@ -41,6 +41,9 @@ export class ChannelPostShopCommentHandler implements MessageHandler {
         const channelId = getChannelIdFromEnv();
         if (!channelId) return;
         await getDiscussionMessageStore().set(channelId, channelPostId, ctx.message.message_id);
-        log.debug({ channelPostId, discussionMessageId: ctx.message.message_id }, 'indexed');
+        log.info(
+            { channelPostId, discussionMessageId: ctx.message.message_id, discussionChatId: ctx.chat.id },
+            'auto-forward indexed',
+        );
     }
 }

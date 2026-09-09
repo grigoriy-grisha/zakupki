@@ -43,11 +43,14 @@ export class TgClient {
                 caption,
                 parse_mode: 'HTML',
             });
-            log.info({ chatId, messageId: msg.message_id, kind: 'photo' }, 'sendPost');
+            log.info(
+                { chatId, messageId: msg.message_id, kind: 'photo', captionLen: caption.length, photoBytes: photo.data.length },
+                'sendPost',
+            );
             return { messageId: msg.message_id };
         }
         const msg = await this.api.sendMessage(chatId, text.slice(0, TELEGRAM_MESSAGE_MAX), HTML_OPTS);
-        log.info({ chatId, messageId: msg.message_id, kind: 'text' }, 'sendPost');
+        log.info({ chatId, messageId: msg.message_id, kind: 'text', textLen: text.length }, 'sendPost');
         return { messageId: msg.message_id };
     }
 
@@ -67,14 +70,30 @@ export class TgClient {
                     caption: text.slice(0, TELEGRAM_CAPTION_MAX),
                     parse_mode: 'HTML',
                 });
-                log.info({ chatId, messageId, kind: 'caption' }, 'editPost');
+                log.info(
+                    { chatId, messageId, kind: 'caption', captionLen: text.length, photoBytes: photo.data.length },
+                    'editPost',
+                );
                 return;
             }
             await this.api.editMessageText(chatId, messageId, text.slice(0, TELEGRAM_MESSAGE_MAX), HTML_OPTS);
-            log.info({ chatId, messageId, kind: 'text' }, 'editPost');
+            log.info({ chatId, messageId, kind: 'text', textLen: text.length }, 'editPost');
         } catch (err) {
             if (err instanceof GrammyError && err.description.includes('message is not modified')) {
                 log.debug({ chatId, messageId }, 'editPost: content unchanged, skip');
+                return;
+            }
+            if (err instanceof GrammyError && err.description.includes('no caption in the message to edit')) {
+                await this.api.editMessageText(chatId, messageId, text.slice(0, TELEGRAM_MESSAGE_MAX), HTML_OPTS);
+                log.warn({ chatId, messageId }, 'editPost: post is text, edited as text (photo requires republish)');
+                return;
+            }
+            if (err instanceof GrammyError && err.description.includes('no text in the message to edit')) {
+                await this.api.editMessageCaption(chatId, messageId, {
+                    caption: text.slice(0, TELEGRAM_CAPTION_MAX),
+                    parse_mode: 'HTML',
+                });
+                log.warn({ chatId, messageId }, 'editPost: post has photo, edited caption only');
                 return;
             }
             throw err;
@@ -114,7 +133,10 @@ export class TgClient {
             ...(replyToMessageId != null ? { reply_parameters: { message_id: replyToMessageId } } : {}),
             ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         });
-        log.info({ chatId, replyToMessageId, len: text.length }, 'sendComment');
+        log.info(
+            { chatId, replyToMessageId, len: text.length, keyboard: !!replyMarkup, attached: replyToMessageId != null },
+            'sendComment',
+        );
     }
 
     // ── Личные сообщения (DM) ──────────────────────────────────────
@@ -155,9 +177,10 @@ export class TgClient {
         try {
             const data = await loadProductPhoto(photo.objectKey);
             if (data?.length) {
-                log.debug({ photoId: photo.id, source: 'storage' }, 'photo loaded');
+                log.info({ photoId: photo.id, source: 'storage', bytes: data.length }, 'photo loaded');
                 return warnIfUnsupportedPhoto({ data, mimeType: photo.mimeType || 'image/jpeg' }, photo.id);
             }
+            log.warn({ photoId: photo.id, source: 'storage' }, 'photo empty in storage, trying webapp fallback');
         } catch (err) {
             log.warn({ photoId: photo.id, err }, 'loadProductPhoto failed');
         }
@@ -168,11 +191,11 @@ export class TgClient {
                 const resp = await fetch(`${webappUrl}/api/photos/${photo.id}`);
                 if (resp.ok) {
                     const arrayBuf = await resp.arrayBuffer();
-                    log.debug({ photoId: photo.id, source: 'webapp' }, 'photo loaded');
+                    log.info({ photoId: photo.id, source: 'webapp', bytes: arrayBuf.byteLength }, 'photo loaded');
                     const loaded = { data: Buffer.from(arrayBuf), mimeType: photo.mimeType || 'image/jpeg' };
                     return warnIfUnsupportedPhoto(loaded, photo.id);
                 }
-                log.warn({ photoId: photo.id, status: resp.status }, 'webapp photo fetch failed');
+                log.warn({ photoId: photo.id, source: 'webapp', status: resp.status }, 'webapp photo fetch failed');
             } catch (err) {
                 log.warn({ photoId: photo.id, err }, 'webapp photo fetch error');
             }
