@@ -221,7 +221,9 @@ export class PurchaseService {
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
 
         if (pricingChanged) {
-            await this.recalculateAmounts(item.purchaseId);
+            // Правка цены одного товара не меняет суммы заказов других товаров —
+            // пересчитываем только его; пост перерендерится через fast-очередь ниже.
+            await this.recalculateAmounts(item.purchaseId, purchaseItemId);
         }
 
         if (hidingPublishedItem) {
@@ -410,8 +412,12 @@ export class PurchaseService {
      * Вызывается после изменения цены админом (priceOverride, priceTiers).
      * После пересчёта эмитит `emitPurchaseItemChanged` для каждого item — воркер
      * перерендерит пост в канале (включая «Свободно к заказу»).
+     *
+     * @param onlyItemId ограничить пересчёт одним товаром (правка цены одного
+     * товара не влияет на суммы заказов других товаров). Каскадные эмиты при
+     * этом не рассылаются — вызывающий сам эмитит изменённый товар.
      */
-    async recalculateAmounts(purchaseId: number) {
+    async recalculateAmounts(purchaseId: number, onlyItemId?: number) {
         const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
 
@@ -424,6 +430,7 @@ export class PurchaseService {
         const touchedItemIds = new Set<number>();
         const changedByUser = new Map<number, { prev: number; next: number }>();
         for (const item of purchase.items) {
+            if (onlyItemId != null && item.id !== onlyItemId) continue;
             // Доменный PurchaseItem для canonical-прайсинга. getById не вкладывает
             // purchase в каждый item — инжектим fulfillmentStatus из родителя.
             const domainItem = mapToPurchaseItem(
@@ -456,6 +463,7 @@ export class PurchaseService {
             if (touched) touchedItemIds.add(item.id);
         }
 
+        if (onlyItemId != null) return;
         await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
         await this.notifyAmountRecalculated(purchase.id, purchase.tag, changedByUser);
     }
