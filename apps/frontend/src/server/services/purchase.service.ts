@@ -221,8 +221,6 @@ export class PurchaseService {
         await this.repo.updatePurchaseItem(purchaseItemId, itemUpdate);
 
         if (pricingChanged) {
-            // Правка цены одного товара не меняет суммы заказов других товаров —
-            // пересчитываем только его; пост перерендерится через fast-очередь ниже.
             await this.recalculateAmounts(item.purchaseId, purchaseItemId);
         }
 
@@ -412,10 +410,6 @@ export class PurchaseService {
      * Вызывается после изменения цены админом (priceOverride, priceTiers).
      * После пересчёта эмитит `emitPurchaseItemChanged` для каждого item — воркер
      * перерендерит пост в канале (включая «Свободно к заказу»).
-     *
-     * @param onlyItemId ограничить пересчёт одним товаром (правка цены одного
-     * товара не влияет на суммы заказов других товаров). Каскадные эмиты при
-     * этом не рассылаются — вызывающий сам эмитит изменённый товар.
      */
     async recalculateAmounts(purchaseId: number, onlyItemId?: number) {
         const purchase = await this.repo.getById(purchaseId, true);
