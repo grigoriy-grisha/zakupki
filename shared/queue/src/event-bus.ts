@@ -34,6 +34,10 @@ export class EventBus {
         return this.queue.addDebounced(`item-${itemId}`, { type: 'ITEM_CHANGED', itemId });
     }
 
+    emitPurchaseItemChangedFast(itemId: number) {
+        return this.fastQueue.addDebounced(`item-${itemId}`, { type: 'ITEM_CHANGED', itemId });
+    }
+
     /** @deprecated алиас для emitItemChanged (обратная совместимость). */
     emitPurchaseItemChanged(itemId: number) {
         return this.emitItemChanged(itemId);

@@ -50,7 +50,7 @@ export class PurchaseItemDescriptionService {
         }
 
         await this.repo.updatePurchaseItem(purchaseItemId, { description: description || null });
-        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        await this.eventBus.emitPurchaseItemChangedFast(purchaseItemId);
     }
 
     private async buildDescriptionFields(item: ItemForDescription): Promise<DescriptionFields> {

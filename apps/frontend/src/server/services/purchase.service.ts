@@ -231,7 +231,7 @@ export class PurchaseService {
                 item.tgChannelId ?? undefined,
             );
         } else {
-            await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+            await this.eventBus.emitPurchaseItemChangedFast(purchaseItemId);
         }
 
         return item;
@@ -391,7 +391,13 @@ export class PurchaseService {
         const result = await this.repo.setAvailableQuantities(purchaseId, items);
         // targetRemainder/supplementStep влияют на статусный блок поста — emit'им обновление
         // для каждого item (попадает в debounce 7s в шине channel-post-events).
-        await Promise.all(items.map((i) => this.eventBus.emitPurchaseItemChanged(i.purchaseItemId)));
+        await Promise.all(
+            items.map((i) =>
+                items.length <= 20
+                    ? this.eventBus.emitPurchaseItemChangedFast(i.purchaseItemId)
+                    : this.eventBus.emitPurchaseItemChanged(i.purchaseItemId),
+            ),
+        );
         return result;
     }
 

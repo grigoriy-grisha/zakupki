@@ -32,7 +32,7 @@ export class ProductService {
             where: { productId: id, tgMessageId: { not: null } },
             select: { id: true },
         });
-        await Promise.all(linkedItems.map((it) => this.eventBus.emitPurchaseItemChanged(it.id)));
+        await Promise.all(linkedItems.map((it) => this.eventBus.emitPurchaseItemChangedFast(it.id)));
 
         return result;
     }
