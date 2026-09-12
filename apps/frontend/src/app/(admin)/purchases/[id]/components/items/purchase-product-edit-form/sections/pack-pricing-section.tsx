@@ -30,9 +30,19 @@ export const GRAM_DEFAULT_MIN_PACKAGE = 5;
 export const GRAM_DEFAULT_SUPPLEMENT_STEP = 10;
 export const GRAM_UNIT = 'гр';
 
+/** Опции «Единица товара»: значения — коды единиц (piece и piece_pack
+ * различаются только кодом), подписи админские. */
+const UNIT_OPTIONS = [
+    { value: 'gram', label: 'гр' },
+    { value: 'piece', label: 'Штуки' },
+    { value: 'tube', label: 'Туба' },
+    { value: 'piece_pack', label: 'Штуки (фасовка)' },
+] as const;
+
 const PIECE_SECTION_TITLES: Record<string, string> = {
-    шт: 'Цена за штуку',
-    туба: 'Цена за тубу',
+    piece: 'Цена за штуку',
+    tube: 'Цена за тубу',
+    piece_pack: 'Цена за штуку',
 };
 
 interface CurrencyRow {
@@ -83,8 +93,14 @@ export function PackPricingSection({
     unitWarning,
     priceNote,
 }: PackPricingSectionProps) {
-    const isWeight = resolveUnit(unit)?.kind === 'WEIGHT';
-    const sectionTitle = isWeight ? 'Цена за упаковку' : (PIECE_SECTION_TITLES[unit] ?? 'Цена за единицу');
+    const unitDef = resolveUnit(unit);
+    const isWeight = unitDef?.kind === 'WEIGHT';
+    const unitShort = unitDef?.shortName ?? unit;
+    const sectionTitle = isWeight
+        ? unitDef?.code === 'piece_pack'
+            ? 'Цена за штуку (упаковками)'
+            : 'Цена за упаковку'
+        : (PIECE_SECTION_TITLES[unitDef?.code ?? unit] ?? 'Цена за единицу');
 
     const rateToRub = resolveCurrencyRate(
         (currencyRates ?? []).map((r) => ({
@@ -120,7 +136,7 @@ export function PackPricingSection({
         <FormSection card title={sectionTitle}>
             <div className="shrink-0">
                 <label className="mb-1 block text-13-regular text-fg-tertiary">Единица товара</label>
-                <PackageUnitSelect value={unit} onChange={onUnitChange} className="h-9 rounded-xl" />
+                <PackageUnitSelect value={unit} onChange={onUnitChange} options={UNIT_OPTIONS} className="h-9 rounded-xl" />
                 {unitWarning && <p className="mt-1.5 text-12-regular text-warning">{unitWarning}</p>}
             </div>
 
@@ -170,7 +186,9 @@ export function PackPricingSection({
             {isWeight && (
                 <div className="mt-3 flex items-end gap-2">
                     <div className="w-32 shrink-0">
-                        <label className="mb-1 block text-13-regular text-fg-tertiary">Вес упаковки</label>
+                        <label className="mb-1 block text-13-regular text-fg-tertiary">
+                            {unitDef?.code === 'piece_pack' ? 'Упаковка, шт' : 'Вес упаковки'}
+                        </label>
                         <Input
                             type="number"
                             step="0.001"
@@ -183,10 +201,10 @@ export function PackPricingSection({
                                 onPackAmountChange(raw === '' ? null : Number(raw));
                             }}
                             placeholder="0"
-                            aria-label="Вес упаковки"
+                            aria-label={unitDef?.code === 'piece_pack' ? 'Размер упаковки в штуках' : 'Вес упаковки'}
                         />
                     </div>
-                    <span className="pb-2.5 text-13-regular text-fg-tertiary">{unit}</span>
+                    <span className="pb-2.5 text-13-regular text-fg-tertiary">{unitShort}</span>
                 </div>
             )}
 
@@ -306,7 +324,7 @@ export function PackPricingSection({
             <p className="mt-3 text-13-regular text-fg-tertiary">
                 {isWeight
                     ? 'Поля связаны: введи цену в валюте или в любой рублёвой — остальные пересчитаются. Курс валюты задаётся в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.'
-                    : `Цена указывается за 1 ${unit}. Курс валюты задаётся в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.`}
+                    : `Цена указывается за 1 ${unitShort}. Курс валюты задаётся в панели «Валюты закупки», оргсбор и доставка — процентом от базовой цены.`}
             </p>
         </FormSection>
     );

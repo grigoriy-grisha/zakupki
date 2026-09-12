@@ -2,7 +2,8 @@ import { UNITS } from '@zakupki/types';
 import { z } from 'zod';
 
 export const UNIT_CODES = UNITS.map((u) => u.code) as [string, ...string[]];
-export const PACKAGE_UNITS = UNITS.map((u) => u.shortName) as [string, ...string[]];
+// Без дублей: у piece и piece_pack одинаковый shortName «шт».
+export const PACKAGE_UNITS = [...new Set(UNITS.map((u) => u.shortName))] as [string, ...string[]];
 export type PackageUnit = (typeof PACKAGE_UNITS)[number];
 
 /**

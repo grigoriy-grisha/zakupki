@@ -1,4 +1,5 @@
 import { RoleKind } from '@zakupki/database';
+import { PRODUCT_UNIT_CODES } from '@zakupki/types';
 import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
@@ -41,7 +42,7 @@ const purchaseItemFieldsSchema = z.object({
     reorderedQty: z.number().nullable().optional(),
     adminComment: z.string().max(2000).nullable().optional(),
     hidden: z.boolean().optional(),
-    productUnitCode: z.enum(['gram', 'piece', 'tube']).optional(),
+    productUnitCode: z.enum(PRODUCT_UNIT_CODES).optional(),
     characteristics: z.array(productCharacteristicInputSchema).optional(),
 });
 

@@ -1,5 +1,6 @@
 import {
     formatUnitQty,
+    getUnitByCode,
     getUnitPrepositional,
     isSupplementPhase,
     isWeightUnit,
@@ -12,24 +13,39 @@ const GENERAL_QUANTITY_HINT =
 const GENERAL_QUANTITY_HINT_PIECE =
     'Напишите количество числом. Например:\n• 2 — добавить 2\n• +2 — добавить 2\n• -1 — убрать 1';
 
-const DOBOR_QUANTITY_HINT = [
-    'На этапе «Добор» можно добавить только:',
-    '• остаток бисера до полной пачки поставщика — указывайте нужное количество в граммах, кратное минимальной фасовке;',
-    '• целую пачку поставщика — указывайте количество с буквой «п».',
-    'Например: 1п — 1 упаковка (пакет), 2п — 2 упаковки, 3п — 3 упаковки.',
-    '❗️ Просто цифра без буквы «п» считается количеством в граммах.',
-    'То есть:',
-    '10 = 10 гр',
-    '1п = 1 целая пачка поставщика',
-].join('\n');
+function weightPrepositional(unitCode: string | null | undefined): string {
+    return getUnitPrepositional(unitCode) ?? 'граммах';
+}
 
-const PAYMENT_QUANTITY_HINT = [
-    '‼️ Пора оплачивать заказ ‼️',
-    '',
-    'На этом этапе можно добавить только остатки бисера до полной пачки поставщика.',
-    'Указывайте нужное количество в граммах (кратно минимальной фасовке)',
-    'Например: 5 = 5 гр, 10 = 10 гр, 20 = 20 гр.',
-].join('\n');
+function weightShort(unitCode: string | null | undefined): string {
+    return getUnitByCode(unitCode ?? '')?.shortName ?? 'гр';
+}
+
+function doborWeightHint(unitCode: string | null | undefined): string {
+    const prep = weightPrepositional(unitCode);
+    const short = weightShort(unitCode);
+    return [
+        'На этапе «Добор» можно добавить только:',
+        `• остаток до полной пачки поставщика — указывайте нужное количество в ${prep}, кратное минимальной фасовке;`,
+        '• целую пачку поставщика — указывайте количество с буквой «п».',
+        'Например: 1п — 1 упаковка (пакет), 2п — 2 упаковки, 3п — 3 упаковки.',
+        `❗️ Просто цифра без буквы «п» считается количеством в ${prep}.`,
+        'То есть:',
+        `10 = 10 ${short}`,
+        '1п = 1 целая пачка поставщика',
+    ].join('\n');
+}
+
+function paymentWeightHint(unitCode: string | null | undefined): string {
+    const short = weightShort(unitCode);
+    return [
+        '‼️ Пора оплачивать заказ ‼️',
+        '',
+        'На этом этапе можно добавить только остатки до полной пачки поставщика.',
+        `Указывайте нужное количество в ${weightPrepositional(unitCode)} (кратно минимальной фасовке)`,
+        `Например: 5 = 5 ${short}, 10 = 10 ${short}, 20 = 20 ${short}.`,
+    ].join('\n');
+}
 
 function doborPieceHint(unitCode: string | null | undefined): string {
     return [
@@ -59,10 +75,10 @@ export function getOrderQuantityHint(fulfillmentStatus: string | null | undefine
     const status = fulfillmentStatus ?? '';
     const weight = unitCode == null ? true : isWeightUnit(unitCode);
     if (isPaymentPhase(status)) {
-        return weight ? PAYMENT_QUANTITY_HINT : paymentPieceHint(unitCode);
+        return weight ? paymentWeightHint(unitCode) : paymentPieceHint(unitCode);
     }
     if (isSupplementPhase(status)) {
-        return weight ? DOBOR_QUANTITY_HINT : doborPieceHint(unitCode);
+        return weight ? doborWeightHint(unitCode) : doborPieceHint(unitCode);
     }
     return weight ? GENERAL_QUANTITY_HINT : GENERAL_QUANTITY_HINT_PIECE;
 }

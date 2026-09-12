@@ -1,6 +1,6 @@
-import { normalizeNovelHtml } from '@/lib/product-description';
+import { resolveUnit } from '@zakupki/types';
 
-import { GRAM_UNIT } from './sections/pack-pricing-section';
+import { normalizeNovelHtml } from '@/lib/product-description';
 
 export function toNum(v: string | number | null | undefined): number | null {
     if (v == null || v === '') return null;
@@ -12,6 +12,7 @@ export function roundCurrency4(value: number): number {
     return Math.round(value * 10000) / 10000;
 }
 
+/** Дефолт фасовки/шага для weight-единиц (gram и piece_pack). */
 export function gramsOrDefault(
     saved: string | number | null | undefined,
     unit: string | null | undefined,
@@ -19,7 +20,7 @@ export function gramsOrDefault(
 ): number | null {
     const num = toNum(saved);
     if (num != null) return num;
-    return unit === GRAM_UNIT ? gramDefault : null;
+    return resolveUnit(unit)?.kind === 'WEIGHT' ? gramDefault : null;
 }
 
 export function mergeTemplateIntoDescription(current: string, prevAuto: string | null, nextAuto: string): string {

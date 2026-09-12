@@ -1,3 +1,4 @@
+import { isWeightUnit, resolveUnit } from '@zakupki/types';
 import type ExcelJS from 'exceljs';
 
 import type { AttributeTypeMeta } from '@/lib/product-label';
@@ -40,12 +41,13 @@ const ORDERS_EXPORT_PRICE_HEADERS = [
     'цена за 1 гр. в рублях',
 ] as const;
 
-function isGramItem(
+/** Весовые единицы (gram и piece_pack) участвуют в разбивке «россыпь / целая пачка». */
+function isWeightItem(
     purchaseItem: { unitCode?: string | null } | undefined,
     product: ExportProduct | undefined,
 ): boolean {
     const unitCode = purchaseItem?.unitCode ?? product?.unitCode;
-    return unitCode?.toLowerCase() === 'gram';
+    return isWeightUnit(unitCode);
 }
 
 function isFullPackOrder(
@@ -87,9 +89,11 @@ function formatSupplierPackage(item?: { packAmount?: unknown; packUnit?: string 
     if (!item || item.packAmount == null) return '';
     const amount = Number(item.packAmount);
     const unit = item.packUnit?.trim();
-    if (unit === 'гр' || unit === 'г') return amount;
     if (!unit) return amount;
-    return `${amount} ${unit}`;
+    const def = resolveUnit(unit);
+    if (!def) return `${amount} ${unit}`;
+    // Граммы — голое число (исторический формат листа), остальные — с единицей.
+    return def.code === 'gram' ? amount : `${amount} ${def.shortName}`;
 }
 
 function participantBlockTitle(participant: ExportParticipant): ExcelJS.CellRichTextValue {
@@ -221,16 +225,16 @@ export function addParticipantOrdersTable(
         const product =
             (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
             order.purchaseItem?.product;
-        const gramItem = isGramItem(order.purchaseItem, product) ? order.purchaseItem : undefined;
+        const weightItem = isWeightItem(order.purchaseItem, product) ? order.purchaseItem : undefined;
         const [packPrice, price510, price1] = purchaseItemPriceCells(order.purchaseItem as never);
-        const [partialQty, fullPackQty] = orderQuantitySplitColumns(gramItem, order.quantity);
-        const amounts = orderAmountSplit(gramItem, order.amountDue, order.quantity);
+        const [partialQty, fullPackQty] = orderQuantitySplitColumns(weightItem, order.quantity);
+        const amounts = orderAmountSplit(weightItem, order.amountDue, order.quantity);
         amountTotals.partial += amounts.partial;
         amountTotals.fullPack += amounts.fullPack;
 
-        if (gramItem) {
+        if (weightItem) {
             const qty = formatMoney(order.quantity);
-            if (isFullPackOrder(gramItem, order.quantity)) {
+            if (isFullPackOrder(weightItem, order.quantity)) {
                 gramTotals.fullPackGr += qty;
             } else if (qty > 0) {
                 gramTotals.partialGr += qty;
@@ -239,7 +243,7 @@ export function addParticipantOrdersTable(
 
         const row = sheet.addRow([
             '',
-            product ? formatSupplierPackage(gramItem) : '',
+            product ? formatSupplierPackage(weightItem) : '',
             packPrice,
             price510,
             price1,

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ProductUnitCode } from '@zakupki/types';
 import { toast } from 'sonner';
 
 import { trpc } from '@/lib/client/trpc';
@@ -18,7 +19,7 @@ export type ProductFormPayload = {
 };
 
 function asRouterPayload(payload: ProductFormPayload) {
-    return { ...payload, unitCode: payload.unitCode as 'gram' | 'piece' | 'tube' };
+    return { ...payload, unitCode: payload.unitCode as ProductUnitCode };
 }
 
 export function useProductFormSubmit({

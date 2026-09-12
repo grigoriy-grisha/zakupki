@@ -82,7 +82,7 @@ export function PackSizeCell({
             </TableCell>
         );
     }
-    const resolvedUnit = packUnit ?? getUnitByCode(unitCode ?? '')?.shortName ?? 'гр';
+    const resolvedUnit = packUnit ?? getUnitByCode(unitCode ?? '')?.shortName ?? getUnitByCode('piece')?.shortName ?? 'шт';
     return (
         <TableCell className="px-2 py-1 text-right">
             <div className="flex items-center justify-end gap-1">

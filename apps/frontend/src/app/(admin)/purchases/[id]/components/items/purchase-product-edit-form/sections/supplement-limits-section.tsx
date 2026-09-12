@@ -89,7 +89,7 @@ export function SupplementLimitsSection({
             <PackageEditor
                 label="Лимит у поставщика (на всех покупателей)"
                 amount={supplierLimit}
-                unit={supplierLimitUnit ?? unit}
+                unit={supplierLimitUnit ?? resolveUnit(unit)?.shortName ?? unit}
                 onAmountChange={onSupplierLimitChange}
                 onUnitChange={onSupplierLimitUnitChange}
                 lockUnit={!isWeight}

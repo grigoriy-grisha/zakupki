@@ -32,6 +32,19 @@ export const UNITS: readonly UnitDef[] = [
         prepositional: 'тубах',
         aliases: ['туба', 'туб', 'tube', 'тубус', 'tubus'],
     },
+    {
+        // Штучный товар с механикой весовых: фасовка, шаг добора, целые
+        // упаковки поставщика. Покупатель видит обычные «шт», различие
+        // только в админке. Должен идти после 'piece' — resolveUnit('шт')
+        // берёт первую единицу с таким shortName.
+        code: 'piece_pack',
+        name: 'Штуки (фасовка)',
+        shortName: 'шт',
+        pluralForms: ['шт', 'шт', 'шт'],
+        kind: 'WEIGHT',
+        prepositional: 'штуках',
+        aliases: ['шт уп', 'шт. уп.', 'piece pack', 'piecepack'],
+    },
 ] as const;
 
 /**

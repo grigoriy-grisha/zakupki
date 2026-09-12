@@ -1,11 +1,11 @@
 import { Prisma } from '@zakupki/database';
-import { AppError } from '@zakupki/types';
+import { AppError, PRODUCT_UNIT_CODES } from '@zakupki/types';
 import { z } from 'zod';
 
 import { withDbConflict } from '../lib/error-utils';
 import { adminProcedure, protectedProcedure, router } from '../trpc';
 
-const unitCodeSchema = z.enum(['gram', 'piece', 'tube']);
+const unitCodeSchema = z.enum(PRODUCT_UNIT_CODES);
 
 const productCharacteristicSchema = z.object({
     characteristicId: z.number(),
