@@ -424,13 +424,14 @@ export class OrderRepository {
         });
     }
 
-    /**
-     * Обновить amountDue для конкретной строки заказа.
-     */
-    async updateAmountDue(id: number, amountDue: number) {
-        return dbClient.orderLine.update({
-            where: { id },
-            data: { amountDue },
+    async updateAmountDueBulk(entries: { id: number; amountDue: number }[]) {
+        await dbClient.$transaction(async (tx) => {
+            for (const entry of entries) {
+                await tx.orderLine.update({
+                    where: { id: entry.id },
+                    data: { amountDue: entry.amountDue },
+                });
+            }
         });
     }
 }

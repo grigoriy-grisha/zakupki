@@ -9,25 +9,27 @@
  *  - Вся доменная логика (REORDER split, admin, команды) — в `strategies/`.
  *  - UI-проекция — в `order-display.ts`.
  */
-import { OrderLine, type OrderLineProps } from './order-line';
-import { computePoolInfo, computeRawPool } from './pool';
-import { computeSupplierLimitInfo } from './limit';
-import { computeOrderedStockInfo } from './ordered-stock';
-import { getStageConfig } from './stages';
-import { mergeLines } from './aggregation';
-import { buildDisplayContext } from './order-display';
-import { effectiveQty } from './order-math';
-import { aggregateForPool, applyUpdates, toActiveVOs, type LineUpdate, type MultiUpdate } from './strategies/atomic';
-import { makeStrategy } from './strategies/concrete-strategies';
-import { StageStrategy } from './strategies/stage-strategy';
+import type { PurchaseFulfillmentStatus } from '../index';
 import { isPieceUnit } from '../units/normalize';
+import { mergeLines } from './aggregation';
+import { computeSupplierLimitInfo } from './limit';
+import { buildDisplayContext } from './order-display';
+import { OrderLine, type OrderLineProps } from './order-line';
+import { effectiveQty, userEffectiveQty } from './order-math';
+import { computeOrderedStockInfo } from './ordered-stock';
+import { computePoolInfo, computeRawPool } from './pool';
+import { computeUnitPriceRubNewModel } from './pricing';
+import { getStageConfig } from './stages';
+import { aggregateForPool, applyUpdates, type LineUpdate, type MultiUpdate, toActiveVOs } from './strategies/atomic';
+import { makeStrategy } from './strategies/concrete-strategies';
+import type { StageStrategy } from './strategies/stage-strategy';
 import type {
     AggregatedOrder,
     OrderDisplayContext,
     OrderEffect,
     OrderError,
-    PoolInfo,
     PoolAggregation,
+    PoolInfo,
     PurchaseItem,
 } from './types';
 
@@ -67,7 +69,7 @@ export class OrderBook {
     }
 
     /** Supplement-строка юзера, привязанная к конкретному этапу (для PAYMENT+). */
-    supplementLineForStage(userId: number, stage: import('../index').PurchaseFulfillmentStatus): OrderLine | null {
+    supplementLineForStage(userId: number, stage: PurchaseFulfillmentStatus): OrderLine | null {
         return (
             this.activeLines.find((l) => l.userId === userId && l.isSupplement && l.createdOnStage === stage) ?? null
         );
@@ -189,6 +191,7 @@ export class OrderBook {
     /** Изменить количество. Делегирует в StageStrategy.adjust (которая знает про split). */
     adjust(userId: number, delta: number): AdjustResult {
         if (delta === 0) return ok(this);
+        if (delta > 0 && !this.isPriced()) return unpriced();
         return this.runStrategy((s) => s.adjust(userId, delta));
     }
 
@@ -210,6 +213,7 @@ export class OrderBook {
                 error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' },
             };
         }
+        if (delta > 0 && !this.isPriced()) return unpriced();
         return this.runStrategy((s) => s.adjustPackages(userId, delta));
     }
 
@@ -221,6 +225,7 @@ export class OrderBook {
 
     adminAdd(userId: number, amount: number): AdjustResult {
         if (amount <= 0) return neg('Размер добавки должен быть положительным');
+        if (!this.isPriced()) return unpriced();
         return this.runStrategy((s) => s.adminAdd(userId, amount));
     }
 
@@ -231,6 +236,12 @@ export class OrderBook {
 
     adminSetQuantity(userId: number, qty: number): AdjustResult {
         if (qty < 0) return neg('Количество не может быть отрицательным');
+        if (
+            qty > userEffectiveQty(this.activeLines, userId, this.item.packAmount) &&
+            !this.isPriced()
+        ) {
+            return unpriced();
+        }
         return this.runStrategy((s) => s.adminSetQuantity(userId, qty));
     }
 
@@ -249,6 +260,7 @@ export class OrderBook {
         if (!this.item.packAmount) {
             return { ok: false, error: { code: 'no_package', message: 'У товара не указан размер упаковки поставщика' } };
         }
+        if (delta > 0 && !this.isPriced()) return unpriced();
         return this.runStrategy((s) => s.adminAdjustPackages(userId, delta));
     }
 
@@ -274,6 +286,11 @@ export class OrderBook {
     private withLines(lines: readonly OrderLine[]): OrderBook {
         return new OrderBook(this.item, Object.freeze(lines) as readonly OrderLine[]);
     }
+
+    private isPriced(): boolean {
+        if (this.item.pricePerPackCurrency == null) return true;
+        return computeUnitPriceRubNewModel(this.item) != null;
+    }
 }
 
 // ── Pure helpers ────────────────────────────────────────────────────
@@ -284,4 +301,14 @@ function ok(book: OrderBook): AdjustResult {
 
 function neg(message: string): AdjustResult {
     return { ok: false, error: { code: 'negative', message } };
+}
+
+function unpriced(): AdjustResult {
+    return {
+        ok: false,
+        error: {
+            code: 'unpriced',
+            message: 'Цена товара ещё не рассчитана — заказ временно недоступен',
+        },
+    };
 }

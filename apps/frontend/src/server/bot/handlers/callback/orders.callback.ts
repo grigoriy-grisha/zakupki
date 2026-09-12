@@ -143,8 +143,9 @@ function formatPurchaseDetail(
             packSize: g.packSize,
             unitCode: g.unitCode,
         }).main;
-        const amount = g.totalAmount.toLocaleString('ru-RU');
-        return `• <b>${escapeHtml(g.name)}</b>\n<code>${escapeHtml(qtyLabel)} · ${amount} ₽</code>`;
+        const hasAmount = g.totalAmount > 0 || (g.qty === 0 && g.packs === 0);
+        const amountLabel = hasAmount ? `${g.totalAmount.toLocaleString('ru-RU')} ₽` : 'цена уточняется';
+        return `• <b>${escapeHtml(g.name)}</b>\n<code>${escapeHtml(qtyLabel)} · ${amountLabel}</code>`;
     });
 
     const parts = [

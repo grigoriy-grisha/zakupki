@@ -423,6 +423,7 @@ export class PurchaseService {
         }));
         const touchedItemIds = new Set<number>();
         const changedByUser = new Map<number, { prev: number; next: number }>();
+        const updates: { id: number; amountDue: number }[] = [];
         for (const item of purchase.items) {
             if (onlyItemId != null && item.id !== onlyItemId) continue;
             // Доменный PurchaseItem для canonical-прайсинга. getById не вкладывает
@@ -445,7 +446,7 @@ export class PurchaseService {
                 // Раньше упаковки обнулялись (calculateOrderAmount без packageCount).
                 const amountDue = computeAmountDueWithPackages(qty, pkgCount, domainItem);
                 const prevAmountDue = Number(line.amountDue);
-                await this.orderRepo.updateAmountDue(line.id, amountDue);
+                updates.push({ id: line.id, amountDue });
                 touched = true;
                 if (Math.abs(amountDue - prevAmountDue) > 0.005) {
                     const agg = changedByUser.get(line.userId) ?? { prev: 0, next: 0 };
@@ -457,8 +458,12 @@ export class PurchaseService {
             if (touched) touchedItemIds.add(item.id);
         }
 
-        if (onlyItemId != null) return;
-        await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+        if (updates.length > 0) {
+            await this.orderRepo.updateAmountDueBulk(updates);
+        }
+        if (onlyItemId == null) {
+            await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
+        }
         await this.notifyAmountRecalculated(purchase.id, purchase.tag, changedByUser);
     }
 
@@ -512,8 +517,19 @@ export class PurchaseService {
         if (purchase.status === 'DONE') {
             throw new ValidationError('В завершённой закупке нельзя менять курсы и доставку');
         }
+        log.info(
+            {
+                purchaseId,
+                before: (purchase.currencyRates ?? []).map((r) => ({
+                    currencyId: r.currencyId,
+                    rateToRub: Number(r.rateToRub),
+                })),
+                after: rates,
+                deliveryPercent: deliveryPercent ?? Number(purchase.deliveryPercent ?? 0),
+            },
+            'currency rates updated',
+        );
         await this.repo.setCurrencyRates(purchaseId, rates, deliveryPercent);
-        // Курс или % доставки изменились → пересчитываем суммы заказов по новой модели цен.
         await this.recalculateAmounts(purchaseId);
         return this.repo.getCurrencyRates(purchaseId);
     }

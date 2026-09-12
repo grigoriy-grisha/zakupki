@@ -293,7 +293,10 @@ function PurchaseOrderCard({
                                     />
                                 )}
                                 <p className="mt-0.5 text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
-                                    {qtyLabel} · {formatRub(amount)}
+                                    {qtyLabel} ·{' '}
+                                    {amount === 0 && (qty > 0 || order.packageCount > 0)
+                                        ? 'цена уточняется'
+                                        : formatRub(amount)}
                                 </p>
                                 {breakdown && (breakdown.orgFeeRub > 0 || breakdown.deliveryRub > 0) && (
                                     <p className="mt-0.5 text-14-medium text-fg-secondary tabular-nums">

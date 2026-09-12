@@ -161,10 +161,14 @@ function ProductCardImpl({
 
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1.5">
                     <span className="whitespace-nowrap text-18-medium text-fg-primary tabular-nums sm:text-20-medium">
-                        {formatPriceRub(ctx.price)}
-                        <span className="ml-1 font-sans text-11-regular font-normal text-fg-tertiary sm:text-12-regular">
-                            /{ctx.shortName}
-                        </span>
+                        {ctx.unitPriceRub == null
+                            ? 'Цена уточняется'
+                            : formatPriceRub(ctx.price)}
+                        {ctx.unitPriceRub != null && (
+                            <span className="ml-1 font-sans text-11-regular font-normal text-fg-tertiary sm:text-12-regular">
+                                /{ctx.shortName}
+                            </span>
+                        )}
                     </span>
                     {showPackHint && (
                         <span
@@ -182,7 +186,8 @@ function ProductCardImpl({
 
                 {showOrderQty && (
                     <p className="text-12-medium text-fg-secondary tabular-nums sm:text-13-medium">
-                        {ctx.qtyDisplay.main} · {formatPriceRub(ctx.total)}
+                        {ctx.qtyDisplay.main} ·{' '}
+                        {ctx.unitPriceRub == null ? 'цена уточняется' : formatPriceRub(ctx.total)}
                     </p>
                 )}
 

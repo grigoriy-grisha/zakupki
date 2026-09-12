@@ -51,7 +51,7 @@ export function ProductCardControls({
                         stop(e);
                         ctx.handleAdd();
                     }}
-                    disabled={!ctx.canAdd || ctx.isPending}
+                    disabled={!ctx.canAdd || ctx.isPending || ctx.unitPriceRub == null}
                 >
                     Добавить
                 </Button>
@@ -114,7 +114,7 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                     <button
                         type="button"
                         onClick={ctx.handleAdd}
-                        disabled={!ctx.canAdd || ctx.isPending}
+                        disabled={!ctx.canAdd || ctx.isPending || ctx.unitPriceRub == null}
                         aria-label="Добавить единицу товара"
                         className={cn(
                             'flex size-8 shrink-0 items-center justify-center rounded-full',
@@ -151,11 +151,11 @@ function InCartControls({ ctx, stop }: { ctx: ItemOrderControls; stop: (e: React
                         >
                             <span className="truncate">{ctx.currentPackageCount} уп</span>
                         </div>
-                        <button
-                            type="button"
-                            onClick={ctx.handleAddPackage}
-                            disabled={!ctx.canAddPackage || ctx.isPending}
-                            aria-label="Добавить упаковку"
+                    <button
+                        type="button"
+                        onClick={ctx.handleAddPackage}
+                        disabled={!ctx.canAddPackage || ctx.isPending || ctx.unitPriceRub == null}
+                        aria-label="Добавить упаковку"
                             className={cn(
                                 'flex size-8 shrink-0 items-center justify-center rounded-full',
                                 'bg-primary text-primary-foreground transition-colors',

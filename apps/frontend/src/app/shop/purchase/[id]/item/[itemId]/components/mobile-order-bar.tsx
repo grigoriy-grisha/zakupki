@@ -23,9 +23,11 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                         {ctx.hasOrder ? 'В корзине' : `Цена за ${ctx.shortName}`}
                     </p>
                     <p className="truncate text-16-semibold tabular-nums text-fg-primary">
-                        {ctx.hasOrder
-                            ? formatPriceRub(ctx.total)
-                            : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
+                        {ctx.unitPriceRub == null
+                            ? 'Цена уточняется'
+                            : ctx.hasOrder
+                              ? formatPriceRub(ctx.total)
+                              : `${formatPriceRub(ctx.unitPriceRub ?? ctx.price)} / ${ctx.shortName}`}
                     </p>
                 </div>
                 {ctx.hasOrder ? (
@@ -37,7 +39,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                             onRemove={ctx.handleRemove}
                             onAdd={ctx.handleAdd}
                             canRemove={ctx.canDecrease}
-                            canAdd={ctx.canAdd}
+                            canAdd={ctx.canAdd && ctx.unitPriceRub != null}
                         />
                     ) : null
                 ) : (
@@ -45,7 +47,7 @@ export function MobileOrderBar({ ctx }: { ctx: ItemOrderControls }) {
                         variant="brand"
                         className="h-10 shrink-0 rounded-full px-5"
                         onClick={ctx.handleAdd}
-                        disabled={!ctx.canAdd || ctx.isPending}
+                        disabled={!ctx.canAdd || ctx.isPending || ctx.unitPriceRub == null}
                     >
                         <Plus className="size-4" />
                         Добавить

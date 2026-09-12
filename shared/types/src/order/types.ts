@@ -142,7 +142,8 @@ export type OrderErrorCode =
     | 'below_base'
     | 'no_package'
     | 'negative'
-    | 'invalid_quantity';
+    | 'invalid_quantity'
+    | 'unpriced';
 
 // ── Пул добора ─────────────────────────────────────────────────────
 

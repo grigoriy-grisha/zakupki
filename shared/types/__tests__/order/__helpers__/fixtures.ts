@@ -70,11 +70,12 @@ const STAGE_DEFAULTS: Record<Stage, Partial<PurchaseItem>> = {
  */
 export function makeItem(stage: Stage, overrides: Partial<PurchaseItem> = {}): PurchaseItem {
     const stageDefaults = STAGE_DEFAULTS[stage];
-    // Сначала разрешаем packAmount с учётом overrides (важно для расчёта цены).
-    const packAmount = overrides.packAmount ?? stageDefaults.packAmount ?? 1;
-    // pricePerPackCurrency выводим из желаемой unitPrice, если не задано явно.
+    const finalPackAmount =
+        overrides.packAmount !== undefined ? overrides.packAmount : stageDefaults.packAmount ?? 1;
     const pricePerPackCurrency =
-        overrides.pricePerPackCurrency ?? DEFAULT_UNIT_PRICE_RUB * packAmount;
+        overrides.pricePerPackCurrency ??
+        (finalPackAmount != null ? DEFAULT_UNIT_PRICE_RUB * finalPackAmount : null);
+    const packAmount = finalPackAmount;
 
     return {
         purchaseItemId: 42,
