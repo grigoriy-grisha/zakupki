@@ -112,8 +112,8 @@ export function CartLine({ group, order, editable }: CartLineProps) {
                                 onClick={() => setConfirmOpen(true)}
                                 className={cn(
                                     'flex size-8 shrink-0 items-center justify-center rounded-full',
-                                    'border-2 border-error/30 text-error/70 transition-colors',
-                                    'hover:border-error hover:bg-error/10 hover:text-error',
+                                    'border-2 border-error/60 text-error transition-colors',
+                                    'hover:border-error hover:bg-error/10',
                                     'disabled:cursor-not-allowed disabled:opacity-40',
                                 )}
                             >
