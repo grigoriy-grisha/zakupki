@@ -1,21 +1,19 @@
 'use client';
 
 import {
-    buildQuantityDisplay,
-    computeOrderLinePriceBreakdown,
     HANDOFF_STATUS_LABELS,
     type HandoffStatus,
+    isOrderingClosedStage,
     isPurchaseCompleted,
     isPurchasePaymentOpen,
+    isSupplementPhase,
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
 import {
     Archive,
     Boxes,
-    ChevronRight,
     ClipboardList,
-    Package,
     PackageCheck,
     Send,
     Truck,
@@ -23,12 +21,17 @@ import {
 import { useMemo, useState } from 'react';
 
 import { useHandoffChoice } from '@/app/shop/hooks/use-handoff-choice';
-import { groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
+import { linePriceBreakdown } from '@/app/shop/lib/cart-display';
+import {
+    type GroupableOrderLine,
+    groupOrdersByPurchase,
+    type OrderPurchaseGroup,
+} from '@/app/shop/lib/order-grouping';
+import { CartLine } from '@/app/shop/orders/components/cart-line';
 import { HandoffMessageCard } from '@/app/shop/orders/components/handoff-message-card';
 import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
-import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { AppBackButton } from '@/components/shop/app-back-button';
 import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { Button } from '@/components/ui/button';
@@ -37,11 +40,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
 import { formatPriceRub, formatRub } from '@/lib/format/money';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
-import type { ProductLabelSource } from '@/lib/product-label';
-import { absoluteProductPhotoUrl } from '@/lib/product-photo-url';
 import { cn } from '@/lib/utils';
 
 type OrdersTab = 'active' | 'past';
+
+function stageHint(fs: PurchaseFulfillmentStatus): string {
+    if (isOrderingClosedStage(fs)) return 'Состав заказа закрыт';
+    if (isPurchasePaymentOpen(fs)) return 'Можно добавлять только остатки до полной пачки';
+    if (isSupplementPhase(fs)) return 'Идут доборы — можно добрать остатки';
+    return 'Состав заказа можно менять';
+}
 
 const HANDOFF_PILL_STYLES: Record<HandoffStatus, { label: string; icon: typeof Truck; className: string }> = {
     ASSEMBLED: {
@@ -165,52 +173,29 @@ function PurchaseOrderCard({
     isPast,
 }: {
     group: OrderPurchaseGroup;
-    myPayments: { purchaseId: number; status: string; amount: unknown; children?: { amount: unknown }[] }[] | undefined;
+    myPayments:
+        | { id: number; purchaseId: number; status: string; amount: unknown; children?: { amount: unknown }[] }[]
+        | undefined;
     isPast: boolean;
 }) {
     const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const purchaseStatus = group.status as PurchaseStatus;
     const completed = isPurchaseCompleted(purchaseStatus);
+    const editable = !isPast && !completed && !isOrderingClosedStage(fs);
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
     const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
     const { remaining, hasPending, isFullyPaid } = paymentSummary;
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
-    const ordersWithBreakdown = group.orders.map((order) => {
-        const priceInfo = order.source.priceInfo as
-            | {
-                  pricePerPackCurrency: number | null;
-                  rateToRub: number | null;
-                  packSize: number | null;
-                  packDiscountPercent: number;
-                  orgFeePercent: number;
-                  deliveryPercent: number;
-              }
-            | null
-            | undefined;
-        const breakdown = priceInfo
-            ? computeOrderLinePriceBreakdown({
-                  amountDue: order.amountDue,
-                  quantity: order.quantity,
-                  packageCount: order.packageCount,
-                  pricePerPackCurrency: priceInfo.pricePerPackCurrency,
-                  rateToRub: priceInfo.rateToRub,
-                  packSize: priceInfo.packSize,
-                  packDiscountPercent: priceInfo.packDiscountPercent,
-                  orgFeePercent: priceInfo.orgFeePercent,
-                  deliveryPercent: priceInfo.deliveryPercent,
-              })
-            : null;
-        return { order, breakdown };
-    });
+    const breakdowns = group.orders.map((order) => linePriceBreakdown(order));
     const totals =
-        ordersWithBreakdown.length > 0 && ordersWithBreakdown.every(({ breakdown }) => breakdown != null)
-            ? ordersWithBreakdown.reduce(
-                  (acc, { breakdown }) => ({
-                      base: acc.base + breakdown!.baseRub,
-                      org: acc.org + breakdown!.orgFeeRub,
-                      delivery: acc.delivery + breakdown!.deliveryRub,
+        breakdowns.length > 0 && breakdowns.every((b) => b != null)
+            ? breakdowns.reduce(
+                  (acc, b) => ({
+                      base: acc.base + b!.baseRub,
+                      org: acc.org + b!.orgFeeRub,
+                      delivery: acc.delivery + b!.deliveryRub,
                   }),
                   { base: 0, org: 0, delivery: 0 },
               )
@@ -238,85 +223,21 @@ function PurchaseOrderCard({
                             {group.tag}
                         </h3>
                     </AppLink>
+                    {!isPast && (
+                        <p className="mt-1 text-12-regular text-fg-tertiary sm:text-13-regular">
+                            {stageHint(fs)}
+                        </p>
+                    )}
                 </div>
-                {handoffStatus && <HandoffPill status={handoffStatus} />}
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                    {handoffStatus && <HandoffPill status={handoffStatus} />}
+                </div>
             </div>
 
             <div className="mt-5 divide-y divide-border-low sm:mt-6">
-                {ordersWithBreakdown.map(({ order, breakdown }) => {
-                    const product: (ProductLabelSource & { photos: { id: number }[]; unitCode: string }) | undefined =
-                        order.source.purchaseItem?.product;
-                    const purchaseItem = order.source.purchaseItem;
-                    const photo = product?.photos?.[0];
-                    const qty = order.quantity;
-                    const amount = order.amountDue;
-                    const qtyLabel = buildQuantityDisplay({
-                        quantity: qty,
-                        packageCount: order.packageCount,
-                        packSize:
-                            purchaseItem?.packAmount != null ? Number(purchaseItem.packAmount) : null,
-                        unitCode: purchaseItem?.unitCode ?? product?.unitCode ?? null,
-                    }).main;
-
-                    return (
-                        <AppLink
-                            key={order.purchaseItemId}
-                            href={`/shop/purchase/${group.id}/item/${order.purchaseItemId}`}
-                            className={cn(
-                                'group flex items-center gap-3 rounded-xl px-1 py-2.5 sm:gap-4 sm:py-3',
-                                'transition-colors hover:bg-bg-card/60',
-                            )}
-                        >
-                            <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-bg-card sm:size-20 sm:rounded-2xl">
-                                {photo ? (
-                                    <img
-                                        src={absoluteProductPhotoUrl(photo.id)}
-                                        alt={product?.name ?? ''}
-                                        className="h-full w-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex h-full items-center justify-center text-fg-tertiary">
-                                        <Package className="size-4 sm:size-5" />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                {product && (
-                                    <PurchaseProductLabel
-                                        product={product}
-                                        className="min-w-0"
-                                        primaryClassName={cn(
-                                            'block font-display text-16-semibold leading-tight text-fg-primary',
-                                            'transition-colors group-hover:text-secondary sm:text-18-semibold',
-                                        )}
-                                        secondaryClassName="mt-0.5 block truncate text-12-regular text-fg-tertiary sm:text-13-regular"
-                                    />
-                                )}
-                                <p className="mt-0.5 text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
-                                    {qtyLabel} ·{' '}
-                                    {amount === 0 && (qty > 0 || order.packageCount > 0)
-                                        ? 'цена уточняется'
-                                        : formatRub(amount)}
-                                </p>
-                                {breakdown && (breakdown.orgFeeRub > 0 || breakdown.deliveryRub > 0) && (
-                                    <p className="mt-0.5 text-14-medium text-fg-secondary tabular-nums">
-                                        {formatPriceRub(breakdown.baseRub)} + оргсбор{' '}
-                                        {formatPriceRub(breakdown.orgFeeRub)}
-                                        {breakdown.deliveryRub > 0
-                                            ? ` + доставка ${formatPriceRub(breakdown.deliveryRub)}`
-                                            : ''}
-                                    </p>
-                                )}
-                            </div>
-                            <ChevronRight
-                                className={cn(
-                                    'size-4 shrink-0 text-fg-tertiary opacity-0',
-                                    'transition-opacity group-hover:opacity-100',
-                                )}
-                            />
-                        </AppLink>
-                    );
-                })}
+                {group.orders.map((order) => (
+                    <CartLine key={order.purchaseItemId} group={group} order={order} editable={editable} />
+                ))}
             </div>
 
             <div className="mt-5 rounded-2xl border border-border-low bg-bg-soft p-4 sm:mt-6 sm:p-5">
@@ -365,8 +286,8 @@ function PurchaseOrderCard({
                 {purchasePayments.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                         <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">Ваши оплаты</p>
-                        {purchasePayments.map((p, idx) => (
-                            <MyPaymentRow key={(p as any).id ?? idx} payment={p as unknown as ShopPaymentView} />
+                        {purchasePayments.map((p) => (
+                            <MyPaymentRow key={p.id} payment={p as unknown as ShopPaymentView} />
                         ))}
                     </div>
                 )}
@@ -437,7 +358,7 @@ export default function OrdersPage() {
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
 
     const { activeGroups, pastGroups } = useMemo(() => {
-        const all = groupOrdersByPurchase((myOrders ?? []) as any);
+        const all = groupOrdersByPurchase((myOrders ?? []) as unknown as GroupableOrderLine[]);
         return {
             activeGroups: all.filter((g) => !isPurchaseCompleted(g.status)),
             pastGroups: all.filter((g) => isPurchaseCompleted(g.status)),
