@@ -25,7 +25,6 @@ export interface ItemsTableRowDerived {
     published: boolean;
     packPriceRub: number | null;
     packPriceWithOrgFeeRub: number | null;
-    unitPriceRub: number | null;
     unitPriceWithDeliveryRub: number | null;
     packPriceWithDeliveryRub: number | null;
     deliveryPercent: number;
@@ -82,7 +81,7 @@ export const ItemsTableRow = memo(function ItemsTableRow({
         published,
         packPriceRub,
         packPriceWithOrgFeeRub,
-        unitPriceRub,
+        unitPriceWithDeliveryRub,
         packPriceWithDeliveryRub,
         deliveryPercent,
         collectedQty,
@@ -190,10 +189,12 @@ export const ItemsTableRow = memo(function ItemsTableRow({
                 <TableCell className="px-2 py-1 text-right">
                     <div className="flex items-center justify-end gap-1">
                         <InlineCell
-                            value={unitPriceRub}
+                            value={unitPriceWithDeliveryRub}
                             disabled={!unitEditable}
                             onCommit={(v) =>
-                                commitRubPrice(solvePricePerPackFromUnitRub(v, rateToRub, orgFeePercent, packSize))
+                                commitRubPrice(
+                                    solvePricePerPackFromUnitRub(v, rateToRub, orgFeePercent, packSize, deliveryPercent),
+                                )
                             }
                             min={0}
                             ariaLabel="Цена за 1 единицу в рублях"

@@ -7,7 +7,6 @@ import {
     getPackPriceWithDeliveryRub,
     getPackPriceWithOrgFeeRub,
     getRemainderQty,
-    getUnitPriceRub,
     getUnitPriceWithDeliveryRub,
 } from '../../lib/items-table-pricing';
 import type { PurchaseCurrencyRateRef, PurchaseDetail } from '../../lib/types';
@@ -35,7 +34,6 @@ export function deriveRow(
         published,
         packPriceRub: getPackPriceRub(item, currencyRates),
         packPriceWithOrgFeeRub: getPackPriceWithOrgFeeRub(item, currencyRates, orgFeeDefaultPercent),
-        unitPriceRub: getUnitPriceRub(item, currencyRates, orgFeeDefaultPercent),
         unitPriceWithDeliveryRub: getUnitPriceWithDeliveryRub(
             item,
             currencyRates,

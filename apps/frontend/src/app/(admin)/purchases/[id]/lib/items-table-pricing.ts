@@ -7,7 +7,6 @@
 import {
     computePackPriceRub,
     computePackPriceWithOrgFee,
-    computeUnitPriceRub,
     computeUnitPriceRubFromItem,
     isWeightUnit,
     PURCHASE_FULFILLMENT_STATUSES,
@@ -62,16 +61,6 @@ export function getPackPriceWithOrgFeeRub(
     const packRub = getPackPriceRub(item, rates);
     const orgFee = resolveOrgFeePercent(toNum(item.orgFeePercentOverride), orgFeeDefaultPercent);
     return computePackPriceWithOrgFee(packRub, orgFee);
-}
-
-/** Кол. 6: цена за 1ед (гр/шт) в ₽ = (цена уп. с оргсбором) / вес упаковки. */
-export function getUnitPriceRub(
-    item: ItemPricingFields,
-    rates: PurchaseCurrencyRateRef[],
-    orgFeeDefaultPercent: number,
-): number | null {
-    const packOrg = getPackPriceWithOrgFeeRub(item, rates, orgFeeDefaultPercent);
-    return computeUnitPriceRub(packOrg, toNum(item.packAmount));
 }
 
 /** Эффективный % доставки товара: override товара ?? процент закупки. */
