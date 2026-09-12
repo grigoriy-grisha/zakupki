@@ -333,12 +333,15 @@ export class OrderRepository {
 
     /**
      * All PurchaseOrder headers for a purchase — the source of truth for
-     * "who is a participant", including bare participants with zero order lines.
+     * "who is a participant".
      * Carries user info for display + comment fields for the comment strip.
      */
     async findPurchaseOrdersByPurchase(purchaseId: number) {
         return dbClient.purchaseOrder.findMany({
-            where: { purchaseId },
+            where: {
+                purchaseId,
+                orderLines: { some: { status: 'ACTIVE' } },
+            },
             select: {
                 id: true,
                 userId: true,

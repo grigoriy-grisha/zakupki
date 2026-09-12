@@ -125,8 +125,15 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
         [visibleItems, currentPage],
     );
 
+    // Сбрасываем страницу только при реальном изменении фильтров: на первом
+    // запуске (в т.ч. «назад» из товара) она восстановлена из ?page= URL.
+    const prevFilterKeyRef = useRef<string | null>(null);
     useEffect(() => {
-        setPage(1);
+        const filterKey = `${query}|${selectedId ?? ''}|${onlyMine ? 1 : 0}|${id}`;
+        if (prevFilterKeyRef.current !== null && prevFilterKeyRef.current !== filterKey) {
+            setPage(1);
+        }
+        prevFilterKeyRef.current = filterKey;
     }, [query, selectedId, onlyMine, id]);
 
     const prevIdRef = useRef(id);
@@ -375,7 +382,7 @@ function CatalogPagination({
         );
 
     return (
-        <nav className="flex items-center justify-center gap-1.5 pt-1" aria-label="Страницы товаров">
+        <nav className="flex items-center justify-center gap-1.5 pt-6" aria-label="Страницы товаров">
             <button
                 type="button"
                 aria-label="Предыдущая страница"

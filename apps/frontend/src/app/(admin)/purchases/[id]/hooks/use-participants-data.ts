@@ -28,7 +28,6 @@ type OrderRow = OrderLineRef & {
 
 /**
  * Запись из orders.getPurchaseOrdersByPurchase (см. order.repository.findPurchaseOrdersByPurchase).
- * Источник правды для списка участников — покрывает и «голых» участников без строк.
  */
 interface PurchaseOrderRow {
     id: number;
@@ -82,8 +81,7 @@ export function useParticipantsData(purchaseId: number) {
         const orderComments = new Map<number, OrderComment>();
         const handoffByUser = new Map<number, HandoffStatus | null>();
 
-        // 1) PurchaseOrder — источник правды участников (включает «голых»).
-        //    Сначала заполняем userMap и orderComments из заголовков.
+        // 1) PurchaseOrder — заполняем userMap и orderComments из заголовков.
         for (const po of typedPurchaseOrders) {
             if (po.user) {
                 // username приоритетно из telegramCredential, затем из user.username.
