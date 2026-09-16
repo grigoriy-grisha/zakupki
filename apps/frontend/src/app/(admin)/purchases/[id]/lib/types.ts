@@ -49,6 +49,16 @@ export interface OrderLineRef {
     /** Статус строки: ACTIVE | CANCELLED. */
     status?: string;
     createdAt: string;
+    /** Стадия, на которой создана строка: COLLECTION | REORDER | ... */
+    createdOnStage?: string | null;
+    /** Заказчик (из include orderLines.user). */
+    user?: {
+        id: number;
+        firstName: string;
+        lastName?: string | null;
+        username?: string | null;
+        avatarUrl?: string | null;
+    } | null;
     /** Заказ из фазы COLLECTION, зафиксирован при входе в SUPPLEMENT/REORDER. */
     baseQuantity?: number | string | null;
     /** Целые пачки, добавленные в доборе. */
@@ -103,6 +113,7 @@ export interface UserBrief {
     firstName: string;
     lastName?: string | null;
     username?: string;
+    avatarUrl?: string | null;
 }
 
 /** Платёж внутри закупки */

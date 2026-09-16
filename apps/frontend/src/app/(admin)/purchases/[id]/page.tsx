@@ -1,6 +1,6 @@
 'use client';
 
-import { Boxes,CheckCircle2, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
+import { Boxes,CheckCircle2, ListTree, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { use, useMemo, useState } from 'react';
 
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { STATUS_LABELS } from '../../lib/constants';
 import { ExportPurchaseButtons } from './components/export-purchase-buttons';
+import { ItemOrdersTab } from './components/item-orders/item-orders-tab';
 import { ItemsTab } from './components/items/items-tab';
 import { PackingTab } from './components/packing/packing-tab';
 import { AdminParticipantsList } from './components/participants/admin-participants-list';
@@ -26,7 +27,7 @@ import { usePurchaseActions, usePurchaseDetail } from './hooks';
 import { useParticipantsData } from './hooks/use-participants-data';
 
 type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'DONE' | 'CLOSED' | 'ARRIVED';
-type TabId = 'items' | 'packing' | 'participants';
+type TabId = 'items' | 'packing' | 'participants' | 'item_orders';
 
 type FulfillmentStatus =
     | 'COLLECTION'
@@ -211,6 +212,13 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             {participantsData.userIds.length}
                         </span>
                     </TabsTrigger>
+                    <TabsTrigger value="item_orders">
+                        <ListTree className="size-3.5" />
+                        Разбор
+                        <span className="ml-1 text-12-medium tabular-nums opacity-80">
+                            {items.filter((it) => (it.orderLines ?? []).some((l) => l.status !== 'CANCELLED')).length}
+                        </span>
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="items" className="mt-3 space-y-3">
@@ -227,6 +235,14 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
                 <TabsContent value="participants" className="mt-3 space-y-3">
                     <AdminParticipantsList purchaseId={id} />
+                </TabsContent>
+
+                <TabsContent value="item_orders" className="mt-3 space-y-3">
+                    <SectionHeader
+                        title="Разбор по товарам"
+                        description="Кто и когда заказал каждый товар · свежие заказы сверху"
+                    />
+                    <ItemOrdersTab purchaseId={id} avatarByUser={participantsData.avatarByUser} />
                 </TabsContent>
             </Tabs>
 

@@ -7,9 +7,10 @@ import { memo, useState } from 'react';
 import { HandoffStatusSelect } from '@/components/admin/handoff-status-select';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Highlight } from '@/components/shared/highlight';
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatRub } from '@/lib/format/money';
+import { formatPaidPercent, formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
 
 import { getPaymentStatus } from '../../../lib/payment-status';
@@ -26,6 +27,7 @@ interface AdminParticipantRowProps {
     userId: number;
     name: string;
     username?: string;
+    avatarUrl?: string | null;
     consentAt?: Date | null;
     purchaseId: number;
     onOpenProfile: (userId: number) => void;
@@ -47,6 +49,7 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
     userId,
     name,
     username,
+    avatarUrl,
     consentAt,
     purchaseId,
     onOpenProfile,
@@ -108,13 +111,21 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                         e.stopPropagation();
                         onOpenProfile(userId);
                     }}
-                    className="flex min-w-0 items-center gap-2 text-left"
+                    title="Открыть профиль участника"
+                    className={cn(
+                        'group flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 -mx-2 -my-1.5 text-left',
+                        'transition-colors hover:bg-primary/10',
+                    )}
                 >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-12-semibold text-primary">
-                        {name.charAt(0)}
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-12-semibold text-primary">
+                        {avatarUrl ? (
+                            <UserAvatar src={avatarUrl} className="size-8" />
+                        ) : (
+                            name.charAt(0)
+                        )}
                     </div>
                     <div className="min-w-0">
-                        <p className="truncate text-14-semibold text-fg-primary">
+                        <p className="truncate text-14-semibold text-fg-primary transition-colors group-hover:text-primary">
                             <Highlight text={name} query={searchQuery} />
                         </p>
                         {username && (
@@ -164,7 +175,19 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                 </div>
 
                 <div className="hidden w-[100px] shrink-0 text-right sm:block">
-                    <span className="text-12-regular text-fg-tertiary">Покрыто</span>
+                    <div className="flex items-center justify-end gap-1">
+                        <span className="text-12-regular text-fg-tertiary">Покрыто</span>
+                        {due > 0 && (
+                            <span
+                                className={cn(
+                                    'text-12-medium tabular-nums',
+                                    isPaid ? 'text-success' : paid > 0 ? 'text-warning' : 'text-fg-tertiary',
+                                )}
+                            >
+                                {formatPaidPercent(paid, due)}
+                            </span>
+                        )}
+                    </div>
                     <p className={cn('text-14-semibold tabular-nums', isPaid ? 'text-success' : 'text-fg-primary')}>
                         {paid > 0 ? `${formatRub(paid)}` : '—'}
                     </p>

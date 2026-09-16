@@ -1,7 +1,7 @@
 import { PackageIcon, ShoppingCartIcon, UsersIcon, WalletIcon } from 'lucide-react';
 
 import { StatCard } from '@/components/ui/stat-card';
-import { formatRub } from '@/lib/format/money';
+import { formatPaidPercent, formatRub } from '@/lib/format/money';
 
 interface PurchaseStatsProps {
     itemsCount: number;
@@ -30,7 +30,7 @@ export function PurchaseStats({
                 value={`${formatRub(totalPaid)}`}
                 label="Покрыто"
                 accent={totalPaid >= totalDue && totalDue > 0 ? 'success' : 'neutral'}
-                hint={totalDue > 0 ? `${Math.round((totalPaid / totalDue) * 100)}%` : undefined}
+                hint={formatPaidPercent(totalPaid, totalDue)}
             />
             <StatCard
                 value={`${formatRub(remaining)}`}

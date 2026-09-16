@@ -4,14 +4,14 @@ import { HANDOFF_DEFAULT_LABEL, HANDOFF_STATUS_LABELS, type HandoffStatus } from
 import { Search, SearchX, UsersIcon } from 'lucide-react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 
-import { UserProfileSheet } from '@/app/(admin)/users/components';
 import { ListPagination } from '@/components/shared/list-pagination';
+import { UserProfileSheet } from '@/components/shared/user-profile-sheet';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { SectionHeader } from '@/components/ui/section-header';
 import { StatCard } from '@/components/ui/stat-card';
-import { formatRub } from '@/lib/format/money';
+import { formatPaidPercent, formatRub } from '@/lib/format/money';
 import { cn, safeNumber } from '@/lib/utils';
 
 import { getPaymentStatus, type PaymentStatus } from '../../../lib/payment-status';
@@ -191,6 +191,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                     value={`${formatRub(data.totalPaid)}`}
                     label="Покрыто"
                     accent={data.totalPaid >= data.totalDue && data.totalDue > 0 ? 'success' : 'neutral'}
+                    hint={formatPaidPercent(data.totalPaid, data.totalDue)}
                 />
                 {data.totalPending > 0 && (
                     <StatCard value={`${formatRub(data.totalPending)}`} label="Ожидает" accent="warning" />
@@ -332,6 +333,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                             userId={userId}
                             name={name}
                             username={info?.username}
+                            avatarUrl={info?.avatarUrl ?? null}
                             consentAt={info?.consentAt ?? null}
                             purchaseId={purchaseId}
                             purchaseOrderId={purchaseOrderId}

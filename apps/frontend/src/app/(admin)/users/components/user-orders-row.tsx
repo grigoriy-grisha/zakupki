@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { UserAvatar } from '@/components/shared/user-avatar';
+import { type UserListItem } from '@/components/shared/user-profile-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +17,6 @@ import { safeNumber } from '@/lib/utils';
 import { displayName, resolveAvatarUrl } from '@/lib/utils/user';
 
 import { countUniquePurchases, groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
-import { type UserListItem } from './user-profile-sheet';
 import { UserPurchaseGroupBlock } from './user-purchase-group';
 import { UserRoleSelect } from './user-role-select';
 

@@ -3,6 +3,8 @@
 import { ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
 
+import { UserPurchaseGroupBlock } from '@/app/(admin)/users/components/user-purchase-group';
+import { groupOrdersByPurchase } from '@/app/(admin)/users/lib/group-orders-by-purchase';
 import { TelegramIcon, VkIcon } from '@/components/icons';
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
@@ -11,9 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
 import { formatRub } from '@/lib/format/money';
 import { displayName, resolveAvatarUrl } from '@/lib/utils/user';
-
-import { groupOrdersByPurchase } from '../lib/group-orders-by-purchase';
-import { UserPurchaseGroupBlock } from './user-purchase-group';
 
 export type UserListItem = {
     id: number;
