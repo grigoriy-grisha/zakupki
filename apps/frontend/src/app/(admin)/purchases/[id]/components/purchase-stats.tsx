@@ -22,7 +22,7 @@ export function PurchaseStats({
 }: PurchaseStatsProps) {
     const remaining = Math.max(0, totalDue - totalPaid);
     return (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
             <StatCard icon={PackageIcon} value={itemsCount} label="Товаров" hint="в закупке" />
             <StatCard icon={ShoppingCartIcon} value={totalOrders} label="Заказов" hint="всего" />
             <StatCard icon={WalletIcon} value={`${formatRub(totalDue)}`} label="К оплате" />
