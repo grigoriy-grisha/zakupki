@@ -32,7 +32,7 @@ interface AdminParticipantsListProps {
     purchaseId: number;
 }
 
-type StatusFilter = PaymentStatus | 'all';
+type StatusFilter = PaymentStatus | 'awaiting_payment' | 'all';
 type HandoffFilter = HandoffStatus | 'none' | 'all';
 
 export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps) {
@@ -102,7 +102,13 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                 const userOrdersList = data.userOrders.get(uid) ?? [];
                 const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
                 const paid = data.paidByUser.get(uid) ?? 0;
-                if (getPaymentStatus(due, paid) !== statusFilter) return false;
+                const paymentStatus = getPaymentStatus(due, paid);
+                if (statusFilter === 'awaiting_payment') {
+                    const pending = data.pendingByUser.get(uid) ?? 0;
+                    if (pending <= 0 || paymentStatus === 'paid') return false;
+                } else if (paymentStatus !== statusFilter) {
+                    return false;
+                }
             }
             if (handoffFilter !== 'all') {
                 const handoff = data.handoffByUser.get(uid) ?? null;
@@ -115,6 +121,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
         data.userMap,
         data.userOrders,
         data.paidByUser,
+        data.pendingByUser,
         data.handoffByUser,
         data.orderComments,
         deferredSearch,
@@ -123,15 +130,24 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     ]);
 
     const statusCounts = useMemo(() => {
-        const counts = { all: data.userIds.length, paid: 0, partial: 0, unpaid: 0 } as Record<StatusFilter, number>;
+        const counts = {
+            all: data.userIds.length,
+            paid: 0,
+            partial: 0,
+            unpaid: 0,
+            awaiting_payment: 0,
+        } as Record<StatusFilter, number>;
         for (const uid of data.userIds) {
             const userOrdersList = data.userOrders.get(uid) ?? [];
             const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
             const paid = data.paidByUser.get(uid) ?? 0;
-            counts[getPaymentStatus(due, paid)] += 1;
+            const paymentStatus = getPaymentStatus(due, paid);
+            const pending = data.pendingByUser.get(uid) ?? 0;
+            counts[paymentStatus] += 1;
+            if (pending > 0 && paymentStatus !== 'paid') counts.awaiting_payment += 1;
         }
         return counts;
-    }, [data.userIds, data.userOrders, data.paidByUser]);
+    }, [data.userIds, data.userOrders, data.paidByUser, data.pendingByUser]);
 
     const handoffCounts = useMemo(() => {
         const counts: Record<HandoffFilter, number> = {
@@ -219,6 +235,13 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                         active={statusFilter === 'unpaid'}
                         activeClass="border-error/40 bg-error/10 text-error"
                         onClick={() => setStatusFilter('unpaid')}
+                    />
+                    <StatusChip
+                        label="Ожидает оплаты"
+                        count={statusCounts.awaiting_payment}
+                        active={statusFilter === 'awaiting_payment'}
+                        activeClass="border-warning/40 bg-warning/10 text-warning"
+                        onClick={() => setStatusFilter('awaiting_payment')}
                     />
                 </div>
 
