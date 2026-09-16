@@ -42,13 +42,14 @@ interface PurchaseOrderRow {
         username: string | null;
         avatarUrl: string | null;
         personalDataConsentAt?: string | Date | null;
-        telegramCredential: { username: string | null } | null;
+        telegramCredential: { username: string | null; avatarUrl: string | null } | null;
+        vkCredential: { avatarUrl: string | null } | null;
     } | null;
 }
 
 const emptyMaps = () => ({
     userIds: [] as number[],
-    userMap: new Map<number, { name: string; username?: string; consentAt: Date | null }>(),
+    userMap: new Map<number, { name: string; username?: string; avatarUrl: string | null; consentAt: Date | null }>(),
     userOrders: new Map<number, OrderRow[]>(),
     userPayments: new Map<number, PaymentRef[]>(),
     paidByUser: new Map<number, number>(),
@@ -76,7 +77,10 @@ export function useParticipantsData(purchaseId: number) {
         const typedPurchaseOrders = (purchaseOrders ?? []) as unknown as PurchaseOrderRow[];
         const typedPayments = (payments ?? []) as unknown as PaymentRef[];
 
-        const userMap = new Map<number, { name: string; username?: string; consentAt: Date | null }>();
+        const userMap = new Map<
+            number,
+            { name: string; username?: string; avatarUrl: string | null; consentAt: Date | null }
+        >();
         const userOrders = new Map<number, OrderRow[]>();
         const orderComments = new Map<number, OrderComment>();
         const handoffByUser = new Map<number, HandoffStatus | null>();
@@ -93,6 +97,11 @@ export function useParticipantsData(purchaseId: number) {
                             lastName: po.user.lastName ?? null,
                         }),
                         username: uname,
+                        avatarUrl:
+                            po.user.avatarUrl ??
+                            po.user.telegramCredential?.avatarUrl ??
+                            po.user.vkCredential?.avatarUrl ??
+                            null,
                         consentAt:
                             po.user.personalDataConsentAt != null
                                 ? new Date(po.user.personalDataConsentAt)
@@ -120,6 +129,7 @@ export function useParticipantsData(purchaseId: number) {
                 userMap.set(o.userId, {
                     name: displayName({ firstName: o.user.firstName, lastName: o.user.lastName ?? null }),
                     username: o.user.username,
+                    avatarUrl: o.user.avatarUrl ?? null,
                     consentAt: null,
                 });
             }
@@ -196,10 +206,17 @@ export function useParticipantsData(purchaseId: number) {
 
     const { isEmpty: aggregatedEmpty, ...participantData } = aggregated;
 
+    const avatarByUser = useMemo(() => {
+        const map = new Map<number, string | null>();
+        for (const [userId, info] of participantData.userMap) map.set(userId, info.avatarUrl);
+        return map;
+    }, [participantData.userMap]);
+
     return {
         isLoading,
         isEmpty: !isLoading && aggregatedEmpty,
         payments: (payments ?? []) as unknown as PaymentRef[],
+        avatarByUser,
         ...participantData,
     };
 }

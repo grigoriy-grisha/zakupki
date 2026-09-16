@@ -49,6 +49,17 @@ export const ordersRouter = router({
     }),
 
     /**
+     * Admin: строки заказов одного участника в закупке — лёгкий слайс той же формы,
+     * что getAllByPurchase. Для точечного обновления кэша после мутаций вместо
+     * рефетча всей закупки.
+     */
+    getLinesByUserAndPurchase: adminProcedure
+        .input(z.object({ purchaseId: z.number(), userId: z.number() }))
+        .query(async ({ ctx, input }) => {
+            return ctx.services.order.getByPurchaseAndUser(input.purchaseId, input.userId);
+        }),
+
+    /**
      * Получить все PurchaseOrder-заголовки по закупке (админ).
      * Источник правды для списка участников: покрывает и «голых» участников
      * (PurchaseOrder без строк), и тех, у кого есть заказы.

@@ -4,6 +4,20 @@ import { type HandoffStatus,NotFoundError } from '@zakupki/types';
 import { productInclude } from './product-include';
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
 
+/** Полная форма строки заказа для админских списков (участники/закупка). */
+const ORDER_LINES_WITH_PARTICIPANT_INCLUDE = {
+    user: { include: USER_CREDENTIALS_INCLUDE },
+    purchaseItem: {
+        include: {
+            product: { include: productInclude },
+            supplier: { select: { id: true, name: true } },
+        },
+    },
+    purchaseOrder: {
+        select: { id: true, comment: true, commentAuthor: true, commentAt: true, handoffStatus: true },
+    },
+};
+
 export class OrderRepository {
     /**
      * Создать или обновить строку заказа.
@@ -201,18 +215,16 @@ export class OrderRepository {
             // Tiebreak with id only to keep multi-line items (COLLECTION + supplement)
             // deterministic between otherwise identical rows.
             orderBy: [{ userId: 'asc' }, { purchaseItemId: 'asc' }, { id: 'asc' }],
-            include: {
-                user: { include: USER_CREDENTIALS_INCLUDE },
-                purchaseItem: {
-                    include: {
-                        product: { include: productInclude },
-                        supplier: { select: { id: true, name: true } },
-                    },
-                },
-                purchaseOrder: {
-                    select: { id: true, comment: true, commentAuthor: true, commentAt: true, handoffStatus: true },
-                },
-            },
+            include: ORDER_LINES_WITH_PARTICIPANT_INCLUDE,
+        });
+    }
+
+    /** Строки одного участника в закупке — лёгкий слайс той же формы, что getByPurchase. */
+    async getByPurchaseAndUser(purchaseId: number, userId: number) {
+        return dbClient.orderLine.findMany({
+            where: { purchaseItem: { purchaseId }, userId, status: 'ACTIVE' },
+            orderBy: [{ purchaseItemId: 'asc' }, { id: 'asc' }],
+            include: ORDER_LINES_WITH_PARTICIPANT_INCLUDE,
         });
     }
 

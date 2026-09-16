@@ -207,6 +207,10 @@ export class OrderService {
         return this.repo.getByPurchase(purchaseId);
     }
 
+    async getByPurchaseAndUser(purchaseId: number, userId: number) {
+        return this.repo.getByPurchaseAndUser(purchaseId, userId);
+    }
+
     async getPurchaseOrdersByPurchase(purchaseId: number) {
         return this.repo.findPurchaseOrdersByPurchase(purchaseId);
     }
