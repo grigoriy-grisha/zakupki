@@ -130,11 +130,12 @@ export function applySetPackagesOnLine(
     };
 }
 
-export function applyZeroOutOnLine(line: OrderLine): MultiUpdate {
+export function applyZeroOutOnLine(item: PurchaseItem, line: OrderLine): MultiUpdate {
     if (line.packageCount > 0) {
-        // Сохраняем упаковки, qty=0
+        // Упаковки остаются — их стоимость сохраняется, зануляются только граммы
+        const amountDue = computeAmountDueWithPackages(0, line.packageCount, item);
         return {
-            updates: [{ old: line, new: line.zeroQtyKeepPackages() }],
+            updates: [{ old: line, new: line.withQuantity(0, amountDue) }],
             effects: [
                 {
                     type: 'upsert',
@@ -142,7 +143,7 @@ export function applyZeroOutOnLine(line: OrderLine): MultiUpdate {
                     userId: line.userId,
                     createdOnStage: line.createdOnStage,
                     quantity: 0,
-                    amountDue: 0,
+                    amountDue,
                     packageCount: line.packageCount,
                 },
             ],

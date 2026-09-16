@@ -10,10 +10,10 @@
  * циклическая зависимость: concrete → abstract (этот файл), а не наоборот.
  */
 import type { PurchaseFulfillmentStatus } from '../../index';
-import { OrderLine } from '../order-line';
+import type { OrderLine } from '../order-line';
 import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
-import type { OrderLineVO, PoolAggregation, PurchaseItem } from '../types';
 import { getStageConfig, type StageConfig } from '../stages';
+import type { OrderLineVO, PoolAggregation, PurchaseItem } from '../types';
 import {
     activeUserLines,
     aggregateForPool,
@@ -23,11 +23,11 @@ import {
     findBaseLine,
     findSupplementLine,
     findSupplementLineForStage,
+    type LineUpdate,
     makeNewLine,
     makeUpsertEffect,
-    ok,
-    type LineUpdate,
     type MultiUpdate,
+    ok,
 } from './atomic';
 
 // ── Abstract base ───────────────────────────────────────────────────
@@ -151,7 +151,7 @@ export abstract class BaseMutableStrategy extends StageStrategy {
                 );
             } else {
                 // qty=0 → zeroOut (delete or keep packages)
-                const r = applyZeroOutOnLine(line);
+                const r = applyZeroOutOnLine(this.item, line);
                 updates.push(...r.updates);
                 effects.push(...r.effects);
             }
@@ -171,7 +171,7 @@ export abstract class BaseMutableStrategy extends StageStrategy {
             const updates: LineUpdate[] = [];
             const effects: MultiUpdate['effects'] = [];
             for (const line of userLines) {
-                const r = applyZeroOutOnLine(line);
+                const r = applyZeroOutOnLine(this.item, line);
                 updates.push(...r.updates);
                 effects.push(...r.effects);
             }
@@ -206,36 +206,44 @@ export abstract class BaseMutableStrategy extends StageStrategy {
         };
     }
 
-    // ── adminAdjustPackages: override кол-ва упаковок на COLLECTION-строке ──
+    // ── adminAdjustPackages: изменение суммарных упаковок по всем строкам ──
 
     /**
-     * Admin: изменить кол-во упаковок на delta в обход stage-правил/пула/лимита.
-     * Упаковки всегда живут на COLLECTION-строке (инвариант модели).
-     *
-     * delta>0 — добавить к существующей base-строке (или создать COLLECTION с qty=0).
-     * delta<0 — убавить от base-строки; newPkg=0 + qty=0 → hard delete (см. applySetPackagesOnLine).
-     * Нельзя убавить больше, чем есть packageCount.
+     * Admin: изменить суммарное кол-во упаковок на delta в обход stage-правил/пула/лимита.
+     * Упаковки могут жить и на base-строке, и на supplement-строках (после добора),
+     * поэтому убавка идёт по всем строкам: сначала supplement (не-base), затем base.
+     * newPkg=0 + qty=0 → hard delete (см. applySetPackagesOnLine).
+     * Убавка клипится в ноль: минусовые упаковки по смыслу данных невозможны.
      */
     override adminAdjustPackages(userId: number, delta: number): MultiUpdate {
         if (delta === 0) return ok();
         if (!this.item.packAmount) {
             return err({ code: 'no_package', message: 'У товара не указан размер упаковки поставщика' });
         }
-        const base = this.findBaseLine(userId);
-        const currentPkg = base?.packageCount ?? 0;
-        if (delta < 0) {
-            if (!base || currentPkg === 0) {
-                return err({ code: 'negative', message: 'У участника нет упаковок для убавки' });
-            }
-            if (-delta > currentPkg) {
-                return err({
-                    code: 'negative',
-                    message: 'Нельзя убавить упаковок больше, чем есть в заказе',
-                });
-            }
+
+        if (delta > 0) {
+            const base = this.findBaseLine(userId);
+            return applySetPackagesOnLine(this.item, base, userId, true, (base?.packageCount ?? 0) + delta);
         }
-        const newPkg = currentPkg + delta;
-        return applySetPackagesOnLine(this.item, base ?? null, userId, true, newPkg);
+
+        const userLines = this.activeUserLines(userId);
+        let remaining = Math.min(-delta, userLines.reduce((s, l) => s + l.packageCount, 0));
+        if (remaining === 0) return ok();
+
+        // supplement-first: isBase идут после isSupplement
+        const sorted = [...userLines].sort((a, b) => Number(a.isBase) - Number(b.isBase));
+        const updates: LineUpdate[] = [];
+        const effects: MultiUpdate['effects'] = [];
+        for (const line of sorted) {
+            if (remaining <= 0) break;
+            if (line.packageCount <= 0) continue;
+            const take = Math.min(remaining, line.packageCount);
+            remaining -= take;
+            const r = applySetPackagesOnLine(this.item, line, userId, false, line.packageCount - take);
+            updates.push(...r.updates);
+            effects.push(...r.effects);
+        }
+        return { updates, effects };
     }
 }
 

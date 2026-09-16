@@ -68,7 +68,7 @@ export class PaymentPlusStrategy extends BaseMutableStrategy {
                 if (delta < 0) return err(forbidden('На этом этапе нельзя уменьшить заказ'));
                 return ok();
             }
-            return applyZeroOutOnLine(line);
+            return applyZeroOutOnLine(this.item, line);
         }
         return applySetQtyOnLine(this.item, line, userId, false, newQty);
     }

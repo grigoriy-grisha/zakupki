@@ -18,11 +18,11 @@ describe('P. Сохранение упаковок при qty → 0 (REORDER bas
         expect(result.ok).toBe(true);
         if (!result.ok) throw new Error('expected ok');
 
-        // Строка сохранилась: qty=0, amountDue=0, packageCount=1, baseQuantity=3.
+        // Строка сохранилась: qty=0, amountDue=1000 (стоимость упаковки), packageCount=1, baseQuantity=3.
         const line = result.book.baseLineFor(1);
         expect(line).not.toBeNull();
         expect(line?.quantity).toBe(0);
-        expect(line?.amountDue).toBe(0);
+        expect(line?.amountDue).toBe(1000);
         expect(line?.packageCount).toBe(1);
         expect(line?.baseQuantity).toBe(3); // заморозка не сбрасывается
         expect(result.book.lines).toHaveLength(1);
@@ -32,7 +32,7 @@ describe('P. Сохранение упаковок при qty → 0 (REORDER bas
         expect(result.changes[0]).toMatchObject({
             type: 'upsert',
             quantity: 0,
-            amountDue: 0,
+            amountDue: 1000,
             packageCount: 1,
             createdOnStage: 'COLLECTION',
         });

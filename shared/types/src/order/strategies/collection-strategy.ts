@@ -41,7 +41,7 @@ export class CollectionStrategy extends BaseMutableStrategy {
         // COLLECTION: poolApplies=false, никаких pool check
         if (newLineQty <= 0) {
             if (!line) return ok(); // delta<0 на пустом месте — no-op
-            return applyZeroOutOnLine(line);
+            return applyZeroOutOnLine(this.item, line);
         }
 
         // Ordered stock + supplier limit (глобальные капы, не зависят от poolApplies)

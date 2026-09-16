@@ -38,7 +38,7 @@ describe('G. Сохранение упаковок в admin-методах', () 
         const remaining = result.book.lines[0];
         expect(remaining).toBeDefined();
         expect(remaining?.quantity).toBe(0);
-        expect(remaining?.amountDue).toBe(0);
+        expect(remaining?.amountDue).toBe(1000);
         expect(remaining?.packageCount).toBe(1);
         expect(remaining?.createdOnStage).toBe('COLLECTION');
 
@@ -47,7 +47,7 @@ describe('G. Сохранение упаковок в admin-методах', () 
         expect(upsert).toMatchObject({
             type: 'upsert',
             quantity: 0,
-            amountDue: 0,
+            amountDue: 1000,
             packageCount: 1,
         });
     });
@@ -64,7 +64,8 @@ describe('G. Сохранение упаковок в admin-методах', () 
         // Строка сохранена, упаковки целы.
         const line = result.book.lines[0];
         expect(line?.quantity).toBe(0);
-        expect(line?.amountDue).toBe(0);
+        // 2 упаковки × 1 ед × 100 ₽/ед.
+        expect(line?.amountDue).toBe(200);
         expect(line?.packageCount).toBe(2);
 
         // Эффект — upsert, не delete.
@@ -72,7 +73,7 @@ describe('G. Сохранение упаковок в admin-методах', () 
         expect(result.changes[0]).toMatchObject({
             type: 'upsert',
             quantity: 0,
-            amountDue: 0,
+            amountDue: 200,
             packageCount: 2,
         });
     });

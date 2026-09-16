@@ -22,7 +22,8 @@ describe('J. Сохранение упаковок при qty → 0 (COLLECTION)
         const line = result.book.baseLineFor(1);
         expect(line).not.toBeNull();
         expect(line?.quantity).toBe(0);
-        expect(line?.amountDue).toBe(0);
+        // Стоимость упаковок сохраняется: 1 уп × 1 ед × 100 ₽/ед.
+        expect(line?.amountDue).toBe(100);
         expect(line?.packageCount).toBe(1); // упаковки целы
         expect(result.book.lines).toHaveLength(1);
 
@@ -31,7 +32,7 @@ describe('J. Сохранение упаковок при qty → 0 (COLLECTION)
         expect(result.changes[0]).toMatchObject({
             type: 'upsert',
             quantity: 0,
-            amountDue: 0,
+            amountDue: 100,
             packageCount: 1,
         });
     });

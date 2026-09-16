@@ -90,15 +90,6 @@ export class OrderLine {
         return new OrderLine({ ...this, quantity, amountDue });
     }
 
-    /**
-     * Обнулить количество и сумму, сохранив упаковки и baseQuantity.
-     * Используется, когда qty → 0, но на строке ещё есть упаковки.
-     */
-    zeroQtyKeepPackages(): OrderLine {
-        if (this.quantity === 0 && this.amountDue === 0) return this;
-        return new OrderLine({ ...this, quantity: 0, amountDue: 0 });
-    }
-
     /** Обновить количество упаковок (COLLECTION/REORDER). */
     withPackageCount(packageCount: number): OrderLine {
         if (packageCount === this.packageCount) return this;

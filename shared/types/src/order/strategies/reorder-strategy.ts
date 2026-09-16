@@ -122,7 +122,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
                     effects: [makeUpsertEffect(this.item, userId, 'REORDER', newQty, amountDue, supp.packageCount)],
                 };
             }
-            return applyZeroOutOnLine(supp);
+            return applyZeroOutOnLine(this.item, supp);
         }
         const base = this.findBaseLine(userId);
         if (base && base.quantity > 0) {
@@ -134,7 +134,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
                     effects: [makeUpsertEffect(this.item, userId, 'COLLECTION', newQty, amountDue, base.packageCount)],
                 };
             }
-            return applyZeroOutOnLine(base);
+            return applyZeroOutOnLine(this.item, base);
         }
         return ok();
     }
