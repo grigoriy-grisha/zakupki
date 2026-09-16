@@ -20,6 +20,10 @@ const COPYABLE_PAYMENT_FIELDS = [
     { key: 'recipient', label: 'Получатель', value: PAYMENT_DETAILS.recipient },
 ] as const;
 
+function toAmountString(value: number): string {
+    return String(Math.round(value * 100) / 100);
+}
+
 export type PurchasePaymentDialogProps = {
     purchaseId: number;
     remaining: number;
@@ -233,6 +237,26 @@ export function PurchasePaymentDialog({
                             </div>
                         )}
                         <p className="text-12-regular text-fg-secondary">Максимум: {formatRub(remaining)}</p>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => form.setAmount(toAmountString(remaining * 0.7))}
+                            >
+                                Оплатить 70%
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => form.setAmount(toAmountString(remaining))}
+                            >
+                                Оплатить всё
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">

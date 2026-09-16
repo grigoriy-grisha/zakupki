@@ -56,7 +56,7 @@ export function summarizePurchasePayments(
         }
     }
 
-    const remaining = Math.max(0, amountDue - confirmedPaid);
+    const remaining = Math.max(0, Math.round((amountDue - confirmedPaid) * 100) / 100);
     const isFullyPaid = !hasPending && remaining <= 1e-6 && confirmedPaid > 0;
 
     return { confirmedPaid, pendingPaid, hasPending, remaining, isFullyPaid };

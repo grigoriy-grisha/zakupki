@@ -207,7 +207,7 @@ export class BotPaymentService {
         }
 
         map.forEach((val) => {
-            val.remaining = Math.max(0, val.due - val.paid);
+            val.remaining = Math.max(0, Math.round((val.due - val.paid) * 100) / 100);
         });
 
         return map;
