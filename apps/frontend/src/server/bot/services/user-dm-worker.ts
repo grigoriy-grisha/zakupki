@@ -94,6 +94,7 @@ function isPermanentTelegramError(err: unknown): boolean {
     if (!(err instanceof GrammyError)) return false;
     const desc = err.description.toLowerCase();
     return (
+        desc.includes("bot can't initiate conversation") ||
         desc.includes('bot was blocked by the user') ||
         desc.includes('user is deactivated') ||
         desc.includes('chat not found') ||
