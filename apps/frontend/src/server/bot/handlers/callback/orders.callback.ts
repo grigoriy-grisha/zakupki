@@ -3,6 +3,7 @@ import {
     computeOrderLinePriceBreakdown,
     isPurchasePaymentOpen,
     mergeLines,
+    type OrderLinePriceBreakdown,
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
     toOrderLinesVO,
@@ -106,30 +107,56 @@ function buildItemLink(purchaseId: number, purchaseItemId: number): string | nul
     return shopTargetDeepLink(cfg, purchaseId, purchaseItemId)?.url ?? null;
 }
 
-function formatLineBreakdown(
-    totalAmount: number,
-    qty: number,
-    packs: number,
-    priceInfo: BotOrderLinePriceInfo | null,
-): string | null {
-    if (!priceInfo) return null;
-    const breakdown = computeOrderLinePriceBreakdown({
-        amountDue: totalAmount,
-        quantity: qty,
-        packageCount: packs,
-        pricePerPackCurrency: priceInfo.pricePerPackCurrency,
-        rateToRub: priceInfo.rateToRub,
-        packSize: priceInfo.packSize,
-        orgFeePercent: priceInfo.orgFeePercent,
-        deliveryPercent: priceInfo.deliveryPercent,
-        packDiscountPercent: priceInfo.packDiscountPercent,
+function computeGroupBreakdown(g: {
+    totalAmount: number;
+    qty: number;
+    packs: number;
+    priceInfo: BotOrderLinePriceInfo | null;
+}): OrderLinePriceBreakdown | null {
+    if (!g.priceInfo) return null;
+    return computeOrderLinePriceBreakdown({
+        amountDue: g.totalAmount,
+        quantity: g.qty,
+        packageCount: g.packs,
+        pricePerPackCurrency: g.priceInfo.pricePerPackCurrency,
+        rateToRub: g.priceInfo.rateToRub,
+        packSize: g.priceInfo.packSize,
+        orgFeePercent: g.priceInfo.orgFeePercent,
+        deliveryPercent: g.priceInfo.deliveryPercent,
+        packDiscountPercent: g.priceInfo.packDiscountPercent,
     });
-    if (!breakdown) return null;
+}
 
+function formatLineBreakdown(breakdown: OrderLinePriceBreakdown | null): string | null {
+    if (!breakdown) return null;
     const parts = [`товар ${breakdown.baseRub.toLocaleString('ru-RU')} ₽`];
     if (breakdown.orgFeeRub > 0) parts.push(`оргсбор ${breakdown.orgFeeRub.toLocaleString('ru-RU')} ₽`);
     if (breakdown.deliveryRub > 0) parts.push(`доставка ${breakdown.deliveryRub.toLocaleString('ru-RU')} ₽`);
     return `<i>${parts.join(' · ')}</i>`;
+}
+
+/** Суммарная разбивка по всем строкам заказа; null — если хоть по одной строке цены не сходятся. */
+function formatOrderBreakdown(groups: {
+    totalAmount: number;
+    qty: number;
+    packs: number;
+    priceInfo: BotOrderLinePriceInfo | null;
+}[]): string | null {
+    const breakdowns = groups.map((g) => computeGroupBreakdown(g));
+    if (breakdowns.length === 0 || breakdowns.some((b) => b == null)) return null;
+    const total = breakdowns.reduce(
+        (acc, b) => ({
+            baseRub: acc.baseRub + b!.baseRub,
+            orgFeeRub: acc.orgFeeRub + b!.orgFeeRub,
+            deliveryRub: acc.deliveryRub + b!.deliveryRub,
+        }),
+        { baseRub: 0, orgFeeRub: 0, deliveryRub: 0 },
+    );
+    return (
+        `<i>товар ${total.baseRub.toLocaleString('ru-RU')} ₽ · ` +
+        `оргсбор ${total.orgFeeRub.toLocaleString('ru-RU')} ₽ · ` +
+        `доставка ${total.deliveryRub.toLocaleString('ru-RU')} ₽</i>`
+    );
 }
 
 function formatPurchaseDetail(
@@ -185,7 +212,8 @@ function formatPurchaseDetail(
             }
         }
 
-        const lineTexts = Array.from(groupedLines.values()).map((g) => {
+        const groups = Array.from(groupedLines.values());
+        const lineTexts = groups.map((g) => {
             const qtyLabel = buildQuantityDisplay({
                 quantity: g.qty,
                 packageCount: g.packs,
@@ -199,13 +227,14 @@ function formatPurchaseDetail(
             const nameHtml = link
                 ? `<a href="${escapeHtml(link)}"><b>${escapeHtml(g.name)}</b></a>`
                 : `<b>${escapeHtml(g.name)}</b>`;
-            const breakdownText = formatLineBreakdown(g.totalAmount, g.qty, g.packs, g.priceInfo);
+            const breakdownText = formatLineBreakdown(computeGroupBreakdown(g));
 
             return (
                 `• ${nameHtml}\n<code>${escapeHtml(qtyLabel)} · ${amountLabel}</code>` +
                 (breakdownText ? `\n${breakdownText}` : '')
             );
         });
+        const orderBreakdownText = formatOrderBreakdown(groups);
 
     const parts = [
         detail.purchaseOrderId != null ? `Заказ №${detail.purchaseOrderId}` : null,
@@ -215,6 +244,7 @@ function formatPurchaseDetail(
         lineTexts.join('\n\n'),
         '',
         `<b>Итого: ${detail.totalDue.toLocaleString('ru-RU')} ₽</b>`,
+        orderBreakdownText,
     ];
 
     if (payment) {
