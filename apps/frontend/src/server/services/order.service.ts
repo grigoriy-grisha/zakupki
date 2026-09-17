@@ -327,6 +327,11 @@ export class OrderService {
         const lines = await this.repo.findByUserAndPurchase(userId, purchaseId);
         if (lines.length === 0) return null;
 
+        const [orgFeeDefaultPercent, packDiscountPercent] = await Promise.all([
+            this.pricingSettings.getOrgFeeDefaultPercent(),
+            this.pricingSettings.getBeadPackPriceDiscountPercent(),
+        ]);
+
         const first = lines[0]!;
         const tag = first.purchaseItem.purchase.tag;
         const totalDue = lines.reduce((sum, l) => sum + Number(l.amountDue), 0);
@@ -342,6 +347,7 @@ export class OrderService {
                 amountDue: Number(l.amountDue),
                 status: l.status,
                 purchaseItem: l.purchaseItem,
+                priceInfo: this.priceInfoForLine(l, orgFeeDefaultPercent, packDiscountPercent),
                 userId: l.userId,
                 baseQuantity: l.baseQuantity,
                 createdOnStage: l.createdOnStage,

@@ -17,6 +17,15 @@ export type BotPurchaseListItem = {
     totalDue: number;
 };
 
+export type BotOrderLinePriceInfo = {
+    pricePerPackCurrency: number | null;
+    rateToRub: number | null;
+    packSize: number | null;
+    packDiscountPercent: number;
+    orgFeePercent: number;
+    deliveryPercent: number;
+};
+
 export type BotPurchaseOrderDetail = {
     purchaseOrderId: number | null;
     tag: string;
@@ -34,6 +43,7 @@ export type BotPurchaseOrderDetail = {
             product: { name: string; articleNumber: string | null; unitCode: string } | null;
             purchase: { fulfillmentStatus: string };
         } | null;
+        priceInfo: BotOrderLinePriceInfo | null;
     }>;
 };
 

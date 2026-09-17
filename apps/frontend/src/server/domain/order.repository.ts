@@ -240,7 +240,14 @@ export class OrderRepository {
                     include: {
                         product: true,
                         purchase: {
-                            select: { id: true, tag: true, status: true, fulfillmentStatus: true },
+                            select: {
+                                id: true,
+                                tag: true,
+                                status: true,
+                                fulfillmentStatus: true,
+                                deliveryPercent: true,
+                                currencyRates: { select: { currencyId: true, rateToRub: true } },
+                            },
                         },
                     },
                 },
