@@ -18,7 +18,7 @@ import type { CallbackAction } from '../../domain/callback-data';
 import type { CallbackHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import { escapeHtml } from '../../lib/html';
-import { buildMiniAppTargetUrl, shopTargetDeepLink } from '../../lib/webapp-url';
+import { shopTargetDeepLink } from '../../lib/webapp-url';
 import type {
     BotOrderLinePriceInfo,
     BotPurchaseListItem,
@@ -100,11 +100,9 @@ async function showPurchaseDetail(
     await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: keyboard });
 }
 
-/** Прямая https-ссылка на карточку товара; t.me-диплинк — если домен не настроен. */
+/** Ссылка на карточку товара в мини-аппе: t.me?startapp запускает приложение с авторизацией через Telegram. */
 function buildItemLink(purchaseId: number, purchaseItemId: number): string | null {
-    const cfg = getActiveBotConfig();
-    if (cfg.webapp.url) return buildMiniAppTargetUrl(cfg.webapp.url, purchaseId, purchaseItemId);
-    return shopTargetDeepLink(cfg, purchaseId, purchaseItemId)?.url ?? null;
+    return shopTargetDeepLink(getActiveBotConfig(), purchaseId, purchaseItemId)?.url ?? null;
 }
 
 function computeGroupBreakdown(g: {
