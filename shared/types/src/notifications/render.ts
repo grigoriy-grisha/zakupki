@@ -169,9 +169,19 @@ export function renderNotificationBody<T extends NotificationType>(
  * `getNotificationFields` and renders them as DOM. This function is the only
  * consumer of the `body` column when delivery goes to Telegram.
  */
+export interface TelegramBodyOptions {
+    /**
+     * Full URL to the product's page inside the mini app. When provided, the
+     * «Товар» row of product-level order notifications (ORDER_QTY_CHANGED,
+     * ORDER_LINE_DELETED) is rendered as a clickable Telegram link.
+     */
+    productUrl?: string | null;
+}
+
 export function renderNotificationTelegramBody<T extends NotificationType>(
     type: T,
     payload: NotificationPayload<T>,
+    options: TelegramBodyOptions = {},
 ): string {
     const p = payload as NotificationPayload<typeof type>;
     const title = renderNotificationTitle(type);
@@ -190,7 +200,7 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
         }
         case 'ORDER_QTY_CHANGED': {
             const pp = p as NotificationPayload<'ORDER_QTY_CHANGED'>;
-            lines.push(`<b>Товар:</b> ${escapeHtml(pp.productLabel)}`);
+            lines.push(`<b>Товар:</b> ${renderProductLabel(pp.productLabel, options.productUrl)}`);
             if (Number.isFinite(pp.prevQty as number | undefined)) {
                 lines.push(`<b>Было:</b> ${escapeHtml(formatQtyUnit(pp.prevQty, pp.unitShort))}`);
             }
@@ -199,7 +209,7 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
         }
         case 'ORDER_LINE_DELETED': {
             const pp = p as NotificationPayload<'ORDER_LINE_DELETED'>;
-            lines.push(`<b>Товар:</b> ${escapeHtml(pp.productLabel)}`);
+            lines.push(`<b>Товар:</b> ${renderProductLabel(pp.productLabel, options.productUrl)}`);
             break;
         }
         case 'ORDER_CLEARED':
@@ -257,7 +267,13 @@ export function renderNotificationUrl<T extends NotificationType>(
         case 'ORDER_HANDOFF_SHIP_REQUEST':
             return '/shop/orders';
         case 'ORDER_QTY_CHANGED':
-        case 'ORDER_LINE_DELETED':
+        case 'ORDER_LINE_DELETED': {
+            const p = payload as NotificationPayload<'ORDER_QTY_CHANGED'>;
+            if (p.purchaseId != null && p.purchaseItemId != null) {
+                return `/shop/purchase/${p.purchaseId}/item/${p.purchaseItemId}`;
+            }
+            return p.purchaseId != null ? `/shop/purchase/${p.purchaseId}` : '/shop';
+        }
         case 'ORDER_CLEARED':
         case 'ORDER_AMOUNT_RECALCULATED':
         case 'PURCHASE_FULFILLMENT_STAGE':
@@ -292,6 +308,11 @@ function formatTag(tag: string): string {
  */
 function escapeHtml(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** «Товар» as a Telegram link when the caller resolved a deep URL, plain text otherwise. */
+function renderProductLabel(label: string, productUrl: string | null | undefined): string {
+    return productUrl ? `<a href="${escapeHtml(productUrl)}">${escapeHtml(label)}</a>` : escapeHtml(label);
 }
 
 // ── Visual + structured-field helpers (for the UI) ─────────────────────────

@@ -10,6 +10,7 @@ import {
     HANDOFF_STATUS_LABELS,
     NOTIFIABLE_FULFILLMENT_STAGES,
     NOTIFICATION_TYPES,
+    type NotificationPayload,
     PURCHASE_FULFILLMENT_LABELS,
     PURCHASE_STATUS_LABELS,
     renderNotificationBody,
@@ -87,7 +88,7 @@ describe('coalescing', () => {
         // The coalesce key must be part of the typed payload so the service can
         // read it without casting. If this contract breaks, coalescing silently
         // stops working.
-        const payload: import('../src').NotificationPayload<'ORDER_QTY_CHANGED'> = {
+        const payload: NotificationPayload<'ORDER_QTY_CHANGED'> = {
             purchaseId: 1,
             purchaseTag: 'X',
             purchaseItemId: 42,
@@ -359,6 +360,46 @@ describe('renderNotificationTelegramBody', () => {
         expect(body).not.toContain('Чай & <кофе>');
     });
 
+    it('wraps the Товар row in a link when productUrl is provided', () => {
+        const body = renderNotificationTelegramBody(
+            'ORDER_QTY_CHANGED',
+            {
+                purchaseId: 1,
+                purchaseTag: '#X',
+                purchaseItemId: 10,
+                productLabel: 'LMA4201 Сахар',
+                prevQty: 2,
+                newQty: 5,
+                unitShort: 'шт',
+            },
+            { productUrl: 'https://scheglove.ru/tg/shop/purchase/1/item/10' },
+        );
+        expect(body).toContain(
+            '<b>Товар:</b> <a href="https://scheglove.ru/tg/shop/purchase/1/item/10">LMA4201 Сахар</a>',
+        );
+    });
+
+    it('links the Товар row for ORDER_LINE_DELETED and keeps other rows plain', () => {
+        const body = renderNotificationTelegramBody(
+            'ORDER_LINE_DELETED',
+            { purchaseId: 1, purchaseTag: '#X', purchaseItemId: 10, productLabel: 'LMA4201 Сахар' },
+            { productUrl: 'https://t.me/bot/app?startapp=p1i10' },
+        );
+        expect(body).toContain('<a href="https://t.me/bot/app?startapp=p1i10">LMA4201 Сахар</a>');
+        expect(body).not.toContain('<a href="#X">');
+    });
+
+    it('omits the link when productUrl is not provided', () => {
+        const body = renderNotificationTelegramBody('ORDER_LINE_DELETED', {
+            purchaseId: 1,
+            purchaseTag: '#X',
+            purchaseItemId: 10,
+            productLabel: 'Сахар',
+        });
+        expect(body).toContain('<b>Товар:</b> Сахар');
+        expect(body).not.toContain('<a href');
+    });
+
     it('keeps the markup tags intact (not double-escaped)', () => {
         const body = renderNotificationTelegramBody('ORDER_CLEARED', {
             purchaseId: 1,
@@ -426,7 +467,7 @@ describe('renderNotificationUrl', () => {
         ).toBe('/shop/orders');
     });
 
-    it('deep-links order-change notifications to the purchase page', () => {
+    it('deep-links order-change notifications straight to the product page', () => {
         expect(
             renderNotificationUrl('ORDER_QTY_CHANGED', {
                 purchaseId: 42,
@@ -437,7 +478,7 @@ describe('renderNotificationUrl', () => {
                 newQty: 1,
                 unitShort: 'шт',
             }),
-        ).toBe('/shop/purchase/42');
+        ).toBe('/shop/purchase/42/item/10');
         expect(
             renderNotificationUrl('ORDER_LINE_DELETED', {
                 purchaseId: 42,
@@ -445,7 +486,7 @@ describe('renderNotificationUrl', () => {
                 purchaseItemId: 10,
                 productLabel: 'A',
             }),
-        ).toBe('/shop/purchase/42');
+        ).toBe('/shop/purchase/42/item/10');
         expect(renderNotificationUrl('ORDER_CLEARED', { purchaseId: 42, purchaseTag: 'X' })).toBe(
             '/shop/purchase/42',
         );

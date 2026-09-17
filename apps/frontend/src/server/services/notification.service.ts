@@ -12,9 +12,27 @@ import {
     renderNotificationUrl,
 } from '@zakupki/types';
 
+import { getActiveBotConfig } from '../bot/config/bot-config';
+import { buildMiniAppTargetUrl } from '../bot/lib/webapp-url';
 import type { NotificationRepository } from '../domain/notification.repository';
 
 const log = createLogger('notification-service');
+
+const PRODUCT_NOTIFICATION_TYPES: ReadonlySet<string> = new Set(['ORDER_QTY_CHANGED', 'ORDER_LINE_DELETED']);
+
+/** Mini app URL for the product named in a product-level notification, or null. */
+function productDeepLink(payload: { purchaseId?: unknown; purchaseItemId?: unknown }): string | null {
+    if (typeof payload.purchaseId !== 'number' || typeof payload.purchaseItemId !== 'number') return null;
+    const cfg = getActiveBotConfig();
+    const base = cfg.webapp.miniAppUrl ?? cfg.webapp.url;
+    if (!base) return null;
+    return buildMiniAppTargetUrl(base, payload.purchaseId, payload.purchaseItemId);
+}
+
+function telegramBody<T extends NotificationType>(type: T, payload: NotificationPayload<T>): string {
+    const productUrl = PRODUCT_NOTIFICATION_TYPES.has(type) ? productDeepLink(payload) : null;
+    return renderNotificationTelegramBody(type, payload, { productUrl });
+}
 
 /**
  * Single entry point for production-side code to push a user-facing
@@ -63,7 +81,7 @@ export class NotificationService {
         // We therefore store the rich Telegram-HTML variant — bold labels,
         // per-type emoji, multi-line layout — so the worker just sends it as-is
         // with parse_mode=HTML, no extra escaping.
-        const body = renderNotificationTelegramBody(input.type, payload);
+        const body = telegramBody(input.type, payload);
         const url = renderNotificationUrl(input.type, payload);
         const coalescable = COALESCABLE_NOTIFICATION_TYPES.has(input.type);
 
@@ -114,7 +132,7 @@ export class NotificationService {
             type: input.type,
             payload,
             title: renderNotificationTitle(input.type),
-            body: renderNotificationTelegramBody(input.type, payload),
+            body: telegramBody(input.type, payload),
             url: renderNotificationUrl(input.type, payload),
         });
     }

@@ -8,12 +8,14 @@ import {
 } from '@zakupki/types';
 import { InlineKeyboard } from 'grammy';
 
+import { formatPurchaseProductLine1 } from '@/lib/product-label/format-purchase';
+
 import type { ServiceContainer } from '../../container/service-container';
 import type { CallbackAction } from '../../domain/callback-data';
 import type { CallbackHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import { escapeHtml } from '../../lib/html';
-import type { BotPurchaseListItem } from '../../services/bot/bot-order.service';
+import type { BotPurchaseListItem, BotPurchaseOrderDetail } from '../../services/bot/bot-order.service';
 
 function buildPurchasesKeyboard(purchases: BotPurchaseListItem[]) {
     const keyboard = new InlineKeyboard();
@@ -91,7 +93,7 @@ async function showPurchaseDetail(
 }
 
 function formatPurchaseDetail(
-    detail: import('../../services/bot/bot-order.service').BotPurchaseOrderDetail,
+    detail: BotPurchaseOrderDetail,
     payment: { due: number; paid: number; hasPending: boolean; remaining: number; tag: string } | null,
     fulfillmentStatus?: PurchaseFulfillmentStatus | null,
 ): string {
@@ -112,7 +114,9 @@ function formatPurchaseDetail(
     for (const line of detail.lines) {
         const product = line.purchaseItem?.product;
         const piId = line.purchaseItem?.id ?? 0;
-        const name = product?.name ?? 'Товар';
+        const name = product
+            ? formatPurchaseProductLine1({ name: product.name, articleNumber: product.articleNumber })
+            : 'Товар';
         const unitCode = line.purchaseItem?.unitCode ?? null;
         const packSize =
             line.purchaseItem?.packAmount != null ? Number(line.purchaseItem.packAmount) : null;

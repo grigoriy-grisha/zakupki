@@ -2,6 +2,8 @@ import type { Prisma} from '@zakupki/database';
 import { dbClient, type PurchaseFulfillmentStatus,type PurchaseStatus } from '@zakupki/database';
 import { getUnitShortName } from '@zakupki/types';
 
+import { formatPurchaseProductLine1 } from '@/lib/product-label/format-purchase';
+
 import { productInclude } from './product-include';
 
 export class PurchaseRepository {
@@ -146,7 +148,7 @@ export class PurchaseRepository {
             where: { id },
             select: {
                 unitCode: true,
-                product: { select: { name: true } },
+                product: { select: { name: true, articleNumber: true } },
                 purchase: { select: { id: true, tag: true } },
             },
         });
@@ -154,7 +156,10 @@ export class PurchaseRepository {
         return {
             purchaseId: row.purchase.id,
             purchaseTag: row.purchase.tag,
-            productLabel: row.product.name,
+            productLabel: formatPurchaseProductLine1({
+                name: row.product.name,
+                articleNumber: row.product.articleNumber,
+            }),
             unitShort: getUnitShortName(row.unitCode),
         };
     }
