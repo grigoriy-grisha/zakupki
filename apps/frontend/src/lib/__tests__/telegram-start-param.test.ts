@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseTelegramStartParam, shopPathForStartTarget } from '../telegram-start-param';
+import {
+    parseTelegramStartParam,
+    parseTelegramStartParamFromQuery,
+    shopPathForStartTarget,
+} from '../telegram-start-param';
 
 describe('parseTelegramStartParam', () => {
     it('parses a purchase target', () => {
@@ -34,6 +38,22 @@ describe('parseTelegramStartParam', () => {
     it('returns null for zero ids', () => {
         expect(parseTelegramStartParam('p0')).toBeNull();
         expect(parseTelegramStartParam('p5i0')).toBeNull();
+    });
+});
+
+describe('parseTelegramStartParamFromQuery', () => {
+    it('reads the tgWebAppStartParam GET parameter', () => {
+        expect(parseTelegramStartParamFromQuery('?tgWebAppStartParam=p5')).toEqual({ purchaseId: 5 });
+        expect(parseTelegramStartParamFromQuery('?tgWebAppStartParam=p5i123&x=1')).toEqual({
+            purchaseId: 5,
+            itemId: 123,
+        });
+    });
+
+    it('returns null without the parameter or with a malformed value', () => {
+        expect(parseTelegramStartParamFromQuery('')).toBeNull();
+        expect(parseTelegramStartParamFromQuery('?x=1')).toBeNull();
+        expect(parseTelegramStartParamFromQuery('?tgWebAppStartParam=zzz')).toBeNull();
     });
 });
 

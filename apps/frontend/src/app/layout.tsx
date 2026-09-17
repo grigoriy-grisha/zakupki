@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { Cormorant_Infant, Inter, JetBrains_Mono, Raleway } from 'next/font/google';
 import Script from 'next/script';
 
+import { TelegramStartRedirect } from '@/components/shared/telegram-start-redirect';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/lib/auth-provider';
 import { TrpcProvider } from '@/lib/client/trpc-provider';
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <AuthProvider>
                     <TrpcProvider>{children}</TrpcProvider>
                 </AuthProvider>
+                <TelegramStartRedirect />
                 <Toaster />
             </body>
         </html>

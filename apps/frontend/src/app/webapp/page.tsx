@@ -4,7 +4,11 @@ import { useEffect } from 'react';
 
 import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useTelegramAutoLogin } from '@/lib/hooks/use-telegram-auto-login';
-import { parseTelegramStartParam, shopPathForStartTarget } from '@/lib/telegram-start-param';
+import {
+    parseTelegramStartParam,
+    parseTelegramStartParamFromQuery,
+    shopPathForStartTarget,
+} from '@/lib/telegram-start-param';
 
 function LoadingScreen({ message }: { message: string }) {
     return (
@@ -20,7 +24,9 @@ export default function WebAppPage() {
 
     useEffect(() => {
         if (!isTelegramWebApp || !isAuthenticated) return;
-        const target = parseTelegramStartParam(window.Telegram?.WebApp?.initDataUnsafe?.start_param);
+        const target =
+            parseTelegramStartParamFromQuery(window.location.search) ??
+            parseTelegramStartParam(window.Telegram?.WebApp?.initDataUnsafe?.start_param);
         router.replace(target ? shopPathForStartTarget(target) : '/shop');
     }, [isTelegramWebApp, isAuthenticated, router]);
 

@@ -1,13 +1,17 @@
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { NextRequest, NextResponse } from 'next/server';
 
-import { type Platform, parseAppPath, withPlatformPrefix } from '@/lib/app-path';
+import { parseAppPath, type Platform, withPlatformPrefix } from '@/lib/app-path';
 import { PUBLIC_PATH_PREFIXES } from '@/lib/constants';
 import { getHomePathForRole, isAdminOnlyRoute } from '@/lib/route-access';
 
 function redirectApp(request: NextRequest, path: string, platform: Platform | null) {
     const target = platform ? withPlatformPrefix(path, platform) : path;
-    return NextResponse.redirect(new URL(target, request.url));
+    // Preserve the query (e.g. tgWebAppStartParam from mini app deep links).
+    const url = new URL(target, request.url);
+    url.search = request.nextUrl.search;
+    return NextResponse.redirect(url);
 }
 
 function rewriteApp(request: NextRequest, appPathname: string) {
