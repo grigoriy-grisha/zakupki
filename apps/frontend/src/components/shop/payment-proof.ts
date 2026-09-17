@@ -1,3 +1,5 @@
+import { computePaymentTotals, type PaymentTotals } from '@zakupki/types';
+
 import { paymentTotal } from '@/lib/payment-utils';
 
 export type ShopPaymentView = {
@@ -27,14 +29,7 @@ export const SHOP_PAYMENT_STATUS: Record<string, { label: string; className: str
     REJECTED: { label: 'Отклонено', className: 'text-error' },
 };
 
-/** Суммы по оплатам: в «покрыто» только CONFIRMED; PENDING — до решения админа. */
-export type PurchasePaymentSummary = {
-    confirmedPaid: number;
-    pendingPaid: number;
-    hasPending: boolean;
-    /** Сколько ещё нужно оплатить (без учёта ожидающих). */
-    remaining: number;
-    /** Полностью оплачено и нет платежей на проверке. */
+export type PurchasePaymentSummary = PaymentTotals & {
     isFullyPaid: boolean;
 };
 
@@ -42,22 +37,13 @@ export function summarizePurchasePayments(
     amountDue: number,
     payments: Array<{ status: string; amount: unknown; children?: { amount: unknown }[] }>,
 ): PurchasePaymentSummary {
-    let confirmedPaid = 0;
-    let pendingPaid = 0;
-    let hasPending = false;
+    const totals = computePaymentTotals(
+        amountDue,
+        payments.map((p) => ({ status: p.status, total: paymentTotal(p) })),
+    );
 
-    for (const p of payments) {
-        const total = paymentTotal(p);
-        if (p.status === 'CONFIRMED') {
-            confirmedPaid += total;
-        } else if (p.status === 'PENDING') {
-            pendingPaid += total;
-            hasPending = true;
-        }
-    }
-
-    const remaining = Math.max(0, Math.round((amountDue - confirmedPaid) * 100) / 100);
-    const isFullyPaid = !hasPending && remaining <= 1e-6 && confirmedPaid > 0;
-
-    return { confirmedPaid, pendingPaid, hasPending, remaining, isFullyPaid };
+    return {
+        ...totals,
+        isFullyPaid: !totals.hasPending && totals.remaining <= 1e-6 && totals.confirmedPaid > 0,
+    };
 }

@@ -54,7 +54,7 @@ export class PayCommand implements CommandHandler {
 
         const keyboard = new InlineKeyboard();
         for (const p of payable) {
-            const label = `${p.tag} — ${p.remaining.toLocaleString('ru-RU')} ₽`;
+            const label = `${p.tag} — ${p.available.toLocaleString('ru-RU')} ₽`;
             keyboard.text(label.slice(0, 60), `pay:pick:${p.purchaseId}`).row();
         }
 

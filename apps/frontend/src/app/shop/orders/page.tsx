@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
 import { formatPriceRub, formatRub } from '@/lib/format/money';
 import { useAppRouter } from '@/lib/hooks/use-app-router';
+import { findPinnedPromo } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 type OrdersTab = 'active' | 'past';
@@ -185,7 +186,8 @@ function PurchaseOrderCard({
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
     const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
-    const { remaining, hasPending, isFullyPaid } = paymentSummary;
+    const { remaining, available, hasPending, isFullyPaid } = paymentSummary;
+    const pinnedPromo = findPinnedPromo(purchasePayments);
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
     const breakdowns = group.orders.map((order) => linePriceBreakdown(order));
@@ -339,11 +341,13 @@ function PurchaseOrderCard({
                 <PaymentStatusBlock
                     total={group.total}
                     remaining={remaining}
+                    available={available}
                     hasPending={hasPending}
                     isFullyPaid={isFullyPaid}
                     isPast={isPast}
                     paymentOpen={paymentOpen}
                     purchaseId={group.id}
+                    pinnedPromo={pinnedPromo}
                     orderCount={group.orders.length}
                 />
             </div>

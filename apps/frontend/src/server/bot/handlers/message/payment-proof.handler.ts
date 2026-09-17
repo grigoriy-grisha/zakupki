@@ -1,11 +1,12 @@
 import { PROOF_MIME_BY_EXT, PROOF_MIME_TYPES } from '@zakupki/types';
 
-import type { CustomContext } from '../../domain/types';
-import { isPrivateChat } from '../shared/is-private-chat';
-import type { MessageHandler } from '../../domain/handler';
 import type { ServiceContainer } from '../../container/service-container';
+import type { MessageHandler } from '../../domain/handler';
+import type { CustomContext } from '../../domain/types';
 import { downloadTelegramFile } from '../../lib/download-telegram-file';
+import { paymentSubmittedText } from '../../lib/payment-texts';
 import { PAYMENT_NOT_OPEN_MESSAGE } from '../../lib/purchase-payment-guard';
+import { isPrivateChat } from '../shared/is-private-chat';
 
 function messageHasPaymentFile(ctx: CustomContext): boolean {
     const message = ctx.message;
@@ -26,9 +27,6 @@ function mimeFromDocument(fileName: string | undefined, mimeType: string | undef
     return null;
 }
 
-/**
- * PaymentProofHandler — обрабатывает photo/PDF-документ в payment flow.
- */
 export class PaymentProofHandler implements MessageHandler {
     readonly filter = 'photo_or_doc' as const;
     readonly requireAuth = true;
@@ -99,20 +97,13 @@ export class PaymentProofHandler implements MessageHandler {
                 userComment,
                 proofData,
                 proofMimeType: mimeType,
-                promoCodeId: promo?.id,
-                discountAmount: promo?.discount,
+                promoCode: promo?.code,
             });
 
             flow.clear();
 
-            const discountLine = promo
-                ? `Скидка по промокоду: ${promo.discount.toLocaleString('ru-RU')} ₽\n`
-                : '';
-            await ctx.reply(
-                `Оплата ${current.amount.toLocaleString('ru-RU')} ₽ по закупке «${current.purchaseTag}» отправлена на проверку.\n` +
-                    discountLine +
-                    `Статус: /payments`,
-            );
+            const transfer = promo ? promo.finalAmount : current.amount;
+            await ctx.reply(paymentSubmittedText(current.purchaseTag, transfer, promo), { parse_mode: 'HTML' });
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Не удалось отправить оплату';
             await ctx.reply(msg);

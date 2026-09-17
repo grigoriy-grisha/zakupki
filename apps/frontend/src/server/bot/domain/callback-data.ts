@@ -13,8 +13,10 @@ export type CallbackAction =
     | { kind: 'orders:pick'; purchaseId: number }
     | { kind: 'pay:pick'; purchaseId: number }
     | { kind: 'pay:all'; purchaseId: number }
+    | { kind: 'pay:part'; purchaseId: number; percent: number }
     | { kind: 'pay:promo' }
     | { kind: 'pay:skip' }
+    | { kind: 'pay:cancel'; paymentId: number }
     | { kind: 'consent:accept' }
     | { kind: 'handoff:store'; purchaseOrderId: number }
     | { kind: 'handoff:ship'; purchaseOrderId: number };
@@ -47,8 +49,23 @@ export class CallbackParser {
             if (Number.isFinite(purchaseId)) return { kind: 'pay:all', purchaseId };
         }
 
+        const payPartMatch = /^pay:part:(\d+):(\d{1,2})$/.exec(data);
+        if (payPartMatch) {
+            const purchaseId = Number(payPartMatch[1]);
+            const percent = Number(payPartMatch[2]);
+            if (Number.isFinite(purchaseId) && percent > 0 && percent < 100) {
+                return { kind: 'pay:part', purchaseId, percent };
+            }
+        }
+
         if (data === 'pay:promo') return { kind: 'pay:promo' };
         if (data === 'pay:skip') return { kind: 'pay:skip' };
+
+        const payCancelMatch = /^pay:cancel:(\d+)$/.exec(data);
+        if (payCancelMatch) {
+            const paymentId = Number(payCancelMatch[1]);
+            if (Number.isFinite(paymentId)) return { kind: 'pay:cancel', paymentId };
+        }
         if (data === 'consent:accept') return { kind: 'consent:accept' };
 
         const handoffStoreMatch = /^handoff:store:(\d+)$/.exec(data);
@@ -79,10 +96,14 @@ export class CallbackParser {
                 return `pay:pick:${action.purchaseId}`;
             case 'pay:all':
                 return `pay:all:${action.purchaseId}`;
+            case 'pay:part':
+                return `pay:part:${action.purchaseId}:${action.percent}`;
             case 'pay:promo':
                 return 'pay:promo';
             case 'pay:skip':
                 return 'pay:skip';
+            case 'pay:cancel':
+                return `pay:cancel:${action.paymentId}`;
             case 'consent:accept':
                 return 'consent:accept';
             case 'handoff:store':

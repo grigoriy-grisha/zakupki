@@ -2,14 +2,6 @@ import { dbClient } from '@zakupki/database';
 import { NotFoundError, ValidationError } from '@zakupki/types';
 
 export class PaymentRepository {
-    /**
-     * Create a payment record directly (admin-side). The admin note is stored
-     * in `adminNote` (the only note-style field on Payment besides `userComment`,
-     * which is reserved for the paying user's own text). Status defaults to
-     * CONFIRMED: when an admin records an offline / cash / SBP-out-of-band
-     * payment they have already seen the money — a PENDING row would just sit
-     * in their own "awaiting review" queue forever.
-     */
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
         return dbClient.payment.create({
             data: {
@@ -69,10 +61,20 @@ export class PaymentRepository {
                         promoCodeId: data.promoCodeId,
                     },
                 });
-                await tx.promoCode.update({
-                    where: { id: data.promoCodeId },
-                    data: { usedCount: { increment: 1 } },
+                const countedAlready = await tx.payment.findFirst({                    where: {
+                        userId: data.userId,
+                        purchaseId: data.purchaseId,
+                        status: { not: 'REJECTED' },
+                        promoCodeId: data.promoCodeId,
+                        id: { not: parent.id },
+                    },
                 });
+                if (!countedAlready) {
+                    await tx.promoCode.update({
+                        where: { id: data.promoCodeId },
+                        data: { usedCount: { increment: 1 } },
+                    });
+                }
             }
 
             return tx.payment.findUnique({
@@ -110,10 +112,37 @@ export class PaymentRepository {
     }
 
     async getById(id: number) {
-        return dbClient.payment.findUnique({ where: { id } });
+        return dbClient.payment.findUnique({ where: { id }, include: { children: true } });
     }
 
-    /** Fetch a payment with the purchase tag included (for notification payloads). */
+    async findPinnedPromo(userId: number, purchaseId: number) {
+        const payment = await dbClient.payment.findFirst({
+            where: {
+                userId,
+                purchaseId,
+                parentId: null,
+                status: { not: 'REJECTED' },
+                children: { some: { promoCodeId: { not: null } } },
+            },
+            include: { children: { include: { promoCode: true } } },
+            orderBy: { submittedAt: 'desc' },
+        });
+        return payment?.children.find((c) => c.promoCodeId != null)?.promoCode ?? null;
+    }
+
+    async getPromoDiscountUsed(userId: number, purchaseId: number, promoCodeId: number) {
+        const agg = await dbClient.payment.aggregate({
+            where: {
+                userId,
+                purchaseId,
+                promoCodeId,
+                status: { not: 'REJECTED' },
+            },
+            _sum: { amount: true },
+        });
+        return Number(agg._sum.amount ?? 0);
+    }
+
     async findWithPurchase(id: number) {
         return dbClient.payment.findUnique({
             where: { id },
@@ -128,14 +157,12 @@ export class PaymentRepository {
         });
     }
 
-    async findPendingByUserAndPurchase(userId: number, purchaseId: number) {
-        return dbClient.payment.findFirst({
-            where: { userId, purchaseId, status: 'PENDING', parentId: null },
-        });
-    }
-
     async updateStatus(id: number, status: 'CONFIRMED' | 'REJECTED', adminNote?: string) {
         return dbClient.$transaction(async (tx) => {
+            const existing = await tx.payment.findUnique({
+                where: { id },
+                include: { children: { select: { promoCodeId: true } } },
+            });
             const updated = await tx.payment.update({
                 where: { id },
                 data: { status, adminNote },
@@ -144,6 +171,28 @@ export class PaymentRepository {
                 where: { parentId: id },
                 data: { status },
             });
+            if (status === 'REJECTED' && existing) {
+                const promoIds = [
+                    ...new Set(existing.children.map((c) => c.promoCodeId).filter((x): x is number => x != null)),
+                ];
+                for (const promoCodeId of promoIds) {
+                    const stillUsed = await tx.payment.findFirst({
+                        where: {
+                            userId: existing.userId,
+                            purchaseId: existing.purchaseId,
+                            id: { not: id },
+                            status: { not: 'REJECTED' },
+                            promoCodeId,
+                        },
+                    });
+                    if (!stillUsed) {
+                        await tx.promoCode.updateMany({
+                            where: { id: promoCodeId, usedCount: { gt: 0 } },
+                            data: { usedCount: { decrement: 1 } },
+                        });
+                    }
+                }
+            }
             return updated;
         });
     }

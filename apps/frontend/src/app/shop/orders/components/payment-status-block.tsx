@@ -1,8 +1,9 @@
 'use client';
 
-import { CircleCheck, Clock, CreditCard } from 'lucide-react';
+import { CircleCheck, CreditCard } from 'lucide-react';
 
 import { formatRub } from '@/lib/format/money';
+import type { PaymentPromoInfo } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 import { PurchasePaymentDialog } from './purchase-payment-dialog';
@@ -10,11 +11,13 @@ import { PurchasePaymentDialog } from './purchase-payment-dialog';
 interface PaymentStatusBlockProps {
     total: number;
     remaining: number;
+    available: number;
     hasPending: boolean;
     isFullyPaid: boolean;
     isPast?: boolean;
     paymentOpen: boolean;
     purchaseId: number;
+    pinnedPromo?: PaymentPromoInfo;
     orderCount?: number;
     size?: 'default' | 'compact';
 }
@@ -22,11 +25,13 @@ interface PaymentStatusBlockProps {
 export function PaymentStatusBlock({
     total,
     remaining,
+    available,
     hasPending,
     isFullyPaid,
     isPast = false,
     paymentOpen,
     purchaseId,
+    pinnedPromo,
     orderCount,
     size = 'default',
 }: PaymentStatusBlockProps) {
@@ -52,15 +57,17 @@ export function PaymentStatusBlock({
     }
 
     if (hasPending) {
+        if (available <= 0 || !paymentOpen) return null;
         return (
             <div className={wrapCls}>
-                <span className="flex items-center gap-1.5 text-warning">
-                    <Clock className={compact ? 'size-3.5' : 'size-4'} />
-                    Ожидает подтверждения
-                </span>
-                <span className={cn(amountCls, compact ? 'text-13-semibold' : 'text-14-semibold')}>
-                    {formatRub(total)}
-                </span>
+                <PurchasePaymentDialog
+                    purchaseId={purchaseId}
+                    remaining={available}
+                    due={total}
+                    pinnedPromo={pinnedPromo}
+                    paymentOpen={paymentOpen}
+                    triggerVariant="link"
+                />
             </div>
         );
     }
@@ -87,18 +94,19 @@ export function PaymentStatusBlock({
         );
     }
 
-    if (remaining > 0 && paymentOpen) {
+    if (available > 0 && paymentOpen) {
         return (
             <div className={wrapCls}>
-                {remaining !== total && (
-                    <span className="text-fg-secondary">
-                        К оплате: <span className={amountCls}>{formatRub(remaining)}</span>
+                {available !== total && (
+                    <span className="whitespace-nowrap text-fg-secondary">
+                        К оплате: <span className={amountCls}>{formatRub(available)}</span>
                     </span>
                 )}
                 <PurchasePaymentDialog
                     purchaseId={purchaseId}
-                    remaining={remaining}
-                    hasPending={hasPending}
+                    remaining={available}
+                    due={total}
+                    pinnedPromo={pinnedPromo}
                     paymentOpen={paymentOpen}
                     triggerVariant="link"
                 />

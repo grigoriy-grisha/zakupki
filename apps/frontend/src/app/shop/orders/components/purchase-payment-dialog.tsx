@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Check, Copy, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
+import { Check, Copy, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { usePaymentForm } from '@/app/shop/hooks/use-payment-form';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRub } from '@/lib/format/money';
-import { PAYMENT_DETAILS } from '@/lib/payment-utils';
+import { PAYMENT_DETAILS, type PaymentPromoInfo } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 const COPYABLE_PAYMENT_FIELDS = [
@@ -27,8 +27,9 @@ function toAmountString(value: number): string {
 export type PurchasePaymentDialogProps = {
     purchaseId: number;
     remaining: number;
-    hasPending: boolean;
+    due: number;
     paymentOpen: boolean;
+    pinnedPromo?: PaymentPromoInfo;
     triggerVariant?: 'button' | 'link';
     buttonClassName?: string;
     buttonSize?: 'sm' | 'default';
@@ -37,13 +38,14 @@ export type PurchasePaymentDialogProps = {
 export function PurchasePaymentDialog({
     purchaseId,
     remaining,
-    hasPending,
+    due,
     paymentOpen,
+    pinnedPromo,
     triggerVariant = 'button',
     buttonClassName,
     buttonSize = 'sm',
 }: PurchasePaymentDialogProps) {
-    const form = usePaymentForm(purchaseId, remaining);
+    const form = usePaymentForm(purchaseId, remaining, due, pinnedPromo);
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
     const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -60,7 +62,12 @@ export function PurchasePaymentDialog({
         copiedTimerRef.current = setTimeout(() => setCopiedKey(null), 1500);
     }
 
-    const payLabel = hasPending ? 'Ожидает подтверждения' : `Оплатить ${formatRub(remaining)}`;
+    const payLabel = `Оплатить ${formatRub(remaining)}`;
+
+    const amountValid =
+        form.numAmount > 0 && form.numAmount <= form.maxTransfer && !Number.isNaN(form.numAmount);
+    const closesFully = amountValid && form.numAmount === form.maxTransfer;
+    const promoReduces = form.maxTransfer < remaining;
 
     const payButton = !paymentOpen ? (
         <div className={cn('relative w-full', buttonClassName)}>
@@ -85,10 +92,9 @@ export function PurchasePaymentDialog({
             size="sm"
             className={cn('h-auto gap-1 p-0 text-14-medium text-primary', buttonClassName)}
             onClick={() => form.handleOpenChange(true)}
-            disabled={hasPending}
         >
             <CreditCard className="size-3.5" />
-            {hasPending ? 'Ожидает подтверждения' : 'Оплатить'}
+            {payLabel}
         </Button>
     ) : (
         <Button
@@ -96,7 +102,6 @@ export function PurchasePaymentDialog({
             size={buttonSize}
             className={cn('w-full gap-2', buttonClassName)}
             onClick={() => form.handleOpenChange(true)}
-            disabled={hasPending}
         >
             <CreditCard className="h-4 w-4" />
             {payLabel}
@@ -153,11 +158,73 @@ export function PurchasePaymentDialog({
                         Банк: <span className="text-fg-primary">{PAYMENT_DETAILS.banks}</span>
                     </p>
                 </div>
-                <div className="rounded-lg bg-warning/10 p-3 flex items-center gap-2 text-warning text-13-regular">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>
-                        Осталось оплатить: <strong>{formatRub(remaining)}</strong>
-                    </span>
+                <div
+                    className={cn(
+                        'rounded-lg border p-3',
+                        closesFully ? 'border-success/30 bg-success/10' : 'border-border-low bg-bg-soft',
+                    )}
+                >
+                    <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-13-regular text-fg-secondary">Осталось оплатить</span>
+                        {promoReduces ? (
+                            <span className="flex items-baseline gap-2">
+                                <span className="text-14-regular text-fg-tertiary line-through tabular-nums">
+                                    {formatRub(remaining)}
+                                </span>
+                                <span className="text-18-semibold tabular-nums text-success">
+                                    {formatRub(form.maxTransfer)}
+                                </span>
+                            </span>
+                        ) : (
+                            <span
+                                className={cn(
+                                    'text-18-semibold tabular-nums',
+                                    closesFully ? 'text-success' : 'text-fg-primary',
+                                )}
+                            >
+                                {formatRub(remaining)}
+                            </span>
+                        )}
+                    </div>
+                    {promoReduces && !amountValid && (
+                        <div className="mt-2 flex items-start gap-1.5 border-t border-border-low pt-2 text-12-regular text-fg-secondary">
+                            <span>
+                                Промокод {form.appliedPromo?.code} уменьшает платёж на{' '}
+                                {formatRub(remaining - form.maxTransfer)}
+                            </span>
+                        </div>
+                    )}
+                    {amountValid && (
+                        <div
+                            className={cn(
+                                'mt-2 flex items-start gap-1.5 border-t pt-2 text-12-regular',
+                                closesFully ? 'border-success/20 text-success' : 'border-border-low text-fg-secondary',
+                            )}
+                        >
+                            {closesFully ? (
+                                <>
+                                    <Check className="mt-0.5 size-3.5 shrink-0" />
+                                    <span>
+                                        Перевод{' '}
+                                        <span className="text-12-semibold tabular-nums">
+                                            {formatRub(form.finalAmount)}
+                                        </span>{' '}
+                                        закроет остаток полностью
+                                        {form.promoDiscount > 0 && ` (скидка ${formatRub(form.promoDiscount)})`}
+                                    </span>
+                                </>
+                            ) : (
+                                <span>
+                                    Этот платёж{' '}
+                                    <span className="text-12-semibold tabular-nums">
+                                        {formatRub(form.finalAmount)}
+                                    </span>{' '}
+                                    · после него останется{' '}
+                                    {formatRub(Math.max(remaining - form.submittedAmount, 0))}
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 <form onSubmit={form.handleSubmit} className="space-y-4">
                     <div className="space-y-2">
@@ -170,17 +237,24 @@ export function PurchasePaymentDialog({
                                 <div className="flex items-center gap-2 text-success">
                                     <Tag className="h-4 w-4" />
                                     <span className="text-13-medium">{form.appliedPromo.code}</span>
-                                    <span className="text-12-regular">−{formatRub(form.appliedPromo.discount)}</span>
+                                    <span className="text-12-regular">
+                                        {form.appliedPromo.type === 'PERCENT'
+                                            ? `${form.appliedPromo.value}%`
+                                            : `−${formatRub(form.appliedPromo.value)} ₽`}
+                                        {form.appliedPromo.pinned && ' · закреплён за заказом'}
+                                    </span>
                                 </div>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={form.removePromo}
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
+                                {!form.appliedPromo.pinned && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={form.removePromo}
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <div className="flex gap-2">
@@ -213,37 +287,40 @@ export function PurchasePaymentDialog({
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Сумма к покрытию (₽)</Label>
+                        <Label>Сумма перевода (₽)</Label>
                         <Input
                             type="number"
                             step="0.01"
-                            max={remaining}
+                            max={form.maxTransfer}
+                            placeholder={`До ${formatRub(form.maxTransfer)}`}
                             value={form.amount}
                             onChange={(e) => form.setAmount(e.target.value)}
                             required
                         />
                         {form.amountError && <p className="text-12-regular text-error">{form.amountError}</p>}
-                        {form.appliedPromo && (
+                        {form.promoIssue && <p className="text-12-regular text-warning">{form.promoIssue}</p>}
+                        {form.appliedPromo && form.numAmount > 0 && (
                             <div className="rounded-lg border border-success/30 bg-success/10 p-2 space-y-1">
                                 <div className="flex items-center justify-between text-12-regular">
-                                    <span className="text-fg-secondary">Сумма: {formatRub(form.numAmount)}</span>
+                                    <span className="text-fg-secondary">
+                                        Сумма до скидки: {formatRub(form.submittedAmount)}
+                                    </span>
                                     <span className="text-success">
-                                        Скидка: −{formatRub(form.appliedPromo.discount)}
+                                        Скидка: −{formatRub(form.promoDiscount)}
                                     </span>
                                 </div>
                                 <p className="text-12-medium text-success">
-                                    К оплате: {formatRub(form.numAmount - form.appliedPromo.discount)}
+                                    К оплате: {formatRub(form.finalAmount)}
                                 </p>
                             </div>
                         )}
-                        <p className="text-12-regular text-fg-secondary">Максимум: {formatRub(remaining)}</p>
                         <div className="flex gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
                                 className="flex-1"
-                                onClick={() => form.setAmount(toAmountString(remaining * 0.7))}
+                                onClick={() => form.setAmount(toAmountString(form.maxTransfer * 0.7))}
                             >
                                 Оплатить 70%
                             </Button>
@@ -252,7 +329,7 @@ export function PurchasePaymentDialog({
                                 variant="outline"
                                 size="sm"
                                 className="flex-1"
-                                onClick={() => form.setAmount(toAmountString(remaining))}
+                                onClick={() => form.setAmount(toAmountString(form.maxTransfer))}
                             >
                                 Оплатить всё
                             </Button>

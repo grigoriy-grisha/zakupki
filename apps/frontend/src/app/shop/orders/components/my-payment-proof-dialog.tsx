@@ -1,6 +1,8 @@
 'use client';
 
 import { FileText } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 import {
     paymentHasProof,
@@ -8,7 +10,9 @@ import {
     SHOP_PAYMENT_STATUS,
     type ShopPaymentView,
 } from '@/components/shop/payment-proof';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { trpc } from '@/lib/client/trpc';
 import { formatRub } from '@/lib/format/money';
 import { paymentTotal } from '@/lib/payment-utils';
 
@@ -32,6 +36,18 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
     const childAmount = child ? Number(child.amount) : 0;
     const promoCode = child?.promoCode;
     const isImage = paymentProofIsImage(payment);
+
+    const [confirmCancel, setConfirmCancel] = useState(false);
+    const utils = trpc.useUtils();
+    const cancelMutation = trpc.payments.cancel.useMutation({
+        onSuccess: () => {
+            void utils.payments.getMyPayments.invalidate();
+            toast.success('Оплата отменена');
+            setConfirmCancel(false);
+            onOpenChange(false);
+        },
+        onError: (err) => toast.error(err.message),
+    });
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,6 +128,46 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                         </div>
                     ) : (
                         <p className="text-13-regular text-fg-secondary">К этой оплате чек не прикреплён.</p>
+                    )}
+
+                    {status === 'PENDING' && (
+                        <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
+                            {confirmCancel ? (
+                                <>
+                                    <p className="text-13-regular text-fg-primary">
+                                        Отменить оплату {formatRub(total)}? Сумма снова станет доступной к оплате.
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="flex-1"
+                                            disabled={cancelMutation.isPending}
+                                            onClick={() => cancelMutation.mutate({ id: payment.id })}
+                                        >
+                                            Да, отменить
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => setConfirmCancel(false)}
+                                        >
+                                            Вернуться
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full border-warning/40 text-warning hover:bg-warning/10"
+                                    onClick={() => setConfirmCancel(true)}
+                                >
+                                    Отменить оплату
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </div>
             </DialogContent>

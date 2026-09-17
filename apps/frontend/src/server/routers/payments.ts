@@ -32,30 +32,14 @@ export const paymentsRouter = router({
 
             const proofData = input.proofBase64 ? Buffer.from(input.proofBase64, 'base64') : undefined;
 
-            let promoCodeId: number | undefined;
-            let discountAmount: number | undefined;
-            let finalAmount = input.amount;
-
-            if (input.promoCode) {
-                const promo = await ctx.services.promoCode.validate(
-                    input.promoCode.toUpperCase().trim(),
-                    input.purchaseId,
-                    input.amount,
-                );
-                promoCodeId = promo.id;
-                discountAmount = promo.discount;
-                finalAmount = promo.finalAmount;
-            }
-
             return ctx.services.payment.submitPayment({
                 userId: ctx.userId,
                 purchaseId: input.purchaseId,
-                amount: finalAmount,
+                amount: input.amount,
                 userComment: input.userComment,
                 proofData,
                 proofMimeType: input.proofMimeType,
-                promoCodeId,
-                discountAmount,
+                promoCode: input.promoCode,
             });
         }),
 

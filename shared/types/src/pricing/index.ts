@@ -1,10 +1,11 @@
 import type { OrderQuantityOptions } from './types';
-export type { CurrencyRate, OrderLinePriceBreakdown } from './currency-pricing';
+export type { CurrencyRate, OrderLinePriceBreakdown, PromoCodeType } from './currency-pricing';
 export {
     computeAmountDueNewModel,
     computeOrderLinePriceBreakdown,
     computePackPriceRub,
     computePackPriceWithOrgFee,
+    computePromoDiscount,
     computeUnitPriceRub,
     computeUnitPriceRubFromItem,
     resolveCurrencyRate,

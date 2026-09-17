@@ -6,6 +6,7 @@ import { storage } from '@/lib/server/storage';
 import type { PaymentRepository } from '../domain/payment.repository';
 import type { BotPaymentService } from './bot-payment.service';
 import type { NotificationService } from './notification.service';
+import type { PromoCodeService } from './promo-code.service';
 
 const log = createLogger('payment-service');
 
@@ -14,6 +15,7 @@ export class PaymentService {
         private repo: PaymentRepository,
         private notification: NotificationService,
         private paymentInfo: BotPaymentService,
+        private promoCode: PromoCodeService,
     ) {}
 
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
@@ -27,21 +29,29 @@ export class PaymentService {
         userComment?: string;
         proofData?: Buffer;
         proofMimeType?: string;
-        promoCodeId?: number;
-        discountAmount?: number;
+        promoCode?: string;
     }) {
         if (!data.proofData?.length) {
             throw new ValidationError('Прикрепите подтверждение оплаты (чек)');
         }
 
-        const existingPending = await this.repo.findPendingByUserAndPurchase(data.userId, data.purchaseId);
-        if (existingPending) {
-            throw new ValidationError('Оплата уже отправлена и ожидает подтверждения администратором');
+        const info = await this.paymentInfo.getPurchasePaymentInfo(data.userId, data.purchaseId);
+        if (!info) {
+            throw new ValidationError('Закупка не найдена');
+        }
+        if (data.amount <= 0 || data.amount > info.available) {
+            throw new ValidationError(`Сумма должна быть от 1 до ${info.available.toLocaleString('ru-RU')} ₽`);
         }
 
-        await this.assertWithinRemaining(data.userId, data.purchaseId, data.amount);
+        const promo = await this.promoCode.resolveForSubmit({
+            userId: data.userId,
+            purchaseId: data.purchaseId,
+            code: data.promoCode,
+            amount: data.amount,
+            due: info.due,
+        });
+        const discountAmount = promo?.discountAmount ?? 0;
 
-        // Upload proof to storage before creating the payment record
         let proofObjectKey: string | undefined;
         if (data.proofData) {
             proofObjectKey = await storage.uploadPaymentProof(
@@ -55,11 +65,11 @@ export class PaymentService {
         return this.repo.submitPayment({
             userId: data.userId,
             purchaseId: data.purchaseId,
-            amount: data.amount,
+            amount: data.amount - discountAmount,
             userComment: data.userComment,
             proofObjectKey,
-            promoCodeId: data.promoCodeId,
-            discountAmount: data.discountAmount,
+            promoCodeId: promo?.promoCodeId,
+            discountAmount: discountAmount || undefined,
         });
     }
 
@@ -71,25 +81,18 @@ export class PaymentService {
         return this.repo.getByUser(userId);
     }
 
-    /** Admin: confirm payment */
     async confirm(id: number, adminNote?: string) {
         const result = await this.repo.updateStatus(id, 'CONFIRMED', adminNote);
         await this.notifyPayment(id, 'PAYMENT_CONFIRMED', adminNote);
         return result;
     }
 
-    /** Admin: reject payment */
     async reject(id: number, adminNote?: string) {
         const result = await this.repo.updateStatus(id, 'REJECTED', adminNote);
         await this.notifyPayment(id, 'PAYMENT_REJECTED', adminNote);
         return result;
     }
 
-    /**
-     * Push a payment notification to the owning user. Best-effort — a failure
-     * here is logged but never rethrown, since the status transition already
-     * succeeded and the admin flow must not break on notification delivery.
-     */
     private async notifyPayment(
         id: number,
         type: 'PAYMENT_CONFIRMED' | 'PAYMENT_REJECTED',
@@ -113,13 +116,17 @@ export class PaymentService {
         }
     }
 
-    /** User cancels own payment — verifies ownership */
     async cancel(id: number, userId: number) {
-        await this.assertOwnership(id, userId);
-        return this.repo.updateStatus(id, 'REJECTED');
+        const payment = await this.repo.getById(id);
+        if (!payment || payment.userId !== userId) {
+            throw new ForbiddenError('Нельзя изменить чужой платёж');
+        }
+        if (payment.status !== 'PENDING') {
+            throw new ValidationError('Отменить можно только оплату, которая ещё ожидает подтверждения');
+        }
+        return this.repo.updateStatus(id, 'REJECTED', 'Отменено участником');
     }
 
-    /** User updates own payment — verifies ownership */
     async updatePayment(
         id: number,
         userId: number,
@@ -129,7 +136,8 @@ export class PaymentService {
         if (data.amount !== undefined) {
             const payment = await this.repo.getById(id);
             if (payment) {
-                await this.assertWithinRemaining(userId, payment.purchaseId, data.amount);
+                const freed = (payment.children ?? []).reduce((s, c) => s + Number(c.amount), Number(payment.amount));
+                await this.assertWithinRemaining(userId, payment.purchaseId, data.amount, freed);
             }
         }
 
@@ -159,19 +167,25 @@ export class PaymentService {
         return this.repo.update(id, updateData);
     }
 
-    private async assertWithinRemaining(userId: number, purchaseId: number, amount: number): Promise<void> {
+    private async assertWithinRemaining(
+        userId: number,
+        purchaseId: number,
+        amount: number,
+        allowance = 0,
+    ): Promise<void> {
         const info = await this.paymentInfo.getPurchasePaymentInfo(userId, purchaseId);
         if (!info) {
             throw new ValidationError('Закупка не найдена');
         }
-        if (amount <= 0 || amount > info.remaining) {
-            throw new ValidationError(`Сумма должна быть от 1 до ${info.remaining.toLocaleString('ru-RU')} ₽`);
+        const cap = Math.round((info.available + allowance) * 100) / 100;
+        if (amount <= 0 || amount > cap) {
+            throw new ValidationError(`Сумма должна быть от 1 до ${cap.toLocaleString('ru-RU')} ₽`);
         }
     }
 
     private async assertOwnership(id: number, userId: number) {
         const payment = await this.repo.getById(id);
-        if (!payment) return; // Will be caught by update/delete
+        if (!payment) return;
         if (payment.userId !== userId) {
             throw new ForbiddenError('Нельзя изменить чужой платёж');
         }

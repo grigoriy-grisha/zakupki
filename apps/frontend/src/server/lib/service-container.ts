@@ -77,9 +77,9 @@ export class ServiceContainer {
         this.notification,
     );
     public readonly product = new ProductService(this.productRepo, this.eventBus);
-    public readonly promoCode = new PromoCodeService(this.promoCodeRepo);
+    public readonly promoCode = new PromoCodeService(this.promoCodeRepo, this.paymentRepo);
     public readonly botPayment = new BotPaymentService(this.paymentRepo, this.order, this.promoCode);
-    public readonly payment = new PaymentService(this.paymentRepo, this.notification, this.botPayment);
+    public readonly payment = new PaymentService(this.paymentRepo, this.notification, this.botPayment, this.promoCode);
     public readonly attributeType = new AttributeTypeService(this.attributeTypeRepo);
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);

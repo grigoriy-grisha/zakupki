@@ -11,6 +11,7 @@ import {
 import { InlineKeyboard } from 'grammy';
 
 import { formatPurchaseProductLine1 } from '@/lib/product-label/format-purchase';
+import type { PurchasePaymentInfo } from '@/server/services/bot-payment.service';
 
 import { getActiveBotConfig } from '../../config/bot-config';
 import type { ServiceContainer } from '../../container/service-container';
@@ -91,10 +92,10 @@ async function showPurchaseDetail(
         | PurchaseFulfillmentStatus
         | undefined;
     const paymentOpen = isPurchasePaymentOpen(fulfillmentStatus);
-    const canPay = Boolean(paymentOpen && payment && payment.remaining > 0 && !payment.hasPending);
+    const canPay = Boolean(paymentOpen && payment && payment.available > 0);
 
     const text = formatPurchaseDetail(detail, purchaseId, payment, fulfillmentStatus);
-    const keyboard = buildDetailKeyboard(purchaseId, canPay, paymentOpen, Boolean(payment && payment.remaining > 0));
+    const keyboard = buildDetailKeyboard(purchaseId, canPay, paymentOpen, Boolean(payment && payment.available > 0));
 
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: keyboard });
@@ -160,7 +161,7 @@ function formatOrderBreakdown(groups: {
 function formatPurchaseDetail(
     detail: BotPurchaseOrderDetail,
     purchaseId: number,
-    payment: { due: number; paid: number; hasPending: boolean; remaining: number; tag: string } | null,
+    payment: PurchasePaymentInfo | null,
     fulfillmentStatus?: PurchaseFulfillmentStatus | null,
 ): string {
     const status = (fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
@@ -249,14 +250,19 @@ function formatPurchaseDetail(
         if (payment.paid > 0) {
             parts.push(`Учтено оплат: ${payment.paid.toLocaleString('ru-RU')} ₽`);
         }
-        if (payment.hasPending) {
-            parts.push('Есть оплата на проверке');
-        } else if (!isPurchasePaymentOpen(status) && payment.remaining > 0) {
-            parts.push('Пока нельзя оплатить заказ');
-            parts.push('Ждём начала оплаты — следите за статусом выше');
-        } else if (payment.remaining > 0) {
-            parts.push(`К оплате: ${payment.remaining.toLocaleString('ru-RU')} ₽`);
-        } else if (payment.due > 0) {
+        if (payment.pending > 0) {
+            parts.push(`На проверке: ${payment.pending.toLocaleString('ru-RU')} ₽`);
+        }
+        if (payment.available > 0) {
+            parts.push(
+                isPurchasePaymentOpen(status)
+                    ? `К оплате: ${payment.available.toLocaleString('ru-RU')} ₽`
+                    : 'Пока нельзя оплатить заказ',
+            );
+            if (!isPurchasePaymentOpen(status)) {
+                parts.push('Ждём начала оплаты — следите за статусом выше');
+            }
+        } else if (payment.due > 0 && payment.pending <= 0) {
             parts.push('Оплачено');
         }
     }

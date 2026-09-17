@@ -129,6 +129,7 @@ export {
     computeOrderLinePriceBreakdown,
     computePackPriceRub,
     computePackPriceWithOrgFee,
+    computePromoDiscount,
     computeUnitPriceRub,
     computeUnitPriceRubFromItem,
     type CurrencyRate,
@@ -137,6 +138,7 @@ export {
     type OrderQuantityOptions,
     parsePriceTiers,
     type PriceTier,
+    type PromoCodeType,
     resolveCurrencyRate,
     resolveDeliveryPercent,
     resolveOrgFeePercent,
@@ -145,6 +147,9 @@ export {
     solvePricePerPackFromUnitRub,
 } from './pricing';
 export { buildOrderQtyOptions, getActiveStep,getOrderQuantityStep, getSupplementStep } from './pricing';
+
+// Payment summary
+export { computePaymentTotals, type PaymentSummaryInput, type PaymentTotals } from './payment-summary';
 
 // Pack discount
 export {
@@ -208,13 +213,13 @@ export {
     normalizeUnitCode,
     normalizeUnitShortName,
     PRODUCT_UNIT_CODES,
-    resolveUnit,
-    unitPluralForm,
     type ProductUnitCode,
     type QuantityDisplay,
     type QuantityDisplayInput,
+    resolveUnit,
     type UnitDef,
     type UnitKind,
+    unitPluralForm,
     UNITS,
 } from './units';
 

@@ -1,19 +1,15 @@
 import type { NextFunction } from 'grammy';
 import { InlineKeyboard } from 'grammy';
 
+import type { ServiceContainer } from '../../container/service-container';
+import type { MessageHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
+import { proofStepText } from '../../lib/payment-texts';
+import { buildPinnedPromo } from '../../lib/pinned-promo';
+import { PAYMENT_NOT_OPEN_MESSAGE } from '../../lib/purchase-payment-guard';
 import { isPrivateChat } from '../shared/is-private-chat';
 import { parseCurrencyAmount } from '../shared/parse-currency-amount';
-import type { MessageHandler } from '../../domain/handler';
-import type { ServiceContainer } from '../../container/service-container';
-import { PAYMENT_NOT_OPEN_MESSAGE } from '../../lib/purchase-payment-guard';
 
-/**
- * PaymentAmountHandler — обрабатывает текстовый ввод суммы в payment flow.
- *
- * На других шагах (promo/proof) вызывает `next()`, передавая управление
- * дальше по цепочке (PaymentPromoHandler / FallbackTextHandler).
- */
 export class PaymentAmountHandler implements MessageHandler {
     readonly filter = 'text_with_payment_flow' as const;
     readonly requireAuth = true;
@@ -57,8 +53,8 @@ export class PaymentAmountHandler implements MessageHandler {
             await ctx.reply('Введите корректную сумму, например: 1500');
             return;
         }
-        if (amount > current.remaining) {
-            await ctx.reply(`Максимум ${current.remaining.toLocaleString('ru-RU')} ₽`);
+        if (amount > current.available) {
+            await ctx.reply(`Максимум ${current.available.toLocaleString('ru-RU')} ₽`);
             return;
         }
         if (!(await this.container.paymentGuard.isOpenById(current.purchaseId))) {
@@ -67,7 +63,17 @@ export class PaymentAmountHandler implements MessageHandler {
             return;
         }
 
-        // amount → promo: offer promo code entry before requesting the receipt.
+        const pinnedPromo = await this.container.paymentService.findPinnedPromo(
+            ctx.session.userId!,
+            current.purchaseId,
+        );
+        const pinned = buildPinnedPromo(pinnedPromo, amount);
+        if (pinned) {
+            flow.advanceToProof(pinned);
+            await ctx.reply(proofStepText(amount, pinned, { pinned: true }), { parse_mode: 'HTML' });
+            return;
+        }
+
         flow.advanceToPromo(amount);
 
         const keyboard = new InlineKeyboard()
@@ -75,9 +81,9 @@ export class PaymentAmountHandler implements MessageHandler {
             .text('Продолжить »', 'pay:skip');
 
         await ctx.reply(
-            `Сумма: ${amount.toLocaleString('ru-RU')} ₽\n\n` +
+            `Сумма: <b>${amount.toLocaleString('ru-RU')} ₽</b>\n\n` +
                 `Есть промокод? Введите его текстом или выберите вариант ниже.`,
-            { reply_markup: keyboard },
+            { reply_markup: keyboard, parse_mode: 'HTML' },
         );
     }
 }

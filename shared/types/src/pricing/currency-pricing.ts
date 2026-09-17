@@ -132,6 +132,19 @@ export function totalMarkupDivisor(orgFeePercent: number, deliveryPercent?: numb
     return 1 + (orgFeePercent + (deliveryPercent ?? 0)) / 100;
 }
 
+export type PromoCodeType = 'PERCENT' | 'FIXED';
+
+/**
+ * Скидка промокода от суммы заказа. PERCENT — round2(amount×value/100),
+ * FIXED — фиксированное значение. Скидка не может покрыть сумму целиком:
+ * минимум 1 ₽ остаётся к оплате.
+ */
+export function computePromoDiscount(type: PromoCodeType, value: number, amount: number): number {
+    if (amount < 1) return 0;
+    const discount = type === 'PERCENT' ? Math.round(((amount * value) / 100) * 100) / 100 : value;
+    return Math.min(discount, amount - 1);
+}
+
 export interface OrderLinePriceBreakdown {
     /** Базовая цена товара без наценок (валюта × курс × количество). */
     baseRub: number;

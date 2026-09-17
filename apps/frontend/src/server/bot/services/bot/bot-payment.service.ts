@@ -8,12 +8,14 @@ export type BotPurchasePaymentInfo = PurchasePaymentInfo;
 export type BotPayablePurchase = {
     purchaseId: number;
     tag: string;
-    remaining: number;
+    available: number;
+    pending: number;
     fulfillmentStatus: PurchaseFulfillmentStatus;
 };
 
 export type BotUserPaymentsResult = {
     payments: Array<{
+        id: number;
         amount: unknown;
         status: string;
         submittedAt: Date;
@@ -45,8 +47,7 @@ export class BotPaymentService {
         userComment?: string;
         proofData: Buffer;
         proofMimeType: string;
-        promoCodeId?: number;
-        discountAmount?: number;
+        promoCode?: string;
     }): Promise<unknown> {
         return serviceContainer.botPayment.submitPaymentWithProof(data);
     }
@@ -58,5 +59,15 @@ export class BotPaymentService {
         orderAmount: number,
     ): Promise<{ id: number; code: string; label: string | null; discount: number; finalAmount: number }> {
         return serviceContainer.botPayment.validatePromoCode(code, purchaseId, orderAmount);
+    }
+
+    /** Промокод, закреплённый за заказом прошлой оплатой. */
+    async findPinnedPromo(userId: number, purchaseId: number) {
+        return serviceContainer.botPayment.findPinnedPromo(userId, purchaseId);
+    }
+
+    /** Пользователь отменяет свою оплату, которая ещё на проверке. */
+    async cancelPayment(userId: number, paymentId: number): Promise<unknown> {
+        return serviceContainer.payment.cancel(paymentId, userId);
     }
 }

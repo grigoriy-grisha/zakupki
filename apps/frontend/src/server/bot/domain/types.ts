@@ -1,5 +1,5 @@
-import type { Context, SessionFlavor } from 'grammy';
 import type { PrismaClient } from '@zakupki/database';
+import type { Context, SessionFlavor } from 'grammy';
 
 export type PaymentFlowStep = 'amount' | 'promo' | 'proof';
 
@@ -15,7 +15,8 @@ export interface PaymentFlow {
     step: PaymentFlowStep;
     purchaseId: number;
     purchaseTag: string;
-    remaining: number;
+    /** Доступно к оплате сейчас: долг минус подтверждённые и ожидающие оплаты. */
+    available: number;
     amount?: number;
     promoCode?: PromoCodeApplied;
 }

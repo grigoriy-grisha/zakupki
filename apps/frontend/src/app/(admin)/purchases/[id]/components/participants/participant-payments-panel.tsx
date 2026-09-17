@@ -47,7 +47,12 @@ export function ParticipantPaymentsPanel({
                 <span className="text-12-medium uppercase tracking-wide text-fg-tertiary">
                     Оплаты · {payments.length}
                 </span>
-                <AddPaymentDialog userId={userId} purchaseId={purchaseId} due={due} />
+                <AddPaymentDialog
+                    userId={userId}
+                    purchaseId={purchaseId}
+                    due={due}
+                    payments={payments}
+                />
             </div>
             {payments.length === 0 ? (
                 <div className="px-3 py-6 text-center text-13-regular text-fg-tertiary">Оплат пока нет</div>
@@ -101,8 +106,9 @@ export function ParticipantPaymentsPanel({
 interface AddPaymentDialogProps {
     userId: number;
     purchaseId: number;
-    /** Долг участника — показывается как подсказка «к оплате N ₽». */
+    /** Долг участника — база для подсказки «оплатить остаток». */
     due: number;
+    payments: PaymentRef[];
 }
 
 /** «1 500» / «1,500.50» / «1500,5» → 1500 | 1500.5 | 1500.5; пусто/нечисло → null. */
@@ -120,12 +126,17 @@ function parseAmount(raw: string): number | null {
  * Чек не требуется: это для off-line платежей, которые админ уже увидел
  * (наличные, перевод на карту, СБП вне бота).
  */
-function AddPaymentDialog({ userId, purchaseId, due }: AddPaymentDialogProps) {
+function AddPaymentDialog({ userId, purchaseId, due, payments }: AddPaymentDialogProps) {
     const [open, setOpen] = useState(false);
     const [amountStr, setAmountStr] = useState('');
     const [note, setNote] = useState('');
 
     const addPayment = useAddPayment(purchaseId);
+
+    const covered = payments
+        .filter((p) => p.status === 'CONFIRMED' || p.status === 'PENDING')
+        .reduce((s, p) => s + paymentTotal(p), 0);
+    const available = Math.max(0, Math.round((due - covered) * 100) / 100);
 
     const reset = () => {
         setAmountStr('');
@@ -169,15 +180,15 @@ function AddPaymentDialog({ userId, purchaseId, due }: AddPaymentDialogProps) {
                             <Label htmlFor="payment-amount" className="text-14-semibold">
                                 Сумма, ₽
                             </Label>
-                            {due > 0 && (
+                            {available > 0 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="h-auto px-2 py-0.5 text-12-medium text-fg-secondary"
-                                    onClick={() => setAmountStr(String(due))}
+                                    onClick={() => setAmountStr(String(available))}
                                 >
-                                    Оплатить всё: {formatRub(due)}
+                                    Оплатить остаток: {formatRub(available)}
                                 </Button>
                             )}
                         </div>

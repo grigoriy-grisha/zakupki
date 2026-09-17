@@ -82,12 +82,22 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                         </div>
                         <div>
                             <p className="text-14-regular text-fg-secondary">Сумма</p>
-                            <p className="text-24-medium text-primary tabular-nums">{formatRub(totalAmount)}</p>
-                            {childAmount > 0 && (
-                                <p className="text-12-regular text-success">
-                                    Оплачено {formatRub(Number(payment.amount))} + промокод {promoCode?.code}{' '}
-                                    {formatRub(childAmount)}
-                                </p>
+                            {childAmount > 0 ? (
+                                <>
+                                    <p className="flex items-baseline gap-2">
+                                        <span className="text-14-regular text-fg-tertiary line-through tabular-nums">
+                                            {formatRub(totalAmount)}
+                                        </span>
+                                        <span className="text-24-medium text-success tabular-nums">
+                                            {formatRub(Number(payment.amount))}
+                                        </span>
+                                    </p>
+                                    <p className="text-12-regular text-success">
+                                        Промокод {promoCode?.code ?? ''} покрывает {formatRub(childAmount)}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-24-medium text-primary tabular-nums">{formatRub(totalAmount)}</p>
                             )}
                         </div>
                         <div>
