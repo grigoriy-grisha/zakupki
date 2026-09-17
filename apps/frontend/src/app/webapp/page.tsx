@@ -19,11 +19,10 @@ export default function WebAppPage() {
     const { isMounted, isTelegramWebApp, isAuthenticated, isPending, loginFailed } = useTelegramAutoLogin();
 
     useEffect(() => {
-        if (isAuthenticated) {
-            const target = parseTelegramStartParam(window.Telegram?.WebApp?.initDataUnsafe?.start_param);
-            router.replace(target ? shopPathForStartTarget(target) : '/shop');
-        }
-    }, [isAuthenticated, router]);
+        if (!isTelegramWebApp || !isAuthenticated) return;
+        const target = parseTelegramStartParam(window.Telegram?.WebApp?.initDataUnsafe?.start_param);
+        router.replace(target ? shopPathForStartTarget(target) : '/shop');
+    }, [isTelegramWebApp, isAuthenticated, router]);
 
     if (!isMounted || isPending) {
         return <LoadingScreen message="Вход…" />;
