@@ -15,13 +15,15 @@ import {
 } from '@zakupki/types';
 import type { Api } from 'grammy';
 
+import { formatPurchaseProductLine1 } from '@/lib/product-label/format-purchase';
+
 import type { ChannelPostPhoto } from '../domain/types';
 import { getOrInitDiscussionChatId } from '../lib/channel-discussion';
 import { getDiscussionMessageStore } from '../lib/discussion-message-store';
 import { getOrdersChatIdFromEnv } from '../lib/telegram-chat';
 import { getChannelIdFromEnv } from '../lib/telegram-post';
 import type { TgClient } from '../lib/tg-client';
-import { shopInlineKeyboardForGroup } from '../lib/webapp-url';
+import { shopUrlKeyboard } from '../lib/webapp-url';
 import type { BotProductRenderer } from './bot/bot-product-renderer.service';
 
 const log = createLogger('tg-post-worker');
@@ -35,6 +37,7 @@ const ITEM_INCLUDE = {
         select: {
             id: true,
             name: true,
+            articleNumber: true,
             unitCode: true,
             photos: {
                 orderBy: { sortOrder: 'asc' as const },
@@ -75,8 +78,10 @@ async function tryEditItemPost(tg: TgClient, renderer: BotProductRenderer, item:
 
 function buildPostHeader(renderer: BotProductRenderer, item: Item, unitPriceRub: number | null): string {
     return renderer.buildPostHeader({
-        name: item.product.name,
-        // После миграции Supplier описание и цены/фасовка лежат на PurchaseItem, не на Product.
+        name: formatPurchaseProductLine1({
+            name: item.product.name,
+            articleNumber: item.product.articleNumber,
+        }),
         description: item.description ?? null,
         unitPriceRub,
         minPackageAmount: item.minPackageAmount,
@@ -306,7 +311,7 @@ export class TgPostWorker {
         log.info({ itemId, attempt }, 'attachShopComment: checking autoforward');
         const item = await this.db.purchaseItem.findUnique({
             where: { id: itemId },
-            select: { tgMessageId: true, tgChannelId: true },
+            select: { purchaseId: true, tgMessageId: true, tgChannelId: true },
         });
         if (!item?.tgMessageId || !item.tgChannelId) {
             log.warn({ itemId, attempt }, 'attachShopComment: post missing, skipping');
@@ -325,7 +330,7 @@ export class TgPostWorker {
                 discussionId,
                 this.renderer.shopCommentText,
                 autoForwardId,
-                shopInlineKeyboardForGroup(),
+                shopUrlKeyboard(item.purchaseId, itemId),
             );
             log.info({ itemId, messageId: item.tgMessageId, autoForwardId, attempt }, 'attachShopComment: attached');
             return;
@@ -352,7 +357,7 @@ export class TgPostWorker {
             discussionId,
             this.renderer.shopCommentText,
             undefined,
-            shopInlineKeyboardForGroup(),
+            shopUrlKeyboard(item.purchaseId, itemId),
         );
     }
 

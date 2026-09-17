@@ -1,9 +1,9 @@
-import { buildShowInTitleByTypeId } from './type-tree';
-import { getProductDisplayName, formatProductAttributesLine } from './format-attributes';
+import { formatProductAttributesLine, getProductDisplayName } from './format-attributes';
 import { getProductTitleAttributeNames } from './format-title';
-import type { ProductLabelSource, AttributeTypeMeta, ShowInTitleByTypeId } from './types';
+import { buildShowInTitleByTypeId } from './type-tree';
+import type { AttributeTypeMeta, ProductLabelSource, ShowInTitleByTypeId } from './types';
 
-function formatPurchaseProductLine1(product: ProductLabelSource): string {
+export function formatPurchaseProductLine1(product: ProductLabelSource): string {
     const article = product.articleNumber?.trim() ?? '';
     const displayName = (getProductDisplayName(product) || product.name?.trim() || '').trim();
 

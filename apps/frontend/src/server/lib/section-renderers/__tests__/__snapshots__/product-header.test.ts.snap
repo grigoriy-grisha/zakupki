@@ -12,17 +12,6 @@ exports[`ProductHeaderRenderer > formats price with ru-RU separators 1`] = `
 1 234 567,89 ₽/ед."
 `;
 
-exports[`ProductHeaderRenderer > normalizes <br> and <strong> in description HTML 1`] = `
-"<b>Заголовок</b>
-Текст с <i>курсивом</i>"
-`;
-
-exports[`ProductHeaderRenderer > renders description HTML when present (with normalization) 1`] = `
-"Свежий <b>болгарский</b> перец
-
-Из Болгарии"
-`;
-
 exports[`ProductHeaderRenderer > renders name + minPackage + price when description is null 1`] = `
 "<b>Болгарский перец</b>
 <b>Минимальная фасовка - 1 кг</b>

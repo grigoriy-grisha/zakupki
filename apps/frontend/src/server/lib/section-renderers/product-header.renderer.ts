@@ -5,19 +5,12 @@ import { BaseSectionRenderer, escapeHtmlLocal, formatNumberRu, type SectionProps
 export interface ProductHeaderData {
     name: string;
     description: string | null;
-    /** Цена за единицу в ₽ (новая модель: валюта × курс × оргсбор). */
     unitPriceRub: number | null;
     minPackageAmount: unknown;
     minPackageUnit: string | null;
     unitCode: string;
-    /** Имя поставщика (per-purchase). null — без поставщика. */
-    supplierName?: string | null;
 }
 
-/**
- * Верх поста в канале: описание товара (HTML) ИЛИ имя + фасовка + цена (если описания нет).
- * HTML-разметка описания приводится к Telegram-HTML через простую нормализацию.
- */
 function htmlToTelegramHtml(html: string): string {
     const EMPTY_P_SENTINEL = '@@EMPTY_P@@';
     let s = html
@@ -60,16 +53,15 @@ export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData
     readonly id = 'PRODUCT_HEADER' as const;
 
     render({ data }: SectionProps<ProductHeaderData>): string | null {
+        const nameLine = `<b>${escapeHtmlLocal(data.name)}</b>`;
+
         const desc = data.description?.trim();
         if (desc) {
-            return htmlToTelegramHtml(desc);
+            const descHtml = htmlToTelegramHtml(desc).trim();
+            return descHtml ? `${nameLine}\n\n${descHtml}` : nameLine;
         }
 
-        const lines: string[] = [`<b>${escapeHtmlLocal(data.name)}</b>`];
-
-        if (data.supplierName) {
-            lines.push(`<b>Поставщик: ${escapeHtmlLocal(data.supplierName)}</b>`);
-        }
+        const lines: string[] = [nameLine];
 
         if (data.minPackageAmount != null && data.minPackageUnit) {
             const amount = Number(data.minPackageAmount);

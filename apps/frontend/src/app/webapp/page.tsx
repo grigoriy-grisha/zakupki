@@ -1,9 +1,10 @@
 'use client';
 
-import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useEffect } from 'react';
 
+import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { useTelegramAutoLogin } from '@/lib/hooks/use-telegram-auto-login';
+import { parseTelegramStartParam, shopPathForStartTarget } from '@/lib/telegram-start-param';
 
 function LoadingScreen({ message }: { message: string }) {
     return (
@@ -19,7 +20,8 @@ export default function WebAppPage() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            router.replace('/shop');
+            const target = parseTelegramStartParam(window.Telegram?.WebApp?.initDataUnsafe?.start_param);
+            router.replace(target ? shopPathForStartTarget(target) : '/shop');
         }
     }, [isAuthenticated, router]);
 

@@ -8,16 +8,29 @@ function cfgFromEnv(env: Record<string, string>): BotConfig {
 }
 
 describe('buildOpenPurchaseKeyboard', () => {
-    it('uses a plain url button with the clean mini app link for t.me deep links', () => {
+    it('builds a startapp deep link for t.me mini apps (purchase level)', () => {
         const cfg = cfgFromEnv({ TELEGRAM_MINI_APP_URL: 'https://t.me/bot_liqudation_bot/biser_app' });
 
         const keyboard = buildOpenPurchaseKeyboard({ purchaseId: 4 }, cfg);
 
         expect(keyboard).toEqual({
-            inline_keyboard: [[{ text: 'Открыть закупку', url: 'https://t.me/bot_liqudation_bot/biser_app' }]],
+            inline_keyboard: [
+                [{ text: 'Открыть закупку', url: 'https://t.me/bot_liqudation_bot/biser_app?startapp=p4' }],
+            ],
         });
         expect(JSON.stringify(keyboard)).not.toContain('web_app');
-        expect(JSON.stringify(keyboard)).not.toContain('shop/purchase');
+    });
+
+    it('targets the item inside the mini app when the payload carries purchaseItemId', () => {
+        const cfg = cfgFromEnv({ TELEGRAM_MINI_APP_URL: 'https://t.me/bot_liqudation_bot/biser_app' });
+
+        const keyboard = buildOpenPurchaseKeyboard({ purchaseId: 4, purchaseItemId: 123 }, cfg);
+
+        expect(keyboard).toEqual({
+            inline_keyboard: [
+                [{ text: 'Открыть закупку', url: 'https://t.me/bot_liqudation_bot/biser_app?startapp=p4i123' }],
+            ],
+        });
     });
 
     it('uses a web_app button with the purchase deep link for registered https domains', () => {
@@ -28,6 +41,23 @@ describe('buildOpenPurchaseKeyboard', () => {
         expect(keyboard).toEqual({
             inline_keyboard: [
                 [{ text: 'Открыть закупку', web_app: { url: 'https://zakupki.example.com/tg/shop/purchase/7' } }],
+            ],
+        });
+    });
+
+    it('appends the item path for https domains when purchaseItemId is present', () => {
+        const cfg = cfgFromEnv({ WEBAPP_URL: 'https://zakupki.example.com' });
+
+        const keyboard = buildOpenPurchaseKeyboard({ purchaseId: 7, purchaseItemId: 123 }, cfg);
+
+        expect(keyboard).toEqual({
+            inline_keyboard: [
+                [
+                    {
+                        text: 'Открыть закупку',
+                        web_app: { url: 'https://zakupki.example.com/tg/shop/purchase/7/item/123' },
+                    },
+                ],
             ],
         });
     });

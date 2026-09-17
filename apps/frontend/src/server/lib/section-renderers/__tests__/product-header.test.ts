@@ -1,16 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
 
 import { createMockProductHeader, renderById } from './test-setup';
 
 describe('ProductHeaderRenderer', () => {
-    it('renders description HTML when present (with normalization)', () => {
+    it('prepends the bold name to the description HTML (normalized)', () => {
         const result = renderById(
             'PRODUCT_HEADER',
             createMockProductHeader({
                 description: '<p>Свежий <b>болгарский</b> перец</p><p>Из Болгарии</p>',
             }),
         );
-        expect(result).toMatchSnapshot();
+        expect(result).toBe('<b>Болгарский перец</b>\n\nСвежий <b>болгарский</b> перец\n\nИз Болгарии');
+    });
+
+    it('renders only the name when the description normalizes to empty HTML', () => {
+        const result = renderById('PRODUCT_HEADER', createMockProductHeader({ description: '<p></p>' }));
+        expect(result).toBe('<b>Болгарский перец</b>');
     });
 
     it('renders name + minPackage + price when description is null', () => {
@@ -93,6 +98,6 @@ describe('ProductHeaderRenderer', () => {
                 description: '<strong>Заголовок</strong><br>Текст с <em>курсивом</em>',
             }),
         );
-        expect(result).toMatchSnapshot();
+        expect(result).toBe('<b>Болгарский перец</b>\n\n<b>Заголовок</b>\nТекст с <i>курсивом</i>');
     });
 });
