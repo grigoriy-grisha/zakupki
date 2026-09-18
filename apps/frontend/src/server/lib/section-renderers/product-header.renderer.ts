@@ -53,15 +53,17 @@ export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData
     readonly id = 'PRODUCT_HEADER' as const;
 
     render({ data }: SectionProps<ProductHeaderData>): string | null {
-        const nameLine = `<b>${escapeHtmlLocal(data.name)}</b>`;
-
+        // Description (rendered from the admin's post template) IS the whole header —
+        // no forced name line on top, the template decides everything via placeholders.
         const desc = data.description?.trim();
         if (desc) {
-            const descHtml = htmlToTelegramHtml(desc).trim();
-            return descHtml ? `${nameLine}\n\n${descHtml}` : nameLine;
+            return htmlToTelegramHtml(desc).trim() || null;
         }
 
-        const lines: string[] = [nameLine];
+        // Fallback for items without an applied template: name + package + price.
+        const lines: string[] = [];
+        const name = data.name.trim();
+        if (name) lines.push(`<b>${escapeHtmlLocal(name)}</b>`);
 
         if (data.minPackageAmount != null && data.minPackageUnit) {
             const amount = Number(data.minPackageAmount);
@@ -76,6 +78,6 @@ export class ProductHeaderRenderer extends BaseSectionRenderer<ProductHeaderData
             lines.push(`${formatNumberRu(price)} ₽/${escapeHtmlLocal(shortName)}`);
         }
 
-        return lines.join('\n');
+        return lines.length > 0 ? lines.join('\n') : null;
     }
 }
