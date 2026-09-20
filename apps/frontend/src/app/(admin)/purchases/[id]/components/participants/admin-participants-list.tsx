@@ -135,6 +135,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
             paid: 0,
             partial: 0,
             unpaid: 0,
+            overpaid: 0,
             awaiting_payment: 0,
         } as Record<StatusFilter, number>;
         for (const uid of data.userIds) {
@@ -236,6 +237,13 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                         active={statusFilter === 'unpaid'}
                         activeClass="border-error/40 bg-error/10 text-error"
                         onClick={() => setStatusFilter('unpaid')}
+                    />
+                    <StatusChip
+                        label="Переплата"
+                        count={statusCounts.overpaid}
+                        active={statusFilter === 'overpaid'}
+                        activeClass="border-warning/40 bg-warning/10 text-warning"
+                        onClick={() => setStatusFilter('overpaid')}
                     />
                     <StatusChip
                         label="Ожидает оплаты"

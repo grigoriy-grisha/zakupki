@@ -1,7 +1,7 @@
 'use client';
 
 import type { HandoffStatus } from '@zakupki/types';
-import { ChevronDown, ChevronRight, CircleCheck, CircleX, Clock, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, CircleAlert, CircleCheck, CircleX, Clock, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 
 import { HandoffStatusSelect } from '@/components/admin/handoff-status-select';
@@ -203,7 +203,11 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                             }}
                         />
                     )}
-                    {isPaid ? (
+                    {paymentStatus === 'overpaid' ? (
+                        <Badge type="subtle" variant="warning" size="sm">
+                            <CircleAlert className="mr-1 size-3" /> Переплата +{formatRub(paid - due)}
+                        </Badge>
+                    ) : isPaid ? (
                         <Badge type="subtle" variant="success" size="sm">
                             <CircleCheck className="mr-1 size-3" /> Оплачено
                         </Badge>

@@ -6,12 +6,14 @@
  * заказов могут расходиться на сотые из-за округления, поэтому строгое >=
  * иногда не срабатывает на «ровно оплаченных» (см. баг с промокодом).
  */
-export type PaymentStatus = 'paid' | 'partial' | 'unpaid';
+export type PaymentStatus = 'paid' | 'partial' | 'unpaid' | 'overpaid';
 
 const EPSILON = 0.01;
 
 export function getPaymentStatus(due: number, paid: number): PaymentStatus {
-    if (due <= EPSILON) return 'unpaid';
+    // Платёж есть, а к оплате ничего — тоже переплата (например, заказы удалили после оплаты).
+    if (due <= EPSILON) return paid > EPSILON ? 'overpaid' : 'unpaid';
+    if (paid > due + EPSILON) return 'overpaid';
     if (paid >= due - EPSILON) return 'paid';
     if (paid > EPSILON) return 'partial';
     return 'unpaid';
@@ -21,4 +23,5 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
     paid: 'Оплачено',
     partial: 'Частично',
     unpaid: 'Не оплачено',
+    overpaid: 'Переплата',
 };
