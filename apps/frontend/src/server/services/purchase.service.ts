@@ -177,6 +177,13 @@ export class PurchaseService {
             if (itemData[key] !== undefined) itemUpdate[key] = itemData[key];
         }
 
+        // «Заказано» overrides the target remainder: with both equal, the pool
+        // becomes `orderedQty − ordered by participants`, so the pack auto-cap
+        // cannot shrink the declared supplier stock.
+        if (itemData.orderedQty !== undefined) {
+            itemUpdate.targetRemainder = itemData.orderedQty;
+        }
+
         const nextUnitCode = itemData.productUnitCode;
         if (typeof nextUnitCode === 'string') {
             itemUpdate.unitCode = nextUnitCode;
