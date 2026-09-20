@@ -1,12 +1,13 @@
 'use client';
 
 import { formatQtyUnit, resolveUnit } from '@zakupki/types';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { PurchaseProductLabel } from '@/components/shared/purchase-product-label';
 import { UserAvatar } from '@/components/shared/user-avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatPaidPercent, formatRub } from '@/lib/format/money';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,8 @@ export interface ItemOrdersCardProps {
     unitPriceRub: number | null;
     avatarByUser?: Map<number, string | null>;
     onOpenProfile?: (userId: number) => void;
+    onDeleteLine?: (line: OrderLineRef) => void;
+    deletingLineIds?: ReadonlySet<number>;
     defaultOpen?: boolean;
 }
 
@@ -56,6 +59,8 @@ export function ItemOrdersCard({
     unitPriceRub,
     avatarByUser,
     onOpenProfile,
+    onDeleteLine,
+    deletingLineIds,
     defaultOpen = false,
 }: ItemOrdersCardProps) {
     const [open, setOpen] = useState(defaultOpen);
@@ -123,6 +128,7 @@ export function ItemOrdersCard({
                         lines.map((line, index) => {
                             const isLast = index === 0;
                             const isSupplement = (line.createdOnStage ?? 'COLLECTION') !== 'COLLECTION';
+                            const isDeleting = deletingLineIds?.has(line.id) ?? false;
                             const userName = [line.user?.firstName, line.user?.lastName]
                                 .filter(Boolean)
                                 .join(' ')
@@ -131,7 +137,10 @@ export function ItemOrdersCard({
                             return (
                                 <div
                                     key={line.id}
-                                    className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 sm:px-4"
+                                    className={cn(
+                                        'flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 transition-opacity sm:px-4',
+                                        isDeleting && 'pointer-events-none opacity-30',
+                                    )}
                                 >
                                     <button
                                         type="button"
@@ -190,6 +199,19 @@ export function ItemOrdersCard({
                                                 {formatDateTime(new Date(line.createdAt))}
                                             </p>
                                         </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label="Удалить позицию"
+                                            title="Удалить позицию"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteLine?.(line);
+                                            }}
+                                            className="size-8 rounded-full text-fg-tertiary hover:text-error"
+                                        >
+                                            <Trash2 className="size-4" />
+                                        </Button>
                                     </div>
                                 </div>
                             );

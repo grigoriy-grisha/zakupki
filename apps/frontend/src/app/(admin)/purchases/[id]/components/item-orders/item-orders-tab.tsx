@@ -3,6 +3,7 @@
 import { ListTree, SearchX } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { ListPagination } from '@/components/shared/list-pagination';
 import { UserProfileSheet } from '@/components/shared/user-profile-sheet';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -10,13 +11,13 @@ import { StatCard } from '@/components/ui/stat-card';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
 import { formatPaidPercent, formatRub } from '@/lib/format/money';
 
-import { usePurchaseDetail } from '../../hooks/use-purchase-detail';
+import { useParticipantOrderActions, usePurchaseDetail } from '../../hooks';
 import {
     buildItemOrdersViews,
     filterItemOrdersViews,
     type ItemFilter,
 } from '../../lib/item-orders-views';
-import type { PurchaseDetail } from '../../lib/types';
+import type { OrderLineRef, PurchaseDetail } from '../../lib/types';
 import { ItemOrdersCard } from './item-orders-card';
 import { ItemOrdersFilters } from './item-orders-filters';
 
@@ -25,16 +26,25 @@ interface ItemOrdersTabProps {
     avatarByUser?: Map<number, string | null>;
 }
 
+interface DeleteLineTarget {
+    line: OrderLineRef;
+    itemTitle: string;
+    userName: string;
+}
+
 const PAGE_SIZE = 20;
 
 export function ItemOrdersTab({ purchaseId, avatarByUser }: ItemOrdersTabProps) {
     const { detail: purchase, isLoading } = usePurchaseDetail(purchaseId);
     const { orgFeeDefaultPercent } = usePricingSettings();
+    const orderActions = useParticipantOrderActions(purchaseId);
 
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<ItemFilter>('with_orders');
     const [page, setPage] = useState(1);
     const [profileUserId, setProfileUserId] = useState<number | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<DeleteLineTarget | null>(null);
+    const [deletingLineIds, setDeletingLineIds] = useState<ReadonlySet<number>>(new Set());
     const deferredSearch = useDeferredValue(search);
 
     const typedPurchase = purchase as PurchaseDetail | undefined;
@@ -109,6 +119,18 @@ export function ItemOrdersTab({ purchaseId, avatarByUser }: ItemOrdersTabProps) 
                             unitPriceRub={v.unitPriceRub}
                             avatarByUser={avatarByUser}
                             onOpenProfile={setProfileUserId}
+                            deletingLineIds={deletingLineIds}
+                            onDeleteLine={(line) =>
+                                setDeleteTarget({
+                                    line,
+                                    itemTitle: v.item.product?.name ?? 'Товар',
+                                    userName:
+                                        [line.user?.firstName, line.user?.lastName]
+                                            .filter(Boolean)
+                                            .join(' ')
+                                            .trim() || `Участник #${line.userId}`,
+                                })
+                            }
                         />
                     ))}
                 </div>
@@ -121,6 +143,40 @@ export function ItemOrdersTab({ purchaseId, avatarByUser }: ItemOrdersTabProps) 
                 open={profileUserId != null}
                 onOpenChange={(open) => {
                     if (!open) setProfileUserId(null);
+                }}
+            />
+
+            <ConfirmDialog
+                open={deleteTarget != null}
+                onOpenChange={(open) => {
+                    if (!open) setDeleteTarget(null);
+                }}
+                title="Удалить позицию?"
+                description={
+                    deleteTarget ? (
+                        <>
+                            Позиция «{deleteTarget.itemTitle}» у {deleteTarget.userName} будет удалена целиком.
+                            Действие нельзя отменить.
+                        </>
+                    ) : null
+                }
+                confirmLabel="Удалить"
+                onConfirm={() => {
+                    if (!deleteTarget) return;
+                    const target = deleteTarget;
+                    setDeleteTarget(null);
+                    setDeletingLineIds((prev) => new Set(prev).add(target.line.id));
+                    void orderActions
+                        .deleteLineForUser({ id: target.line.id, userId: target.line.userId })
+                        .catch(() => undefined)
+                        .finally(() => {
+                            setDeletingLineIds((prev) => {
+                                if (!prev.has(target.line.id)) return prev;
+                                const next = new Set(prev);
+                                next.delete(target.line.id);
+                                return next;
+                            });
+                        });
                 }}
             />
         </div>

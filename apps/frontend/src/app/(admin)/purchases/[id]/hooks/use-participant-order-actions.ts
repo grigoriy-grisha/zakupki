@@ -77,6 +77,11 @@ export function useParticipantOrderActions(purchaseId: number) {
         }),
     );
 
+    const deleteLineForUser = async (input: { id: number; userId: number }) => {
+        await deleteOrderLine.mutateAsync(input);
+        await refreshUserLines(input.userId);
+    };
+
     const removeParticipant = trpc.orders.removeAllByUserFromPurchase.useMutation(
         mutationOptions({
             invalidate: refreshAllLines,
@@ -113,6 +118,7 @@ export function useParticipantOrderActions(purchaseId: number) {
         adminSetQuantity,
         adminAdjustPackage,
         deleteOrderLine,
+        deleteLineForUser,
         removeParticipant,
         deleteAllByUserItem,
         setOrderComment,

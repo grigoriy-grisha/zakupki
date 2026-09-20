@@ -1,7 +1,7 @@
 /**
  * Чистая логика вкладки «Разбор»: сборка представлений по товарам
  * (пропорциональное покрытие оплатами, собрано/остаток, последняя строка)
- * и фильтрация (чипсы + поиск + сортировка по дате последнего заказа).
+ * и фильтрация (чипсы + поиск; товары — по алфавиту, строки — свежие сверху).
  */
 import { paymentTotal } from '@/lib/payment-utils';
 
@@ -80,10 +80,8 @@ export function filterItemOrdersViews(
             return haystack.includes(q);
         })
         .sort((a, b) => {
-            if (a.lastAddedAt && b.lastAddedAt) return b.lastAddedAt.getTime() - a.lastAddedAt.getTime();
-            if (a.lastAddedAt) return -1;
-            if (b.lastAddedAt) return 1;
-            return a.item.id - b.item.id;
+            const byName = (a.item.product.name ?? '').localeCompare(b.item.product.name ?? '', 'ru');
+            return byName !== 0 ? byName : a.item.id - b.item.id;
         });
 }
 
