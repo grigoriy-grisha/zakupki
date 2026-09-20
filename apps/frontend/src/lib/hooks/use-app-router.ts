@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
+import { markReplaceNavigation } from '@/lib/app-history';
 import { withPlatformPrefix } from '@/lib/app-path';
 
 import { usePlatform } from './use-platform';
@@ -17,7 +18,13 @@ export function useAppRouter() {
     );
 
     const push = useCallback((path: string) => router.push(resolvePath(path)), [router, resolvePath]);
-    const replace = useCallback((path: string) => router.replace(resolvePath(path)), [router, resolvePath]);
+    const replace = useCallback(
+        (path: string) => {
+            markReplaceNavigation();
+            router.replace(resolvePath(path));
+        },
+        [router, resolvePath],
+    );
     const back = useCallback(() => router.back(), [router]);
     const refresh = useCallback(() => router.refresh(), [router]);
 

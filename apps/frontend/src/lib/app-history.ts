@@ -1,8 +1,10 @@
 const STORAGE_KEY = 'zakupki:app-history';
 
 const POP_FLAG_TTL_MS = 1000;
+const REPLACE_FLAG_TTL_MS = 1000;
 
 let lastPopAt = 0;
+let replacePendingAt = 0;
 
 export function markPopNavigation() {
     lastPopAt = Date.now();
@@ -10,6 +12,18 @@ export function markPopNavigation() {
 
 function isPopNavigation(): boolean {
     return Date.now() - lastPopAt < POP_FLAG_TTL_MS;
+}
+
+export function markReplaceNavigation() {
+    replacePendingAt = Date.now();
+}
+
+function consumeReplaceNavigation(): boolean {
+    if (Date.now() - replacePendingAt < REPLACE_FLAG_TTL_MS) {
+        replacePendingAt = 0;
+        return true;
+    }
+    return false;
 }
 
 function readStack(): string[] {
@@ -52,6 +66,9 @@ export function recordAppNavigation(url: string) {
         } else {
             stack.push(url);
         }
+    } else if (consumeReplaceNavigation()) {
+        if (stack.length > 0) stack[stack.length - 1] = url;
+        else stack.push(url);
     } else {
         stack.push(url);
     }
