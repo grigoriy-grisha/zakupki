@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 
 const sharedTypes = fileURLToPath(new URL('./shared/types/src/index.ts', import.meta.url));
@@ -6,6 +7,7 @@ const sharedDatabase = fileURLToPath(new URL('./shared/database/src/database.ts'
 const sharedQueue = fileURLToPath(new URL('./shared/queue/src/main.ts', import.meta.url));
 const sharedStorage = fileURLToPath(new URL('./shared/storage/src/index.ts', import.meta.url));
 const sharedLogger = fileURLToPath(new URL('./shared/logger/src/index.ts', import.meta.url));
+const frontendSrc = fileURLToPath(new URL('./apps/frontend/src', import.meta.url));
 
 export default defineConfig({
     test: {
@@ -14,6 +16,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
+            '@': frontendSrc,
             '@zakupki/types': sharedTypes,
             '@zakupki/database': sharedDatabase,
             '@zakupki/queue': sharedQueue,

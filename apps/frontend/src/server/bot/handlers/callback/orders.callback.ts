@@ -158,7 +158,47 @@ function formatOrderBreakdown(groups: {
     );
 }
 
-function formatPurchaseDetail(
+/** Бюджет по сырому тексту: с тегами он всегда длиннее видимого, поэтому запас
+ * до лимита Telegram в 4096 видимых символов гарантирован. */
+const DETAIL_SAFE_LIMIT = 3900;
+/** Резерв под строку «…и ещё N поз.», чтобы она не вытеснилась сама собой. */
+const SKIPPED_TAIL_RESERVE = 140;
+
+/**
+ * Укладывает позиции в бюджет символов. Переполнившие лимит позиции уходят
+ * в агрегат «…и ещё N поз. на X ₽» — резать HTML нельзя (Telegram отвергнет
+ * битые теги), поэтому текст не усекается, а перестаёт дополняться.
+ */
+function packOrderLines(
+    lineTexts: string[],
+    amounts: number[],
+    reservedLength: number,
+): { block: string; skippedCount: number; skippedAmount: number } {
+    const chunks: string[] = [];
+    let used = 0;
+    let skippedCount = 0;
+    let skippedAmount = 0;
+
+    for (let i = 0; i < lineTexts.length; i++) {
+        const text = lineTexts[i] ?? '';
+        const reserve = i < lineTexts.length - 1 ? SKIPPED_TAIL_RESERVE : 0;
+        if (chunks.length > 0 && used + text.length + 2 + reserve + reservedLength > DETAIL_SAFE_LIMIT) {
+            skippedCount = lineTexts.length - i;
+            skippedAmount = amounts.slice(i).reduce((sum, v) => sum + v, 0);
+            break;
+        }
+        chunks.push(text);
+        used += text.length + 2;
+    }
+
+    let block = chunks.join('\n\n');
+    if (skippedCount > 0) {
+        block += `\n\n…и ещё ${skippedCount} поз. на ${skippedAmount.toLocaleString('ru-RU')} ₽ — полный список в приложении`;
+    }
+    return { block, skippedCount, skippedAmount };
+}
+
+export function formatPurchaseDetail(
     detail: BotPurchaseOrderDetail,
     purchaseId: number,
     payment: PurchasePaymentInfo | null,
@@ -235,39 +275,43 @@ function formatPurchaseDetail(
         });
         const orderBreakdownText = formatOrderBreakdown(groups);
 
-    const parts = [
+    const headerText = [
         detail.purchaseOrderId != null ? `Заказ №${detail.purchaseOrderId}` : null,
         `<b>${escapeHtml(detail.tag)}</b>`,
         `Статус: ${escapeHtml(fulfillmentLabel)}`,
-        '',
-        lineTexts.join('\n\n'),
-        '',
-        `<b>Итого: ${detail.totalDue.toLocaleString('ru-RU')} ₽</b>`,
-        orderBreakdownText,
-    ];
+    ]
+        .filter((p): p is string => p != null)
+        .join('\n');
+
+    const footerParts: (string | null)[] = [`<b>Итого: ${detail.totalDue.toLocaleString('ru-RU')} ₽</b>`];
+    if (orderBreakdownText) footerParts.push(orderBreakdownText);
 
     if (payment) {
         if (payment.paid > 0) {
-            parts.push(`Учтено оплат: ${payment.paid.toLocaleString('ru-RU')} ₽`);
+            footerParts.push(`Учтено оплат: ${payment.paid.toLocaleString('ru-RU')} ₽`);
         }
         if (payment.pending > 0) {
-            parts.push(`На проверке: ${payment.pending.toLocaleString('ru-RU')} ₽`);
+            footerParts.push(`На проверке: ${payment.pending.toLocaleString('ru-RU')} ₽`);
         }
         if (payment.available > 0) {
-            parts.push(
+            footerParts.push(
                 isPurchasePaymentOpen(status)
                     ? `К оплате: ${payment.available.toLocaleString('ru-RU')} ₽`
                     : 'Пока нельзя оплатить заказ',
             );
             if (!isPurchasePaymentOpen(status)) {
-                parts.push('Ждём начала оплаты — следите за статусом выше');
+                footerParts.push('Ждём начала оплаты — следите за статусом выше');
             }
         } else if (payment.due > 0 && payment.pending <= 0) {
-            parts.push('Оплачено');
+            footerParts.push('Оплачено');
         }
     }
+    const footerText = footerParts.filter((p): p is string => p != null).join('\n');
 
-    return parts.filter((p) => p !== null).join('\n');
+    const amounts = groups.map((g) => g.totalAmount);
+    const { block: lineBlock } = packOrderLines(lineTexts, amounts, headerText.length + footerText.length + 4);
+
+    return [headerText, lineBlock, footerText].filter((p) => p.length > 0).join('\n\n');
 }
 
 /**
