@@ -48,7 +48,8 @@ export function NotificationCard({
 }: NotificationCardProps) {
     const { type, payload, title, readAt, createdAt } = notification;
     const visual = getNotificationVisual(type);
-    const fields = density === 'full' ? getNotificationFields(type, payload) : [];
+    const fields = getNotificationFields(type, payload);
+    const productField = fields.find((f) => f.label === 'Товар');
     const tag = payload?.purchaseTag as string | undefined;
     const tagLabel = tag ? `#${tag.replace(/^#+/, '')}` : undefined;
     const purchaseId = payload?.purchaseId as number | undefined;
@@ -92,6 +93,10 @@ export function NotificationCard({
                 </div>
 
                 {density === 'compact' && tagLabel && <div className="mt-0.5 truncate text-12-regular">{renderTag()}</div>}
+
+                {density === 'compact' && productField && (
+                    <div className="mt-0.5 truncate text-13-medium text-fg-secondary">{productField.value}</div>
+                )}
 
                 {density === 'full' && fields.length > 0 && (
                     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
