@@ -11,6 +11,7 @@ import {
     type PurchaseFulfillmentStatus,
     ValidationError,
 } from '@zakupki/types';
+import { GrammyError } from 'grammy';
 
 import type { OrderRepository } from '../domain/order.repository';
 import type { ProductCharacteristicInput } from '../domain/product.repository';
@@ -18,11 +19,15 @@ import type { ProductRepository } from '../domain/product.repository';
 import { formatPurchaseTag } from '../domain/product-purchase-lock';
 import type { PurchaseRepository } from '../domain/purchase.repository';
 import { handleDbConflict } from '../lib/error-utils';
+import { getTelegramAdminApi } from '../lib/telegram-admin-api';
 import type { NotificationService } from './notification.service';
 import type { PricingSettingsService } from './settings/pricing-settings';
 import type { TelegramPublishService } from './telegram-publish.service';
 
 const log = createLogger('purchase-service');
+
+const CHANNEL_POST_DELETE_WARNING =
+    'Пост в Telegram-канале удалить не удалось (нет права «Удаление сообщений» или пост старше 48 часов). Удалите его в канале вручную.';
 
 export class PurchaseService {
     constructor(
@@ -37,6 +42,32 @@ export class PurchaseService {
 
     async list(status?: string, includeHidden = false) {
         return this.repo.list(status, includeHidden);
+    }
+
+    /**
+     * Синхронно удаляет пост канала в момент админ-действия, чтобы отказ
+     * Telegram был виден сразу тостом, а не терялся в фоновом воркере.
+     * attempted=false — вызывать было нечем/нечего (fallback на очередь).
+     */
+    private async tryDeleteChannelPost(
+        channelId: string | null,
+        messageId: string | null | undefined,
+    ): Promise<{ attempted: boolean; warning: string | null }> {
+        const api = getTelegramAdminApi();
+        const numericId = Number(messageId);
+        if (!api || !channelId || !messageId || !Number.isFinite(numericId)) {
+            return { attempted: false, warning: null };
+        }
+        try {
+            await api.deleteMessage(channelId, numericId);
+            return { attempted: true, warning: null };
+        } catch (err) {
+            if (err instanceof GrammyError && err.description.includes('message to delete not found')) {
+                return { attempted: true, warning: null };
+            }
+            log.warn({ channelId, messageId, err }, 'sync channel post delete failed');
+            return { attempted: true, warning: CHANNEL_POST_DELETE_WARNING };
+        }
     }
 
     async listByStatuses(statuses: string[], includeHidden = false) {
@@ -123,11 +154,20 @@ export class PurchaseService {
         }
     }
 
-    async deleteItemPost(purchaseItemId: number) {
+    async deleteItemPost(purchaseItemId: number): Promise<{ warning: string | null }> {
         const item = await this.repo.findItemWithPurchase(purchaseItemId);
         if (!item) throw new NotFoundError('Позиция закупки', purchaseItemId);
         if (!item.tgMessageId) {
             throw new ValidationError('Пост не опубликован');
+        }
+
+        const sync = await this.tryDeleteChannelPost(item.tgChannelId, item.tgMessageId);
+        if (!sync.attempted || sync.warning) {
+            await this.telegramPublish.enqueueDeleteChannelPost(
+                purchaseItemId,
+                item.tgMessageId,
+                item.tgChannelId,
+            );
         }
 
         await this.repo.updatePurchaseItem(purchaseItemId, {
@@ -135,11 +175,7 @@ export class PurchaseService {
             tgChannelId: null,
             publicationState: 'DRAFT',
         });
-        await this.telegramPublish.enqueueDeleteChannelPost(
-            purchaseItemId,
-            item.tgMessageId,
-            item.tgChannelId,
-        );
+        return { warning: sync.warning };
     }
 
     async ensureItemExists(purchaseItemId: number) {
@@ -231,17 +267,22 @@ export class PurchaseService {
             await this.recalculateAmounts(item.purchaseId, purchaseItemId);
         }
 
+        let postWarning: string | null = null;
         if (hidingPublishedItem) {
-            await this.eventBus.emitPostDelete(
-                purchaseItemId,
-                item.tgMessageId ?? undefined,
-                item.tgChannelId ?? undefined,
-            );
+            const sync = await this.tryDeleteChannelPost(item.tgChannelId, item.tgMessageId);
+            postWarning = sync.warning;
+            if (!sync.attempted || sync.warning) {
+                await this.eventBus.emitPostDelete(
+                    purchaseItemId,
+                    item.tgMessageId ?? undefined,
+                    item.tgChannelId ?? undefined,
+                );
+            }
         } else {
             await this.eventBus.emitPurchaseItemChangedFast(purchaseItemId);
         }
 
-        return item;
+        return { warning: postWarning };
     }
 
     /**
@@ -357,12 +398,17 @@ export class PurchaseService {
         const affectedUserIds = await this.orderRepo.findActiveLineUserIds(id);
         const label = await this.repo.findItemLabel(id);
 
+        let postWarning: string | null = null;
         if (item.tgMessageId) {
-            await this.telegramPublish.enqueueDeleteChannelPost(
-                id,
-                item.tgMessageId,
-                item.tgChannelId,
-            );
+            const sync = await this.tryDeleteChannelPost(item.tgChannelId, item.tgMessageId);
+            postWarning = sync.warning;
+            if (!sync.attempted || sync.warning) {
+                await this.telegramPublish.enqueueDeleteChannelPost(
+                    id,
+                    item.tgMessageId,
+                    item.tgChannelId,
+                );
+            }
         }
 
         const result = await this.repo.removeItem(id);
@@ -388,7 +434,7 @@ export class PurchaseService {
             );
         }
 
-        return result;
+        return { removed: result, warning: postWarning };
     }
 
     async setAvailableQuantities(

@@ -36,14 +36,14 @@ export function useAddPurchaseItems(purchaseId: number) {
 export function useRemovePurchaseItem(purchaseId: number) {
     const utils = trpc.useUtils();
 
-    // @ts-ignore TS2589 deep instantiation on removeItem.useMutation
     return trpc.purchases.removeItem.useMutation(
-        mutationOptions({
+        mutationOptions<{ warning: string | null }, { purchaseItemId: number }>({
             invalidate: () => {
                 void utils.purchases.getById.invalidate({ id: purchaseId });
                 void utils.orders.getAllByPurchase.invalidate({ purchaseId });
                 void utils.purchases.list.invalidate();
             },
+            warning: (result) => result?.warning ?? null,
             success: 'Товар удалён из закупки',
         }),
     );
@@ -66,6 +66,7 @@ export function useDeleteItemPost(purchaseId: number) {
     return trpc.purchases.deleteItemPost.useMutation(
         mutationOptions({
             invalidate: () => void utils.purchases.getById.invalidate({ id: purchaseId }),
+            warning: (result) => result?.warning ?? null,
             success: 'Пост удалён из Telegram',
         }),
     );
@@ -80,6 +81,7 @@ export function useUpdateItemProduct(purchaseId: number) {
                 void utils.purchases.getById.invalidate({ id: purchaseId });
                 void utils.products.list.invalidate();
             },
+            warning: (result) => result?.warning ?? null,
             success: 'Товар обновлён',
         }),
     );

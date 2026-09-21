@@ -186,8 +186,8 @@ export const purchasesRouter = router({
     deleteItemPost: adminProcedure
         .input(z.object({ purchaseItemId: z.number() }))
         .mutation(async ({ ctx, input }) => {
-            await ctx.services.purchase.deleteItemPost(input.purchaseItemId);
-            return { ok: true };
+            const { warning } = await ctx.services.purchase.deleteItemPost(input.purchaseItemId);
+            return { ok: true, warning };
         }),
 
     removeItem: adminProcedure.input(z.object({ purchaseItemId: z.number() })).mutation(async ({ ctx, input }) => {
@@ -202,8 +202,8 @@ export const purchasesRouter = router({
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product);
-            return { ok: true };
+            const { warning } = await ctx.services.purchase.updateItemProduct(input.purchaseItemId, input.product);
+            return { ok: true, warning };
         }),
 
     regenerateItemDescription: adminProcedure
