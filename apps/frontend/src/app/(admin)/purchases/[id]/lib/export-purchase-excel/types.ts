@@ -16,33 +16,49 @@ export type ExportUser = {
 
 export type ExportProduct = ProductLabelSource & {
     unitCode: string;
+    multiplicity?: unknown;
+};
+
+export type ExportCurrencyRate = {
+    currencyId: number;
+    rateToRub: unknown;
+};
+
+export type ExportPurchaseItem = {
+    id: number;
+    minPackageAmount?: unknown;
+    minPackageUnit?: string | null;
+    supplementStep?: unknown;
+    packAmount?: unknown;
+    packUnit?: string | null;
+    unitCode?: string | null;
+    currencyId?: number | null;
+    pricePerPackCurrency?: unknown;
+    orgFeePercentOverride?: unknown;
+    deliveryPercentOverride?: unknown;
+    publicationState: 'DRAFT' | 'PUBLISHED';
+    tgMessageId?: string | null;
+    targetRemainder?: unknown;
+    supplierId?: number | null;
+    supplier?: { id: number; name: string } | null;
+    product: ExportProduct;
 };
 
 export type ExportPurchase = {
     tag: string;
     status: string;
     fulfillmentStatus?: string | null;
-    items: {
-        id: number;
-        minPackageAmount?: unknown;
-        minPackageUnit?: string | null;
-        packAmount?: unknown;
-        packUnit?: string | null;
-        publicationState: 'DRAFT' | 'PUBLISHED';
-        tgMessageId?: string | null;
-        targetRemainder?: unknown;
-        supplierId?: number | null;
-        supplier?: { id: number; name: string } | null;
-        product: ExportProduct;
-        orderLines: {
-            userId: number;
-            quantity: unknown;
-            amountDue: unknown;
-            supplementRemainder?: unknown;
-            supplementPacksAdded?: unknown;
-            user?: ExportUser;
-        }[];
-    }[];
+    deliveryPercent?: unknown;
+    currencyRates?: ExportCurrencyRate[];
+    items: ExportPurchaseItem[];
+};
+
+export type ExportOrderLineItem = {
+    id?: number;
+    packAmount?: unknown;
+    packUnit?: string | null;
+    unitCode?: string | null;
+    product?: ExportProduct;
 };
 
 export type ExportOrder = {
@@ -51,14 +67,9 @@ export type ExportOrder = {
     purchaseOrderId?: number | null;
     quantity: unknown;
     amountDue: unknown;
+    packageCount?: unknown;
     user?: ExportUser;
-    purchaseItem?: {
-        id?: number;
-        packAmount?: unknown;
-        packUnit?: string | null;
-        unitCode?: string | null;
-        product?: ExportProduct;
-    };
+    purchaseItem?: ExportOrderLineItem;
 };
 
 export type ExportPayment = {
@@ -73,11 +84,24 @@ export type ExportPayment = {
     children?: { amount: unknown; promoCode?: { code: string } | null }[];
 };
 
+export type ExportPurchaseOrder = {
+    id: number;
+    userId: number;
+    user?: ExportUser;
+};
+
+export type ExportPricingSettings = {
+    beadPackPriceDiscountPercent: number;
+    orgFeeDefaultPercent: number;
+};
+
 export type PurchaseExportData = {
     purchase: ExportPurchase;
     orders: ExportOrder[];
     payments: ExportPayment[];
+    purchaseOrders?: ExportPurchaseOrder[];
     attributeTypes?: AttributeTypeMeta[];
+    pricing: ExportPricingSettings;
 };
 
 export type ExportParticipant = {

@@ -18,11 +18,13 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
     async function handleExportOrders() {
         setLoading(true);
         try {
-            const [purchase, orders, payments, attributeTypes] = await Promise.all([
+            const [purchase, orders, payments, purchaseOrders, attributeTypes, pricing] = await Promise.all([
                 utils.purchases.getById.fetch({ id: purchaseId }),
                 utils.orders.getAllByPurchase.fetch({ purchaseId }),
                 utils.payments.getByPurchase.fetch({ purchaseId }),
+                utils.orders.getPurchaseOrdersByPurchase.fetch({ purchaseId }),
                 utils.attributeTypes.list.fetch(),
+                utils.settings.getPricing.fetch(),
             ]);
 
             if (!purchase) {
@@ -34,7 +36,9 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
                 purchase: purchase as never,
                 orders: orders ?? [],
                 payments: payments ?? [],
+                purchaseOrders: purchaseOrders ?? [],
                 attributeTypes: attributeTypes ?? [],
+                pricing,
             });
         } catch {
             toast.error('Не удалось выгрузить файл');

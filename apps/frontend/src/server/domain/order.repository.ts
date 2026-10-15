@@ -359,7 +359,6 @@ export class OrderRepository {
         return dbClient.purchaseOrder.findMany({
             where: {
                 purchaseId,
-                orderLines: { some: { status: 'ACTIVE' } },
             },
             select: {
                 id: true,

@@ -1,7 +1,14 @@
 import { paymentTotal } from '@/lib/payment-utils';
 
-import { formatMoney } from './excel-basics';
-import type { ExportOrder, ExportParticipant, ExportPayment, ExportUser } from './types';
+import { getPaymentStatus, type PaymentStatus } from '../../../lib/payment-status';
+import { roundMoney, toNumber } from './pricing-cells';
+import type {
+    ExportOrder,
+    ExportParticipant,
+    ExportPayment,
+    ExportPurchaseOrder,
+    ExportUser,
+} from './types';
 
 export function userName(user?: ExportUser) {
     if (!user) return '';
@@ -17,36 +24,58 @@ export function extractParticipantCredentials(user?: ExportUser) {
     };
 }
 
-export function buildParticipants(orders: ExportOrder[]): ExportParticipant[] {
+function participantFromUser(
+    userId: number,
+    purchaseOrderId: number | null,
+    user?: ExportUser,
+): ExportParticipant {
+    return {
+        userId,
+        purchaseOrderId,
+        name: userName(user) || `Участник #${userId}`,
+        phone: user?.phone?.trim() ?? '',
+        ...extractParticipantCredentials(user),
+    };
+}
+
+export function buildParticipants(
+    orders: ExportOrder[],
+    purchaseOrders: ExportPurchaseOrder[] = [],
+): ExportParticipant[] {
     const map = new Map<number, ExportParticipant>();
+
+    purchaseOrders.forEach((purchaseOrder) => {
+        if (map.has(purchaseOrder.userId)) return;
+        map.set(
+            purchaseOrder.userId,
+            participantFromUser(purchaseOrder.userId, purchaseOrder.id, purchaseOrder.user),
+        );
+    });
 
     orders.forEach((order) => {
         if (map.has(order.userId)) return;
-        map.set(order.userId, {
-            userId: order.userId,
-            purchaseOrderId: order.purchaseOrderId ?? null,
-            name: userName(order.user) || `Участник #${order.userId}`,
-            phone: order.user?.phone?.trim() ?? '',
-            ...extractParticipantCredentials(order.user),
-        });
+        map.set(order.userId, participantFromUser(order.userId, order.purchaseOrderId ?? null, order.user));
     });
 
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 }
 
-function participantStatus(due: number, paid: number, pending: number) {
-    if (paid >= due) return 'Оплачено';
-    if (pending > 0) return 'Ожидает подтверждения';
-    if (paid > 0) return 'Частично оплачено';
-    return 'Не оплачено';
-}
+export type ParticipantPaymentSummary = {
+    userId: number;
+    due: number;
+    paid: number;
+    pending: number;
+    status: PaymentStatus;
+};
 
-export function buildParticipantSummary(orders: ExportOrder[], payments: ExportPayment[]) {
-    const userOrders = new Map<number, ExportOrder[]>();
+export function buildParticipantSummary(
+    participants: ExportParticipant[],
+    orders: ExportOrder[],
+    payments: ExportPayment[],
+): ParticipantPaymentSummary[] {
+    const dueByUser = new Map<number, number>();
     orders.forEach((order) => {
-        const list = userOrders.get(order.userId) ?? [];
-        list.push(order);
-        userOrders.set(order.userId, list);
+        dueByUser.set(order.userId, (dueByUser.get(order.userId) ?? 0) + toNumber(order.amountDue));
     });
 
     const paidByUser = new Map<number, number>();
@@ -61,21 +90,16 @@ export function buildParticipantSummary(orders: ExportOrder[], payments: ExportP
         }
     });
 
-    return Array.from(userOrders.entries()).map(([userId, userOrdersList]) => {
-        const due = userOrdersList.reduce((sum, order) => sum + formatMoney(order.amountDue), 0);
-        const paid = paidByUser.get(userId) ?? 0;
-        const pending = pendingByUser.get(userId) ?? 0;
-        const user = userOrdersList.find((order) => order.user)?.user;
-
+    return participants.map((participant) => {
+        const due = roundMoney(dueByUser.get(participant.userId) ?? 0);
+        const paid = roundMoney(paidByUser.get(participant.userId) ?? 0);
+        const pending = roundMoney(pendingByUser.get(participant.userId) ?? 0);
         return {
-            userId,
-            name: userName(user) || `Участник #${userId}`,
-            ...extractParticipantCredentials(user),
-            positions: userOrdersList.length,
+            userId: participant.userId,
             due,
             paid,
             pending,
-            status: participantStatus(due, paid, pending),
+            status: getPaymentStatus(due, paid),
         };
     });
 }

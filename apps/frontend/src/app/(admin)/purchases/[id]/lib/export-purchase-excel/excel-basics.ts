@@ -70,10 +70,6 @@ export function applyOrdersCellFill(cell: ExcelJS.Cell, fillArgb: string) {
     };
 }
 
-export function formatMoney(value: unknown) {
-    return Number(value);
-}
-
 export function safeFilename(tag: string, suffix: string) {
     const base = tag.replace(/[<>:"/\\|?*]/g, '_').slice(0, 80);
     const date = new Date().toISOString().slice(0, 10);

@@ -1,18 +1,20 @@
+import type { PurchaseItem } from '@zakupki/types';
 import { isWeightUnit, resolveUnit } from '@zakupki/types';
 import type ExcelJS from 'exceljs';
 
 import type { AttributeTypeMeta } from '@/lib/product-label';
 
+import { getPaymentStatus } from '../../../lib/payment-status';
 import { unitsInPack } from '../purchase-item-order-stats';
 import {
     applyOrdersCellFill,
     applySheetBorders,
-    formatMoney,
     setExcelProductNameCell,
     styleFixedColumnCell,
     styleHeaderCell,
     styleNumericCell,
 } from './excel-basics';
+import { amountSplit, priceCells, quantitySplit, roundMoney, roundQty } from './pricing-cells';
 import type { ExportOrder, ExportParticipant, ExportProduct } from './types';
 
 const ORDERS_EXPORT_COLUMN_COUNT = 7;
@@ -32,58 +34,16 @@ const ORDERS_EXPORT_FILL = {
     participantName: 'FFFFFF00',
     sumBeads: 'FFFFE0B2',
     balance: 'FFFFCDD2',
+    pending: 'FFFFD966',
+    overpaid: 'FFF8CBAD',
     paid: 'FF92D050',
 } as const;
 
 const ORDERS_EXPORT_PRICE_HEADERS = [
     'цена за пачку в рублях',
-    'цена за 5/10 гр. в рублях',
+    'цена за фасовку (5/10 гр.) в рублях',
     'цена за 1 гр. в рублях',
 ] as const;
-
-/** Весовые единицы (gram и piece_pack) участвуют в разбивке «россыпь / целая пачка». */
-function isWeightItem(
-    purchaseItem: { unitCode?: string | null } | undefined,
-    product: ExportProduct | undefined,
-): boolean {
-    const unitCode = purchaseItem?.unitCode ?? product?.unitCode;
-    return isWeightUnit(unitCode);
-}
-
-function isFullPackOrder(
-    item: { packAmount?: unknown; packUnit?: string | null } | undefined,
-    quantity: unknown,
-): boolean {
-    const qty = formatMoney(quantity);
-    const pack = item ? unitsInPack(item) : null;
-    return Boolean(pack && qty > 0 && Math.abs(qty - pack.size) < 1e-6);
-}
-
-function orderQuantitySplitColumns(
-    item: { packAmount?: unknown; packUnit?: string | null } | undefined,
-    quantity: unknown,
-): [string, string] {
-    const qty = formatMoney(quantity);
-    if (!qty) return ['', ''];
-
-    if (isFullPackOrder(item, quantity)) {
-        return ['', String(qty)];
-    }
-
-    return [String(qty), ''];
-}
-
-function orderAmountSplit(
-    item: { packAmount?: unknown; packUnit?: string | null } | undefined,
-    amountDue: unknown,
-    quantity: unknown,
-) {
-    const amount = formatMoney(amountDue);
-    if (isFullPackOrder(item, quantity)) {
-        return { partial: 0, fullPack: amount };
-    }
-    return { partial: amount, fullPack: 0 };
-}
 
 function formatSupplierPackage(item?: { packAmount?: unknown; packUnit?: string | null }) {
     if (!item || item.packAmount == null) return '';
@@ -119,14 +79,10 @@ function participantBlockTitle(participant: ExportParticipant): ExcelJS.CellRich
     return { richText };
 }
 
-function purchaseItemPriceCells(_purchaseItem: unknown) {
-    return ['', '', ''] as const;
-}
-
 function addParticipantQtyTotalRow(sheet: ExcelJS.Worksheet, totals: { partialGr: number; fullPackGr: number }) {
     if (totals.partialGr + totals.fullPackGr <= 0) return;
 
-    const row = sheet.addRow(['', '', '', '', 'всего заказано', totals.partialGr || '', totals.fullPackGr || '']);
+    const row = sheet.addRow(['', '', '', '', 'всего заказано', roundQty(totals.partialGr) || '', roundQty(totals.fullPackGr) || '']);
     const labelCell = row.getCell(ORDERS_EXPORT_COL_PRICE_1GR);
     labelCell.font = { bold: true };
     labelCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -167,8 +123,9 @@ export function addParticipantOrdersTable(
     participantNumber: number,
     participant: ExportParticipant,
     userOrders: ExportOrder[],
-    payment: { due: number; paid: number },
+    payment: { due: number; paid: number; pending: number },
     productByItemId: Map<number, ExportProduct>,
+    itemByItemId: Map<number, PurchaseItem>,
     attributeTypes?: AttributeTypeMeta[],
 ) {
     const metaRow = sheet.addRow(['', '', purchaseTag, 'НОМЕР УЧАСТНИКА', '', participantNumber, '']);
@@ -222,33 +179,29 @@ export function addParticipantOrdersTable(
     const amountTotals = { partial: 0, fullPack: 0 };
 
     userOrders.forEach((order) => {
-        const product =
-            (order.purchaseItem?.id != null ? productByItemId.get(order.purchaseItem.id) : undefined) ??
-            order.purchaseItem?.product;
-        const weightItem = isWeightItem(order.purchaseItem, product) ? order.purchaseItem : undefined;
-        const [packPrice, price510, price1] = purchaseItemPriceCells(order.purchaseItem as never);
-        const [partialQty, fullPackQty] = orderQuantitySplitColumns(weightItem, order.quantity);
-        const amounts = orderAmountSplit(weightItem, order.amountDue, order.quantity);
+        const itemId = order.purchaseItem?.id;
+        const product = (itemId != null ? productByItemId.get(itemId) : undefined) ?? order.purchaseItem?.product;
+        const item = itemId != null ? itemByItemId.get(itemId) : undefined;
+        const weight = isWeightUnit(item?.unitCode ?? order.purchaseItem?.unitCode ?? product?.unitCode ?? 'piece');
+        const fallbackPack = order.purchaseItem ? unitsInPack(order.purchaseItem) : null;
+        const packSize = item?.packAmount ?? fallbackPack?.size ?? null;
+
+        const cells = priceCells(item);
+        const split = quantitySplit(order, packSize, weight);
+        const amounts = amountSplit(order, item);
         amountTotals.partial += amounts.partial;
         amountTotals.fullPack += amounts.fullPack;
-
-        if (weightItem) {
-            const qty = formatMoney(order.quantity);
-            if (isFullPackOrder(weightItem, order.quantity)) {
-                gramTotals.fullPackGr += qty;
-            } else if (qty > 0) {
-                gramTotals.partialGr += qty;
-            }
-        }
+        gramTotals.partialGr += split.partialGr;
+        gramTotals.fullPackGr += split.fullPackGr;
 
         const row = sheet.addRow([
             '',
-            product ? formatSupplierPackage(weightItem) : '',
-            packPrice,
-            price510,
-            price1,
-            partialQty,
-            fullPackQty,
+            weight ? formatSupplierPackage(order.purchaseItem) : '',
+            cells.packPrice,
+            cells.facingPrice,
+            cells.unitPrice,
+            split.partialQty,
+            split.fullPackCell,
         ]);
         setExcelProductNameCell(row.getCell(1), product, attributeTypes);
         styleFixedColumnCell(row.getCell(1), 1);
@@ -262,17 +215,26 @@ export function addParticipantOrdersTable(
 
     addParticipantQtyTotalRow(sheet, gramTotals);
 
-    const balance = Math.max(0, payment.due - payment.paid);
+    const balance = roundMoney(Math.max(0, payment.due - payment.paid));
 
     addParticipantFooterRow(
         sheet,
         'Сумма за бисер, руб',
         {
-            left: amountTotals.partial || '',
-            right: amountTotals.fullPack || '',
+            left: roundMoney(amountTotals.partial) || '',
+            right: roundMoney(amountTotals.fullPack) || '',
         },
         ORDERS_EXPORT_FILL.sumBeads,
     );
+    if (payment.pending > 0) {
+        addParticipantFooterRow(
+            sheet,
+            'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ, руб',
+            { left: payment.pending, right: '' },
+            ORDERS_EXPORT_FILL.pending,
+            true,
+        );
+    }
     addParticipantFooterRow(
         sheet,
         'ОСТАТОК К ОПЛАТЕ, руб',
@@ -280,7 +242,22 @@ export function addParticipantOrdersTable(
         ORDERS_EXPORT_FILL.balance,
         true,
     );
-    addParticipantFooterRow(sheet, 'ОПЛАЧЕНО', { left: payment.paid || '', right: '' }, ORDERS_EXPORT_FILL.paid, true);
+    if (getPaymentStatus(payment.due, payment.paid) === 'overpaid') {
+        addParticipantFooterRow(
+            sheet,
+            'ПЕРЕПЛАТА, руб',
+            { left: roundMoney(payment.paid - payment.due), right: '' },
+            ORDERS_EXPORT_FILL.overpaid,
+            true,
+        );
+    }
+    addParticipantFooterRow(
+        sheet,
+        'ОПЛАЧЕНО',
+        { left: roundMoney(payment.paid) || '', right: '' },
+        ORDERS_EXPORT_FILL.paid,
+        true,
+    );
 
     const blockEndRow = sheet.rowCount;
     applySheetBorders(sheet, blockStartRow, blockEndRow, 1, ORDERS_EXPORT_COLUMN_COUNT);
