@@ -26,6 +26,7 @@ export type ExportCurrencyRate = {
 
 export type ExportPurchaseItem = {
     id: number;
+    description?: string | null;
     minPackageAmount?: unknown;
     minPackageUnit?: string | null;
     supplementStep?: unknown;

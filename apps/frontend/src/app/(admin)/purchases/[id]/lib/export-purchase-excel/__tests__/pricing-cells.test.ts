@@ -11,6 +11,7 @@ import {
     roundQty,
     toNumber,
 } from '../pricing-cells';
+import { tubeFacingLabel } from '../tube-facing';
 
 const PRICING_CONTEXT = {
     orgFeeDefaultPercent: 10,
@@ -185,5 +186,62 @@ describe('buildParticipants / buildParticipantSummary', () => {
             { id: 11, userId: 7, amount: '120', status: 'REJECTED', submittedAt: '2026-01-01' },
         ]);
         expect(summary[0]).toMatchObject({ paid: 0, pending: 0, status: 'unpaid' });
+    });
+});
+
+describe('tubeFacingLabel', () => {
+    const weightChar = (value: string) => ({
+        value,
+        characteristic: { name: 'Вес', position: 1 },
+    });
+
+    it('reads grams from the Вес characteristic', () => {
+        expect(tubeFacingLabel({ characteristicValues: [weightChar('~ 7,2гр')] })).toBe('туба 7,2 гр');
+        expect(tubeFacingLabel({ characteristicValues: [weightChar('~7,2 гр')] })).toBe('туба 7,2 гр');
+        expect(tubeFacingLabel({ characteristicValues: [weightChar('~ 24гр')] })).toBe('туба 24 гр');
+        expect(tubeFacingLabel({ characteristicValues: [weightChar('8,5')] })).toBe('туба 8,5 гр');
+    });
+
+    it('falls back to grams in the description', () => {
+        expect(tubeFacingLabel({ description: 'Минимальная фасовка: 1 туба - 170,54 руб (~ 10 гр)' })).toBe(
+            'туба 10 гр',
+        );
+        expect(tubeFacingLabel({ description: 'ФАСОВКА ПОСТАВЩИКА: 1 туба - 273,6 руб (~ 24гр)' })).toBe(
+            'туба 24 гр',
+        );
+        expect(tubeFacingLabel({ description: '1 туба - 290,7 руб (~8,2гр.)' })).toBe('туба 8,2 гр');
+    });
+
+    it('strips html entities from descriptions', () => {
+        expect(tubeFacingLabel({ description: '<p>1&nbsp;туба&amp;детали</p><p>(~ 8,2 гр)</p>' })).toBe(
+            'туба 8,2 гр',
+        );
+    });
+
+    it('prefers the characteristic over the description', () => {
+        expect(
+            tubeFacingLabel({
+                characteristicValues: [weightChar('~ 8 гр')],
+                description: '1 туба - 100 руб (~ 10 гр)',
+            }),
+        ).toBe('туба 8 гр');
+    });
+
+    it('returns plain туба when grams are missing or empty', () => {
+        expect(tubeFacingLabel({ description: 'Минимальная фасовка - 1 туба - 85,5 руб' })).toBe('туба');
+        expect(tubeFacingLabel({ description: 'Минимальная фасовка - 1 туба (~ гр)' })).toBe('туба');
+        expect(tubeFacingLabel({})).toBe('туба');
+    });
+
+    it('ignores non-weight characteristics and delica sizes', () => {
+        expect(
+            tubeFacingLabel({
+                characteristicValues: [
+                    { value: 'Стекло', characteristic: { name: 'Материал', position: 1 } },
+                    { value: '11/0', characteristic: { name: 'Размер', position: 2 } },
+                ],
+                description: 'Miyuki Delica 11/0 DB0678 1 туба - 85,5 руб',
+            }),
+        ).toBe('туба');
     });
 });

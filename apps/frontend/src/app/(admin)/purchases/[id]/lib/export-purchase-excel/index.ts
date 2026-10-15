@@ -1,10 +1,11 @@
 import type { PurchaseItem } from '@zakupki/types';
-import { mapToPurchaseItem } from '@zakupki/types';
+import { mapToPurchaseItem, resolveUnit } from '@zakupki/types';
 import ExcelJS from 'exceljs';
 
 import { downloadWorkbook, safeFilename } from './excel-basics';
 import { addParticipantOrdersTable } from './orders-sheet';
 import { buildParticipants, buildParticipantSummary, groupOrdersByUser } from './participants';
+import { tubeFacingLabel } from './tube-facing';
 import type { ExportPricingSettings, ExportPurchase, PurchaseExportData } from './types';
 
 export type { PurchaseExportData } from './types';
@@ -34,6 +35,20 @@ function buildDomainItemByItemId(purchase: ExportPurchase, pricing: ExportPricin
     );
 }
 
+function buildTubeLabelByItemId(purchase: ExportPurchase) {
+    return new Map<number, string>(
+        purchase.items
+            .filter((item) => resolveUnit(item.unitCode ?? item.product.unitCode)?.code === 'tube')
+            .map((item) => [
+                item.id,
+                tubeFacingLabel({
+                    characteristicValues: item.product.characteristicValues,
+                    description: item.description,
+                }),
+            ]),
+    );
+}
+
 export async function exportOrdersPurchaseData({
     purchase,
     orders,
@@ -48,6 +63,7 @@ export async function exportOrdersPurchaseData({
 
     const productByItemId = buildProductByItemId(purchase);
     const itemByItemId = buildDomainItemByItemId(purchase, pricing);
+    const tubeLabelByItemId = buildTubeLabelByItemId(purchase);
     const sheet = workbook.addWorksheet('Заказы');
     sheet.pageSetup = {
         paperSize: 9,
@@ -88,6 +104,7 @@ export async function exportOrdersPurchaseData({
             },
             productByItemId,
             itemByItemId,
+            tubeLabelByItemId,
             attributeTypes,
         );
     });

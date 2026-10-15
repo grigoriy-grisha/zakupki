@@ -126,6 +126,7 @@ export function addParticipantOrdersTable(
     payment: { due: number; paid: number; pending: number },
     productByItemId: Map<number, ExportProduct>,
     itemByItemId: Map<number, PurchaseItem>,
+    tubeLabelByItemId: Map<number, string>,
     attributeTypes?: AttributeTypeMeta[],
 ) {
     const metaRow = sheet.addRow(['', '', purchaseTag, 'НОМЕР УЧАСТНИКА', '', participantNumber, '']);
@@ -185,6 +186,7 @@ export function addParticipantOrdersTable(
         const weight = isWeightUnit(item?.unitCode ?? order.purchaseItem?.unitCode ?? product?.unitCode ?? 'piece');
         const fallbackPack = order.purchaseItem ? unitsInPack(order.purchaseItem) : null;
         const packSize = item?.packAmount ?? fallbackPack?.size ?? null;
+        const tubeLabel = itemId != null ? tubeLabelByItemId.get(itemId) : undefined;
 
         const cells = priceCells(item);
         const split = quantitySplit(order, packSize, weight);
@@ -196,7 +198,7 @@ export function addParticipantOrdersTable(
 
         const row = sheet.addRow([
             '',
-            weight ? formatSupplierPackage(order.purchaseItem) : '',
+            weight ? formatSupplierPackage(order.purchaseItem) : tubeLabel ?? '',
             cells.packPrice,
             cells.facingPrice,
             cells.unitPrice,
