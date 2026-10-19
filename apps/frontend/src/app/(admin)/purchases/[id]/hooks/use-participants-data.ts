@@ -145,25 +145,37 @@ export function useParticipantsData(purchaseId: number) {
             }
         });
 
-        // userIds — объединение из PurchaseOrder (вес участников) и строк.
-        const userIdSet = new Set<number>(typedPurchaseOrders.map((po) => po.userId));
-        userOrders.forEach((_v, uid) => userIdSet.add(uid));
+        // userIds — участники с активными строками заказа. Пустой PurchaseOrder
+        // показываем, только если по нему нет платежей: это участник, которого
+        // админ только что добавил через «Добавить участника» и ещё не набрал ему
+        // товары. Пользователь без заказов, но с платежами (заказ отменён/удалён
+        // после отправки чека) в список не попадает.
+        const userIdsWithPayments = new Set<number>(typedPayments.map((p) => p.userId));
+        const userIdSet = new Set<number>(userOrders.keys());
+        for (const po of typedPurchaseOrders) {
+            if (!userIdsWithPayments.has(po.userId)) userIdSet.add(po.userId);
+        }
         const userIds = Array.from(userIdSet);
 
-        // Пусто только если вообще нет ни PurchaseOrder, ни строк.
+        // Пусто только если нет ни одного участника.
         if (userIds.length === 0) {
             return { isEmpty: true as const, ...emptyMaps() };
         }
 
+        // Итоги («Покрыто», «Ожидает») и бейджи считаем только по участникам из
+        // списка — иначе платежи пользователей без заказов попадают в сумму, но
+        // не видны ни в одном фильтре (плашка «Ожидает 375 ₽» при «Ожидает оплаты 0»).
+        const participantPayments = typedPayments.filter((p) => userIdSet.has(p.userId));
+
         const userPayments = new Map<number, PaymentRef[]>();
-        typedPayments.forEach((p) => {
+        participantPayments.forEach((p) => {
             if (!userPayments.has(p.userId)) userPayments.set(p.userId, []);
             userPayments.get(p.userId)!.push(p);
         });
 
         const paidByUser = new Map<number, number>();
         const pendingByUser = new Map<number, number>();
-        typedPayments.forEach((p) => {
+        participantPayments.forEach((p) => {
             const total = paymentTotal(p);
             if (p.status === 'CONFIRMED') {
                 paidByUser.set(p.userId, (paidByUser.get(p.userId) ?? 0) + total);
@@ -181,10 +193,10 @@ export function useParticipantsData(purchaseId: number) {
         // дочерний промокод-платёж), и «Покрыто» приравнивалось к «К оплате» сразу
         // при отправке, хотя платёж ещё не подтверждён (бейдж при этом верно показывал
         // «Не оплачено»/«Ждёт»).
-        const totalPaid = typedPayments
+        const totalPaid = participantPayments
             .filter((p) => p.status === 'CONFIRMED')
             .reduce((sum, p) => sum + paymentTotal(p), 0);
-        const totalPending = typedPayments
+        const totalPending = participantPayments
             .filter((p) => p.status === 'PENDING')
             .reduce((sum, p) => sum + paymentTotal(p), 0);
 
