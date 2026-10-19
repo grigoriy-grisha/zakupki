@@ -35,6 +35,26 @@ interface AdminParticipantsListProps {
 type StatusFilter = PaymentStatus | 'awaiting_payment' | 'all';
 type HandoffFilter = HandoffStatus | 'none' | 'all';
 
+interface ParticipantMeta {
+    uid: number;
+    paymentStatus: PaymentStatus;
+    awaitingPayment: boolean;
+    handoff: HandoffStatus | null;
+    matchesSearch: boolean;
+}
+
+function matchesStatusFilter(m: ParticipantMeta, filter: StatusFilter): boolean {
+    if (filter === 'all') return true;
+    if (filter === 'awaiting_payment') return m.awaitingPayment;
+    return m.paymentStatus === filter;
+}
+
+function matchesHandoffFilter(m: ParticipantMeta, filter: HandoffFilter): boolean {
+    if (filter === 'all') return true;
+    if (filter === 'none') return m.handoff == null;
+    return m.handoff === filter;
+}
+
 export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps) {
     const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
@@ -57,6 +77,96 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     useEffect(() => {
         setPage(1);
     }, [deferredSearch, statusFilter, handoffFilter]);
+
+    // Мета участника считается один раз: статус оплаты, «ждёт подтверждения»,
+    // статус выдачи и совпадение с поиском. Из неё строятся и список, и счётчики.
+    // Хуки — до ранних return (загрузка/пусто), иначе нарушается порядок хуков.
+    const participantMeta = useMemo<ParticipantMeta[]>(() => {
+        const q = deferredSearch.trim().toLowerCase().replace(/^@/, '');
+        return data.userIds.map((uid) => {
+            const userOrdersList = data.userOrders.get(uid) ?? [];
+            const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
+            const paymentStatus = getPaymentStatus(due, data.paidByUser.get(uid) ?? 0);
+            const awaitingPayment = (data.pendingByUser.get(uid) ?? 0) > 0 && paymentStatus !== 'paid';
+            const handoff = data.handoffByUser.get(uid) ?? null;
+            let matchesSearch = true;
+            if (q) {
+                const info = data.userMap.get(uid);
+                const name = (info?.name ?? `Участник #${uid}`).toLowerCase();
+                const uname = (info?.username ?? '').toLowerCase();
+                const comment = (data.orderComments.get(uid)?.comment ?? '').toLowerCase();
+                const hasItemCommentMatch = userOrdersList.some((o) =>
+                    (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q),
+                );
+                matchesSearch = name.includes(q) || uname.includes(q) || comment.includes(q) || hasItemCommentMatch;
+            }
+            return { uid, paymentStatus, awaitingPayment, handoff, matchesSearch };
+        });
+    }, [
+        data.userIds,
+        data.userMap,
+        data.userOrders,
+        data.paidByUser,
+        data.pendingByUser,
+        data.handoffByUser,
+        data.orderComments,
+        deferredSearch,
+    ]);
+
+    const filteredUserIds = useMemo(
+        () =>
+            participantMeta
+                .filter(
+                    (m) =>
+                        m.matchesSearch &&
+                        matchesStatusFilter(m, statusFilter) &&
+                        matchesHandoffFilter(m, handoffFilter),
+                )
+                .map((m) => m.uid),
+        [participantMeta, statusFilter, handoffFilter],
+    );
+
+    // Счётчики фильтров оплаты учитывают выбранный статус выдачи (и поиск), и
+    // наоборот — иначе при «Оплачено» чип «Ожидает выдачи» показывал общее число,
+    // не совпадающее со списком.
+    const statusCounts = useMemo(() => {
+        const counts: Record<StatusFilter, number> = {
+            all: 0,
+            paid: 0,
+            partial: 0,
+            unpaid: 0,
+            overpaid: 0,
+            awaiting_payment: 0,
+        };
+        for (const m of participantMeta) {
+            if (!m.matchesSearch || !matchesHandoffFilter(m, handoffFilter)) continue;
+            counts.all += 1;
+            counts[m.paymentStatus] += 1;
+            if (m.awaitingPayment) counts.awaiting_payment += 1;
+        }
+        return counts;
+    }, [participantMeta, handoffFilter]);
+
+    const handoffCounts = useMemo(() => {
+        const counts: Record<HandoffFilter, number> = {
+            all: 0,
+            none: 0,
+            ASSEMBLED: 0,
+            READY_TO_SHIP: 0,
+            SENT: 0,
+            RECEIVED: 0,
+            STORED: 0,
+        };
+        for (const m of participantMeta) {
+            if (!m.matchesSearch || !matchesStatusFilter(m, statusFilter)) continue;
+            counts.all += 1;
+            if (m.handoff == null) counts.none += 1;
+            else counts[m.handoff] += 1;
+        }
+        return counts;
+    }, [participantMeta, statusFilter]);
+
+    const handoffDone = participantMeta.filter((m) => m.handoff != null).length;
 
     if (data.isLoading) {
         return <div className="h-32 animate-pulse rounded-2xl bg-bg-soft" />;
@@ -82,93 +192,6 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     }
 
     const selectedPayment = data.payments.find((p) => p.id === selectedPaymentId) ?? null;
-
-    const filteredUserIds = useMemo(() => {
-        const q = deferredSearch.trim().toLowerCase().replace(/^@/, '');
-        return data.userIds.filter((uid) => {
-            const info = data.userMap.get(uid);
-            const name = (info?.name ?? `Участник #${uid}`).toLowerCase();
-            const uname = (info?.username ?? '').toLowerCase();
-            if (q) {
-                const comment = (data.orderComments.get(uid)?.comment ?? '').toLowerCase();
-                const hasItemCommentMatch = (data.userOrders.get(uid) ?? []).some((o) =>
-                    (o.purchaseItem?.adminComment ?? '').toLowerCase().includes(q),
-                );
-                const matchesSearch =
-                    name.includes(q) || uname.includes(q) || comment.includes(q) || hasItemCommentMatch;
-                if (!matchesSearch) return false;
-            }
-            if (statusFilter !== 'all') {
-                const userOrdersList = data.userOrders.get(uid) ?? [];
-                const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
-                const paid = data.paidByUser.get(uid) ?? 0;
-                const paymentStatus = getPaymentStatus(due, paid);
-                if (statusFilter === 'awaiting_payment') {
-                    const pending = data.pendingByUser.get(uid) ?? 0;
-                    if (pending <= 0 || paymentStatus === 'paid') return false;
-                } else if (paymentStatus !== statusFilter) {
-                    return false;
-                }
-            }
-            if (handoffFilter !== 'all') {
-                const handoff = data.handoffByUser.get(uid) ?? null;
-                if (handoff !== handoffFilter) return false;
-            }
-            return true;
-        });
-    }, [
-        data.userIds,
-        data.userMap,
-        data.userOrders,
-        data.paidByUser,
-        data.pendingByUser,
-        data.handoffByUser,
-        data.orderComments,
-        deferredSearch,
-        statusFilter,
-        handoffFilter,
-    ]);
-
-    const statusCounts = useMemo(() => {
-        const counts = {
-            all: data.userIds.length,
-            paid: 0,
-            partial: 0,
-            unpaid: 0,
-            overpaid: 0,
-            awaiting_payment: 0,
-        } as Record<StatusFilter, number>;
-        for (const uid of data.userIds) {
-            const userOrdersList = data.userOrders.get(uid) ?? [];
-            const due = userOrdersList.reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
-            const paid = data.paidByUser.get(uid) ?? 0;
-            const paymentStatus = getPaymentStatus(due, paid);
-            const pending = data.pendingByUser.get(uid) ?? 0;
-            counts[paymentStatus] += 1;
-            if (pending > 0 && paymentStatus !== 'paid') counts.awaiting_payment += 1;
-        }
-        return counts;
-    }, [data.userIds, data.userOrders, data.paidByUser, data.pendingByUser]);
-
-    const handoffCounts = useMemo(() => {
-        const counts: Record<HandoffFilter, number> = {
-            all: data.userIds.length,
-            none: 0,
-            ASSEMBLED: 0,
-            READY_TO_SHIP: 0,
-            SENT: 0,
-            RECEIVED: 0,
-            STORED: 0,
-        };
-        for (const uid of data.userIds) {
-            const handoff = data.handoffByUser.get(uid) ?? null;
-            if (handoff == null) counts.none += 1;
-            else counts[handoff] += 1;
-        }
-        return counts;
-    }, [data.userIds, data.handoffByUser]);
-
-    const handoffDone = data.userIds.length - handoffCounts.none;
 
     const totalPages = Math.max(1, Math.ceil(filteredUserIds.length / PARTICIPANTS_PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -255,6 +278,12 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusChip
+                        label="Все"
+                        count={handoffCounts.all}
+                        active={handoffFilter === 'all'}
+                        onClick={() => setHandoffFilter('all')}
+                    />
                     <StatusChip
                         label={HANDOFF_DEFAULT_LABEL}
                         count={handoffCounts.none}
