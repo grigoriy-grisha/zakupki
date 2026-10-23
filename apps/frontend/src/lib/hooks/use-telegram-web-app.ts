@@ -14,6 +14,7 @@ export function useTelegramWebApp() {
     useEffect(() => {
         setIsMounted(true);
         let tries = 0;
+        let timer: number | undefined;
         const detect = () => {
             const tg = window.Telegram?.WebApp;
             if (tg?.initData) {
@@ -31,8 +32,9 @@ export function useTelegramWebApp() {
                 clearInterval(timer);
             }
         };
+        timer = window.setInterval(detect, DETECT_INTERVAL_MS);
         detect();
-        const timer = window.setInterval(detect, DETECT_INTERVAL_MS);
+        return () => clearInterval(timer);
     }, []);
 
     return { initData, isTelegramWebApp, isLoading, isMounted };
