@@ -29,6 +29,7 @@ export function ItemsToolbar({
     purchaseId,
     purchaseTag,
     currencyRates,
+    deliveryPercent,
 }: {
     search: string;
     onSearchChange: (value: string) => void;
@@ -41,6 +42,7 @@ export function ItemsToolbar({
     purchaseId: number;
     purchaseTag: string;
     currencyRates: PurchaseCurrencyRateRef[];
+    deliveryPercent: number;
 }) {
     return (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -87,6 +89,7 @@ export function ItemsToolbar({
                         purchaseId={purchaseId}
                         purchaseTag={purchaseTag}
                         currencyRates={currencyRates}
+                        deliveryPercent={deliveryPercent}
                     />
                 )}
             </div>

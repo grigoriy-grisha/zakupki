@@ -220,6 +220,7 @@ export function ItemsTab({ purchaseId, onSelectionChange }: ItemsTabProps) {
                 purchaseId={purchaseId}
                 purchaseTag={detail.tag}
                 currencyRates={currencyRates}
+                deliveryPercent={deliveryPercent}
             />
 
             <TooltipProvider delayDuration={150}>

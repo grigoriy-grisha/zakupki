@@ -94,7 +94,8 @@ interface PurchaseProductEditFormProps {
     footer?: React.ReactNode;
     purchaseTag?: string;
     currencyRates?: PurchaseCurrencyRateRef[];
-    deliveryPercent?: number;
+    /** Процент доставки закупки (обязателен: иначе цена и {{цены}} в описании уйдут без доставки). */
+    deliveryPercent: number;
     loadSavedDescription?: boolean;
     hasOrders?: boolean;
 }
@@ -109,7 +110,7 @@ export function PurchaseProductEditForm({
     footer,
     purchaseTag,
     currencyRates,
-    deliveryPercent = 0,
+    deliveryPercent,
     loadSavedDescription = false,
     hasOrders = false,
 }: PurchaseProductEditFormProps) {

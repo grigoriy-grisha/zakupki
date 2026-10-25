@@ -20,6 +20,8 @@ interface ProductPickerDialogProps {
     purchaseTag: string;
     /** Курсы валют закупки — для шаблонных меток {{цены}}, {{фасовка поставщика}}. */
     currencyRates: PurchaseCurrencyRateRef[];
+    /** Процент доставки закупки — без него цена в карточке и в {{цены}} считается без доставки. */
+    deliveryPercent: number;
 }
 
 type PickerProduct = ProductLabelSource & {
@@ -28,7 +30,12 @@ type PickerProduct = ProductLabelSource & {
     unitCode: string;
 };
 
-export function ProductPickerDialog({ purchaseId, purchaseTag, currencyRates }: ProductPickerDialogProps) {
+export function ProductPickerDialog({
+    purchaseId,
+    purchaseTag,
+    currencyRates,
+    deliveryPercent,
+}: ProductPickerDialogProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [detailProduct, setDetailProduct] = useState<number | null>(null);
@@ -93,6 +100,7 @@ export function ProductPickerDialog({ purchaseId, purchaseTag, currencyRates }: 
                         productId={detailProduct}
                         purchaseTag={purchaseTag}
                         currencyRates={currencyRates}
+                        deliveryPercent={deliveryPercent}
                         onAdd={handleAdd}
                         onBack={() => setDetailProduct(null)}
                         isAdding={addItems.isPending}
@@ -194,6 +202,7 @@ function ProductDetail({
     productId,
     purchaseTag,
     currencyRates,
+    deliveryPercent,
     onAdd,
     onBack,
     isAdding,
@@ -201,6 +210,7 @@ function ProductDetail({
     productId: number;
     purchaseTag: string;
     currencyRates: PurchaseCurrencyRateRef[];
+    deliveryPercent: number;
     onAdd: (items: { productId: number; data: PurchaseProductSaveData }[]) => void;
     onBack: () => void;
     isAdding: boolean;
@@ -261,6 +271,7 @@ function ProductDetail({
                 product={product}
                 purchaseTag={purchaseTag}
                 currencyRates={currencyRates}
+                deliveryPercent={deliveryPercent}
                 loadSavedDescription={false}
                 onCancel={onBack}
                 onSave={(data) => {
