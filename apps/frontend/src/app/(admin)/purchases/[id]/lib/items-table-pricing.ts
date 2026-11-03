@@ -148,10 +148,10 @@ export function getRemainderQty(
     if (isAfterSettlement) {
         const assembled = toNum(item.assembledQty);
         const reordered = toNum(item.reorderedQty);
-        if (assembled == null && reordered == null) {
-            return packRemainderApplies ? computeAutoRemainder(collected, packSize) : null;
+        if (assembled != null || reordered != null) {
+            return (assembled ?? 0) + (reordered ?? 0) - collected;
         }
-        return (assembled ?? 0) + (reordered ?? 0) - collected;
+        // Итог от поставщика ещё не внесён — считаем от «Заказано», как до сборки.
     }
     const ordered = toNum(item.orderedQty);
     if (ordered == null) {

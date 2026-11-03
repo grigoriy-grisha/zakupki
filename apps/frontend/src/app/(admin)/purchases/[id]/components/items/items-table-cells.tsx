@@ -178,7 +178,8 @@ export function QtyCell({
     return (
         <TableCell className="px-2 py-1 text-right">
             <InlineCell
-                value={value ?? 0}
+                value={value}
+                placeholder="—"
                 onCommit={(v) => onCommit({ [field]: v })}
                 onClear={() => onCommit({ [field]: null })}
                 allowNegative
