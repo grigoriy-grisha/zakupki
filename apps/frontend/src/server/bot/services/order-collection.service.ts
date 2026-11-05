@@ -1,10 +1,11 @@
+import { createLogger } from '@zakupki/logger';
 import {
+    AppError,
     buildOrderQtyOptions,
     computePackagePrice,
     computeUnitPriceRubNewModel,
     formatUnitQty,
     getActiveStep,
-    getOrderQuantityStep,
     getUnitByCode,
     isOrderingClosedStage,
     mapToPurchaseItem,
@@ -38,13 +39,59 @@ export type OrderCollectionResult =
           subtracted?: OrderCollectionAction;
           cancelled?: boolean;
       }
-    | { ok: false; reason: 'invalid_quantity' | 'product_not_found' | 'purchase_inactive' | 'error' | 'below_step' | 'ordering_closed'; message: string };
+    | {
+          ok: false;
+          reason:
+              | 'invalid_quantity'
+              | 'product_not_found'
+              | 'purchase_inactive'
+              | 'error'
+              | 'below_step'
+              | 'not_step_multiple'
+              | 'no_change'
+              | 'ordering_closed';
+          message: string;
+      };
 
 type ResolvedItem = NonNullable<Awaited<ReturnType<PurchaseItemResolver['resolvePurchaseItem']>>>;
 
-export function stepAlignedDelta(amount: number, step: number, kind: 'add' | 'subtract'): number {
-    const steps = Math.floor(amount / step);
-    return kind === 'add' ? steps * step : -steps * step;
+const STEP_EPSILON = 1e-9;
+
+const log = createLogger('order-collection');
+
+/** Количество кратно шагу (с допуском на дробные шаги вроде 2.5). */
+export function isStepMultiple(amount: number, step: number): boolean {
+    if (!(step > 0)) return true;
+    const ratio = amount / step;
+    return Math.abs(ratio - Math.round(ratio)) < STEP_EPSILON;
+}
+
+/** Ближайшие кратные шагу значения вокруг amount — подсказка «например: 20 или 30». */
+export function nearestStepMultiples(amount: number, step: number): number[] {
+    const ratio = amount / step;
+    const round = (v: number) => parseFloat(v.toFixed(3));
+    const lower = round(Math.floor(ratio + STEP_EPSILON) * step);
+    const upper = round(Math.ceil(ratio - STEP_EPSILON) * step);
+    return [...new Set([lower, upper])].filter((v) => v > 0);
+}
+
+/**
+ * Шаг количества для заказа из комментария. Тот же, что у кнопок +/− в приложении
+ * (`buildDisplayContext().activeStep`): на COLLECTION — фасовка, на REORDER и
+ * дальше — шаг добора. Им и проверяем, и сохраняем, чтобы проверка и запись
+ * не расходились.
+ */
+function resolveActiveStep(item: ResolvedItem): number {
+    return getActiveStep({
+        fulfillmentStatus: item.purchase.fulfillmentStatus ?? 'COLLECTION',
+        supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
+        options: buildOrderQtyOptions({
+            multiplicity: Number(item.product.multiplicity) || 1,
+            minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
+            minPackageUnit: null,
+            unitCode: item.unitCode ?? null,
+        }),
+    });
 }
 
 export class OrderCollectionService {
@@ -104,10 +151,7 @@ export class OrderCollectionService {
             return {
                 ok: false,
                 reason: 'invalid_quantity',
-                message: getOrderQuantityHint(
-                    purchaseItem.purchase?.fulfillmentStatus,
-                    purchaseItem.unitCode,
-                ),
+                message: getOrderQuantityHint(purchaseItem.purchase?.fulfillmentStatus, purchaseItem.unitCode),
             };
         }
 
@@ -139,17 +183,30 @@ export class OrderCollectionService {
             return { ok: false, reason: 'error', message: 'ServiceContainer not wired' };
         }
 
-        const user = await this.container.userService.upsertFromTelegramBot(params.telegramId, params.userInfo);
-        const pricing = await this.getItemPricing(purchaseItem);
-
-        const belowStep = this.belowStepResult(purchaseItem, parsed);
-        if (belowStep) return belowStep;
+        const stepError = this.stepResult(purchaseItem, parsed);
+        if (stepError) return stepError;
 
         try {
+            const user = await this.container.userService.upsertFromTelegramBot(params.telegramId, params.userInfo);
+            const pricing = await this.getItemPricing(purchaseItem);
+            const before = await this.loadUserTotals(purchaseItem.id, user.id);
             await this.applyDelta(purchaseItem, user.id, parsed);
+            const after = await this.loadUserTotals(purchaseItem.id, user.id);
 
-            const allLines = await this.container.orderService.getActiveLinesForUserItem(purchaseItem.id, user.id);
-            const aggregated = mergeLines(toOrderLinesVO(allLines));
+            // Реакция «принято» ставится только на ok-результат, поэтому ok обязан
+            // означать, что заказ в базе действительно изменился.
+            if (after.quantity === before.quantity && after.packageCount === before.packageCount) {
+                return {
+                    ok: false,
+                    reason: 'no_change',
+                    message:
+                        parsed.kind === 'subtract'
+                            ? 'У вас нет заказа на этот товар — убирать нечего'
+                            : 'Заказ не изменился. Попробуйте ещё раз или оформите заказ в приложении',
+                };
+            }
+
+            const aggregated = after;
             const hasLines = aggregated.quantity > 0;
 
             if (!hasLines) {
@@ -167,8 +224,17 @@ export class OrderCollectionService {
                 amountDue: aggregated.amountDue,
             });
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Не удалось сохранить заказ';
-            return { ok: false, reason: 'error', message };
+            // Доменные ошибки (лимит добора, «нельзя уменьшить на этом этапе») — понятный
+            // человеку текст, его и показываем. Технические (БД, сеть) в чат не выносим.
+            if (err instanceof AppError) {
+                return { ok: false, reason: 'error', message: err.message };
+            }
+            log.error({ err, purchaseItemId: purchaseItem.id, telegramId: params.telegramId }, 'order save failed');
+            return {
+                ok: false,
+                reason: 'error',
+                message: 'Не удалось сохранить заказ. Попробуйте ещё раз или оформите заказ в приложении',
+            };
         }
     }
 
@@ -241,9 +307,9 @@ export class OrderCollectionService {
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
         if (!this.container) return;
-        const count = Math.round(parsed.amount);
+        // Целое число пачек проверено в stepResult.
         const sign = parsed.kind === 'add' ? 1 : -1;
-        return this.container.orderService.adjustPackageCount(purchaseItemId, userId, count * sign);
+        return this.container.orderService.adjustPackageCount(purchaseItemId, userId, parsed.amount * sign);
     }
 
     private async applyQuantityDelta(
@@ -252,39 +318,53 @@ export class OrderCollectionService {
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
     ) {
         if (!this.container) return;
-        const step = getOrderQuantityStep(
-            buildOrderQtyOptions({
-                multiplicity: Number(purchaseItem.product.multiplicity) || 1,
-                minPackageAmount:
-                    purchaseItem.minPackageAmount != null ? Number(purchaseItem.minPackageAmount) : null,
-                minPackageUnit: null,
-                unitCode: purchaseItem.unitCode ?? null,
-            }),
-        );
-        const delta = stepAlignedDelta(parsed.amount, step, parsed.kind);
+        // Количество уже проверено в stepResult на кратность шагу — сохраняем как есть,
+        // без округления (раньше округляли вниз до фасовки и молча теряли добор).
+        const delta = parsed.kind === 'add' ? parsed.amount : -parsed.amount;
         return this.container.orderService.adjustQuantity(purchaseItem.id, userId, delta);
     }
 
-    private belowStepResult(
+    private async loadUserTotals(purchaseItemId: number, userId: number) {
+        if (!this.container) return mergeLines([]);
+        const lines = await this.container.orderService.getActiveLinesForUserItem(purchaseItemId, userId);
+        return mergeLines(toOrderLinesVO(lines));
+    }
+
+    /**
+     * Пачки — только целым числом. Количество «россыпью» — по активному шагу: не меньше шага и кратно ему.
+     * Некратное количество отклоняем с подсказкой, а не округляем — человек
+     * должен видеть, что записано ровно то, что он написал.
+     */
+    private stepResult(
         item: ResolvedItem,
         parsed: NonNullable<ReturnType<typeof parseOrderQuantity>>,
-    ): OrderCollectionResult | null {
-        if (parsed.kind !== 'add' || parsed.unit !== 'remainder') return null;
-        const step = getActiveStep({
-            fulfillmentStatus: item.purchase.fulfillmentStatus ?? 'COLLECTION',
-            supplementStep: item.supplementStep != null ? Number(item.supplementStep) : null,
-            options: buildOrderQtyOptions({
-                multiplicity: Number(item.product.multiplicity) || 1,
-                minPackageAmount: item.minPackageAmount != null ? Number(item.minPackageAmount) : null,
-                minPackageUnit: null,
-                unitCode: item.unitCode ?? null,
-            }),
-        });
-        if (parsed.amount >= step) return null;
+    ): Extract<OrderCollectionResult, { ok: false }> | null {
+        if (parsed.unit === 'packs') {
+            if (Number.isInteger(parsed.amount)) return null;
+            return {
+                ok: false,
+                reason: 'invalid_quantity',
+                message: 'Пачки указываются целым числом. Например: 2п',
+            };
+        }
+        const step = resolveActiveStep(item);
+        const unitCode = item.unitCode ?? null;
+        const sign = parsed.kind === 'subtract' ? '-' : '';
+
+        if (parsed.kind === 'add' && parsed.amount < step - STEP_EPSILON) {
+            return {
+                ok: false,
+                reason: 'below_step',
+                message: `Минимальный шаг заказа — ${formatUnitQty(step, unitCode)}. Например: ${step}`,
+            };
+        }
+        if (isStepMultiple(parsed.amount, step)) return null;
+
+        const examples = nearestStepMultiples(parsed.amount, step).map((v) => `${sign}${v}`);
         return {
             ok: false,
-            reason: 'below_step',
-            message: `Минимальный шаг заказа — ${formatUnitQty(step, item.unitCode ?? null)}. Например: ${step}`,
+            reason: 'not_step_multiple',
+            message: `Количество должно быть кратно ${formatUnitQty(step, unitCode)}. Например: ${examples.join(' или ')}`,
         };
     }
 }
