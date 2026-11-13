@@ -1,5 +1,5 @@
 import { createLogger } from '@zakupki/logger';
-import { ForbiddenError, ValidationError } from '@zakupki/types';
+import { ForbiddenError, roundMoney, ValidationError } from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
 
@@ -39,8 +39,10 @@ export class PaymentService {
         if (!info) {
             throw new ValidationError('Закупка не найдена');
         }
-        if (data.amount <= 0 || data.amount > info.available) {
-            throw new ValidationError(`Сумма должна быть от 1 до ${info.available.toLocaleString('ru-RU')} ₽`);
+        // Сравниваем в копейках: available — сумма float, в ней бывает 3001.8300000000004.
+        const available = roundMoney(info.available);
+        if (data.amount <= 0 || roundMoney(data.amount) > available) {
+            throw new ValidationError(`Сумма должна быть от 1 до ${available.toLocaleString('ru-RU')} ₽`);
         }
 
         const promo = await this.promoCode.resolveForSubmit({
@@ -178,7 +180,7 @@ export class PaymentService {
             throw new ValidationError('Закупка не найдена');
         }
         const cap = Math.round((info.available + allowance) * 100) / 100;
-        if (amount <= 0 || amount > cap) {
+        if (amount <= 0 || roundMoney(amount) > cap) {
             throw new ValidationError(`Сумма должна быть от 1 до ${cap.toLocaleString('ru-RU')} ₽`);
         }
     }

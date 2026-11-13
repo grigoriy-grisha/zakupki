@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { trpc } from '@/lib/client/trpc';
 import { formatRub } from '@/lib/format/money';
 import type { PaymentPromoInfo } from '@/lib/payment-utils';
+import { computeMaxTransfer, computeSubmittedAmount, exceedsMaxTransfer } from '@/lib/payment-utils';
 
 export type AppliedPromo = PaymentPromoInfo & { pinned?: boolean };
 
@@ -47,12 +48,7 @@ export function usePaymentForm(purchaseId: number, available: number, due: numbe
 
     const consentRequired = consent != null && !consent.accepted;
     const numAmount = Number(amount);
-    const submittedAmount =
-        !appliedPromo || !(numAmount > 0)
-            ? numAmount
-            : appliedPromo.type === 'PERCENT'
-              ? Math.round((numAmount * 10000) / (100 - appliedPromo.value)) / 100
-              : Math.min(numAmount + appliedPromo.value, available);
+    const submittedAmount = computeSubmittedAmount(numAmount, available, appliedPromo);
     const promoActive =
         appliedPromo != null && numAmount > 0 && (appliedPromo.minAmount == null || submittedAmount >= appliedPromo.minAmount);
     const promoIssue =
@@ -61,12 +57,11 @@ export function usePaymentForm(purchaseId: number, available: number, due: numbe
             : '';
     const promoDiscount = promoActive ? computePromoDiscount(appliedPromo.type, appliedPromo.value, submittedAmount) : 0;
     const finalAmount = submittedAmount - promoDiscount;
-    const promoCoversFull =
-        appliedPromo != null && (appliedPromo.minAmount == null || available >= appliedPromo.minAmount);
-    const maxTransfer = available - (promoCoversFull ? computePromoDiscount(appliedPromo.type, appliedPromo.value, available) : 0);
-    const amountError = numAmount > maxTransfer ? `Максимум ${formatRub(maxTransfer)}` : '';
+    const maxTransfer = computeMaxTransfer(available, appliedPromo);
+    const exceedsMax = exceedsMaxTransfer(numAmount, maxTransfer);
+    const amountError = exceedsMax ? `Максимум ${formatRub(maxTransfer)}` : '';
     const canSubmit =
-        fileData && numAmount > 0 && numAmount <= maxTransfer && !promoIssue && (!consentRequired || consentChecked);
+        fileData && numAmount > 0 && !exceedsMax && !promoIssue && (!consentRequired || consentChecked);
 
     async function applyPromo() {
         if (appliedPromo?.pinned || !promoInput.trim()) return;

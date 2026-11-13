@@ -142,6 +142,7 @@ export {
     resolveCurrencyRate,
     resolveDeliveryPercent,
     resolveOrgFeePercent,
+    roundMoney,
     solvePricePerPackFromPackOrgRub,
     solvePricePerPackFromPackRub,
     solvePricePerPackFromUnitRub,

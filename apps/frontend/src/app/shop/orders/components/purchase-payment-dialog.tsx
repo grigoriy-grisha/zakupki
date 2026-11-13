@@ -1,5 +1,6 @@
 'use client';
 
+import { roundMoney } from '@zakupki/types';
 import { Check, Copy, CreditCard, Loader2, Tag, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -12,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRub } from '@/lib/format/money';
-import { PAYMENT_DETAILS, type PaymentPromoInfo } from '@/lib/payment-utils';
+import { exceedsMaxTransfer, PAYMENT_DETAILS, type PaymentPromoInfo } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 const COPYABLE_PAYMENT_FIELDS = [
@@ -65,8 +66,8 @@ export function PurchasePaymentDialog({
     const payLabel = `Оплатить ${formatRub(remaining)}`;
 
     const amountValid =
-        form.numAmount > 0 && form.numAmount <= form.maxTransfer && !Number.isNaN(form.numAmount);
-    const closesFully = amountValid && form.numAmount === form.maxTransfer;
+        form.numAmount > 0 && !exceedsMaxTransfer(form.numAmount, form.maxTransfer) && !Number.isNaN(form.numAmount);
+    const closesFully = amountValid && roundMoney(form.numAmount) === form.maxTransfer;
     const promoReduces = form.maxTransfer < remaining;
 
     const payButton = !paymentOpen ? (

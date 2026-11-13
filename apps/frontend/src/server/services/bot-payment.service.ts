@@ -5,6 +5,7 @@ import {
     isPurchasePaymentOpen,
     PROOF_MIME_TYPES,
     type PurchaseFulfillmentStatus,
+    roundMoney,
 } from '@zakupki/types';
 
 import { storage } from '@/lib/server/storage';
@@ -129,8 +130,9 @@ export class BotPaymentService {
         if (info.available <= 0) {
             throw new Error('По этой закупке нечего оплачивать');
         }
-        if (data.amount <= 0 || data.amount > info.available) {
-            throw new Error(`Сумма должна быть от 1 до ${info.available.toLocaleString('ru-RU')} ₽`);
+        const available = roundMoney(info.available);
+        if (data.amount <= 0 || roundMoney(data.amount) > available) {
+            throw new Error(`Сумма должна быть от 1 до ${available.toLocaleString('ru-RU')} ₽`);
         }
 
         const promo = await this.promoCodeService.resolveForSubmit({

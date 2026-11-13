@@ -1,4 +1,5 @@
 import type { PromoCodeType } from '@zakupki/types';
+import { computePromoDiscount, roundMoney } from '@zakupki/types';
 
 export const PAYMENT_DETAILS = {
     method: 'СБП (Система быстрых платежей)',
@@ -46,4 +47,41 @@ export function findPinnedPromo(
         }
     }
     return undefined;
+}
+
+/**
+ * Сколько можно перевести с учётом промокода, в копейках (без float-хвостов):
+ * 3001.83 − 120.07 в float даёт 2881.7599999…, и ровно введённые 2881.76
+ * считались бы «больше максимума».
+ */
+export function computeMaxTransfer(
+    available: number,
+    promo: Pick<PaymentPromoInfo, 'type' | 'value' | 'minAmount'> | null,
+): number {
+    const promoCoversFull = promo != null && (promo.minAmount == null || available >= promo.minAmount);
+    const discount = promoCoversFull ? computePromoDiscount(promo.type, promo.value, available) : 0;
+    return roundMoney(available - discount);
+}
+
+/** Сумма перевода больше допустимой (сравнение в копейках). */
+export function exceedsMaxTransfer(amount: number, maxTransfer: number): boolean {
+    return roundMoney(amount) > roundMoney(maxTransfer);
+}
+
+/**
+ * Сумма платежа до скидки по введённой сумме перевода. Не больше остатка:
+ * обратный пересчёт процента (перевод / 0.96) округлением иногда даёт +1 копейку
+ * сверх остатка, и сервер отклонял «Оплатить всё».
+ */
+export function computeSubmittedAmount(
+    transfer: number,
+    available: number,
+    promo: Pick<PaymentPromoInfo, 'type' | 'value'> | null,
+): number {
+    if (!promo || !(transfer > 0)) return transfer;
+    const gross =
+        promo.type === 'PERCENT'
+            ? Math.round((transfer * 10000) / (100 - promo.value)) / 100
+            : roundMoney(transfer + promo.value);
+    return Math.min(gross, roundMoney(available));
 }
