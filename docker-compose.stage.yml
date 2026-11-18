@@ -1,0 +1,79 @@
+# Staging stand: stage.scheglove.ru. Lives next to prod on the same host and reuses
+# prod's Traefik (network `infra`); its own Postgres/Redis on a private network.
+#
+#   cd /root/stage && docker compose -f docker-compose.stage.yml --env-file .env.stage up -d
+
+name: zakupki-stage
+
+services:
+  postgres-stage:
+    image: postgres:17-alpine
+    container_name: postgres-stage
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata-stage:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stage
+
+  redis-stage:
+    image: redis:7-alpine
+    container_name: redis-stage
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redisdata-stage:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stage
+
+  frontend-stage:
+    image: zakupki-frontend:stage
+    container_name: frontend-stage
+    restart: always
+    env_file:
+      - .env.stage
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-stage:5432/${POSTGRES_DB}?schema=public
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis-stage:6379
+    depends_on:
+      postgres-stage:
+        condition: service_healthy
+      redis-stage:
+        condition: service_healthy
+    volumes:
+      - uploads-stage:/app/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=infra"
+      - "traefik.http.routers.frontend-stage.rule=Host(`${HOST}`)"
+      - "traefik.http.routers.frontend-stage.entrypoints=websecure"
+      - "traefik.http.routers.frontend-stage.tls.certresolver=myresolver"
+      - "traefik.http.routers.frontend-stage.middlewares=compress@docker"
+      - "traefik.http.services.frontend-stage.loadbalancer.server.port=3000"
+    networks:
+      - stage
+      - infra
+
+volumes:
+  pgdata-stage:
+  redisdata-stage:
+  uploads-stage:
+
+networks:
+  stage:
+    name: zakupki-stage
+  infra:
+    external: true
