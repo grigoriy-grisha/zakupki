@@ -70,7 +70,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>
                         {isRefund ? 'Возврат' : 'Оплата'} #{payment.id}

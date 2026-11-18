@@ -273,7 +273,7 @@ export function PurchasePaymentDialog({
                                 {form.promoIssue && <p className="text-12-regular text-warning">{form.promoIssue}</p>}
                                 {form.appliedPromo && form.numAmount > 0 && (
                                     <div className="rounded-lg border border-success/30 bg-success/10 p-2 space-y-1">
-                                        <div className="flex items-center justify-between text-12-regular">
+                                        <div className="flex flex-wrap items-center justify-between gap-x-3 text-12-regular">
                                             <span className="text-fg-secondary">
                                                 Сумма до скидки: {formatRub(form.submittedAmount)}
                                             </span>
@@ -421,13 +421,13 @@ function PayMethodButton({
             variant="brand"
             disabled={disabled}
             onClick={onClick}
-            className="h-auto w-full justify-between gap-3 py-2.5"
+            className="h-auto w-full justify-between gap-3 py-2.5 text-left whitespace-normal"
         >
-            <span className="flex items-center gap-2">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
-                {label}
+            <span className="flex min-w-0 items-center gap-2">
+                {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : icon}
+                <span className="min-w-0">{label}</span>
             </span>
-            <span className="flex flex-col items-end leading-tight">
+            <span className="flex shrink-0 flex-col items-end text-right leading-tight">
                 {showTotal && <span className="tabular-nums">{formatRub(total)}</span>}
                 <span className="text-11-regular opacity-80">
                     {feePercent > 0

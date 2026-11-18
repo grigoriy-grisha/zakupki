@@ -39,17 +39,11 @@ function PageHeader({
                         <h1 className="text-h1 text-secondary">{title}</h1>
                         {descriptionMobile ? (
                             <>
-                                <p className="mt-1 hidden text-14-regular text-fg-secondary sm:block">
-                                    {description}
-                                </p>
-                                <p className="mt-1 text-14-regular text-fg-secondary sm:hidden">
-                                    {descriptionMobile}
-                                </p>
+                                <p className="mt-1 hidden text-14-regular text-fg-secondary sm:block">{description}</p>
+                                <p className="mt-1 text-14-regular text-fg-secondary sm:hidden">{descriptionMobile}</p>
                             </>
                         ) : (
-                            description && (
-                                <p className="mt-1 text-14-regular text-fg-secondary">{description}</p>
-                            )
+                            description && <p className="mt-1 text-14-regular text-fg-secondary">{description}</p>
                         )}
                     </div>
                 </div>
@@ -59,7 +53,7 @@ function PageHeader({
     }
 
     return (
-        <div className={cn('mb-6 flex items-start justify-between gap-4 sm:mb-8', className)}>
+        <div className={cn('mb-6 flex flex-wrap items-start justify-between gap-4 sm:mb-8', className)}>
             <div className="min-w-0 flex-1">
                 {badge && <div className="mb-2">{badge}</div>}
                 <h1 className="text-h1 text-secondary">{title}</h1>

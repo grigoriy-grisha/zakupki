@@ -48,13 +48,15 @@ export function ExportPurchaseButtons({ purchaseId }: ExportPurchaseButtonsProps
     }
 
     return (
-        <Button variant="outline" size="sm" disabled={loading} onClick={() => void handleExportOrders()}>
-            {loading ? (
-                <Loader2 className="size-4 animate-spin" />
-            ) : (
-                <Download className="size-4" />
-            )}
-            Выгрузить данные заказов
+        <Button
+            variant="outline"
+            size="sm"
+            disabled={loading}
+            onClick={() => void handleExportOrders()}
+            aria-label="Выгрузить данные заказов"
+        >
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            <span className="hidden sm:inline">Выгрузить данные заказов</span>
         </Button>
     );
 }

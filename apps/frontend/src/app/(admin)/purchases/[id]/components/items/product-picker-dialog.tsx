@@ -90,7 +90,7 @@ export function ProductPickerDialog({
                     <span className="hidden sm:inline">Добавить товар</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Выбрать товар из каталога</DialogTitle>
                 </DialogHeader>

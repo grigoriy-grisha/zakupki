@@ -96,7 +96,7 @@ export function ShopHeader() {
             </nav>
 
             <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-                <DialogContent className="max-w-sm">
+                <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle>Выйти из аккаунта?</DialogTitle>
                         <DialogDescription>

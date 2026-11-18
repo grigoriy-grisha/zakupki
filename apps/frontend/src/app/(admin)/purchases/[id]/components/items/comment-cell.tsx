@@ -41,7 +41,7 @@ export function CommentCell({
                 <Pencil className="size-3 shrink-0 text-fg-tertiary" />
                 <span className="truncate">{value ? <Highlight text={value} query={query} /> : '—'}</span>
             </button>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Комментарий</DialogTitle>
                 </DialogHeader>

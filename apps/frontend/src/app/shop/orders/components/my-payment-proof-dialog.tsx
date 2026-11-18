@@ -47,7 +47,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Оплата #{payment.id}</DialogTitle>
                 </DialogHeader>

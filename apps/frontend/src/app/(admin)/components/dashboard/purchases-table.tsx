@@ -42,73 +42,133 @@ export function PurchasesTable({
     }
 
     return (
-        <div className="-mx-1 overflow-x-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Закупка</TableHead>
-                        <TableHead>Этап</TableHead>
-                        <TableHead className="text-right">Участники</TableHead>
-                        <TableHead className="text-right">К оплате</TableHead>
-                        <TableHead>Оплачено</TableHead>
-                        <TableHead className="text-right">Долг</TableHead>
-                        <TableHead className="w-28">Заказы, 14 дн.</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {rows.map((row) => (
-                        <TableRow key={row.id}>
-                            <TableCell>
-                                <AppLink
-                                    href={`/purchases/${row.id}`}
-                                    className="font-display text-16-semibold whitespace-nowrap text-secondary hover:underline"
-                                >
-                                    {row.tag}
-                                </AppLink>
-                            </TableCell>
-                            <TableCell>
-                                <Badge variant={row.paymentOpen ? 'accent' : 'neutral'} className="whitespace-nowrap">
-                                    {PURCHASE_FULFILLMENT_LABELS[row.fulfillmentStatus]}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">{row.participants}</TableCell>
-                            <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                {row.due > 0 ? formatRubShort(row.due) : '—'}
-                            </TableCell>
-                            <TableCell>
-                                <PaidBar row={row} />
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums whitespace-nowrap">
-                                {row.debt > 0 ? (
-                                    <span className="flex flex-col items-end">
-                                        <span className="text-error">{formatRubShort(row.debt)}</span>
-                                        <span className="text-11-regular text-fg-tertiary">{row.debtors} чел.</span>
-                                    </span>
-                                ) : (
-                                    <span className="text-fg-tertiary">—</span>
-                                )}
-                            </TableCell>
-                            <TableCell>
-                                <Sparkline
-                                    values={row.recentOrders}
-                                    color="var(--color-secondary)"
-                                    className="h-7 w-24"
-                                    // Один вид на всю колонку — иначе строки с редкими заказами
-                                    // переключаются на столбики и выглядят как другой график.
-                                    variant="bars"
-                                    tooltipSide="left"
-                                    start={recentOrdersFrom}
-                                    bucketMs={DAY_MS}
-                                    formatValue={formatRubShort}
-                                    valueLabel="Заказано"
-                                    aria-label={`Заказы за 14 дней: ${row.tag}`}
-                                />
-                            </TableCell>
+        <>
+            <ul className="flex flex-col divide-y divide-border-low md:hidden">
+                {rows.map((row) => (
+                    <PurchaseCard key={row.id} row={row} recentOrdersFrom={recentOrdersFrom} />
+                ))}
+            </ul>
+            <div className="-mx-1 hidden overflow-x-auto md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Закупка</TableHead>
+                            <TableHead>Этап</TableHead>
+                            <TableHead className="text-right">Участники</TableHead>
+                            <TableHead className="text-right">К оплате</TableHead>
+                            <TableHead>Оплачено</TableHead>
+                            <TableHead className="text-right">Долг</TableHead>
+                            <TableHead className="w-28">Заказы, 14 дн.</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+                    </TableHeader>
+                    <TableBody>
+                        {rows.map((row) => (
+                            <TableRow key={row.id}>
+                                <TableCell>
+                                    <AppLink
+                                        href={`/purchases/${row.id}`}
+                                        className="font-display text-16-semibold whitespace-nowrap text-secondary hover:underline"
+                                    >
+                                        {row.tag}
+                                    </AppLink>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge
+                                        variant={row.paymentOpen ? 'accent' : 'neutral'}
+                                        className="whitespace-nowrap"
+                                    >
+                                        {PURCHASE_FULFILLMENT_LABELS[row.fulfillmentStatus]}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">{row.participants}</TableCell>
+                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                    {row.due > 0 ? formatRubShort(row.due) : '—'}
+                                </TableCell>
+                                <TableCell>
+                                    <PaidBar row={row} />
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                                    {row.debt > 0 ? (
+                                        <span className="flex flex-col items-end">
+                                            <span className="text-error">{formatRubShort(row.debt)}</span>
+                                            <span className="text-11-regular text-fg-tertiary">{row.debtors} чел.</span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-fg-tertiary">—</span>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    <Sparkline
+                                        values={row.recentOrders}
+                                        color="var(--color-secondary)"
+                                        className="h-7 w-24"
+                                        // Один вид на всю колонку — иначе строки с редкими заказами
+                                        // переключаются на столбики и выглядят как другой график.
+                                        variant="bars"
+                                        tooltipSide="left"
+                                        start={recentOrdersFrom}
+                                        bucketMs={DAY_MS}
+                                        formatValue={formatRubShort}
+                                        valueLabel="Заказано"
+                                        aria-label={`Заказы за 14 дней: ${row.tag}`}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </>
+    );
+}
+
+function PurchaseCard({ row, recentOrdersFrom }: { row: DashboardPurchaseRow; recentOrdersFrom?: Date | string }) {
+    return (
+        <li className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+            <div className="flex items-center justify-between gap-3">
+                <AppLink
+                    href={`/purchases/${row.id}`}
+                    className="min-w-0 truncate font-display text-16-semibold text-secondary hover:underline"
+                >
+                    {row.tag}
+                </AppLink>
+                <Badge variant={row.paymentOpen ? 'accent' : 'neutral'} className="shrink-0 whitespace-nowrap">
+                    {PURCHASE_FULFILLMENT_LABELS[row.fulfillmentStatus]}
+                </Badge>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-12-regular text-fg-secondary">
+                <span>
+                    Участники: <span className="tabular-nums text-fg-primary">{row.participants}</span>
+                </span>
+                <span>
+                    К оплате:{' '}
+                    <span className="tabular-nums text-fg-primary">{row.due > 0 ? formatRubShort(row.due) : '—'}</span>
+                </span>
+                {row.debt > 0 && (
+                    <span>
+                        Долг: <span className="tabular-nums text-error">{formatRubShort(row.debt)}</span> ·{' '}
+                        {row.debtors} чел.
+                    </span>
+                )}
+            </div>
+            <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                    <PaidBar row={row} />
+                </div>
+                <Sparkline
+                    values={row.recentOrders}
+                    color="var(--color-secondary)"
+                    className="h-7 w-20 shrink-0"
+                    variant="bars"
+                    tooltipSide="left"
+                    start={recentOrdersFrom}
+                    bucketMs={DAY_MS}
+                    formatValue={formatRubShort}
+                    valueLabel="Заказано"
+                    aria-label={`Заказы за 14 дней: ${row.tag}`}
+                />
+            </div>
+        </li>
     );
 }
 
