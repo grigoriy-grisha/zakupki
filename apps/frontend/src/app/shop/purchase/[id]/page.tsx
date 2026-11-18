@@ -299,17 +299,11 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                                     compact
                                     nodes={tree}
                                     selectedId={selectedId}
-                                    onSelect={(node) => {
-                                        handleSelectNode(node);
-                                        setFilterSheetOpen(false);
-                                    }}
+                                    onSelect={handleSelectNode}
                                     expandedIds={expandedIds}
                                     onToggle={handleToggle}
                                     totalCount={totalCount}
-                                    onClear={() => {
-                                        clearSelection();
-                                        setFilterSheetOpen(false);
-                                    }}
+                                    onClear={clearSelection}
                                 />
                             </div>
                             <SheetFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
