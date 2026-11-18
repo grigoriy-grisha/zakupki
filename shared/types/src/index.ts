@@ -147,10 +147,13 @@ export {
     solvePricePerPackFromPackRub,
     solvePricePerPackFromUnitRub,
 } from './pricing';
-export { buildOrderQtyOptions, getActiveStep,getOrderQuantityStep, getSupplementStep } from './pricing';
+export { buildOrderQtyOptions, getActiveStep, getOrderQuantityStep, getSupplementStep } from './pricing';
 
 // Payment summary
 export { computePaymentTotals, type PaymentSummaryInput, type PaymentTotals } from './payment-summary';
+
+// Analytics (дашборд админки)
+export * from './analytics';
 
 // Pack discount
 export {
@@ -170,7 +173,7 @@ export {
 } from './supplement-formatting';
 
 // Payment proof MIME types
-export { PROOF_MIME_BY_EXT,PROOF_MIME_TYPES } from './proof-mime';
+export { PROOF_MIME_BY_EXT, PROOF_MIME_TYPES } from './proof-mime';
 
 // Errors
 export {
@@ -197,7 +200,7 @@ export {
     type SettingType,
     type SettingValue,
 } from './settings';
-export { formatQtyLabel,isPositive, positiveOrNull } from './utils';
+export { formatQtyLabel, isPositive, positiveOrNull } from './utils';
 
 // Units
 export {
@@ -246,10 +249,7 @@ export {
 } from './purchase-fulfillment';
 
 // Purchase status state machine
-export {
-    canTransitionPurchaseStatus,
-    PURCHASE_STATUS_TRANSITIONS,
-} from './purchase-status';
+export { canTransitionPurchaseStatus, PURCHASE_STATUS_TRANSITIONS } from './purchase-status';
 
 // Notifications
 export {

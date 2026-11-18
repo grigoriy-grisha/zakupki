@@ -31,6 +31,17 @@ describe('computePaymentTotals', () => {
         expect(totals.available).toBe(0);
     });
 
+    it('reserves awaiting online payments in available but not in remaining', () => {
+        const totals = computePaymentTotals(1000, [
+            { status: 'CONFIRMED', total: 200 },
+            { status: 'AWAITING', total: 300 },
+        ]);
+
+        expect(totals.remaining).toBe(800);
+        expect(totals.awaitingPaid).toBe(300);
+        expect(totals.available).toBe(500);
+    });
+
     it('rounds to kopecks', () => {
         const totals = computePaymentTotals(100.1, [{ status: 'CONFIRMED', total: 33.333 }]);
 
@@ -43,6 +54,7 @@ describe('computePaymentTotals', () => {
         expect(totals).toEqual({
             confirmedPaid: 0,
             pendingPaid: 0,
+            awaitingPaid: 0,
             hasPending: false,
             remaining: 250,
             available: 250,

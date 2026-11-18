@@ -30,10 +30,19 @@ const userWithCredentials = {
 } as const;
 
 export class UserRepository {
+    findReceiptContact(id: number) {
+        return dbClient.user.findUnique({ where: { id }, select: { email: true, phone: true } });
+    }
+
+    updateReceiptContact(id: number, data: { email?: string; phone?: string }) {
+        return dbClient.user.update({ where: { id }, data, select: { id: true } });
+    }
+
     async list() {
         return dbClient.user.findMany({
             include: {
                 orderLines: {
+                    where: { removedAt: null },
                     select: {
                         id: true,
                         amountDue: true,
@@ -58,7 +67,7 @@ export class UserRepository {
                 avatarUrl: true,
                 phone: true,
                 createdAt: true,
-                orderLines: { select: { id: true } },
+                orderLines: { where: { removedAt: null }, select: { id: true } },
                 telegramCredential: {
                     select: {
                         telegramId: true,

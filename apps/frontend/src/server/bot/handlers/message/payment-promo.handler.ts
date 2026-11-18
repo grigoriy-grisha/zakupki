@@ -4,7 +4,8 @@ import { InlineKeyboard } from 'grammy';
 import type { ServiceContainer } from '../../container/service-container';
 import type { MessageHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
-import { proofStepText } from '../../lib/payment-texts';
+import { continueToCheckout } from '../../lib/payment-checkout';
+import { userErrorMessage } from '../../lib/user-error';
 import { isPrivateChat } from '../shared/is-private-chat';
 
 export class PaymentPromoHandler implements MessageHandler {
@@ -38,19 +39,19 @@ export class PaymentPromoHandler implements MessageHandler {
         }
 
         const amount = current.amount!;
+        let promo;
         try {
-            const promo = await this.container.paymentService.validatePromoCode(text, current.purchaseId, amount);
-            flow.advanceToProof(promo);
-
-            await ctx.reply(proofStepText(amount, promo), { parse_mode: 'HTML' });
+            promo = await this.container.paymentService.validatePromoCode(text, current.purchaseId, amount);
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Промокод недействителен';
+            const msg = userErrorMessage(err, 'Не удалось проверить промокод');
             const keyboard = new InlineKeyboard()
                 .text('Ввести другой код', 'pay:promo')
                 .text('Продолжить без промокода', 'pay:skip');
             await ctx.reply(`${msg}\n\nМожно попробовать другой код или продолжить без промокода.`, {
                 reply_markup: keyboard,
             });
+            return;
         }
+        await continueToCheckout(ctx, this.container, amount, promo);
     }
 }

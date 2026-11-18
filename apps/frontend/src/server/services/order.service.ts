@@ -3,20 +3,20 @@ import type { EventBus } from '@zakupki/queue';
 import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 import {
     canCancelOrder,
+    computeAmountDue,
+    computeAmountDueWithPackages,
     ForbiddenError,
     type HandoffStatus,
     NotFoundError,
     OrderBook,
     PurchaseNotActiveError,
-    resolveCurrencyRate,
-    resolveDeliveryPercent,
-    resolveOrgFeePercent,
     userEffectiveQty,
     ValidationError,
 } from '@zakupki/types';
 
 import type { OrderRepository } from '../domain/order.repository';
 import type { PurchaseRepository } from '../domain/purchase.repository';
+import { buildLinePriceInfo } from '../lib/line-price-info';
 import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
 import type { NotificationService } from '../services/notification.service';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
@@ -67,19 +67,15 @@ export class OrderService {
         const prevQty = userEffectiveQty(lines, userId, item.packAmount);
         const result = OrderBook.create(item, lines).adminDecrease(userId, amount);
         if (!result.ok) throw new ValidationError(result.error.message);
-        await this.persistEffects(result.changes);
+        await this.persistEffects(result.changes, {
+            soft: !result.book.activeLines.some((l) => l.userId === userId),
+        });
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
         const remaining = result.book.activeLines.filter((l) => l.userId === userId);
         if (remaining.length === 0) {
             await this.notifyOrderLineDeleted(purchaseItemId, userId);
         } else {
-            await this.notifyOrderQtyChanged(
-                purchaseItemId,
-                userId,
-                item.packAmount,
-                prevQty,
-                result.book.activeLines,
-            );
+            await this.notifyOrderQtyChanged(purchaseItemId, userId, item.packAmount, prevQty, result.book.activeLines);
         }
     }
 
@@ -88,18 +84,14 @@ export class OrderService {
         const prevQty = userEffectiveQty(lines, userId, item.packAmount);
         const result = OrderBook.create(item, lines).adminSetQuantity(userId, qty);
         if (!result.ok) throw new ValidationError(result.error.message);
-        await this.persistEffects(result.changes);
+        await this.persistEffects(result.changes, {
+            soft: !result.book.activeLines.some((l) => l.userId === userId),
+        });
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
         if (qty === 0) {
             await this.notifyOrderLineDeleted(purchaseItemId, userId);
         } else {
-            await this.notifyOrderQtyChanged(
-                purchaseItemId,
-                userId,
-                item.packAmount,
-                prevQty,
-                result.book.activeLines,
-            );
+            await this.notifyOrderQtyChanged(purchaseItemId, userId, item.packAmount, prevQty, result.book.activeLines);
         }
     }
 
@@ -115,19 +107,15 @@ export class OrderService {
         const prevQty = userEffectiveQty(lines, userId, item.packAmount);
         const result = OrderBook.create(item, lines).adminAdjustPackages(userId, delta);
         if (!result.ok) throw new ValidationError(result.error.message);
-        await this.persistEffects(result.changes);
+        await this.persistEffects(result.changes, {
+            soft: !result.book.activeLines.some((l) => l.userId === userId),
+        });
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
         const remaining = result.book.activeLines.filter((l) => l.userId === userId);
         if (remaining.length === 0) {
             await this.notifyOrderLineDeleted(purchaseItemId, userId);
         } else {
-            await this.notifyOrderQtyChanged(
-                purchaseItemId,
-                userId,
-                item.packAmount,
-                prevQty,
-                result.book.activeLines,
-            );
+            await this.notifyOrderQtyChanged(purchaseItemId, userId, item.packAmount, prevQty, result.book.activeLines);
         }
     }
 
@@ -139,7 +127,7 @@ export class OrderService {
         ]);
         return lines.map((line) => ({
             ...line,
-            priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent, packDiscountPercent),
+            priceInfo: buildLinePriceInfo(line, orgFeeDefaultPercent, packDiscountPercent),
         }));
     }
 
@@ -151,52 +139,8 @@ export class OrderService {
         ]);
         return lines.map((line) => ({
             ...line,
-            priceInfo: this.priceInfoForLine(line, orgFeeDefaultPercent, packDiscountPercent),
+            priceInfo: buildLinePriceInfo(line, orgFeeDefaultPercent, packDiscountPercent),
         }));
-    }
-
-    private priceInfoForLine(
-        line: {
-            purchaseItem: {
-                currencyId: number | null;
-                pricePerPackCurrency: unknown;
-                packAmount: unknown;
-                orgFeePercentOverride: unknown;
-                deliveryPercentOverride: unknown;
-                purchase: {
-                    deliveryPercent: unknown;
-                    currencyRates: { currencyId: number; rateToRub: unknown }[];
-                } | null;
-            } | null;
-        },
-        orgFeeDefaultPercent: number,
-        packDiscountPercent: number,
-    ) {
-        const item = line.purchaseItem;
-        const purchase = item?.purchase;
-        if (!item || !purchase) return null;
-        const rateToRub = resolveCurrencyRate(
-            (purchase.currencyRates ?? []).map((r) => ({
-                currencyId: r.currencyId,
-                rateToRub: Number(r.rateToRub),
-            })),
-            item.currencyId ?? null,
-        );
-        return {
-            pricePerPackCurrency:
-                item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
-            rateToRub,
-            packSize: item.packAmount != null ? Number(item.packAmount) : null,
-            packDiscountPercent,
-            orgFeePercent: resolveOrgFeePercent(
-                item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
-                orgFeeDefaultPercent,
-            ),
-            deliveryPercent: resolveDeliveryPercent(
-                item.deliveryPercentOverride != null ? Number(item.deliveryPercentOverride) : null,
-                Number(purchase.deliveryPercent ?? 0),
-            ),
-        };
     }
 
     async getActiveLinesForUserItem(purchaseItemId: number, userId: number) {
@@ -230,14 +174,16 @@ export class OrderService {
         return result;
     }
 
-    async delete(id: number) {
+    async delete(id: number): Promise<void> {
         const line = await this.repo.findById(id);
-        const result = await this.repo.delete(id);
-        if (line) {
-            await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
-            await this.notifyOrderLineDeleted(line.purchaseItemId, line.userId);
-        }
-        return result;
+        if (!line) return;
+        // Снимок для «Вернуть» имеет смысл, только если это последняя строка товара у участника:
+        // иначе он скрыт за оставшимися строками и потом молча затрётся.
+        const siblings = await this.repo.countActiveLinesByUserAndItem(line.purchaseItemId, line.userId);
+        if (siblings > 1) await this.repo.deleteOrderLineById(id);
+        else await this.repo.softDeleteLines([id]);
+        await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
+        await this.notifyOrderLineDeleted(line.purchaseItemId, line.userId);
     }
 
     async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
@@ -293,9 +239,46 @@ export class OrderService {
     }
 
     async deleteAllByUserAndItem(purchaseItemId: number, userId: number): Promise<void> {
-        await this.repo.deleteAllByUserAndItem(purchaseItemId, userId);
+        const ids = await this.repo.findActiveLineIdsByUserAndItem(purchaseItemId, userId);
+        await this.repo.softDeleteLines(ids);
         await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
         await this.notifyOrderLineDeleted(purchaseItemId, userId);
+    }
+
+    /** Удалённые админом позиции закупки (для блока «Удалённые» у участника). */
+    async getRemovedByPurchase(purchaseId: number) {
+        const [removed, activeKeys] = await Promise.all([
+            this.repo.findRemovedByPurchase(purchaseId),
+            this.repo.findActiveUserItemKeys(purchaseId),
+        ]);
+        // Товар, который у участника снова есть в заказе, «удалённым» не показываем.
+        return removed.filter((l) => !activeKeys.has(`${l.userId}:${l.purchaseItemId}`));
+    }
+
+    /** Вернуть удалённую админом позицию участника с прежним количеством. */
+    async restoreUserItem(purchaseItemId: number, userId: number): Promise<void> {
+        const removed = await this.repo.findRemovedLinesByUserAndItem(purchaseItemId, userId);
+        if (removed.length === 0) throw new ValidationError('Эта позиция уже возвращена');
+        const { item, lines } = await this.loadItem(purchaseItemId);
+        if (lines.some((l) => l.userId === userId && l.status === 'ACTIVE')) {
+            throw new ValidationError('Этот товар уже есть в заказе — измените количество');
+        }
+        const prevQty = userEffectiveQty(lines, userId, item.packAmount);
+        await this.repo.restoreLines(
+            removed.map((line) => {
+                const quantity = Number(line.removedQuantity ?? 0);
+                const packageCount = line.removedPackageCount ?? 0;
+                const amountDue =
+                    line.createdOnStage === 'COLLECTION'
+                        ? computeAmountDueWithPackages(quantity, packageCount, item)
+                        : computeAmountDue(quantity, item);
+                return { id: line.id, quantity, packageCount, amountDue };
+            }),
+        );
+        await this.eventBus.emitPurchaseItemChanged(purchaseItemId);
+        const after = await this.loadItem(purchaseItemId);
+        const book = OrderBook.create(after.item, after.lines);
+        await this.notifyOrderQtyChanged(purchaseItemId, userId, item.packAmount, prevQty, book.activeLines);
     }
 
     async getActivePurchases(userId: number) {
@@ -347,7 +330,7 @@ export class OrderService {
                 amountDue: Number(l.amountDue),
                 status: l.status,
                 purchaseItem: l.purchaseItem,
-                priceInfo: this.priceInfoForLine(l, orgFeeDefaultPercent, packDiscountPercent),
+                priceInfo: buildLinePriceInfo(l, orgFeeDefaultPercent, packDiscountPercent),
                 userId: l.userId,
                 baseQuantity: l.baseQuantity,
                 createdOnStage: l.createdOnStage,
@@ -477,10 +460,15 @@ export class OrderService {
         }
     }
 
-    private async persistEffects(effects: OrderEffect[]): Promise<void> {
+    /** soft — админ убрал позицию до нуля: строка остаётся «удалённой», чтобы её можно было вернуть. */
+    private async persistEffects(effects: OrderEffect[], options: { soft?: boolean } = {}): Promise<void> {
+        // Мягкое удаление — одним вызовом: иначе каждый вызов сбрасывал бы снимок
+        // только что удалённых соседних строк того же товара.
+        const softIds: number[] = [];
         for (const effect of effects) {
             if (effect.type === 'delete') {
-                await this.repo.deleteOrderLineById(effect.lineId);
+                if (options.soft) softIds.push(effect.lineId);
+                else await this.repo.deleteOrderLineById(effect.lineId);
             } else {
                 await this.repo.upsertOrderLine(
                     effect.purchaseItemId,
@@ -492,5 +480,6 @@ export class OrderService {
                 );
             }
         }
+        if (softIds.length > 0) await this.repo.softDeleteLines(softIds);
     }
 }

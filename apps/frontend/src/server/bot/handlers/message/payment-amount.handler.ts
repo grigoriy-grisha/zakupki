@@ -1,13 +1,17 @@
+import { roundMoney } from '@zakupki/types';
 import type { NextFunction } from 'grammy';
 import { InlineKeyboard } from 'grammy';
 
 import type { ServiceContainer } from '../../container/service-container';
 import type { MessageHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
-import { proofStepText } from '../../lib/payment-texts';
+import { continueToCheckout } from '../../lib/payment-checkout';
 import { buildPinnedPromo } from '../../lib/pinned-promo';
 import { PAYMENT_NOT_OPEN_MESSAGE } from '../../lib/purchase-payment-guard';
 import { isPrivateChat } from '../shared/is-private-chat';
+
+/** Меньше рубля банк не примет. */
+const MIN_PAYMENT_RUB = 1;
 import { parseCurrencyAmount } from '../shared/parse-currency-amount';
 
 export class PaymentAmountHandler implements MessageHandler {
@@ -24,11 +28,13 @@ export class PaymentAmountHandler implements MessageHandler {
             return;
         }
 
-        if (flow.currentStep === 'proof') {
+        if (flow.currentStep === 'method') {
             const text = ctx.message?.text?.trim();
             if (text && !text.startsWith('/')) {
-                await ctx.reply('Пришлите фото или PDF чека. Комментарий укажите в подписи к файлу.');
+                await ctx.reply('Выберите способ оплаты кнопкой выше или отмените: /cancel');
+                return;
             }
+            await next();
             return;
         }
 
@@ -48,9 +54,10 @@ export class PaymentAmountHandler implements MessageHandler {
             return;
         }
 
-        const amount = parseCurrencyAmount(text);
-        if (amount === null || amount <= 0) {
-            await ctx.reply('Введите корректную сумму, например: 1500');
+        const parsed = parseCurrencyAmount(text);
+        const amount = parsed === null ? null : roundMoney(parsed);
+        if (amount === null || amount < MIN_PAYMENT_RUB) {
+            await ctx.reply(`Введите сумму от ${MIN_PAYMENT_RUB} ₽, например: 1500`);
             return;
         }
         if (amount > current.available) {
@@ -68,17 +75,13 @@ export class PaymentAmountHandler implements MessageHandler {
             current.purchaseId,
         );
         const pinned = buildPinnedPromo(pinnedPromo, amount);
+        flow.advanceToPromo(amount);
         if (pinned) {
-            flow.advanceToProof(pinned);
-            await ctx.reply(proofStepText(amount, pinned, { pinned: true }), { parse_mode: 'HTML' });
+            await continueToCheckout(ctx, this.container, amount, pinned, { pinned: true });
             return;
         }
 
-        flow.advanceToPromo(amount);
-
-        const keyboard = new InlineKeyboard()
-            .text('✂️ Ввести промокод', 'pay:promo')
-            .text('Продолжить »', 'pay:skip');
+        const keyboard = new InlineKeyboard().text('✂️ Ввести промокод', 'pay:promo').text('Продолжить »', 'pay:skip');
 
         await ctx.reply(
             `Сумма: <b>${amount.toLocaleString('ru-RU')} ₽</b>\n\n` +

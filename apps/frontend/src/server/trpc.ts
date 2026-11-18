@@ -1,14 +1,15 @@
-import { dbClient, RoleKind } from '@zakupki/database';
-import { AppError, ForbiddenError, NotFoundError, ValidationError } from '@zakupki/types';
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { TRPC_ERROR_CODE_KEY } from '@trpc/server/rpc';
+import { dbClient, RoleKind } from '@zakupki/database';
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from '@zakupki/types';
 import type { Session } from 'next-auth';
 import { getServerSession } from 'next-auth';
 
 import { authOptions } from '@/lib/auth';
 import type { RbacConfig } from '@/lib/rbac-config';
 import { buildRbac } from '@/lib/rbac-config';
-import { ServiceContainer, serviceContainer } from '@/server/lib/service-container';
+import type { ServiceContainer } from '@/server/lib/service-container';
+import { serviceContainer } from '@/server/lib/service-container';
 import { extractTelegramInitData, verifyTelegramInitData } from '@/server/lib/telegram-init-data';
 
 type TrpcContext = {
@@ -61,6 +62,10 @@ async function resolveAuth(req?: Request): Promise<Pick<TrpcContext, 'session' |
 
 export const createTRPCContext = async (opts?: { req?: Request }): Promise<TrpcContext> => {
     const auth = await resolveAuth(opts?.req);
+    // Статистика посещений — только по клиентам: визиты админов ничего не говорят о спросе.
+    if (auth.userId != null && auth.role !== RoleKind.ADMIN && opts?.req) {
+        serviceContainer.userAnalytics.track(auth.userId, opts.req, extractTelegramInitData(opts.req) != null);
+    }
 
     return {
         db: dbClient,

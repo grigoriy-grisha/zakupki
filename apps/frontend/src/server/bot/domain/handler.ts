@@ -1,7 +1,7 @@
 import type { NextFunction } from 'grammy';
 
-import type { CustomContext } from './types';
 import type { CallbackAction } from './callback-data';
+import type { CustomContext } from './types';
 
 /**
  * Унифицированные интерфейсы для всех хендлеров бота.

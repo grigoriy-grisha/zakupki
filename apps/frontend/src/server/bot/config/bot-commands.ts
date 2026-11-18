@@ -6,7 +6,7 @@ export const BOT_COMMANDS = [
     { command: 'start', description: 'Открыть приложение' },
     { command: 'help', description: 'Справка' },
     { command: 'orders', description: 'Мои заказы' },
-    { command: 'pay', description: 'Отправить чек об оплате' },
+    { command: 'pay', description: 'Оплатить картой или по СБП' },
     { command: 'payments', description: 'Мои платежи' },
-    { command: 'cancel', description: 'Отменить отправку оплаты' },
+    { command: 'cancel', description: 'Отменить оплату' },
 ] as const;

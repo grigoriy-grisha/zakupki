@@ -15,7 +15,11 @@ const nextConfig: NextConfig = {
         '@zakupki/database',
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
-    allowedDevOrigins: ['fabulously-profuse-dobsonfly.cloudpub.ru', 'prudishly-jocular-dachshund.cloudpub.ru', 'frantically-jesting-pinniped.cloudpub.ru', 'stylishly-exotic-anaconda.cloudpub.ru', 'easily-inventive-tamandua.cloudpub.ru'],
+    // Свои туннели для разработки (cloudpub и т.п.) — в .env.local, через запятую.
+    allowedDevOrigins: (process.env.DEV_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
 };
 
 export default nextConfig;

@@ -1,5 +1,5 @@
-import type { CustomContext } from '../../domain/types';
 import type { CommandHandler } from '../../domain/handler';
+import type { CustomContext } from '../../domain/types';
 
 /**
  * /help — статическая справка.
@@ -14,9 +14,9 @@ export class HelpCommand implements CommandHandler {
                 '/start — открыть приложение\n' +
                 '/help — эта справка\n' +
                 '/orders — мои заказы\n' +
-                '/pay — отправить чек об оплате\n' +
+                '/pay — оплатить картой или по СБП\n' +
                 '/payments — мои оплаты\n' +
-                '/cancel — отменить отправку оплаты\n\n' +
+                '/cancel — отменить оплату\n\n' +
                 'По вопросам обращайтесь сюда: @kind_of_girl',
         );
     }

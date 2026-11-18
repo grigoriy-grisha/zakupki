@@ -3,12 +3,8 @@ import {
     computeOrderLinePriceBreakdown,
     computePaymentTotals,
     isPurchasePaymentOpen,
-    PROOF_MIME_TYPES,
     type PurchaseFulfillmentStatus,
-    roundMoney,
 } from '@zakupki/types';
-
-import { storage } from '@/lib/server/storage';
 
 import type { PaymentRepository } from '../domain/payment.repository';
 import type { OrderService } from './order.service';
@@ -22,8 +18,12 @@ export type PurchasePaymentBreakdown = {
 
 export type PurchasePaymentInfo = {
     due: number;
+    /** Подтверждённые оплаты. */
     paid: number;
+    /** Оплаты на проверке у админа. */
     pending: number;
+    /** Открытые ссылки на онлайн-оплату (ещё не оплачены). */
+    awaiting: number;
     hasPending: boolean;
     available: number;
     tag: string;
@@ -40,7 +40,9 @@ export type PayablePurchase = {
 
 const PAYMENT_STATUS: Record<string, { label: string }> = {
     PENDING: { label: 'Ожидает проверки' },
+    AWAITING: { label: 'Ожидает оплаты онлайн' },
     CONFIRMED: { label: 'Подтверждено' },
+    REFUND: { label: 'Возврат' },
     REJECTED: { label: 'Отклонено' },
 };
 
@@ -56,7 +58,8 @@ export class BotPaymentService {
 
         const lines = payments.map((p) => {
             const total = Number(p.amount) + this.sumChildAmount(p.children);
-            const { label = p.status } = PAYMENT_STATUS[p.status] ?? {};
+            const statusKey = p.refundOfId != null ? 'REFUND' : p.status;
+            const { label = p.status } = PAYMENT_STATUS[statusKey] ?? {};
             return (
                 `${total.toLocaleString('ru-RU')} ₽ — ${p.purchase?.tag ?? '—'}\n` +
                 `   ${label} · ${new Date(p.submittedAt).toLocaleDateString('ru-RU')}`
@@ -102,66 +105,6 @@ export class BotPaymentService {
         return map.get(purchaseId) ?? null;
     }
 
-    async submitPaymentWithProof(data: {
-        userId: number;
-        purchaseId: number;
-        amount: number;
-        userComment?: string;
-        proofData: Buffer;
-        proofMimeType: string;
-        promoCode?: string;
-    }) {
-        if (!PROOF_MIME_TYPES.has(data.proofMimeType)) {
-            throw new Error('Допустимы только изображения и PDF');
-        }
-
-        const purchase = await dbClient.purchase.findUnique({
-            where: { id: data.purchaseId },
-            select: { fulfillmentStatus: true },
-        });
-        if (!isPurchasePaymentOpen(purchase?.fulfillmentStatus)) {
-            throw new Error('Оплата ещё не открыта. Ждём начала оплаты.');
-        }
-
-        const info = await this.getPurchasePaymentInfo(data.userId, data.purchaseId);
-        if (!info) {
-            throw new Error('Закупка не найдена');
-        }
-        if (info.available <= 0) {
-            throw new Error('По этой закупке нечего оплачивать');
-        }
-        const available = roundMoney(info.available);
-        if (data.amount <= 0 || roundMoney(data.amount) > available) {
-            throw new Error(`Сумма должна быть от 1 до ${available.toLocaleString('ru-RU')} ₽`);
-        }
-
-        const promo = await this.promoCodeService.resolveForSubmit({
-            userId: data.userId,
-            purchaseId: data.purchaseId,
-            code: data.promoCode,
-            amount: data.amount,
-            due: info.due,
-        });
-        const discountAmount = promo?.discountAmount ?? 0;
-
-        const proofObjectKey = await storage.uploadPaymentProof(
-            data.userId,
-            data.purchaseId,
-            data.proofData,
-            data.proofMimeType,
-        );
-
-        return this.repo.submitPayment({
-            userId: data.userId,
-            purchaseId: data.purchaseId,
-            amount: data.amount - discountAmount,
-            userComment: data.userComment,
-            proofObjectKey,
-            promoCodeId: promo?.promoCodeId,
-            discountAmount: discountAmount || undefined,
-        });
-    }
-
     async validatePromoCode(
         code: string,
         purchaseId: number,
@@ -188,6 +131,7 @@ export class BotPaymentService {
                 due: 0,
                 paid: 0,
                 pending: 0,
+                awaiting: 0,
                 hasPending: false,
                 available: 0,
                 tag,
@@ -221,7 +165,12 @@ export class BotPaymentService {
         }
 
         map.forEach((entry, purchaseId) => {
-            Object.assign(entry, computePaymentTotals(entry.due, totalsByPurchase.get(purchaseId) ?? []));
+            const totals = computePaymentTotals(entry.due, totalsByPurchase.get(purchaseId) ?? []);
+            entry.paid = totals.confirmedPaid;
+            entry.pending = totals.pendingPaid;
+            entry.awaiting = totals.awaitingPaid;
+            entry.hasPending = totals.hasPending;
+            entry.available = totals.available;
         });
 
         return map;

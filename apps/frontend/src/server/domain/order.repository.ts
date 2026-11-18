@@ -1,5 +1,5 @@
 import { dbClient } from '@zakupki/database';
-import { type HandoffStatus,NotFoundError } from '@zakupki/types';
+import { type HandoffStatus, NotFoundError } from '@zakupki/types';
 
 import { productInclude } from './product-include';
 import { USER_CREDENTIALS_INCLUDE } from './user.types';
@@ -45,7 +45,15 @@ export class OrderRepository {
             select: { id: true },
         });
 
-        const data = { quantity, amountDue, status: 'ACTIVE' as const };
+        // Повторный заказ того же товара оживляет «удалённую» строку — снимок больше не нужен.
+        const data = {
+            quantity,
+            amountDue,
+            status: 'ACTIVE' as const,
+            removedQuantity: null,
+            removedPackageCount: null,
+            removedAt: null,
+        };
         if (packageCount != null) {
             (data as any).packageCount = packageCount;
         }
@@ -74,6 +82,110 @@ export class OrderRepository {
     }
 
     /**
+     * Админ удалил позицию: строка остаётся, но уходит в CANCELLED с нулями
+     * (во всех суммах не участвует), а прежние количества сохраняются в снимке,
+     * чтобы позицию можно было вернуть.
+     */
+    async softDeleteLines(ids: number[]): Promise<void> {
+        if (ids.length === 0) return;
+        const lines = await dbClient.orderLine.findMany({
+            where: { id: { in: ids }, status: 'ACTIVE' },
+            select: { id: true, quantity: true, packageCount: true, purchaseItemId: true, userId: true },
+        });
+        const now = new Date();
+        // Старые снимки того же товара у того же участника сбрасываем — иначе
+        // «Вернуть» сложило бы прежнее удаление с новым.
+        const pairs = [...new Map(lines.map((l) => [`${l.userId}:${l.purchaseItemId}`, l])).values()];
+        const clearStale = pairs.map((l) =>
+            dbClient.orderLine.updateMany({
+                where: {
+                    userId: l.userId,
+                    purchaseItemId: l.purchaseItemId,
+                    status: 'CANCELLED',
+                    removedAt: { not: null },
+                },
+                data: { removedAt: null, removedQuantity: null, removedPackageCount: null },
+            }),
+        );
+        await dbClient.$transaction([
+            ...clearStale,
+            ...lines.map((line) =>
+                dbClient.orderLine.update({
+                    where: { id: line.id },
+                    data: {
+                        status: 'CANCELLED',
+                        removedQuantity: line.quantity,
+                        removedPackageCount: line.packageCount,
+                        removedAt: now,
+                        quantity: 0,
+                        packageCount: 0,
+                        amountDue: 0,
+                    },
+                }),
+            ),
+        ]);
+    }
+
+    /** Пары «участник:товар», у которых есть ACTIVE-строки в закупке. */
+    async findActiveUserItemKeys(purchaseId: number): Promise<Set<string>> {
+        const rows = await dbClient.orderLine.findMany({
+            where: { purchaseItem: { purchaseId }, status: 'ACTIVE' },
+            select: { userId: true, purchaseItemId: true },
+            distinct: ['userId', 'purchaseItemId'],
+        });
+        return new Set(rows.map((r) => `${r.userId}:${r.purchaseItemId}`));
+    }
+
+    /** ACTIVE-строки участника на товар — id для мягкого удаления. */
+    async findActiveLineIdsByUserAndItem(purchaseItemId: number, userId: number): Promise<number[]> {
+        const rows = await dbClient.orderLine.findMany({
+            where: { purchaseItemId, userId, status: 'ACTIVE' },
+            select: { id: true },
+        });
+        return rows.map((r) => r.id);
+    }
+
+    /** Удалённые админом строки участника на товар (со снимком количеств). */
+    findRemovedLinesByUserAndItem(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.findMany({
+            where: { purchaseItemId, userId, status: 'CANCELLED', removedAt: { not: null } },
+            select: { id: true, createdOnStage: true, removedQuantity: true, removedPackageCount: true },
+        });
+    }
+
+    /** Вернуть удалённые строки с пересчитанными суммами — одной транзакцией. */
+    async restoreLines(rows: { id: number; quantity: number; packageCount: number; amountDue: number }[]) {
+        await dbClient.$transaction(
+            rows.map((row) =>
+                dbClient.orderLine.update({
+                    where: { id: row.id, status: 'CANCELLED' },
+                    data: {
+                        status: 'ACTIVE',
+                        quantity: row.quantity,
+                        packageCount: row.packageCount,
+                        amountDue: row.amountDue,
+                        removedQuantity: null,
+                        removedPackageCount: null,
+                        removedAt: null,
+                    },
+                }),
+            ),
+        );
+    }
+
+    /** Все удалённые админом позиции в закупке — для блока «Удалённые» у участника. */
+    findRemovedByPurchase(purchaseId: number) {
+        return dbClient.orderLine.findMany({
+            where: { purchaseItem: { purchaseId }, status: 'CANCELLED', removedAt: { not: null } },
+            include: {
+                purchaseItem: ORDER_LINES_WITH_PARTICIPANT_INCLUDE.purchaseItem,
+            },
+            omit: { tgChatMessageId: true },
+            orderBy: { removedAt: 'desc' },
+        });
+    }
+
+    /**
      * Удалить все строки пользователя для purchaseItem (hard delete — COLLECTION).
      */
     async deleteAllLinesForUserItem(purchaseItemId: number, userId: number) {
@@ -95,10 +207,8 @@ export class OrderRepository {
     /**
      * Hard delete для админа.
      */
-    async delete(id: number) {
-        return dbClient.orderLine.delete({
-            where: { id },
-        });
+    countActiveLinesByUserAndItem(purchaseItemId: number, userId: number) {
+        return dbClient.orderLine.count({ where: { purchaseItemId, userId, status: 'ACTIVE' } });
     }
 
     // ── Queries ──────────────────────────────────────────────────────
@@ -268,18 +378,6 @@ export class OrderRepository {
     }
 
     /**
-     * Удалить ВСЕ ACTIVE-строки пользователя на конкретный PurchaseItem
-     * (COLLECTION + supplement схлопываются — для удаления товара целиком
-     * из объединённой карточки участника). Возвращает количество удалённых строк.
-     */
-    async deleteAllByUserAndItem(purchaseItemId: number, userId: number): Promise<number> {
-        const result = await dbClient.orderLine.deleteMany({
-            where: { purchaseItemId, userId, status: 'ACTIVE' },
-        });
-        return result.count;
-    }
-
-    /**
      * Вернуть список PurchaseItem.id, на которые у пользователя есть ACTIVE-строки
      * в данной закупке. Используется OrderService, чтобы эмитить обновление поста
      * после `deleteAllByUserAndPurchase`.
@@ -308,7 +406,8 @@ export class OrderRepository {
     /** All distinct user ids who have at least one order line in a purchase. */
     async findParticipantUserIds(purchaseId: number): Promise<number[]> {
         const rows = await dbClient.orderLine.findMany({
-            where: { purchaseItem: { purchaseId } },
+            // Позиции, удалённые админом, не делают человека участником (до мягкого удаления их просто не было).
+            where: { purchaseItem: { purchaseId }, removedAt: null },
             select: { userId: true },
             distinct: ['userId'],
         });

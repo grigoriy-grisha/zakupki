@@ -1,23 +1,18 @@
 import { InlineKeyboard } from 'grammy';
 
-import { PAYMENT_DETAILS } from '@/lib/payment-utils';
-
 import type { ServiceContainer } from '../../container/service-container';
 import type { CallbackAction } from '../../domain/callback-data';
 import type { CallbackHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import { escapeHtml } from '../../lib/html';
-import { paymentsCancelKeyboard, paymentsListText, proofStepText } from '../../lib/payment-texts';
+import { continueToCheckout } from '../../lib/payment-checkout';
+import { PAID_START_PAYLOAD } from '../../lib/payment-return';
+import { AWAITING_LINK_HINT, paymentsCancelKeyboard, paymentsListText } from '../../lib/payment-texts';
 import { buildPinnedPromo } from '../../lib/pinned-promo';
+import { userErrorMessage } from '../../lib/user-error';
 import type { BotPurchasePaymentInfo } from '../../services/bot/bot-payment.service';
 
-const PAYMENT_DETAILS_TEXT = [
-    'Реквизиты для оплаты:',
-    `Способ оплаты: ${PAYMENT_DETAILS.method}`,
-    `Номер телефона: ${PAYMENT_DETAILS.phone}`,
-    `Получатель: ${PAYMENT_DETAILS.recipient}`,
-    `Банк: ${PAYMENT_DETAILS.banks}`,
-].join('\n');
+const STALE_BUTTON_TEXT = 'Эта кнопка устарела. Начните оплату заново: /pay';
 
 function formatBreakdown(info: BotPurchasePaymentInfo): string {
     const breakdown = info.breakdown;
@@ -62,6 +57,11 @@ export class PayCallbackQueryHandler implements CallbackHandler {
             return;
         }
 
+        if (action.kind === 'pay:method') {
+            await this.handleMethod(ctx, userId, action.method);
+            return;
+        }
+
         if (action.kind === 'pay:cancel') {
             await this.handleCancel(ctx, userId, action.paymentId);
             return;
@@ -74,7 +74,7 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         try {
             await this.container.paymentService.cancelPayment(userId, paymentId);
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Не удалось отменить оплату';
+            const msg = userErrorMessage(err, 'Не удалось отменить оплату');
             await ctx.answerCallbackQuery({ text: msg, show_alert: true }).catch(() => undefined);
             return;
         }
@@ -98,7 +98,11 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         const info = await this.container.paymentService.getPurchasePaymentInfo(userId, purchaseId);
         if (!info || info.available <= 0) {
             await ctx.answerCallbackQuery({ text: 'Оплата недоступна' });
-            await ctx.editMessageText('Эта закупка больше недоступна для оплаты. Нажмите /pay снова.');
+            await ctx.editMessageText(
+                info && info.awaiting > 0
+                    ? AWAITING_LINK_HINT
+                    : 'Эта закупка больше недоступна для оплаты. Нажмите /pay снова.',
+            );
             return;
         }
 
@@ -108,39 +112,32 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         const partAmount = Math.round(info.available * 0.7 * 100) / 100;
         const keyboard = new InlineKeyboard();
         if (partAmount > 0 && partAmount < info.available) {
-            keyboard.text(
-                `Оплатить 70% (${partAmount.toLocaleString('ru-RU')} ₽)`,
-                `pay:part:${purchaseId}:70`,
-            ).row();
+            keyboard.text(`Оплатить 70% (${partAmount.toLocaleString('ru-RU')} ₽)`, `pay:part:${purchaseId}:70`).row();
         }
-        keyboard.text(
-            `Оплатить всё (${info.available.toLocaleString('ru-RU')} ₽)`,
-            `pay:all:${purchaseId}`,
-        );
+        keyboard.text(`Оплатить всё (${info.available.toLocaleString('ru-RU')} ₽)`, `pay:all:${purchaseId}`);
 
         await ctx.answerCallbackQuery();
         const breakdownText = formatBreakdown(info);
         const pendingLine =
-            info.pending > 0 ? `\n<i>На проверке: ${info.pending.toLocaleString('ru-RU')} ₽</i>` : '';
+            (info.pending > 0 ? `\n<i>На проверке: ${info.pending.toLocaleString('ru-RU')} ₽</i>` : '') +
+            (info.awaiting > 0
+                ? `\n<i>Уже есть неоплаченная ссылка на ${info.awaiting.toLocaleString('ru-RU')} ₽ — её можно открыть ` +
+                  `кнопкой «Оплатить» в сообщении со ссылкой. Здесь можно оплатить остальное.</i>`
+                : '');
         await ctx.editMessageText(
             `🧾 <b>${escapeHtml(info.tag)}</b>\n` +
                 `К оплате: <b>${info.available.toLocaleString('ru-RU')} ₽</b>` +
                 pendingLine +
                 `\n\n` +
                 (breakdownText ? `${breakdownText}\n\n` : '') +
-                `${PAYMENT_DETAILS_TEXT}\n\n` +
-                `Выберите готовый вариант ниже или напишите свою сумму перевода числом ` +
+                `Оплата онлайн картой или по СБП через Т-Банк.\n\n` +
+                `Выберите готовый вариант ниже или напишите свою сумму числом ` +
                 `(например, <code>1500</code> или <code>1500,50</code>).`,
             { reply_markup: keyboard, parse_mode: 'HTML' },
         );
     }
 
-    private async handlePreset(
-        ctx: CustomContext,
-        userId: number,
-        purchaseId: number,
-        percent: number,
-    ): Promise<void> {
+    private async handlePreset(ctx: CustomContext, userId: number, purchaseId: number, percent: number): Promise<void> {
         const guard = this.container.paymentGuard;
         if (!(await guard.isOpenById(purchaseId))) {
             await ctx.answerCallbackQuery({ text: 'Пока нельзя оплатить', show_alert: true });
@@ -169,8 +166,7 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         await ctx.answerCallbackQuery();
 
         if (pinned) {
-            flow.advanceToProof(pinned);
-            await ctx.reply(proofStepText(amount, pinned, { pinned: true }), { parse_mode: 'HTML' });
+            await continueToCheckout(ctx, this.container, amount, pinned, { pinned: true });
             return;
         }
 
@@ -189,31 +185,83 @@ export class PayCallbackQueryHandler implements CallbackHandler {
         const flow = this.container.flowFor(ctx);
         const current = flow.current;
 
-        if (!current || flow.currentStep !== 'amount' || current.amount == null) {
-            await ctx.answerCallbackQuery({ text: 'Сначала укажите сумму', show_alert: true });
+        // Кнопка «Ввести промокод» показывается, когда сумма уже выбрана (шаг promo).
+        if (!current || flow.currentStep !== 'promo' || current.amount == null) {
+            await ctx.answerCallbackQuery({ text: STALE_BUTTON_TEXT, show_alert: true });
             return;
         }
 
         flow.advanceToPromo(current.amount);
+        flow.clearPromo();
         await ctx.answerCallbackQuery();
-        await ctx.reply(
-            'Введите промокод текстом.\n\n' + 'Если промокода нет — нажмите «Продолжить без промокода».',
-            { reply_markup: this.promoKeyboard() },
-        );
+        await ctx.reply('Введите промокод текстом.\n\n' + 'Если промокода нет — нажмите «Продолжить без промокода».', {
+            reply_markup: this.promoKeyboard(),
+        });
     }
 
     private async handleSkip(ctx: CustomContext): Promise<void> {
         const flow = this.container.flowFor(ctx);
         const current = flow.current;
 
-        if (!current || current.amount == null) {
-            await ctx.answerCallbackQuery({ text: 'Сначала укажите сумму', show_alert: true });
+        // Старая кнопка из прошлой оплаты не должна перескакивать текущие шаги.
+        if (!current || flow.currentStep !== 'promo' || current.amount == null) {
+            await ctx.answerCallbackQuery({ text: STALE_BUTTON_TEXT, show_alert: true });
             return;
         }
 
-        flow.advanceToProof();
+        flow.clearPromo();
         await ctx.answerCallbackQuery();
-        await ctx.reply(proofStepText(current.amount), { parse_mode: 'HTML' });
+        await continueToCheckout(ctx, this.container, current.amount);
+    }
+
+    private async handleMethod(ctx: CustomContext, userId: number, method: 'card' | 'sbp'): Promise<void> {
+        const flow = this.container.flowFor(ctx);
+        const current = flow.current;
+        if (!current || flow.currentStep !== 'method' || current.amount == null) {
+            await ctx.answerCallbackQuery({ text: STALE_BUTTON_TEXT, show_alert: true });
+            return;
+        }
+        if (!(await this.container.paymentGuard.isOpenById(current.purchaseId))) {
+            flow.clear();
+            await ctx.answerCallbackQuery({ text: 'Пока нельзя оплатить', show_alert: true });
+            return;
+        }
+
+        await ctx.answerCallbackQuery({ text: 'Создаю ссылку на оплату…' });
+        try {
+            const created = await this.container.paymentService.createOnlinePayment({
+                userId,
+                purchaseId: current.purchaseId,
+                amount: current.amount,
+                method: method === 'sbp' ? 'TBANK_SBP' : 'TBANK_CARD',
+                promoCode: current.promoCode?.code,
+                receiptContact: current.receiptContact,
+                // После оплаты банк вернёт клиента обратно в бота.
+                returnUrl: ctx.me?.username ? `https://t.me/${ctx.me.username}?start=${PAID_START_PAYLOAD}` : undefined,
+            });
+            flow.clear();
+
+            const total = created.total.toLocaleString('ru-RU');
+            const feeLine =
+                created.fee > 0
+                    ? `\nВ том числе комиссия банка: ${created.fee.toLocaleString('ru-RU')} ₽`
+                    : '\nБез комиссии';
+            const keyboard = new InlineKeyboard().url(`Оплатить ${total} ₽`, created.paymentUrl);
+            await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => undefined);
+            await ctx.reply(
+                `🔗 Ссылка на оплату по закупке «${escapeHtml(current.purchaseTag)}» готова.\n` +
+                    `Сумма: <b>${total} ₽</b>${feeLine}\n\n` +
+                    (method === 'sbp'
+                        ? 'Кнопка откроет выбор банка для оплаты по СБП.\n'
+                        : 'Кнопка откроет защищённую страницу оплаты Т-Банка.\n') +
+                    'Ссылка действует 30 минут. Как только оплата пройдёт, я пришлю подтверждение.',
+                { parse_mode: 'HTML', reply_markup: keyboard },
+            );
+        } catch (err) {
+            await ctx.reply(
+                `${userErrorMessage(err, 'Не удалось создать ссылку на оплату.')}\n\nПопробуйте ещё раз: /pay`,
+            );
+        }
     }
 
     private promoKeyboard(): InlineKeyboard {

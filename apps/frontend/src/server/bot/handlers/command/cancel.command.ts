@@ -1,7 +1,7 @@
-import type { CustomContext } from '../../domain/types';
-import { PaymentFlowStateMachine } from '../../services/payment-flow-state-machine';
-import type { CommandHandler } from '../../domain/handler';
 import type { ServiceContainer } from '../../container/service-container';
+import type { CommandHandler } from '../../domain/handler';
+import type { CustomContext } from '../../domain/types';
+import type { PaymentFlowStateMachine } from '../../services/payment-flow-state-machine';
 
 /**
  * /cancel — отменяет активный payment flow.
@@ -16,9 +16,9 @@ export class CancelPaymentCommand implements CommandHandler {
         const flow: PaymentFlowStateMachine = this.container.flowFor(ctx);
         if (flow.isActive) {
             flow.clear();
-            await ctx.reply('Отправка оплаты отменена.');
+            await ctx.reply('Оплата отменена.');
             return;
         }
-        await ctx.reply('Нет активной отправки оплаты.');
+        await ctx.reply('Сейчас нечего отменять.');
     }
 }

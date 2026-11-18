@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -12,9 +12,10 @@ import {
 } from '@/components/shop/payment-proof';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { openExternalUrl } from '@/lib/client/open-external-url';
 import { trpc } from '@/lib/client/trpc';
 import { formatRub } from '@/lib/format/money';
-import { paymentTotal } from '@/lib/payment-utils';
+import { describePayment } from '@/lib/payment-utils';
 
 type MyPaymentProofDialogProps = {
     payment: ShopPaymentView;
@@ -24,17 +25,12 @@ type MyPaymentProofDialogProps = {
 
 export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentProofDialogProps) {
     const status = payment.status;
-    const statusCfg = SHOP_PAYMENT_STATUS[status] ?? {
-        label: status,
-        className: 'text-fg-tertiary',
-    };
+    const { isRefund, total, promoAmount, promoCode, methodLabel } = describePayment(payment);
+    const statusCfg = isRefund
+        ? { label: 'Вернули на карту', className: 'text-fg-secondary' }
+        : (SHOP_PAYMENT_STATUS[status] ?? { label: status, className: 'text-fg-tertiary' });
     const hasProof = paymentHasProof(payment);
     const proofUrl = `/api/payment-proof/${payment.id}`;
-    const total = paymentTotal(payment);
-    const children = payment.children ?? [];
-    const child = children[0];
-    const childAmount = child ? Number(child.amount) : 0;
-    const promoCode = child?.promoCode;
     const isImage = paymentProofIsImage(payment);
 
     const [confirmCancel, setConfirmCancel] = useState(false);
@@ -60,9 +56,9 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                         <div>
                             <p className="text-13-regular text-fg-secondary">Сумма</p>
                             <p className="text-lg font-bold">{formatRub(total)}</p>
-                            {childAmount > 0 && (
+                            {promoAmount > 0 && (
                                 <p className="text-xs text-success">
-                                    {formatRub(Number(payment.amount))} + промокод {promoCode?.code}
+                                    {formatRub(Number(payment.amount))} + промокод {promoCode}
                                 </p>
                             )}
                         </div>
@@ -126,11 +122,35 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                                 </div>
                             )}
                         </div>
+                    ) : isRefund ? (
+                        <p className="text-13-regular text-fg-secondary">
+                            Деньги вернули {payment.method === 'TBANK_SBP' ? 'через СБП' : 'на карту'}, с которой была
+                            оплата.
+                        </p>
+                    ) : methodLabel ? (
+                        <p className="text-13-regular text-fg-secondary">
+                            Оплата {methodLabel}
+                            {Number(payment.feeAmount ?? 0) > 0 &&
+                                `, комиссия банка ${formatRub(Number(payment.feeAmount))}`}
+                            . Чек придёт на почту или телефон, которые вы указали.
+                        </p>
                     ) : (
                         <p className="text-13-regular text-fg-secondary">К этой оплате чек не прикреплён.</p>
                     )}
 
-                    {status === 'PENDING' && (
+                    {status === 'AWAITING' && payment.paymentUrl && (
+                        <Button
+                            variant="brand"
+                            size="sm"
+                            className="w-full gap-2"
+                            onClick={() => openExternalUrl(payment.paymentUrl!)}
+                        >
+                            <ExternalLink className="size-4" />
+                            Продолжить оплату
+                        </Button>
+                    )}
+
+                    {(status === 'PENDING' || status === 'AWAITING') && (
                         <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
                             {confirmCancel ? (
                                 <>

@@ -10,30 +10,20 @@ import {
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
-import {
-    Archive,
-    Boxes,
-    ClipboardList,
-    PackageCheck,
-    Send,
-    Truck,
-} from 'lucide-react';
+import { Archive, Boxes, ClipboardList, PackageCheck, Send, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { useHandoffChoice } from '@/app/shop/hooks/use-handoff-choice';
+import { useOnlinePaymentSync, usePaymentReturnToast } from '@/app/shop/hooks/use-online-payment-sync';
 import { linePriceBreakdown } from '@/app/shop/lib/cart-display';
-import {
-    type GroupableOrderLine,
-    groupOrdersByPurchase,
-    type OrderPurchaseGroup,
-} from '@/app/shop/lib/order-grouping';
+import { type GroupableOrderLine, groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import { CartLine } from '@/app/shop/orders/components/cart-line';
 import { HandoffMessageCard } from '@/app/shop/orders/components/handoff-message-card';
 import { MyPaymentRow } from '@/app/shop/orders/components/my-payment-row';
 import { PaymentStatusBlock } from '@/app/shop/orders/components/payment-status-block';
 import { AppLink } from '@/components/app-link';
 import { AppBackButton } from '@/components/shop/app-back-button';
-import { type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
+import { isLiveAwaiting, type ShopPaymentView, summarizePurchasePayments } from '@/components/shop/payment-proof';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -226,9 +216,7 @@ function PurchaseOrderCard({
                         </h3>
                     </AppLink>
                     {!isPast && (
-                        <p className="mt-1 text-12-regular text-fg-tertiary sm:text-13-regular">
-                            {stageHint(fs)}
-                        </p>
+                        <p className="mt-1 text-12-regular text-fg-tertiary sm:text-13-regular">{stageHint(fs)}</p>
                     )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
@@ -266,9 +254,7 @@ function PurchaseOrderCard({
                 <div
                     className={cn(
                         'flex items-baseline justify-between gap-4',
-                        totals && (totals.org > 0 || totals.delivery > 0)
-                            ? 'mt-3 border-t border-border-low pt-3'
-                            : '',
+                        totals && (totals.org > 0 || totals.delivery > 0) ? 'mt-3 border-t border-border-low pt-3' : '',
                     )}
                 >
                     <span className="text-13-semibold uppercase tracking-wide text-fg-secondary sm:text-14-semibold">
@@ -349,10 +335,18 @@ function PurchaseOrderCard({
                     purchaseId={group.id}
                     pinnedPromo={pinnedPromo}
                     orderCount={group.orders.length}
+                    awaitingPayment={findAwaitingPayment(purchasePayments as unknown as ShopPaymentView[])}
                 />
             </div>
         </section>
     );
+}
+
+/** Последняя неоплаченная онлайн-оплата с живой ссылкой — её предлагаем продолжить. */
+function findAwaitingPayment(payments: ShopPaymentView[]): { paymentUrl: string; total: number } | undefined {
+    const awaiting = payments.find((p) => p.paymentUrl && isLiveAwaiting(p));
+    if (!awaiting?.paymentUrl) return undefined;
+    return { paymentUrl: awaiting.paymentUrl, total: Number(awaiting.amount) + Number(awaiting.feeAmount ?? 0) };
 }
 
 export default function OrdersPage() {
@@ -360,6 +354,8 @@ export default function OrdersPage() {
     const [tab, setTab] = useState<OrdersTab>('active');
     const { data: myOrders, isLoading } = trpc.orders.getMyOrders.useQuery();
     const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
+    useOnlinePaymentSync((myPayments ?? []).some((p) => isLiveAwaiting(p)));
+    usePaymentReturnToast();
 
     const { activeGroups, pastGroups } = useMemo(() => {
         const all = groupOrdersByPurchase((myOrders ?? []) as unknown as GroupableOrderLine[]);

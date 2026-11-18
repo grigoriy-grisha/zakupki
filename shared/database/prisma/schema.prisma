@@ -95,6 +95,8 @@ model User {
   lastName              String?
   avatarUrl             String?
   phone                 String?
+  /// Email для электронных чеков (54-ФЗ).
+  email                 String?
   createdAt             DateTime            @default(now())
   personalDataConsentAt DateTime?
   role                  RoleKind            @default(CLIENT)
@@ -104,10 +106,43 @@ model User {
   notifications         Notification[]
   telegramCredential    TelegramCredential?
   vkCredential          VkCredential?
+  visits                UserVisit[]
 
   @@index([createdAt])
   @@index([username])
   @@index([phone])
+}
+
+/// Где открыли приложение: мини-приложение Telegram, VK или обычный сайт.
+enum VisitPlatform {
+  TELEGRAM
+  VK
+  WEB
+}
+
+/// Тип устройства по User-Agent.
+enum VisitDevice {
+  MOBILE
+  TABLET
+  DESKTOP
+}
+
+/// Посещения: одна строка на пользователя, день (по Москве), площадку и устройство.
+model UserVisit {
+  id       Int           @id @default(autoincrement())
+  userId   Int
+  /// Полночь по Москве (UTC-момент).
+  day      DateTime
+  platform VisitPlatform
+  device   VisitDevice
+  /// Сколько раз за день отметился (не чаще раза в 10 минут).
+  hits     Int           @default(1)
+  firstAt  DateTime      @default(now())
+  lastAt   DateTime      @default(now())
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day, platform, device])
+  @@index([day])
 }
 
 model TelegramCredential {
@@ -328,6 +363,12 @@ model OrderLine {
   // Не влияет на расчёт остатка/пула добора.
   packageCount Int @default(0)
 
+  // Админ удалил позицию: строка уходит в CANCELLED с нулями, а здесь хранится
+  // снимок до удаления — чтобы показать «удалённые» и вернуть их одной кнопкой.
+  removedQuantity     Decimal?  @db.Decimal(10, 3)
+  removedPackageCount Int?
+  removedAt           DateTime?
+
   tgChatMessageId BigInt?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -339,6 +380,7 @@ model OrderLine {
   @@index([userId])
   @@index([purchaseItemId])
   @@index([status])
+  @@index([createdAt])
 }
 
 model Payment {
@@ -353,8 +395,25 @@ model Payment {
   promoCodeId    Int?
   parentId       Int?
   proofObjectKey String?
+  /// Способ оплаты: ручной перевод (с чеком / добавлен админом) или онлайн через Т-Банк.
+  method            PaymentMethod @default(MANUAL)
+  /// Комиссия эквайринга, которую доплатил клиент (не входит в amount и не гасит долг).
+  feeAmount         Decimal?      @db.Decimal(10, 2)
+  /// PaymentId в Т-Банке.
+  providerPaymentId String?
+  /// OrderId, переданный в Т-Банк (уникален на терминале).
+  providerOrderId   String?       @unique
+  /// Последний статус из Т-Банка (NEW, CONFIRMED, REJECTED…).
+  providerStatus    String?
+  paymentUrl        String?
+  expiresAt         DateTime?
+  paidAt            DateTime?
+  /// Возврат денег по онлайн-оплате: строка с отрицательной суммой, ссылается на исходный платёж.
+  refundOfId        Int?
   parent         Payment?      @relation("PaymentChildren", fields: [parentId], references: [id])
   children       Payment[]     @relation("PaymentChildren")
+  refundOf       Payment?      @relation("PaymentRefunds", fields: [refundOfId], references: [id])
+  refunds        Payment[]     @relation("PaymentRefunds")
   promoCode      PromoCode?    @relation(fields: [promoCodeId], references: [id])
   purchase       Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   user           User          @relation(fields: [userId], references: [id])
@@ -363,6 +422,8 @@ model Payment {
   @@index([purchaseId])
   @@index([parentId])
   @@index([promoCodeId])
+  @@index([status, expiresAt])
+  @@index([refundOfId])
 }
 
 model PostTemplate {
@@ -436,9 +497,18 @@ enum PurchaseFulfillmentStatus {
 }
 
 enum PaymentStatus {
+  /// Ручной перевод ждёт проверки админом.
   PENDING
   CONFIRMED
   REJECTED
+  /// Онлайн-платёж создан, ждём оплаты клиентом в Т-Банке.
+  AWAITING
+}
+
+enum PaymentMethod {
+  MANUAL
+  TBANK_CARD
+  TBANK_SBP
 }
 
 enum PromoType {

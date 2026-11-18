@@ -1,6 +1,6 @@
 'use client';
 
-import { Boxes,CheckCircle2, ListTree, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
+import { BarChart3, Boxes, CheckCircle2, ListTree, Loader2, Package, Rocket, Trash2, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { use, useMemo, useState } from 'react';
 
@@ -13,6 +13,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+import { PurchaseStatsTab } from '../../components/stats/stats-tab';
 import { STATUS_LABELS } from '../../lib/constants';
 import { ExportPurchaseButtons } from './components/export-purchase-buttons';
 import { ItemOrdersTab } from './components/item-orders/item-orders-tab';
@@ -27,7 +28,7 @@ import { usePurchaseActions, usePurchaseDetail } from './hooks';
 import { useParticipantsData } from './hooks/use-participants-data';
 
 type PurchaseStatus = 'DRAFT' | 'ACTIVE' | 'DONE' | 'CLOSED' | 'ARRIVED';
-type TabId = 'items' | 'packing' | 'participants' | 'item_orders';
+type TabId = 'items' | 'packing' | 'participants' | 'item_orders' | 'stats';
 
 type FulfillmentStatus =
     | 'COLLECTION'
@@ -79,8 +80,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
             title: 'Завершить закупку?',
             description: (
                 <>
-                    Закупка <strong>{purchaseTag}</strong> будет помечена как завершённая. Участники больше не
-                    смогут делать заказы.
+                    Закупка <strong>{purchaseTag}</strong> будет помечена как завершённая. Участники больше не смогут
+                    делать заказы.
                 </>
             ),
             confirmLabel: 'Завершить закупку',
@@ -186,15 +187,18 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
             <PurchaseStats
                 itemsCount={items.length}
-                totalOrders={items.reduce((sum, it) => sum + (it.orderLines?.length ?? 0), 0)}
+                totalOrders={items.reduce(
+                    (sum, it) => sum + (it.orderLines ?? []).filter((l) => l.status !== 'CANCELLED').length,
+                    0,
+                )}
                 totalDue={participantsData.totalDue}
                 totalPaid={participantsData.totalPaid}
                 totalPending={participantsData.totalPending}
                 participantsCount={participantsData.userIds.length}
             />
 
-            <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="gap-4">
-                <TabsList>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="min-w-0 gap-4">
+                <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:none]">
                     <TabsTrigger value="items">
                         <Package className="size-3.5" />
                         Товары
@@ -218,6 +222,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         <span className="ml-1 text-12-medium tabular-nums opacity-80">
                             {items.filter((it) => (it.orderLines ?? []).some((l) => l.status !== 'CANCELLED')).length}
                         </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="stats">
+                        <BarChart3 className="size-3.5" />
+                        Статистика
                     </TabsTrigger>
                 </TabsList>
 
@@ -244,6 +252,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                     />
                     <ItemOrdersTab purchaseId={id} avatarByUser={participantsData.avatarByUser} />
                 </TabsContent>
+
+                <TabsContent value="stats" className="mt-3">
+                    {tab === 'stats' && <PurchaseStatsTab purchaseId={id} />}
+                </TabsContent>
             </Tabs>
 
             {softDeleteConfirm.dialog}
@@ -255,8 +267,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                         <DialogTitle>Активировать закупку?</DialogTitle>
                     </DialogHeader>
                     <p className="text-14-regular text-fg-secondary">
-                        Закупка станет доступна участникам для заказов. Публикация в Telegram выполняется
-                        отдельно кнопкой «Опубликовать в TG».
+                        Закупка станет доступна участникам для заказов. Публикация в Telegram выполняется отдельно
+                        кнопкой «Опубликовать в TG».
                     </p>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setActivateOpen(false)}>
@@ -266,10 +278,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                             variant="brand"
                             disabled={actions.activate.isPending}
                             onClick={() =>
-                                actions.activate.mutate(
-                                    { purchaseId: id },
-                                    { onSuccess: () => setActivateOpen(false) },
-                                )
+                                actions.activate.mutate({ purchaseId: id }, { onSuccess: () => setActivateOpen(false) })
                             }
                         >
                             {actions.activate.isPending && <Loader2 className="size-4 animate-spin" />}

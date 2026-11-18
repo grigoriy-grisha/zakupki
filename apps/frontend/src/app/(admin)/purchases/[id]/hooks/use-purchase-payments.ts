@@ -23,6 +23,20 @@ export function useRejectPayment(purchaseId: number) {
     );
 }
 
+export function useRefundPayment(purchaseId: number) {
+    const utils = trpc.useUtils();
+
+    return trpc.payments.refund.useMutation(
+        mutationOptions({
+            invalidate: () => {
+                void utils.payments.getByPurchase.invalidate({ purchaseId });
+                void utils.purchases.getById.invalidate({ id: purchaseId });
+            },
+            success: 'Деньги возвращены',
+        }),
+    );
+}
+
 export function useAddPayment(purchaseId: number) {
     const utils = trpc.useUtils();
 

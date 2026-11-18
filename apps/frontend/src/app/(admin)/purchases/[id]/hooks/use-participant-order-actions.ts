@@ -13,7 +13,9 @@ export function useParticipantOrderActions(purchaseId: number) {
      * на соответствующую вкладку.
      */
     const refreshUserLines = async (userId: number) => {
-        const fresh = await utils.orders.getLinesByUserAndPurchase.fetch({ purchaseId, userId });
+        // staleTime: 0 — иначе в течение 10 с после прошлой правки fetch вернул бы закэшированные
+        // строки до этой мутации, и удалённый товар остался бы в заказе (а заодно и в «Удалённых»).
+        const fresh = await utils.orders.getLinesByUserAndPurchase.fetch({ purchaseId, userId }, { staleTime: 0 });
 
         utils.orders.getAllByPurchase.setData({ purchaseId }, (old) => {
             if (!old) return old;
@@ -22,30 +24,30 @@ export function useParticipantOrderActions(purchaseId: number) {
 
         const detail = utils.purchases.getById.getData({ id: purchaseId });
         if (detail) {
-            utils.purchases.getById.setData({ id: purchaseId }, {
-                ...detail,
-                items: detail.items.map((item) => ({
-                    ...item,
-                    orderLines: [
-                        ...item.orderLines.filter((l) => l.userId !== userId),
-                        ...(fresh as unknown as typeof item.orderLines).filter(
-                            (l) => l.purchaseItemId === item.id,
-                        ),
-                    ],
-                })),
-            });
+            utils.purchases.getById.setData(
+                { id: purchaseId },
+                {
+                    ...detail,
+                    items: detail.items.map((item) => ({
+                        ...item,
+                        orderLines: [
+                            ...item.orderLines.filter((l) => l.userId !== userId),
+                            ...(fresh as unknown as typeof item.orderLines).filter((l) => l.purchaseItemId === item.id),
+                        ],
+                    })),
+                },
+            );
         }
 
-        void utils.orders.getPurchaseOrdersByPurchase.invalidate(
-            { purchaseId },
-            { refetchType: 'none' },
-        );
+        void utils.orders.getPurchaseOrdersByPurchase.invalidate({ purchaseId }, { refetchType: 'none' });
+        void utils.orders.getRemovedByPurchase.invalidate({ purchaseId });
         void utils.purchases.getById.invalidate({ id: purchaseId }, { refetchType: 'none' });
     };
 
     const refreshAllLines = () => {
         void utils.orders.getAllByPurchase.invalidate({ purchaseId });
         void utils.orders.getPurchaseOrdersByPurchase.invalidate({ purchaseId });
+        void utils.orders.getRemovedByPurchase.invalidate({ purchaseId });
         void utils.purchases.getById.invalidate({ id: purchaseId }, { refetchType: 'none' });
     };
 
@@ -96,6 +98,13 @@ export function useParticipantOrderActions(purchaseId: number) {
         }),
     );
 
+    const restoreUserItem = trpc.orders.restoreUserItem.useMutation(
+        mutationOptions({
+            invalidate: (v) => void refreshUserLines(v.userId),
+            success: 'Товар вернули в заказ',
+        }),
+    );
+
     // Комментарий и статус выдачи живут в PurchaseOrder-заголовках — лёгкий рефетч.
     const refreshOrderHeaders = () => {
         void utils.orders.getPurchaseOrdersByPurchase.invalidate({ purchaseId });
@@ -121,6 +130,7 @@ export function useParticipantOrderActions(purchaseId: number) {
         deleteLineForUser,
         removeParticipant,
         deleteAllByUserItem,
+        restoreUserItem,
         setOrderComment,
         addParticipant,
         setHandoffStatus,

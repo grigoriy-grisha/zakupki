@@ -38,7 +38,8 @@ export const STEP_DESCRIPTIONS: Record<PurchaseFulfillmentStatus, StepDescriptio
     },
     PAYMENT: {
         title: 'Оплата заказов',
-        description: 'Участники присылают чеки. Подтверждайте вручную во вкладке «Участники».',
+        description:
+            'Участники оплачивают картой или по СБП — оплата отмечается сама. Наличные можно добавить вручную во вкладке «Участники».',
         icon: CreditCardIcon,
         actions: ['advance'],
     },

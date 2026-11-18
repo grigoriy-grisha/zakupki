@@ -1,11 +1,11 @@
-import type { Message } from 'grammy/types';
 import { createLogger } from '@zakupki/logger';
+import type { Message } from 'grammy/types';
 
+import type { MessageHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
+import { getDiscussionMessageStore } from '../../lib/discussion-message-store';
 import { isLinkedDiscussionChat } from '../../lib/telegram-chat';
 import { getChannelIdFromEnv } from '../../lib/telegram-post';
-import { getDiscussionMessageStore } from '../../lib/discussion-message-store';
-import type { MessageHandler } from '../../domain/handler';
 
 const log = createLogger('channel-post-comment');
 

@@ -37,7 +37,7 @@ function buildPurchasesKeyboard(purchases: BotPurchaseListItem[]) {
 function buildDetailKeyboard(purchaseId: number, canPay: boolean, paymentOpen: boolean, hasDebt: boolean) {
     const keyboard = new InlineKeyboard();
     if (canPay) {
-        keyboard.text('Приложить чек об оплате', `pay:pick:${purchaseId}`).row();
+        keyboard.text('💳 Оплатить', `pay:pick:${purchaseId}`).row();
     } else if (hasDebt && !paymentOpen) {
         keyboard.text('Ждём начала оплаты', 'orders:noop').row();
     }
@@ -45,11 +45,7 @@ function buildDetailKeyboard(purchaseId: number, canPay: boolean, paymentOpen: b
     return keyboard;
 }
 
-async function replyPurchasesList(
-    ctx: CustomContext,
-    container: ServiceContainer,
-    edit = false,
-): Promise<void> {
+async function replyPurchasesList(ctx: CustomContext, container: ServiceContainer, edit = false): Promise<void> {
     const userId = ctx.session.userId!;
     const purchases = await container.orderService.getActivePurchases(userId);
 
@@ -75,11 +71,7 @@ function formatPurchasesList(purchases: BotPurchaseListItem[]): string {
     return `${lines.join('\n\n')}\n\nВыберите закупку:`;
 }
 
-async function showPurchaseDetail(
-    ctx: CustomContext,
-    container: ServiceContainer,
-    purchaseId: number,
-): Promise<void> {
+async function showPurchaseDetail(ctx: CustomContext, container: ServiceContainer, purchaseId: number): Promise<void> {
     const userId = ctx.session.userId!;
     const detail = await container.orderService.getPurchaseOrderDetail(userId, purchaseId);
     if (!detail) {
@@ -135,12 +127,14 @@ function formatLineBreakdown(breakdown: OrderLinePriceBreakdown | null): string 
 }
 
 /** Суммарная разбивка по всем строкам заказа; null — если хоть по одной строке цены не сходятся. */
-function formatOrderBreakdown(groups: {
-    totalAmount: number;
-    qty: number;
-    packs: number;
-    priceInfo: BotOrderLinePriceInfo | null;
-}[]): string | null {
+function formatOrderBreakdown(
+    groups: {
+        totalAmount: number;
+        qty: number;
+        packs: number;
+        priceInfo: BotOrderLinePriceInfo | null;
+    }[],
+): string | null {
     const breakdowns = groups.map((g) => computeGroupBreakdown(g));
     if (breakdowns.length === 0 || breakdowns.some((b) => b == null)) return null;
     const total = breakdowns.reduce(
@@ -207,73 +201,72 @@ export function formatPurchaseDetail(
     const status = (fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const fulfillmentLabel = PURCHASE_FULFILLMENT_LABELS[status] ?? status;
 
-        const groupedLines = new Map<
-            number,
-            {
-                purchaseItemId: number;
-                name: string;
-                unitCode: string | null;
-                packSize: number | null;
-                qty: number;
-                packs: number;
-                totalAmount: number;
-                priceInfo: BotOrderLinePriceInfo | null;
-            }
-        >();
-        for (const line of detail.lines) {
-            const product = line.purchaseItem?.product;
-            const piId = line.purchaseItem?.id ?? 0;
-            const name = product
-                ? formatPurchaseProductLine1({ name: product.name, articleNumber: product.articleNumber })
-                : 'Товар';
-            const unitCode = line.purchaseItem?.unitCode ?? null;
-            const packSize =
-                line.purchaseItem?.packAmount != null ? Number(line.purchaseItem.packAmount) : null;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const aggregated = mergeLines(toOrderLinesVO([line as any]));
-            const existing = groupedLines.get(piId);
-            if (existing) {
-                existing.qty += aggregated.quantity;
-                existing.packs += aggregated.packageCount;
-                existing.totalAmount += aggregated.amountDue;
-            } else {
-                groupedLines.set(piId, {
-                    purchaseItemId: piId,
-                    name,
-                    unitCode,
-                    packSize,
-                    qty: aggregated.quantity,
-                    packs: aggregated.packageCount,
-                    totalAmount: aggregated.amountDue,
-                    priceInfo: line.priceInfo,
-                });
-            }
+    const groupedLines = new Map<
+        number,
+        {
+            purchaseItemId: number;
+            name: string;
+            unitCode: string | null;
+            packSize: number | null;
+            qty: number;
+            packs: number;
+            totalAmount: number;
+            priceInfo: BotOrderLinePriceInfo | null;
         }
+    >();
+    for (const line of detail.lines) {
+        const product = line.purchaseItem?.product;
+        const piId = line.purchaseItem?.id ?? 0;
+        const name = product
+            ? formatPurchaseProductLine1({ name: product.name, articleNumber: product.articleNumber })
+            : 'Товар';
+        const unitCode = line.purchaseItem?.unitCode ?? null;
+        const packSize = line.purchaseItem?.packAmount != null ? Number(line.purchaseItem.packAmount) : null;
 
-        const groups = Array.from(groupedLines.values());
-        const lineTexts = groups.map((g) => {
-            const qtyLabel = buildQuantityDisplay({
-                quantity: g.qty,
-                packageCount: g.packs,
-                packSize: g.packSize,
-                unitCode: g.unitCode,
-            }).main;
-            const hasAmount = g.totalAmount > 0 || (g.qty === 0 && g.packs === 0);
-            const amountLabel = hasAmount ? `${g.totalAmount.toLocaleString('ru-RU')} ₽` : 'цена уточняется';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const aggregated = mergeLines(toOrderLinesVO([line as any]));
+        const existing = groupedLines.get(piId);
+        if (existing) {
+            existing.qty += aggregated.quantity;
+            existing.packs += aggregated.packageCount;
+            existing.totalAmount += aggregated.amountDue;
+        } else {
+            groupedLines.set(piId, {
+                purchaseItemId: piId,
+                name,
+                unitCode,
+                packSize,
+                qty: aggregated.quantity,
+                packs: aggregated.packageCount,
+                totalAmount: aggregated.amountDue,
+                priceInfo: line.priceInfo,
+            });
+        }
+    }
 
-            const link = g.purchaseItemId > 0 ? buildItemLink(purchaseId, g.purchaseItemId) : null;
-            const nameHtml = link
-                ? `<a href="${escapeHtml(link)}"><b>${escapeHtml(g.name)}</b></a>`
-                : `<b>${escapeHtml(g.name)}</b>`;
-            const breakdownText = formatLineBreakdown(computeGroupBreakdown(g));
+    const groups = Array.from(groupedLines.values());
+    const lineTexts = groups.map((g) => {
+        const qtyLabel = buildQuantityDisplay({
+            quantity: g.qty,
+            packageCount: g.packs,
+            packSize: g.packSize,
+            unitCode: g.unitCode,
+        }).main;
+        const hasAmount = g.totalAmount > 0 || (g.qty === 0 && g.packs === 0);
+        const amountLabel = hasAmount ? `${g.totalAmount.toLocaleString('ru-RU')} ₽` : 'цена уточняется';
 
-            return (
-                `• ${nameHtml}\n<code>${escapeHtml(qtyLabel)} · ${amountLabel}</code>` +
-                (breakdownText ? `\n${breakdownText}` : '')
-            );
-        });
-        const orderBreakdownText = formatOrderBreakdown(groups);
+        const link = g.purchaseItemId > 0 ? buildItemLink(purchaseId, g.purchaseItemId) : null;
+        const nameHtml = link
+            ? `<a href="${escapeHtml(link)}"><b>${escapeHtml(g.name)}</b></a>`
+            : `<b>${escapeHtml(g.name)}</b>`;
+        const breakdownText = formatLineBreakdown(computeGroupBreakdown(g));
+
+        return (
+            `• ${nameHtml}\n<code>${escapeHtml(qtyLabel)} · ${amountLabel}</code>` +
+            (breakdownText ? `\n${breakdownText}` : '')
+        );
+    });
+    const orderBreakdownText = formatOrderBreakdown(groups);
 
     const headerText = [
         detail.purchaseOrderId != null ? `Заказ №${detail.purchaseOrderId}` : null,
@@ -293,6 +286,9 @@ export function formatPurchaseDetail(
         if (payment.pending > 0) {
             footerParts.push(`На проверке: ${payment.pending.toLocaleString('ru-RU')} ₽`);
         }
+        if (payment.awaiting > 0) {
+            footerParts.push(`Ждёт оплаты по ссылке: ${payment.awaiting.toLocaleString('ru-RU')} ₽`);
+        }
         if (payment.available > 0) {
             footerParts.push(
                 isPurchasePaymentOpen(status)
@@ -302,7 +298,7 @@ export function formatPurchaseDetail(
             if (!isPurchasePaymentOpen(status)) {
                 footerParts.push('Ждём начала оплаты — следите за статусом выше');
             }
-        } else if (payment.due > 0 && payment.pending <= 0) {
+        } else if (payment.due > 0 && payment.pending <= 0 && payment.awaiting <= 0 && payment.paid > 0) {
             footerParts.push('Оплачено');
         }
     }

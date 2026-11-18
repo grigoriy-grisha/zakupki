@@ -1,6 +1,6 @@
+import type { MessageHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import { isOrderCollectionMessage } from '../../lib/telegram-chat';
-import type { MessageHandler } from '../../domain/handler';
 
 /**
  * FallbackTextHandler — последний catch-all для message:text.

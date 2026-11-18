@@ -11,4 +11,4 @@ export { ChannelPostShopCommentHandler } from './message/channel-post-comment.ha
 export { FallbackTextHandler } from './message/fallback-text.handler';
 export { OrderReplyHandler } from './message/order-reply.handler';
 export { PaymentAmountHandler } from './message/payment-amount.handler';
-export { PaymentProofHandler } from './message/payment-proof.handler';
+export { PaymentContactHandler } from './message/payment-contact.handler';

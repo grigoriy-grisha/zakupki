@@ -60,6 +60,8 @@ export function renderNotificationTitle(type: NotificationType): string {
             return 'Оплата подтверждена';
         case 'PAYMENT_REJECTED':
             return 'Оплата отклонена';
+        case 'PAYMENT_REFUNDED':
+            return 'Деньги возвращены';
         case 'ORDER_QTY_CHANGED':
             return 'Заказ изменён';
         case 'ORDER_LINE_DELETED':
@@ -85,10 +87,7 @@ export function renderNotificationTitle(type: NotificationType): string {
 
 /** Full body text. Telegram HTML-unfriendly characters are NOT escaped here —
  * the bot wraps with HTML mode, callers must pre-escape if needed. */
-export function renderNotificationBody<T extends NotificationType>(
-    type: T,
-    payload: NotificationPayload<T>,
-): string {
+export function renderNotificationBody<T extends NotificationType>(type: T, payload: NotificationPayload<T>): string {
     switch (type) {
         case 'PAYMENT_CONFIRMED': {
             const p = payload as NotificationPayload<'PAYMENT_CONFIRMED'>;
@@ -98,6 +97,11 @@ export function renderNotificationBody<T extends NotificationType>(
         case 'PAYMENT_REJECTED': {
             const p = payload as NotificationPayload<'PAYMENT_REJECTED'>;
             const base = `Закупка ${formatTag(p.purchaseTag)}: отклонена оплата ${formatAmount(p.amount)}.`;
+            return p.adminNote ? `${base}\nПричина: ${p.adminNote}` : base;
+        }
+        case 'PAYMENT_REFUNDED': {
+            const p = payload as NotificationPayload<'PAYMENT_REFUNDED'>;
+            const base = `Закупка ${formatTag(p.purchaseTag)}: вернули ${formatAmount(p.amount)} на карту. Деньги придут в течение нескольких дней.`;
             return p.adminNote ? `${base}\nПричина: ${p.adminNote}` : base;
         }
         case 'ORDER_QTY_CHANGED': {
@@ -189,9 +193,13 @@ export function renderNotificationTelegramBody<T extends NotificationType>(
 
     switch (type) {
         case 'PAYMENT_CONFIRMED':
-        case 'PAYMENT_REJECTED': {
+        case 'PAYMENT_REJECTED':
+        case 'PAYMENT_REFUNDED': {
             const pp = p as NotificationPayload<'PAYMENT_CONFIRMED'>;
             lines.push(`<b>Сумма:</b> ${escapeHtml(formatAmount(pp.amount))}`);
+            if (type === 'PAYMENT_REFUNDED') {
+                lines.push('Деньги придут на карту в течение нескольких дней.');
+            }
             if (pp.adminNote) {
                 const label = type === 'PAYMENT_CONFIRMED' ? 'Комментарий' : 'Причина';
                 lines.push(`<b>${label}:</b> ${escapeHtml(pp.adminNote)}`);
@@ -261,6 +269,7 @@ export function renderNotificationUrl<T extends NotificationType>(
     switch (type) {
         case 'PAYMENT_CONFIRMED':
         case 'PAYMENT_REJECTED':
+        case 'PAYMENT_REFUNDED':
         case 'ORDER_HANDOFF_STATUS':
         case 'ORDER_ASSEMBLED':
         case 'ORDER_HANDOFF_STORED':
@@ -347,6 +356,8 @@ export function getNotificationVisual(type: NotificationType): NotificationVisua
             return { icon: 'payment-success', tone: 'success' };
         case 'PAYMENT_REJECTED':
             return { icon: 'payment-fail', tone: 'critical' };
+        case 'PAYMENT_REFUNDED':
+            return { icon: 'payment-success', tone: 'neutral' };
         case 'ORDER_QTY_CHANGED':
             return { icon: 'order-edit', tone: 'accent' };
         case 'ORDER_LINE_DELETED':
@@ -408,6 +419,13 @@ export function getNotificationFields<T extends NotificationType>(
             const p = payload as NotificationPayload<'PAYMENT_REJECTED'>;
             addTag(p.purchaseTag);
             fields.push({ label: 'Сумма', value: formatAmount(p.amount) });
+            if (p.adminNote) fields.push({ label: 'Причина', value: p.adminNote });
+            break;
+        }
+        case 'PAYMENT_REFUNDED': {
+            const p = payload as NotificationPayload<'PAYMENT_REFUNDED'>;
+            addTag(p.purchaseTag);
+            fields.push({ label: 'Вернули', value: formatAmount(p.amount) });
             if (p.adminNote) fields.push({ label: 'Причина', value: p.adminNote });
             break;
         }

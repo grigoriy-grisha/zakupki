@@ -1,5 +1,6 @@
 import { EventBus, getUserDmJobsQueue } from '@zakupki/queue';
 
+import { AnalyticsRepository } from '../domain/analytics.repository';
 import { AttributeTypeRepository } from '../domain/attribute-type.repository';
 import { CharacteristicRepository } from '../domain/characteristic.repository';
 import { CurrencyRepository } from '../domain/currency.repository';
@@ -13,11 +14,14 @@ import { PromoCodeRepository } from '../domain/promo-code.repository';
 import { PurchaseRepository } from '../domain/purchase.repository';
 import { SupplierRepository } from '../domain/supplier.repository';
 import { UserRepository } from '../domain/user.repository';
+import { UserVisitRepository } from '../domain/user-visit.repository';
+import { AnalyticsService } from '../services/analytics.service';
 import { AttributeTypeService } from '../services/attribute-type.service';
 import { BotPaymentService } from '../services/bot-payment.service';
 import { CharacteristicService } from '../services/characteristic.service';
 import { CurrencyService } from '../services/currency.service';
 import { NotificationService } from '../services/notification.service';
+import { OnlinePaymentService } from '../services/online-payment.service';
 import { OrderService } from '../services/order.service';
 import { PaymentService } from '../services/payment.service';
 import { PostTemplateService } from '../services/post-template.service';
@@ -25,6 +29,7 @@ import { ProductService } from '../services/product.service';
 import { ProductAttributeService } from '../services/product-attribute.service';
 import { PromoCodeService } from '../services/promo-code.service';
 import { PurchaseService } from '../services/purchase.service';
+import { PurchaseAnalyticsService } from '../services/purchase-analytics.service';
 import { PurchaseItemDescriptionService } from '../services/purchase-item-description.service';
 import { PurchaseStatusService } from '../services/purchase-status.service';
 import { PricingSettingsService } from '../services/settings/pricing-settings';
@@ -32,6 +37,7 @@ import { SettingsService } from '../services/settings/settings.service';
 import { SupplierService } from '../services/supplier.service';
 import { TelegramPublishService } from '../services/telegram-publish.service';
 import { UserService } from '../services/user.service';
+import { UserAnalyticsService } from '../services/user-analytics.service';
 
 export class ServiceContainer {
     private readonly userRepo = new UserRepository();
@@ -47,12 +53,17 @@ export class ServiceContainer {
     private readonly supplierRepo = new SupplierRepository();
     private readonly currencyRepo = new CurrencyRepository();
     private readonly notificationRepo = new NotificationRepository();
+    private readonly analyticsRepo = new AnalyticsRepository();
+    private readonly userVisitRepo = new UserVisitRepository();
 
     public readonly eventBus = new EventBus();
     public readonly telegramPublish = new TelegramPublishService(this.eventBus);
     public readonly user = new UserService(this.userRepo);
     public readonly settings = new SettingsService();
     public readonly pricingSettings = new PricingSettingsService(this.settings);
+    public readonly analytics = new AnalyticsService(this.analyticsRepo, this.pricingSettings);
+    public readonly purchaseAnalytics = new PurchaseAnalyticsService(this.analyticsRepo, this.pricingSettings);
+    public readonly userAnalytics = new UserAnalyticsService(this.userVisitRepo);
     public readonly notification = new NotificationService(this.notificationRepo, getUserDmJobsQueue());
     public readonly order = new OrderService(
         this.orderRepo,
@@ -79,7 +90,16 @@ export class ServiceContainer {
     public readonly product = new ProductService(this.productRepo, this.eventBus);
     public readonly promoCode = new PromoCodeService(this.promoCodeRepo, this.paymentRepo);
     public readonly botPayment = new BotPaymentService(this.paymentRepo, this.order, this.promoCode);
-    public readonly payment = new PaymentService(this.paymentRepo, this.notification, this.botPayment, this.promoCode);
+    public readonly payment = new PaymentService(this.paymentRepo, this.notification, () => this.onlinePayment);
+    public readonly onlinePayment = new OnlinePaymentService(
+        this.paymentRepo,
+        this.userRepo,
+        this.purchaseRepo,
+        this.botPayment,
+        this.promoCode,
+        this.settings,
+        this.notification,
+    );
     public readonly attributeType = new AttributeTypeService(this.attributeTypeRepo);
     public readonly characteristic = new CharacteristicService(this.characteristicRepo);
     public readonly productAttribute = new ProductAttributeService(this.productAttributeRepo);

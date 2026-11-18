@@ -10,6 +10,7 @@ import type { HandoffStatus, PurchaseFulfillmentStatus, PurchaseStatus } from '.
 export const NOTIFICATION_TYPES = [
     'PAYMENT_CONFIRMED',
     'PAYMENT_REJECTED',
+    'PAYMENT_REFUNDED',
     'ORDER_QTY_CHANGED',
     'ORDER_LINE_DELETED',
     'ORDER_CLEARED',
@@ -40,6 +41,12 @@ export interface NotificationPayloads {
         adminNote?: string | null;
     };
     PAYMENT_REJECTED: {
+        purchaseId: number;
+        purchaseTag: string;
+        amount: number;
+        adminNote?: string | null;
+    };
+    PAYMENT_REFUNDED: {
         purchaseId: number;
         purchaseTag: string;
         amount: number;
@@ -103,8 +110,7 @@ export interface NotificationPayloads {
 }
 
 /** Payload type for a specific notification type. Defaults to the union. */
-export type NotificationPayload<T extends NotificationType = NotificationType> =
-    NotificationPayloads[T];
+export type NotificationPayload<T extends NotificationType = NotificationType> = NotificationPayloads[T];
 
 /** Input accepted by NotificationService.notify<T>. */
 export interface NotifyInput<T extends NotificationType = NotificationType> {
@@ -136,9 +142,7 @@ export const NOTIFIABLE_FULFILLMENT_STAGES: ReadonlySet<PurchaseFulfillmentStatu
  *
  * The coalesce key is `(userId, type, payload.purchaseItemId)`.
  */
-export const COALESCABLE_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set([
-    'ORDER_QTY_CHANGED',
-]);
+export const COALESCABLE_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set(['ORDER_QTY_CHANGED']);
 
 /**
  * Delivery delay for coalescable notifications. The DM job is enqueued with

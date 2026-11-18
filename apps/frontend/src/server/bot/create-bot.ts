@@ -1,5 +1,5 @@
 import { autoRetry } from '@grammyjs/auto-retry';
-import { Bot, type BotConfig,GrammyError, HttpError, session } from 'grammy';
+import { Bot, type BotConfig, GrammyError, HttpError, session } from 'grammy';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 import { HandlerRegistry } from './container/handler-registry';
@@ -31,10 +31,7 @@ function botConfigWithProxy(proxyUrl: string): BotConfig<CustomContext> {
  *  4. AuthGuard — для всех auth-требующих хендлеров (через handler.requireAuth)
  *  5. HandlerRegistry — все command/callback/message handlers
  */
-export function createBot(
-    { token, proxyUrl }: CreateBotOptions,
-    container: ServiceContainer,
-): Bot<CustomContext> {
+export function createBot({ token, proxyUrl }: CreateBotOptions, container: ServiceContainer): Bot<CustomContext> {
     const proxy = proxyUrl?.trim();
     if (proxy) {
         log.info('Telegram API via proxy');
@@ -82,9 +79,9 @@ export function createBot(
         .addCallback(new HandoffCallbackQueryHandler(container))
         // Messages
         .addMessage(new ChannelPostShopCommentHandler())
-        .addMessage(new PaymentProofHandler(container))
         .addMessage(new PaymentAmountHandler(container))
         .addMessage(new PaymentPromoHandler(container))
+        .addMessage(new PaymentContactHandler(container))
         .addMessage(new OrderReplyHandler(container))
         .addMessage(new FallbackTextHandler());
 
@@ -119,5 +116,5 @@ import { ChannelPostShopCommentHandler } from './handlers/message/channel-post-c
 import { FallbackTextHandler } from './handlers/message/fallback-text.handler';
 import { OrderReplyHandler } from './handlers/message/order-reply.handler';
 import { PaymentAmountHandler } from './handlers/message/payment-amount.handler';
+import { PaymentContactHandler } from './handlers/message/payment-contact.handler';
 import { PaymentPromoHandler } from './handlers/message/payment-promo.handler';
-import { PaymentProofHandler } from './handlers/message/payment-proof.handler';

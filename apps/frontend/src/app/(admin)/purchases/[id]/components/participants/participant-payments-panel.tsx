@@ -18,10 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRub } from '@/lib/format/money';
-import { paymentTotal } from '@/lib/payment-utils';
+import { describePayment, paymentTotal } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
-import { PAYMENT_STATUS } from '../../../../lib/constants';
+import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS, REFUND_BADGE } from '../../../../lib/constants';
 import { useAddPayment } from '../../hooks';
 import type { PaymentRef } from '../../lib/types';
 
@@ -47,12 +47,7 @@ export function ParticipantPaymentsPanel({
                 <span className="text-12-medium uppercase tracking-wide text-fg-tertiary">
                     Оплаты · {payments.length}
                 </span>
-                <AddPaymentDialog
-                    userId={userId}
-                    purchaseId={purchaseId}
-                    due={due}
-                    payments={payments}
-                />
+                <AddPaymentDialog userId={userId} purchaseId={purchaseId} due={due} payments={payments} />
             </div>
             {payments.length === 0 ? (
                 <div className="px-3 py-6 text-center text-13-regular text-fg-tertiary">Оплат пока нет</div>
@@ -60,12 +55,8 @@ export function ParticipantPaymentsPanel({
                 <div className="divide-y divide-border-soft">
                     {payments.map((p) => {
                         const status = p.status;
-                        const cfg = PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING;
-                        const total = paymentTotal(p);
-                        const children = p.children ?? [];
-                        const child = children[0];
-                        const childAmount = child ? Number(child.amount) : 0;
-                        const promoCode = child?.promoCode;
+                        const { isRefund, total, promoAmount, promoCode } = describePayment(p);
+                        const cfg = isRefund ? REFUND_BADGE : (PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING);
                         const hasProof = Boolean(p.proofObjectKey);
                         return (
                             <Button
@@ -82,9 +73,19 @@ export function ParticipantPaymentsPanel({
                                     <span className="text-14-semibold tabular-nums text-fg-primary">
                                         {formatRub(total)}
                                     </span>
-                                    {childAmount > 0 && (
+                                    {isRefund ? (
+                                        <p className="truncate text-12-regular text-fg-tertiary">Возврат на карту</p>
+                                    ) : (
+                                        p.method &&
+                                        p.method !== 'MANUAL' && (
+                                            <p className="truncate text-12-regular text-fg-tertiary">
+                                                {PAYMENT_METHOD_LABELS[p.method] ?? p.method}
+                                            </p>
+                                        )
+                                    )}
+                                    {promoAmount > 0 && (
                                         <p className="truncate text-12-regular text-fg-tertiary">
-                                            {Number(p.amount).toLocaleString('ru-RU')} + промокод {promoCode?.code}
+                                            {Number(p.amount).toLocaleString('ru-RU')} + промокод {promoCode}
                                         </p>
                                     )}
                                 </div>

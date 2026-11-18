@@ -11,4 +11,4 @@ export {
     useRemovePurchaseItem,
     useUpdateItemProduct,
 } from './use-purchase-items';
-export { useAddPayment, useConfirmPayment, useRejectPayment } from './use-purchase-payments';
+export { useAddPayment, useConfirmPayment, useRefundPayment, useRejectPayment } from './use-purchase-payments';

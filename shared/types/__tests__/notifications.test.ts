@@ -20,10 +20,11 @@ import {
 } from '../src';
 
 describe('NOTIFICATION_TYPES', () => {
-    it('includes all 12 expected types', () => {
+    it('includes all 13 expected types', () => {
         expect(NOTIFICATION_TYPES).toEqual([
             'PAYMENT_CONFIRMED',
             'PAYMENT_REJECTED',
+            'PAYMENT_REFUNDED',
             'ORDER_QTY_CHANGED',
             'ORDER_LINE_DELETED',
             'ORDER_CLEARED',
@@ -453,18 +454,18 @@ describe('renderNotificationTelegramBody', () => {
 
 describe('renderNotificationUrl', () => {
     it('routes payment notifications to /shop/orders', () => {
-        expect(
-            renderNotificationUrl('PAYMENT_CONFIRMED', { purchaseId: 7, purchaseTag: 'X', amount: 1 }),
-        ).toBe('/shop/orders');
-        expect(
-            renderNotificationUrl('PAYMENT_REJECTED', { purchaseId: 7, purchaseTag: 'X', amount: 1 }),
-        ).toBe('/shop/orders');
+        expect(renderNotificationUrl('PAYMENT_CONFIRMED', { purchaseId: 7, purchaseTag: 'X', amount: 1 })).toBe(
+            '/shop/orders',
+        );
+        expect(renderNotificationUrl('PAYMENT_REJECTED', { purchaseId: 7, purchaseTag: 'X', amount: 1 })).toBe(
+            '/shop/orders',
+        );
     });
 
     it('routes handoff notifications to /shop/orders — the participant sees the status there', () => {
-        expect(
-            renderNotificationUrl('ORDER_HANDOFF_STATUS', { purchaseId: 7, purchaseTag: 'X', status: 'SENT' }),
-        ).toBe('/shop/orders');
+        expect(renderNotificationUrl('ORDER_HANDOFF_STATUS', { purchaseId: 7, purchaseTag: 'X', status: 'SENT' })).toBe(
+            '/shop/orders',
+        );
     });
 
     it('deep-links order-change notifications straight to the product page', () => {
@@ -487,9 +488,7 @@ describe('renderNotificationUrl', () => {
                 productLabel: 'A',
             }),
         ).toBe('/shop/purchase/42/item/10');
-        expect(renderNotificationUrl('ORDER_CLEARED', { purchaseId: 42, purchaseTag: 'X' })).toBe(
-            '/shop/purchase/42',
-        );
+        expect(renderNotificationUrl('ORDER_CLEARED', { purchaseId: 42, purchaseTag: 'X' })).toBe('/shop/purchase/42');
     });
 
     it('deep-links purchase-lifecycle notifications to the purchase page', () => {
@@ -642,6 +641,7 @@ describe('getNotificationFields', () => {
         const minimalPayloads: Record<NotificationType, Record<string, unknown>> = {
             PAYMENT_CONFIRMED: { purchaseId: 1, purchaseTag: 'T', amount: 1 },
             PAYMENT_REJECTED: { purchaseId: 1, purchaseTag: 'T', amount: 1 },
+            PAYMENT_REFUNDED: { purchaseId: 1, purchaseTag: 'T', amount: 1 },
             ORDER_QTY_CHANGED: {
                 purchaseId: 1,
                 purchaseTag: 'T',

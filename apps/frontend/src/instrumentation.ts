@@ -21,5 +21,22 @@ export async function register() {
         } catch (err) {
             console.warn('[instrumentation] settings cache warmup failed:', err);
         }
+
+        // Сверка онлайн-платежей, по которым не пришёл вебхук (истёкшие ссылки, сбои доставки).
+        const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+        const globalForSweep = globalThis as unknown as { __onlinePaymentSweep?: NodeJS.Timeout };
+        if (!globalForSweep.__onlinePaymentSweep) {
+            globalForSweep.__onlinePaymentSweep = setInterval(() => {
+                void (async () => {
+                    try {
+                        const { serviceContainer } = await import('@/server/lib/service-container');
+                        await serviceContainer.onlinePayment.sweepStale();
+                    } catch (err) {
+                        console.warn('[instrumentation] online payment sweep failed:', err);
+                    }
+                })();
+            }, SWEEP_INTERVAL_MS);
+            globalForSweep.__onlinePaymentSweep.unref?.();
+        }
     }
 }

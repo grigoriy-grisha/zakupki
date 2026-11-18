@@ -5,10 +5,11 @@ import type { ServiceContainer } from '../../container/service-container';
 import type { CommandHandler } from '../../domain/handler';
 import type { CustomContext } from '../../domain/types';
 import { consentKeyboard, consentText } from '../../lib/consent';
+import { AWAITING_LINK_HINT } from '../../lib/payment-texts';
 import { isPrivateChat } from '../shared/is-private-chat';
 
 /**
- * /pay — отображает клавиатуру закупок, по которым можно отправить оплату.
+ * /pay — отображает клавиатуру закупок, которые можно оплатить.
  */
 export class PayCommand implements CommandHandler {
     readonly command = 'pay';
@@ -18,7 +19,7 @@ export class PayCommand implements CommandHandler {
 
     async handle(ctx: CustomContext): Promise<void> {
         if (!isPrivateChat(ctx)) {
-            await ctx.reply('Оплату через бота можно отправить только в личных сообщениях.');
+            await ctx.reply('Оплатить через бота можно только в личных сообщениях.');
             return;
         }
 
@@ -38,17 +39,19 @@ export class PayCommand implements CommandHandler {
 
             if (waitingPayment.length > 0) {
                 await ctx.reply(
-                    'Сейчас нельзя отправить оплату.\n' +
+                    'Сейчас оплатить нельзя.\n' +
                         'По вашим закупкам ещё не открыт приём оплаты — следите за статусом в /orders.\n\n' +
                         'Когда наступит этап «Оплата заказов», используйте /pay или кнопку в заказе.',
                 );
                 return;
             }
 
-            await ctx.reply(
-                'Нет закупок, по которым можно отправить оплату.\n' +
-                    'Возможно, всё уже оплачено или есть платёж на проверке — см. /payments',
-            );
+            if (await this.container.paymentService.hasAwaitingLinks(userId)) {
+                await ctx.reply(AWAITING_LINK_HINT);
+                return;
+            }
+
+            await ctx.reply('Сейчас нечего оплачивать.\nВозможно, всё уже оплачено — см. /payments');
             return;
         }
 

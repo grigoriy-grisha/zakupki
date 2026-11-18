@@ -1,5 +1,5 @@
-import type { CallbackHandler, CommandHandler, MessageHandler } from './handler';
 import { CallbackParser } from './callback-data';
+import type { CallbackHandler, CommandHandler, MessageHandler } from './handler';
 import type { CustomContext } from './types';
 
 /**

@@ -1,41 +1,12 @@
 import { InlineKeyboard } from 'grammy';
 
 import type { PromoCodeApplied } from '../domain/types';
-import { escapeHtml } from './html';
 
 const rub = (value: number): string => `${value.toLocaleString('ru-RU')} ₽`;
 
 export function priceChangeLine(amount: number, promo?: PromoCodeApplied | null): string {
     if (!promo) return `<b>${rub(amount)}</b>`;
     return `<s>${rub(amount)}</s> → <b>${rub(promo.finalAmount)}</b>`;
-}
-
-export function proofStepText(
-    amount: number,
-    promo?: PromoCodeApplied | null,
-    opts?: { pinned?: boolean },
-): string {
-    const parts: string[] = [];
-    if (promo && opts?.pinned) {
-        parts.push(`🔒 Промокод ${escapeHtml(promo.code)} закреплён за заказом`);
-    } else if (promo) {
-        parts.push(`✅ Промокод ${escapeHtml(promo.code)} применён`);
-    }
-    parts.push(`К оплате: ${priceChangeLine(amount, promo)}`);
-    if (promo) parts.push(`Скидка: ${rub(promo.discount)}`);
-    parts.push(
-        '',
-        '📎 Пришлите фото или PDF чека.',
-        'Подпись к файлу сохранится как комментарий.',
-        '',
-        '/cancel — отменить',
-    );
-    return parts.join('\n');
-}
-
-export function paymentSubmittedText(tag: string, transfer: number, promo?: PromoCodeApplied | null): string {
-    const promoLine = promo ? `\n🎁 Скидка по промокоду ${escapeHtml(promo.code)}: ${rub(promo.discount)}` : '';
-    return `✅ Оплата <b>${rub(transfer)}</b> по закупке «${escapeHtml(tag)}» отправлена на проверку.${promoLine}\nСтатус: /payments`;
 }
 
 export function paymentsListText(count: number, lines: string[]): string {
@@ -50,13 +21,19 @@ type CancelablePayment = {
     children?: Array<{ amount: unknown }> | null;
 };
 
+/** Подсказка, когда вся сумма уже зарезервирована неоплаченной ссылкой. */
+export const AWAITING_LINK_HINT =
+    'Ссылка на оплату уже создана — откройте её кнопкой «Оплатить» в сообщении со ссылкой.\n' +
+    'Чтобы создать новую, сначала отмените старую в /payments.';
+
 export function paymentsCancelKeyboard(payments: CancelablePayment[]): InlineKeyboard | undefined {
     const keyboard = new InlineKeyboard();
     let hasButtons = false;
     for (const payment of payments) {
-        if (payment.status !== 'PENDING') continue;
+        if (payment.status !== 'PENDING' && payment.status !== 'AWAITING') continue;
         const total = (payment.children ?? []).reduce((s, c) => s + Number(c.amount), Number(payment.amount));
-        keyboard.text(`✖ Отменить оплату ${total.toLocaleString('ru-RU')} ₽`, `pay:cancel:${payment.id}`).row();
+        const label = payment.status === 'AWAITING' ? 'Отменить ссылку на' : 'Отменить оплату';
+        keyboard.text(`✖ ${label} ${total.toLocaleString('ru-RU')} ₽`, `pay:cancel:${payment.id}`).row();
         hasButtons = true;
     }
     return hasButtons ? keyboard : undefined;

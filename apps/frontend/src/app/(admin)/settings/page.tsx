@@ -1,6 +1,6 @@
 'use client';
 
-import { Coins, FileText, Layers, ListChecks, Percent, Settings, Tag, Truck } from 'lucide-react';
+import { Coins, CreditCard, FileText, Layers, ListChecks, Percent, Settings, Tag, Truck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { CharacteristicsTab } from './characteristics/characteristics-tab';
 import { CurrenciesTab } from './currencies/currencies-tab';
+import { OnlinePaymentTab } from './online-payment/online-payment-tab';
 import { PostTemplatesTab } from './post-templates/post-templates-tab';
 import { ProductAttributesTab } from './product-attributes/product-attributes-tab';
 import { PromoCodesTab } from './promo-codes/promo-codes-tab';
@@ -23,6 +24,7 @@ const TAB_VALUES = [
     'templates',
     'promocodes',
     'pricing',
+    'payments',
 ] as const;
 
 type TabValue = (typeof TAB_VALUES)[number];
@@ -46,11 +48,7 @@ function SettingsPageInner() {
                 descriptionMobile="Справочники и параметры системы"
             />
 
-            <Tabs
-                value={tab}
-                onValueChange={(value) => router.replace(`/settings?tab=${value}`)}
-                className="gap-4"
-            >
+            <Tabs value={tab} onValueChange={(value) => router.replace(`/settings?tab=${value}`)} className="gap-4">
                 <TabsList className="!h-fit w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto overflow-y-hidden p-1 sm:w-fit">
                     <TabsTrigger value="attributes" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
                         <Layers className="size-4 shrink-0" />
@@ -88,6 +86,11 @@ function SettingsPageInner() {
                         <span className="hidden sm:inline">Цены закупок</span>
                         <span className="sm:hidden">Цены</span>
                     </TabsTrigger>
+                    <TabsTrigger value="payments" className="shrink-0 flex-none gap-1.5 px-2.5 py-2 sm:px-3">
+                        <CreditCard className="size-4 shrink-0" />
+                        <span className="hidden sm:inline">Онлайн-оплата</span>
+                        <span className="sm:hidden">Оплата</span>
+                    </TabsTrigger>
                 </TabsList>
                 <TabsContent value="attributes" className="mt-0">
                     <ProductAttributesTab />
@@ -109,6 +112,9 @@ function SettingsPageInner() {
                 </TabsContent>
                 <TabsContent value="pricing" className="mt-0">
                     <PurchasePricingTab />
+                </TabsContent>
+                <TabsContent value="payments" className="mt-0">
+                    <OnlinePaymentTab />
                 </TabsContent>
             </Tabs>
         </div>

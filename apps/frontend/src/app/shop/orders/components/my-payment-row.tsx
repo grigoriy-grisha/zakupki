@@ -1,11 +1,11 @@
 'use client';
 
-import { CircleCheck, CircleX, Clock, Eye } from 'lucide-react';
+import { CircleCheck, CircleX, Clock, Eye, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { paymentHasProof, SHOP_PAYMENT_STATUS, type ShopPaymentView } from '@/components/shop/payment-proof';
 import { formatRub } from '@/lib/format/money';
-import { paymentTotal } from '@/lib/payment-utils';
+import { describePayment } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 import { MyPaymentProofDialog } from './my-payment-proof-dialog';
@@ -18,18 +18,19 @@ type MyPaymentRowProps = {
 export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
     const [proofOpen, setProofOpen] = useState(false);
     const status = payment.status;
-    const statusCfg = SHOP_PAYMENT_STATUS[status] ?? {
-        label: status,
-        className: 'text-fg-tertiary',
-    };
-    const StatusIcon = status === 'CONFIRMED' ? CircleCheck : status === 'REJECTED' ? CircleX : Clock;
+    const { isRefund, total, promoAmount, promoCode, methodLabel } = describePayment(payment);
+    const statusCfg = isRefund
+        ? { label: 'Вернули на карту', className: 'text-fg-secondary' }
+        : (SHOP_PAYMENT_STATUS[status] ?? { label: status, className: 'text-fg-tertiary' });
+    const StatusIcon = isRefund
+        ? Undo2
+        : status === 'CONFIRMED'
+          ? CircleCheck
+          : status === 'REJECTED'
+            ? CircleX
+            : Clock;
     const iconCls = statusCfg.className;
 
-    const children = payment.children ?? [];
-    const child = children[0];
-    const childAmount = child ? Number(child.amount) : 0;
-    const promoCode = child?.promoCode;
-    const total = paymentTotal(payment);
     const hasProof = paymentHasProof(payment);
 
     return (
@@ -56,19 +57,21 @@ export function MyPaymentRow({ payment, trailing }: MyPaymentRowProps) {
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <span className="text-14-semibold text-fg-primary tabular-nums">{formatRub(total)}</span>
                             <span className={cn('text-12-medium', iconCls)}>{statusCfg.label}</span>
-                            {hasProof ? (
+                            {isRefund ? null : methodLabel ? (
+                                <span className="text-12-regular text-fg-tertiary">{methodLabel}</span>
+                            ) : hasProof ? (
                                 <span className="inline-flex items-center gap-0.5 text-12-regular text-fg-tertiary">
                                     <Eye className="size-3" />
                                     чек
                                 </span>
                             ) : null}
                         </div>
-                        {childAmount > 0 && (
+                        {promoAmount > 0 && (
                             <p className="mt-0.5 text-12-regular text-fg-tertiary tabular-nums">
                                 Оплачено {formatRub(Number(payment.amount))}
                                 <span className="text-success">
                                     {' '}
-                                    + промокод {promoCode?.code ?? ''} {formatRub(childAmount)}
+                                    + промокод {promoCode ?? ''} {formatRub(promoAmount)}
                                 </span>
                             </p>
                         )}

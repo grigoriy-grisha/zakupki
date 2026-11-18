@@ -24,6 +24,16 @@ export const PAYMENT_STATUS: Record<string, { label: string; className: string }
     PENDING: { label: 'Ожидает', className: 'bg-warning-50 text-warning hover:bg-warning-50' },
     CONFIRMED: { label: 'Подтверждено', className: 'bg-success-50 text-success hover:bg-success-50' },
     REJECTED: { label: 'Отклонено', className: 'bg-error-50 text-error hover:bg-error-50' },
+    AWAITING: { label: 'Ждём оплату', className: 'bg-bg-soft text-fg-secondary hover:bg-bg-soft' },
+};
+
+/** Значок для строки возврата денег клиенту. */
+export const REFUND_BADGE = { label: 'Возврат', className: 'bg-bg-soft text-fg-secondary hover:bg-bg-soft' };
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    MANUAL: 'Перевод',
+    TBANK_CARD: 'Картой',
+    TBANK_SBP: 'По СБП',
 };
 
 export const USER_ROLE_LABELS: Record<string, string> = {

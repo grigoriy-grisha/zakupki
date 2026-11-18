@@ -16,6 +16,7 @@ export type CallbackAction =
     | { kind: 'pay:part'; purchaseId: number; percent: number }
     | { kind: 'pay:promo' }
     | { kind: 'pay:skip' }
+    | { kind: 'pay:method'; method: 'card' | 'sbp' }
     | { kind: 'pay:cancel'; paymentId: number }
     | { kind: 'consent:accept' }
     | { kind: 'handoff:store'; purchaseOrderId: number }
@@ -60,6 +61,8 @@ export class CallbackParser {
 
         if (data === 'pay:promo') return { kind: 'pay:promo' };
         if (data === 'pay:skip') return { kind: 'pay:skip' };
+        if (data === 'pay:card') return { kind: 'pay:method', method: 'card' };
+        if (data === 'pay:sbp') return { kind: 'pay:method', method: 'sbp' };
 
         const payCancelMatch = /^pay:cancel:(\d+)$/.exec(data);
         if (payCancelMatch) {
@@ -102,6 +105,8 @@ export class CallbackParser {
                 return 'pay:promo';
             case 'pay:skip':
                 return 'pay:skip';
+            case 'pay:method':
+                return `pay:${action.method}`;
             case 'pay:cancel':
                 return `pay:cancel:${action.paymentId}`;
             case 'consent:accept':

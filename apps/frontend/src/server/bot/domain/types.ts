@@ -1,9 +1,9 @@
 import type { PrismaClient } from '@zakupki/database';
 import type { Context, SessionFlavor } from 'grammy';
 
-export type PaymentFlowStep = 'amount' | 'promo' | 'proof';
+export type PaymentFlowStep = 'amount' | 'promo' | 'contact' | 'method';
 
-/** Result of a successfully validated promo code, carried through to proof step. */
+/** Result of a successfully validated promo code, carried through to checkout. */
 export interface PromoCodeApplied {
     id: number;
     code: string;
@@ -19,6 +19,8 @@ export interface PaymentFlow {
     available: number;
     amount?: number;
     promoCode?: PromoCodeApplied;
+    /** Email/телефон для чека, введённый в боте. */
+    receiptContact?: string;
 }
 
 export interface SessionData {

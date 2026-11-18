@@ -43,7 +43,15 @@ export type JsonSettingDef = {
 export type SettingDef = NumberSettingDef | StringSettingDef | BooleanSettingDef | JsonSettingDef;
 
 /** Кортеж всех ключей настроек — единый источник истины. */
-const SETTING_KEYS = ['bead_pack_price_discount_percent', 'org_fee_default_percent'] as const;
+const SETTING_KEYS = [
+    'bead_pack_price_discount_percent',
+    'org_fee_default_percent',
+    'online_payment_card_fee_percent',
+    'online_payment_sbp_fee_percent',
+    'receipt_enabled',
+    'receipt_taxation',
+    'receipt_vat',
+] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 /** Декларативная схема. При добавлении ключа — добавить и в SETTING_KEYS. */
@@ -61,6 +69,35 @@ export const SETTINGS_SCHEMA = {
         min: 0,
         max: 100,
         description: 'Орг. сбор по умолчанию, %',
+    },
+    online_payment_card_fee_percent: {
+        type: 'number' as const,
+        default: 0,
+        min: 0,
+        max: 20,
+        description: 'Комиссия за онлайн-оплату картой (доплачивает клиент), %',
+    },
+    online_payment_sbp_fee_percent: {
+        type: 'number' as const,
+        default: 0,
+        min: 0,
+        max: 20,
+        description: 'Комиссия за онлайн-оплату по СБП (доплачивает клиент), %',
+    },
+    receipt_enabled: {
+        type: 'boolean' as const,
+        default: true as boolean,
+        description: 'Передавать чек (54-ФЗ) в онлайн-кассу при онлайн-оплате',
+    },
+    receipt_taxation: {
+        type: 'string' as const,
+        default: 'usn_income_outcome',
+        description: 'Система налогообложения в чеке: osn, usn_income, usn_income_outcome, esn, patent',
+    },
+    receipt_vat: {
+        type: 'string' as const,
+        default: 'none',
+        description: 'Ставка НДС в чеке: none, vat0, vat5, vat7, vat10, vat22…',
     },
 } satisfies Record<SettingKey, SettingDef>;
 

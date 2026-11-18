@@ -30,7 +30,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboardIcon, admin: true },
+    { href: '/', label: 'Сводка', icon: LayoutDashboardIcon, admin: true },
     { href: '/purchases', label: 'Закупки', icon: ShoppingCartIcon, admin: true },
     { href: '/products', label: 'Каталог товаров', icon: PackageIcon, admin: true },
     { href: '/users', label: 'Участники', icon: UsersIcon, admin: true },
@@ -166,4 +166,3 @@ export function MobileNavTrigger({ onClick, className }: { onClick: () => void; 
 }
 
 export { SidebarBrand };
-

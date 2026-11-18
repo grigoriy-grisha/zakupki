@@ -1,5 +1,5 @@
-import type { Prisma} from '@zakupki/database';
-import { dbClient, type PurchaseFulfillmentStatus,type PurchaseStatus } from '@zakupki/database';
+import type { Prisma } from '@zakupki/database';
+import { dbClient, type PurchaseFulfillmentStatus, type PurchaseStatus } from '@zakupki/database';
 import { getUnitShortName } from '@zakupki/types';
 
 import { formatPurchaseProductLine1 } from '@/lib/product-label/format-purchase';
@@ -30,6 +30,7 @@ export class PurchaseRepository {
                     include: {
                         product: { include: productInclude },
                         orderLines: {
+                            where: { removedAt: null },
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
                     },
@@ -52,6 +53,7 @@ export class PurchaseRepository {
                     include: {
                         product: { include: productInclude },
                         orderLines: {
+                            where: { removedAt: null },
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
                     },
@@ -75,6 +77,7 @@ export class PurchaseRepository {
                     include: {
                         product: { include: productInclude },
                         orderLines: {
+                            where: { removedAt: null },
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
                     },
@@ -93,6 +96,7 @@ export class PurchaseRepository {
                     include: {
                         product: { include: productInclude },
                         orderLines: {
+                            where: { removedAt: null },
                             select: { id: true, userId: true, quantity: true, amountDue: true, createdAt: true },
                         },
                     },
@@ -117,9 +121,14 @@ export class PurchaseRepository {
                     },
                 },
                 currencyRates: { include: { currency: { select: { id: true, name: true, symbol: true } } } },
-                payments: { include: { user: true } },
+                payments: { include: { user: true, refunds: { select: { amount: true, status: true } } } },
             },
         });
+    }
+
+    /** Этап и тег закупки — для приёма онлайн-оплаты и текста чека. */
+    findPaymentInfo(id: number) {
+        return dbClient.purchase.findUnique({ where: { id }, select: { fulfillmentStatus: true, tag: true } });
     }
 
     findByTag(tag: string) {
@@ -468,10 +477,7 @@ export class PurchaseRepository {
         });
     }
 
-    async updatePurchaseItem(
-        purchaseItemId: number,
-        data: Prisma.PurchaseItemUncheckedUpdateInput,
-    ) {
+    async updatePurchaseItem(purchaseItemId: number, data: Prisma.PurchaseItemUncheckedUpdateInput) {
         return dbClient.purchaseItem.update({
             where: { id: purchaseItemId },
             data,

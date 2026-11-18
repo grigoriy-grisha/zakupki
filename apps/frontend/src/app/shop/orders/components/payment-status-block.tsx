@@ -1,7 +1,9 @@
 'use client';
 
-import { CircleCheck, CreditCard } from 'lucide-react';
+import { CircleCheck, CreditCard, ExternalLink } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
+import { openExternalUrl } from '@/lib/client/open-external-url';
 import { formatRub } from '@/lib/format/money';
 import type { PaymentPromoInfo } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
@@ -20,6 +22,8 @@ interface PaymentStatusBlockProps {
     pinnedPromo?: PaymentPromoInfo;
     orderCount?: number;
     size?: 'default' | 'compact';
+    /** Начатая, но не оплаченная онлайн-оплата: её сумма зарезервирована, предлагаем продолжить. */
+    awaitingPayment?: { paymentUrl: string; total: number };
 }
 
 export function PaymentStatusBlock({
@@ -34,6 +38,7 @@ export function PaymentStatusBlock({
     pinnedPromo,
     orderCount,
     size = 'default',
+    awaitingPayment,
 }: PaymentStatusBlockProps) {
     const compact = size === 'compact';
     const wrapCls = cn(
@@ -52,6 +57,33 @@ export function PaymentStatusBlock({
                 <span className={cn(amountCls, compact ? 'text-13-semibold' : 'text-14-semibold')}>
                     {formatRub(total)}
                 </span>
+            </div>
+        );
+    }
+
+    if (awaitingPayment && paymentOpen && !isPast) {
+        return (
+            <div className="flex flex-col gap-2">
+                <Button
+                    variant="brand"
+                    className="w-full rounded-full"
+                    onClick={() => openExternalUrl(awaitingPayment.paymentUrl)}
+                >
+                    <ExternalLink className="size-4" />
+                    Продолжить оплату {formatRub(awaitingPayment.total)}
+                </Button>
+                {available > 0 && (
+                    <div className={wrapCls}>
+                        <PurchasePaymentDialog
+                            purchaseId={purchaseId}
+                            remaining={available}
+                            due={total}
+                            pinnedPromo={pinnedPromo}
+                            paymentOpen={paymentOpen}
+                            triggerVariant="link"
+                        />
+                    </div>
+                )}
             </div>
         );
     }

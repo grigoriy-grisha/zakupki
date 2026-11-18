@@ -93,14 +93,14 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
 
     return (
         <div className="overflow-hidden rounded-2xl border-2 border-primary/15 bg-bg-soft">
-            <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
                 <Button
                     variant="ghost"
                     size="icon-xs"
                     onClick={() => setOpen((p) => !p)}
                     aria-label={open ? 'Скрыть детали' : 'Показать заказы и оплаты'}
                     aria-expanded={open}
-                    className="size-7 rounded-full text-fg-secondary"
+                    className="size-7 shrink-0 rounded-full text-fg-secondary"
                 >
                     {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 </Button>
@@ -113,16 +113,13 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                     }}
                     title="Открыть профиль участника"
                     className={cn(
-                        'group flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 -mx-2 -my-1.5 text-left',
+                        // Имя не сжимается в ноль: при нехватке места суммы и статусы переносятся на вторую строку.
+                        'group flex min-w-[12rem] flex-1 basis-56 items-center gap-2 rounded-xl px-2 py-1.5 -mx-2 -my-1.5 text-left',
                         'transition-colors hover:bg-primary/10',
                     )}
                 >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-12-semibold text-primary">
-                        {avatarUrl ? (
-                            <UserAvatar src={avatarUrl} className="size-8" />
-                        ) : (
-                            name.charAt(0)
-                        )}
+                        {avatarUrl ? <UserAvatar src={avatarUrl} className="size-8" /> : name.charAt(0)}
                     </div>
                     <div className="min-w-0">
                         <p className="truncate text-14-semibold text-fg-primary transition-colors group-hover:text-primary">
@@ -157,43 +154,45 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                     </div>
                 </button>
 
-                <div className="hidden w-[64px] shrink-0 text-center sm:block">
-                    <p className="text-13-medium tabular-nums text-fg-primary">
-                        {purchaseOrderId != null ? `№ ${purchaseOrderId}` : '—'}
-                    </p>
-                </div>
-
-                <div className="hidden w-[60px] shrink-0 text-center sm:block">
-                    <Badge type="subtle" variant="neutral" size="sm">
-                        {orders.length} поз.
-                    </Badge>
-                </div>
-
-                <div className="hidden w-[100px] shrink-0 text-right sm:block">
-                    <span className="text-12-regular text-fg-tertiary">К оплате</span>
-                    <p className="text-14-semibold tabular-nums text-fg-primary">{formatRub(due)}</p>
-                </div>
-
-                <div className="hidden w-[100px] shrink-0 text-right sm:block">
-                    <div className="flex items-center justify-end gap-1">
-                        <span className="text-12-regular text-fg-tertiary">Покрыто</span>
-                        {due > 0 && (
-                            <span
-                                className={cn(
-                                    'text-12-medium tabular-nums',
-                                    isPaid ? 'text-success' : paid > 0 ? 'text-warning' : 'text-fg-tertiary',
-                                )}
-                            >
-                                {formatPaidPercent(paid, due)}
-                            </span>
-                        )}
+                <div className="hidden shrink-0 items-center gap-3 sm:flex">
+                    <div className="w-[64px] text-center">
+                        <p className="whitespace-nowrap text-13-medium tabular-nums text-fg-primary">
+                            {purchaseOrderId != null ? `№ ${purchaseOrderId}` : '—'}
+                        </p>
                     </div>
-                    <p className={cn('text-14-semibold tabular-nums', isPaid ? 'text-success' : 'text-fg-primary')}>
-                        {paid > 0 ? `${formatRub(paid)}` : '—'}
-                    </p>
+
+                    <div className="w-[60px] text-center">
+                        <Badge type="subtle" variant="neutral" size="sm">
+                            {orders.length} поз.
+                        </Badge>
+                    </div>
+
+                    <div className="w-[100px] text-right">
+                        <span className="text-12-regular text-fg-tertiary">К оплате</span>
+                        <p className="text-14-semibold tabular-nums text-fg-primary">{formatRub(due)}</p>
+                    </div>
+
+                    <div className="w-[100px] text-right">
+                        <div className="flex items-center justify-end gap-1">
+                            <span className="text-12-regular text-fg-tertiary">Покрыто</span>
+                            {due > 0 && (
+                                <span
+                                    className={cn(
+                                        'text-12-medium tabular-nums',
+                                        isPaid ? 'text-success' : paid > 0 ? 'text-warning' : 'text-fg-tertiary',
+                                    )}
+                                >
+                                    {formatPaidPercent(paid, due)}
+                                </span>
+                            )}
+                        </div>
+                        <p className={cn('text-14-semibold tabular-nums', isPaid ? 'text-success' : 'text-fg-primary')}>
+                            {paid > 0 ? `${formatRub(paid)}` : '—'}
+                        </p>
+                    </div>
                 </div>
 
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex shrink-0 items-center gap-2">
                     {purchaseOrderId != null && (
                         <HandoffStatusSelect
                             value={handoffStatus}
@@ -280,6 +279,7 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                         )}
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                             <ParticipantOrdersPanel
+                                purchaseId={purchaseId}
                                 userId={userId}
                                 purchaseOrderId={purchaseOrderId}
                                 orders={orders}
@@ -301,6 +301,7 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                                             userId: uid,
                                         }),
                                     deleteAllByUserItem: orderActions.deleteAllByUserItem,
+                                    restoreUserItem: orderActions.restoreUserItem,
                                     adminAdjustIsPending: actionPending,
                                 }}
                                 onSetDeleteLineTarget={setDeleteLineTarget}
@@ -349,8 +350,8 @@ export const AdminParticipantRow = memo(function AdminParticipantRow({
                 description={
                     deleteLineTarget ? (
                         <>
-                            «{deleteLineTarget.name}» будет удалён из заказа {name} целиком (сбор, добор и упаковки).
-                            Действие нельзя отменить.
+                            «{deleteLineTarget.name}» уберётся из заказа {name}. Он останется внизу в списке «Удалённые»
+                            — его можно будет вернуть.
                         </>
                     ) : null
                 }

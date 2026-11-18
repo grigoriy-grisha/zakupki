@@ -15,10 +15,6 @@ export class PaymentFlowStateMachine {
         return this.ctx.session.paymentFlow?.step;
     }
 
-    get promo(): PromoCodeApplied | undefined {
-        return this.ctx.session.paymentFlow?.promoCode;
-    }
-
     startAmountStep(purchaseId: number, purchaseTag: string, available: number): void {
         this.ctx.session.paymentFlow = {
             step: 'amount',
@@ -46,13 +42,30 @@ export class PaymentFlowStateMachine {
         this.ctx.session.paymentFlow = flow;
     }
 
-    advanceToProof(promo?: PromoCodeApplied): void {
+    /** Сумма и промокод выбраны — дальше контакт для чека (если нужен) или выбор способа оплаты. */
+    advanceToCheckout(step: 'contact' | 'method', promo?: PromoCodeApplied): void {
         const flow = this.ctx.session.paymentFlow;
         if (!flow) return;
         if (promo) {
             flow.promoCode = promo;
         }
-        flow.step = 'proof';
+        flow.step = step;
+        this.ctx.session.paymentFlow = flow;
+    }
+
+    setReceiptContact(contact: string): void {
+        const flow = this.ctx.session.paymentFlow;
+        if (!flow) return;
+        flow.receiptContact = contact;
+        flow.step = 'method';
+        this.ctx.session.paymentFlow = flow;
+    }
+
+    /** Сбросить выбранный промокод (клиент решил платить без него или вводит другой). */
+    clearPromo(): void {
+        const flow = this.ctx.session.paymentFlow;
+        if (!flow) return;
+        delete flow.promoCode;
         this.ctx.session.paymentFlow = flow;
     }
 

@@ -126,6 +126,12 @@ export interface PaymentRef {
     userComment?: string | null;
     adminNote?: string | null;
     proofObjectKey?: string | null;
+    method?: string | null;
+    feeAmount?: unknown;
+    providerPaymentId?: string | null;
+    /** Строка возврата: ссылается на исходную оплату, сумма отрицательная. */
+    refundOfId?: number | null;
+    refunds?: { amount: unknown; status: string }[];
     user?: UserBrief;
     children?: { amount: unknown; promoCode: { code: string } | null }[];
 }

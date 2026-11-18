@@ -103,9 +103,7 @@ export function useParticipantsData(purchaseId: number) {
                             po.user.vkCredential?.avatarUrl ??
                             null,
                         consentAt:
-                            po.user.personalDataConsentAt != null
-                                ? new Date(po.user.personalDataConsentAt)
-                                : null,
+                            po.user.personalDataConsentAt != null ? new Date(po.user.personalDataConsentAt) : null,
                     });
                 }
             }
@@ -145,16 +143,12 @@ export function useParticipantsData(purchaseId: number) {
             }
         });
 
-        // userIds — участники с активными строками заказа. Пустой PurchaseOrder
-        // показываем, только если по нему нет платежей: это участник, которого
-        // админ только что добавил через «Добавить участника» и ещё не набрал ему
-        // товары. Пользователь без заказов, но с платежами (заказ отменён/удалён
-        // после отправки чека) в список не попадает.
-        const userIdsWithPayments = new Set<number>(typedPayments.map((p) => p.userId));
+        // userIds — все участники закупки: с заказами и без. Участник, у которого
+        // админ удалил все товары, остаётся в списке — видно его оплаты и
+        // удалённые позиции, которые можно вернуть. Убрать его совсем можно
+        // только кнопкой «Удалить участника».
         const userIdSet = new Set<number>(userOrders.keys());
-        for (const po of typedPurchaseOrders) {
-            if (!userIdsWithPayments.has(po.userId)) userIdSet.add(po.userId);
-        }
+        for (const po of typedPurchaseOrders) userIdSet.add(po.userId);
         const userIds = Array.from(userIdSet);
 
         // Пусто только если нет ни одного участника.

@@ -123,15 +123,14 @@ export const ordersRouter = router({
             z.object({
                 purchaseItemId: z.number(),
                 userId: z.number(),
-                delta: z.number().int().refine((d) => d !== 0),
+                delta: z
+                    .number()
+                    .int()
+                    .refine((d) => d !== 0),
             }),
         )
         .mutation(async ({ ctx, input }) => {
-            return ctx.services.order.adminAdjustPackageCount(
-                input.purchaseItemId,
-                input.userId,
-                input.delta,
-            );
+            return ctx.services.order.adminAdjustPackageCount(input.purchaseItemId, input.userId, input.delta);
         }),
 
     // Удалить все заказы пользователя в закупке (админ)
@@ -150,6 +149,18 @@ export const ordersRouter = router({
         .input(z.object({ purchaseItemId: z.number(), userId: z.number() }))
         .mutation(async ({ ctx, input }) => {
             return ctx.services.order.deleteAllByUserAndItem(input.purchaseItemId, input.userId);
+        }),
+
+    /** Admin: удалённые позиции участников закупки (можно вернуть). */
+    getRemovedByPurchase: adminProcedure.input(z.object({ purchaseId: z.number() })).query(async ({ ctx, input }) => {
+        return ctx.services.order.getRemovedByPurchase(input.purchaseId);
+    }),
+
+    /** Admin: вернуть удалённую позицию участника с прежним количеством. */
+    restoreUserItem: adminProcedure
+        .input(z.object({ purchaseItemId: z.number(), userId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            return ctx.services.order.restoreUserItem(input.purchaseItemId, input.userId);
         }),
 
     /**
