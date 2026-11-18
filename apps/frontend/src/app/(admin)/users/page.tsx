@@ -1,7 +1,7 @@
 'use client';
 
 import { BarChart3, Users } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -15,6 +15,15 @@ import { type UserListItem, UserOrdersRow, UserProfileSheet } from './components
 import { UsersStatsTab } from './components/stats/users-stats-tab';
 
 export default function UsersPage() {
+    // useDashboardTab читает useSearchParams — без Suspense падает пререндер в `next build`.
+    return (
+        <Suspense fallback={null}>
+            <UsersPageContent />
+        </Suspense>
+    );
+}
+
+function UsersPageContent() {
     const [tab, setTab] = useDashboardTab();
 
     return (
