@@ -1,4 +1,4 @@
-import { PURCHASE_FULFILLMENT_LABELS } from '@zakupki/types';
+import { DAY_MS, PURCHASE_FULFILLMENT_LABELS } from '@zakupki/types';
 
 import { AppLink } from '@/components/app-link';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,13 @@ function PaidBar({ row }: { row: DashboardPurchaseRow }) {
     );
 }
 
-export function PurchasesTable({ rows }: { rows: readonly DashboardPurchaseRow[] }) {
+export function PurchasesTable({
+    rows,
+    recentOrdersFrom,
+}: {
+    rows: readonly DashboardPurchaseRow[];
+    recentOrdersFrom?: Date | string;
+}) {
     if (rows.length === 0) {
         return <p className="py-6 text-center text-14-regular text-fg-tertiary">Открытых закупок нет</p>;
     }
@@ -87,6 +93,14 @@ export function PurchasesTable({ rows }: { rows: readonly DashboardPurchaseRow[]
                                     values={row.recentOrders}
                                     color="var(--color-secondary)"
                                     className="h-7 w-24"
+                                    // Один вид на всю колонку — иначе строки с редкими заказами
+                                    // переключаются на столбики и выглядят как другой график.
+                                    variant="bars"
+                                    tooltipSide="left"
+                                    start={recentOrdersFrom}
+                                    bucketMs={DAY_MS}
+                                    formatValue={formatRubShort}
+                                    valueLabel="Заказано"
                                     aria-label={`Заказы за 14 дней: ${row.tag}`}
                                 />
                             </TableCell>

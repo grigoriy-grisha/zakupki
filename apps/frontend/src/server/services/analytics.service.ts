@@ -181,6 +181,8 @@ export class AnalyticsService {
         const debtRows = rows.filter((row) => row.debt > 0);
         return {
             purchases: rows,
+            /** Начало окна recentOrders (корзины по дню) — для подписи дат в подсказке графика. */
+            recentOrdersFrom: recentFrom,
             stages,
             debt: {
                 total: sum(debtRows.map((row) => row.debt)),

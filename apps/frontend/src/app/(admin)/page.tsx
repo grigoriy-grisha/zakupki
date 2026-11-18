@@ -185,7 +185,14 @@ function SummaryTab() {
                     )}
                 </CardHeader>
                 <CardContent>
-                    {snapshot.data ? <PurchasesTable rows={snapshot.data.purchases} /> : <PurchasesTableSkeleton />}
+                    {snapshot.data ? (
+                        <PurchasesTable
+                            rows={snapshot.data.purchases}
+                            recentOrdersFrom={snapshot.data.recentOrdersFrom}
+                        />
+                    ) : (
+                        <PurchasesTableSkeleton />
+                    )}
                 </CardContent>
             </Card>
         </div>

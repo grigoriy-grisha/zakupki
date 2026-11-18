@@ -24,6 +24,11 @@ type SparklineProps = {
     formatValue?: (value: number) => string;
     /** Подпись значения в подсказке. */
     valueLabel?: string;
+    /**
+     * `left` — подсказка открывается левее курсора и не выходит за правый край графика.
+     * Нужно, когда график стоит у правого края контейнера с прокруткой (колонка таблицы).
+     */
+    tooltipSide?: 'auto' | 'left';
     'aria-label'?: string;
 };
 
@@ -64,6 +69,7 @@ export function Sparkline({
     bucketMs,
     formatValue = defaultFormat,
     valueLabel = 'Значение',
+    tooltipSide = 'auto',
     'aria-label': label,
 }: SparklineProps) {
     const gradientId = useId().replace(/:/g, '');
@@ -80,7 +86,8 @@ export function Sparkline({
             isAnimationActive={false}
             cursor={useBars ? { fill: 'var(--color-border-low)' } : { stroke: 'var(--color-border-soft)' }}
             wrapperStyle={{ zIndex: 20, outline: 'none' }}
-            allowEscapeViewBox={{ x: false, y: true }}
+            allowEscapeViewBox={{ x: tooltipSide === 'left', y: true }}
+            reverseDirection={tooltipSide === 'left' ? { x: true } : undefined}
             offset={12}
             content={
                 <SparkTooltip
