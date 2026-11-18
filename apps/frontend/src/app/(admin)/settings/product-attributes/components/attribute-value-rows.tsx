@@ -47,21 +47,24 @@ export function ValueRow({
 }) {
     return (
         <div
-            className={`group/v grid grid-cols-[1.5rem_14rem_minmax(0,1fr)_auto] items-start gap-x-2 rounded-md py-1 pr-1 hover:bg-bg-soft/60 ${nested ? 'ml-3' : ''}`}
+            className={`group/v grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start sm:grid-cols-[1.5rem_14rem_minmax(0,1fr)_auto] gap-x-2 rounded-md py-1 pr-1 hover:bg-bg-soft/60 ${nested ? 'ml-3' : ''}`}
         >
             <span className="flex w-6 justify-center pt-1.5 text-fg-secondary">•</span>
             <span className="truncate px-1 pt-1.5 text-14-semibold" title={item.name}>
                 {item.name}
             </span>
-            <CharacteristicOrderedPicker
-                options={characteristics}
-                selectedIds={getOrderedCharacteristicIds(item.characteristics)}
-                onChange={(ids) => updateValue.mutate({ id: item.id, characteristicIds: ids })}
-                placeholder="Характеристики"
-                triggerClassName="h-8 min-h-8 w-full text-12-regular"
-                emptyMessage="Создайте характеристики в настройках"
-            />
-            <div className="flex items-center gap-0.5 self-start pt-0.5 opacity-0 transition-opacity group-hover/v:opacity-100">
+            {/* На телефоне характеристики уходят второй строкой под название */}
+            <div className="col-span-2 col-start-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-3 sm:row-start-1">
+                <CharacteristicOrderedPicker
+                    options={characteristics}
+                    selectedIds={getOrderedCharacteristicIds(item.characteristics)}
+                    onChange={(ids) => updateValue.mutate({ id: item.id, characteristicIds: ids })}
+                    placeholder="Характеристики"
+                    triggerClassName="h-8 min-h-8 w-full text-12-regular"
+                    emptyMessage="Создайте характеристики в настройках"
+                />
+            </div>
+            <div className="col-start-3 row-start-1 flex items-center gap-0.5 self-start pt-0.5 opacity-0 transition-opacity group-hover/v:opacity-100 sm:col-start-4 [@media(hover:none)]:opacity-100">
                 <AttributeFormDialog
                     typeId={type.id}
                     typeName={type.name}
@@ -111,7 +114,7 @@ export function BrandRow({
                     <Tag className="size-3.5" />
                 </span>
                 <span className="min-w-[4rem] shrink-0 px-1 text-14-semibold">{brand.name}</span>
-                <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/b:opacity-100">
+                <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/b:opacity-100 [@media(hover:none)]:opacity-100">
                     <AttributeFormDialog
                         typeId={type.id}
                         typeName={type.name}

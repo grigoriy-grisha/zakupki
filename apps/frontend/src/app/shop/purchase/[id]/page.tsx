@@ -7,8 +7,9 @@ import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 
 import { FilterTree } from '@/components/shared/filter-tree';
 import { useSidebarSlotContent } from '@/components/shop/sidebar-slot';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { currentUrl } from '@/lib/app-history';
 import { usePricingSettings } from '@/lib/client/hooks/use-pricing-settings';
@@ -17,13 +18,7 @@ import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 
 import { aggregateByItem } from '../../lib/order-aggregation';
-import {
-    CatalogFilterBlock,
-    CatalogToolbar,
-    ProductGrid,
-    PurchaseGridSkeleton,
-    PurchaseSelect,
-} from './components';
+import { CatalogFilterBlock, CatalogToolbar, ProductGrid, PurchaseGridSkeleton, PurchaseSelect } from './components';
 import type { ProductGridItem } from './components/product-grid';
 import { getPurchaseStageLabel } from './components/purchase-stepper';
 import { usePurchasePaymentDetail } from './hooks';
@@ -53,6 +48,7 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
 
     const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
     const [onlyMine, setOnlyMine] = useState(() => searchParams.get('mine') === '1');
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
     const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1));
 
     const fulfillmentStatus = (purchase?.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
@@ -175,22 +171,20 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
         clearSelection();
     };
 
-    useSidebarSlotContent(
-        () => (
-            <div className="mt-8 border-t border-secondary/40 pt-6">
-                <CatalogFilterBlock
-                    tree={tree}
-                    selectedId={selectedId}
-                    onSelectNode={handleSelectNode}
-                    expandedIds={expandedIds}
-                    onToggle={handleToggle}
-                    onClearTree={clearSelection}
-                    totalCount={totalCount}
-                    filteredCount={visibleItems.length}
-                />
-            </div>
-        ),
-    );
+    useSidebarSlotContent(() => (
+        <div className="mt-8 border-t border-secondary/40 pt-6">
+            <CatalogFilterBlock
+                tree={tree}
+                selectedId={selectedId}
+                onSelectNode={handleSelectNode}
+                expandedIds={expandedIds}
+                onToggle={handleToggle}
+                onClearTree={clearSelection}
+                totalCount={totalCount}
+                filteredCount={visibleItems.length}
+            />
+        </div>
+    ));
 
     if (isLoading) {
         return (
@@ -219,8 +213,8 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                     icon={Package}
                     title="Закупка не найдена"
                     description="Возможно, она была удалена или ссылка неверная"
-                        actionLabel="Назад к закупкам"
-                        onAction={() => pushRoute('/shop')}
+                    actionLabel="Назад к закупкам"
+                    onAction={() => pushRoute('/shop')}
                 />
             </div>
         );
@@ -274,8 +268,8 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                 onResetAll={resetAllFilters}
                 hasTreeFilter={selectedId != null}
                 mobileFilterSlot={
-                    <Popover>
-                        <PopoverTrigger asChild>
+                    <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+                        <SheetTrigger asChild>
                             <button
                                 type="button"
                                 aria-label="Фильтр товаров"
@@ -295,27 +289,36 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                                     </span>
                                 )}
                             </button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            align="start"
-                            sideOffset={8}
-                            className={cn(
-                                'w-72 max-w-[calc(100vw-2rem)] rounded-2xl border-0 p-3',
-                                'bg-white/95 shadow-lg ring-1 ring-black/5 backdrop-blur-md',
-                            )}
-                        >
-                            <FilterTree
-                                compact
-                                nodes={tree}
-                                selectedId={selectedId}
-                                onSelect={handleSelectNode}
-                                expandedIds={expandedIds}
-                                onToggle={handleToggle}
-                                totalCount={totalCount}
-                                onClear={clearSelection}
-                            />
-                        </PopoverContent>
-                    </Popover>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="max-h-[85dvh] gap-0 rounded-t-2xl rounded-b-none">
+                            <SheetHeader className="pb-2">
+                                <SheetTitle>Фильтр</SheetTitle>
+                            </SheetHeader>
+                            <div className="min-h-0 flex-1 overflow-y-auto px-4">
+                                <FilterTree
+                                    compact
+                                    nodes={tree}
+                                    selectedId={selectedId}
+                                    onSelect={(node) => {
+                                        handleSelectNode(node);
+                                        setFilterSheetOpen(false);
+                                    }}
+                                    expandedIds={expandedIds}
+                                    onToggle={handleToggle}
+                                    totalCount={totalCount}
+                                    onClear={() => {
+                                        clearSelection();
+                                        setFilterSheetOpen(false);
+                                    }}
+                                />
+                            </div>
+                            <SheetFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+                                <Button variant="brand" className="w-full" onClick={() => setFilterSheetOpen(false)}>
+                                    Показать {visibleItems.length}
+                                </Button>
+                            </SheetFooter>
+                        </SheetContent>
+                    </Sheet>
                 }
             />
 
@@ -345,11 +348,7 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                     />
 
                     {totalPages > 1 && (
-                        <CatalogPagination
-                            page={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={handlePageChange}
-                        />
+                        <CatalogPagination page={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
                     )}
                 </div>
             )}

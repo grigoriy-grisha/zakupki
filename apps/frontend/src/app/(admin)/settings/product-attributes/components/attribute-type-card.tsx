@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, MoreVertical, Plus, Tag,Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, MoreVertical, Plus, Tag, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -25,7 +25,7 @@ import {
     useUpdateProductAttribute,
 } from '../hooks';
 import { AttributeFormDialog } from './attribute-form-dialog';
-import { type AttributeValueRowData,BrandRow, ValueRow } from './attribute-value-rows';
+import { type AttributeValueRowData, BrandRow, ValueRow } from './attribute-value-rows';
 import { CreateTypeDialog } from './create-type-dialog';
 
 export type AttributeType = {
@@ -105,10 +105,10 @@ export function AttributeTypeCard({
                     onChange={(e) => setName(e.target.value)}
                     onBlur={commitName}
                     onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                    className="h-7 flex-1 border-transparent bg-transparent px-1 text-14-medium shadow-none hover:border-border focus-visible:border-border"
+                    className="h-7 min-w-0 flex-1 border-transparent bg-transparent px-1 text-14-medium shadow-none hover:border-border focus-visible:border-border"
                 />
 
-                <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
                     <CreateTypeDialog
                         parentId={type.id}
                         parentName={type.name}
