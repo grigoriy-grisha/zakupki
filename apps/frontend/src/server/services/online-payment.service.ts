@@ -96,18 +96,11 @@ export function formatTbankDate(date: Date): string {
     return msk.toISOString().replace(/\.\d{3}Z$/, '+03:00');
 }
 
-/** Нормализует контакт для чека: email как есть, телефон в формат +7XXXXXXXXXX. */
-export function normalizeReceiptContact(raw: string | null | undefined): { email?: string; phone?: string } | null {
+/** Контакт для чека — только email (чек уходит на почту). Невалидный адрес → null. */
+export function normalizeReceiptContact(raw: string | null | undefined): { email: string } | null {
     const value = raw?.trim();
-    if (!value) return null;
-    if (value.includes('@')) {
-        return EMAIL_RE.test(value) ? { email: value.toLowerCase() } : null;
-    }
-    let digits = value.replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('8')) digits = `7${digits.slice(1)}`;
-    if (digits.length === 10) digits = `7${digits}`;
-    if (digits.length < 11 || digits.length > 15) return null;
-    return { phone: `+${digits}` };
+    if (!value || !EMAIL_RE.test(value)) return null;
+    return { email: value.toLowerCase() };
 }
 
 /**
@@ -143,14 +136,10 @@ export class OnlinePaymentService {
         };
     }
 
-    /** Сохранённый контакт для чека. Битую почту пропускаем и берём телефон — иначе клиент застрянет. */
+    /** Сохранённая почта для чека (невалидную не подставляем — клиент введёт заново). */
     async getSavedReceiptContact(userId: number): Promise<string | null> {
         const user = await this.users.findReceiptContact(userId);
-        for (const raw of [user?.email, user?.phone]) {
-            const contact = normalizeReceiptContact(raw);
-            if (contact) return contact.email ?? contact.phone ?? null;
-        }
-        return null;
+        return normalizeReceiptContact(user?.email)?.email ?? null;
     }
 
     async create(params: CreateOnlinePaymentParams): Promise<CreatedOnlinePayment> {
@@ -169,12 +158,12 @@ export class OnlinePaymentService {
             throw new ValidationError('Оплата по этой закупке сейчас не принимается');
         }
 
-        let receiptContact: { email?: string; phone?: string } | null = null;
+        let receiptContact: { email: string } | null = null;
         if (config.receiptEnabled) {
             const raw = params.receiptContact ?? (await this.getSavedReceiptContact(params.userId));
             receiptContact = normalizeReceiptContact(raw);
             if (!receiptContact) {
-                throw new ValidationError('Укажите email или телефон для электронного чека');
+                throw new ValidationError('Укажите email для электронного чека');
             }
         }
 
@@ -662,14 +651,13 @@ export class OnlinePaymentService {
         return {
             FfdVersion: '1.2',
             Taxation: taxation,
-            ...(params.contact.email ? { Email: params.contact.email } : { Phone: params.contact.phone }),
+            Email: params.contact.email,
             Items: items,
         };
     }
 
-    private async saveReceiptContact(userId: number, contact: { email?: string; phone?: string }): Promise<void> {
-        const data = contact.email ? { email: contact.email } : { phone: contact.phone };
-        await this.users.updateReceiptContact(userId, data).catch((err) => {
+    private async saveReceiptContact(userId: number, contact: { email: string }): Promise<void> {
+        await this.users.updateReceiptContact(userId, { email: contact.email }).catch((err) => {
             log.warn({ userId, err }, 'failed to save receipt contact');
         });
     }

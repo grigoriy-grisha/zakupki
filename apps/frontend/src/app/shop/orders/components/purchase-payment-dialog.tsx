@@ -310,12 +310,12 @@ export function PurchasePaymentDialog({
 
                             {form.receiptRequired && (
                                 <div className="space-y-2">
-                                    <Label htmlFor={`pay-contact-${purchaseId}`}>Почта или телефон для чека</Label>
+                                    <Label htmlFor={`pay-contact-${purchaseId}`}>Почта для чека</Label>
                                     <Input
                                         id={`pay-contact-${purchaseId}`}
                                         inputMode="email"
                                         autoComplete="email"
-                                        placeholder="mail@example.ru или +7 900 000-00-00"
+                                        placeholder="mail@example.ru"
                                         value={form.contactValue}
                                         onChange={(e) => form.setReceiptContact(e.target.value)}
                                     />

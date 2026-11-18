@@ -54,7 +54,7 @@ export async function continueToCheckout(
                 ...promoLines,
                 `К оплате: ${priceChangeLine(amount, promo)}`,
                 '',
-                '🧾 Напишите email или номер телефона — туда придёт электронный чек.',
+                '🧾 Напишите email — туда придёт электронный чек.',
                 '',
                 '/cancel — отменить',
             ].join('\n'),

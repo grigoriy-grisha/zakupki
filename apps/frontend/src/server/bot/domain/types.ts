@@ -19,7 +19,7 @@ export interface PaymentFlow {
     available: number;
     amount?: number;
     promoCode?: PromoCodeApplied;
-    /** Email/телефон для чека, введённый в боте. */
+    /** Email для чека, введённый в боте. */
     receiptContact?: string;
 }
 

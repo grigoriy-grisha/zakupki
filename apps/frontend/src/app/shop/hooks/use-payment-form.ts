@@ -24,11 +24,7 @@ type CreatedPayment = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isValidReceiptContact(value: string): boolean {
-    const v = value.trim();
-    if (!v) return false;
-    if (v.includes('@')) return EMAIL_RE.test(v);
-    const digits = v.replace(/\D/g, '');
-    return digits.length >= 10 && digits.length <= 15;
+    return EMAIL_RE.test(value.trim());
 }
 
 export function usePaymentForm(purchaseId: number, available: number, due: number, pinnedPromo?: PaymentPromoInfo) {
@@ -91,7 +87,7 @@ export function usePaymentForm(purchaseId: number, available: number, due: numbe
     const receiptRequired = config?.receiptEnabled ?? false;
     const contactError =
         receiptRequired && contactValue.trim() && !isValidReceiptContact(contactValue)
-            ? 'Введите email или номер телефона'
+            ? 'Введите корректный email'
             : '';
 
     const baseReady =

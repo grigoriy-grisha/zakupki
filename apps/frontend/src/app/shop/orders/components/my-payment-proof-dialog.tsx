@@ -132,7 +132,7 @@ export function MyPaymentProofDialog({ payment, open, onOpenChange }: MyPaymentP
                             Оплата {methodLabel}
                             {Number(payment.feeAmount ?? 0) > 0 &&
                                 `, комиссия банка ${formatRub(Number(payment.feeAmount))}`}
-                            . Чек придёт на почту или телефон, которые вы указали.
+                            . Чек придёт на почту, которую вы указали.
                         </p>
                     ) : (
                         <p className="text-13-regular text-fg-secondary">К этой оплате чек не прикреплён.</p>

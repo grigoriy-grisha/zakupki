@@ -145,7 +145,7 @@ export function OnlinePaymentTab() {
                     <h3 className="text-16-semibold">Чеки (54-ФЗ)</h3>
                     <p className="text-14-regular text-fg-secondary">
                         Чек в формате ФФД 1.2 передаётся в онлайн-кассу, подключённую к терминалу, и отправляется
-                        клиенту на email или телефон.
+                        клиенту на email.
                     </p>
                 </div>
 

@@ -31,10 +31,10 @@ const userWithCredentials = {
 
 export class UserRepository {
     findReceiptContact(id: number) {
-        return dbClient.user.findUnique({ where: { id }, select: { email: true, phone: true } });
+        return dbClient.user.findUnique({ where: { id }, select: { email: true } });
     }
 
-    updateReceiptContact(id: number, data: { email?: string; phone?: string }) {
+    updateReceiptContact(id: number, data: { email: string }) {
         return dbClient.user.update({ where: { id }, data, select: { id: true } });
     }
 

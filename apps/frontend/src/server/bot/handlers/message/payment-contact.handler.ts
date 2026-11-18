@@ -8,7 +8,7 @@ import type { CustomContext } from '../../domain/types';
 import { sendMethodChoice } from '../../lib/payment-checkout';
 import { isPrivateChat } from '../shared/is-private-chat';
 
-/** Шаг «контакт для чека»: email или телефон, куда онлайн-касса пришлёт чек. */
+/** Шаг «контакт для чека»: email, куда онлайн-касса пришлёт чек. */
 export class PaymentContactHandler implements MessageHandler {
     readonly filter = 'text_with_payment_flow' as const;
     readonly requireAuth = true;
@@ -30,12 +30,12 @@ export class PaymentContactHandler implements MessageHandler {
 
         const contact = normalizeReceiptContact(text);
         if (!contact) {
-            await ctx.reply('Не похоже на email или телефон. Пример: mail@example.ru или +79001234567');
+            await ctx.reply('Не похоже на email. Пример: mail@example.ru');
             return;
         }
 
         const current = flow.current!;
-        flow.setReceiptContact(contact.email ?? contact.phone!);
+        flow.setReceiptContact(contact.email);
         await sendMethodChoice(ctx, this.container, current.amount!, current.promoCode);
     }
 }
