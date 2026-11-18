@@ -48,7 +48,7 @@ export function CatalogToolbar({
         : `${totalCount} ${pluralRu(totalCount, ['товар', 'товара', 'товаров'])}`;
 
     return (
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex w-full items-center gap-3 sm:w-auto">
                 <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
                     <Search
@@ -83,12 +83,11 @@ export function CatalogToolbar({
                             <X className="size-3.5" />
                         </button>
                     )}
+                </div>
             </div>
 
-                            </div>
-
             <div className="flex items-center justify-end gap-2 sm:flex-1">
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                     {mobileFilterSlot && <div className="md:hidden">{mobileFilterSlot}</div>}
 
                     {showOnlyMine && (
@@ -105,12 +104,12 @@ export function CatalogToolbar({
                             )}
                         >
                             <ShoppingBag className="size-4" />
-                            <span>В заказе</span>
+                            <span className="whitespace-nowrap">В заказе</span>
                         </button>
                     )}
                 </div>
 
-                <span className="shrink-0 text-14-medium text-secondary tabular-nums">{counter}</span>
+                <span className="shrink-0 text-14-medium whitespace-nowrap text-secondary tabular-nums">{counter}</span>
             </div>
 
             {hasActive && (
@@ -151,7 +150,7 @@ function ActiveFilterChips({
     const hasQuery = query.trim() !== '';
 
     return (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 sm:basis-full">
             {hasQuery && (
                 <span
                     className={cn(
@@ -177,7 +176,10 @@ function ActiveFilterChips({
             {hasTreeFilter && (
                 <>
                     {ancestorPath.map((segment, i) => (
-                        <span key={`${segment.typeId}:${segment.name}`} className="flex items-center gap-1.5 text-fg-tertiary">
+                        <span
+                            key={`${segment.typeId}:${segment.name}`}
+                            className="flex items-center gap-1.5 text-fg-tertiary"
+                        >
                             {i > 0 && <ChevronRight className="h-3 w-3" />}
                             <span className="text-12-medium">
                                 {segment.typeName}: {segment.name}

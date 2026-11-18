@@ -274,7 +274,7 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                                 type="button"
                                 aria-label="Фильтр товаров"
                                 className={cn(
-                                    'flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4',
+                                    'flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 whitespace-nowrap',
                                     'text-13-medium transition-colors',
                                     selectedId != null
                                         ? 'border-secondary bg-secondary text-primary-foreground'
@@ -283,11 +283,6 @@ function ShopPurchasePageInner({ params }: { params: Promise<{ id: string }> }) 
                             >
                                 <SlidersHorizontal className="size-4" />
                                 Фильтр
-                                {selectedId != null && (
-                                    <span className="text-12-medium tabular-nums">
-                                        {visibleItems.length} из {totalCount}
-                                    </span>
-                                )}
                             </button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="max-h-[85dvh] gap-0 rounded-t-2xl rounded-b-none">
