@@ -366,7 +366,7 @@ export function PurchasePaymentDialog({
                                     />
                                     <PayMethodButton
                                         icon={<QrCode className="h-4 w-4" />}
-                                        label="Через приложение банка (СБП)"
+                                        label="По СБП"
                                         total={form.sbpTotal}
                                         fee={form.sbpFee}
                                         feePercent={form.config?.sbpFeePercent ?? 0}
@@ -421,22 +421,22 @@ function PayMethodButton({
             variant="brand"
             disabled={disabled}
             onClick={onClick}
-            className="h-auto w-full justify-between gap-3 py-2.5 text-left whitespace-normal"
+            className="h-auto min-h-12 w-full justify-between gap-3 py-2 text-left whitespace-normal"
         >
-            <span className="flex min-w-0 items-center gap-2">
+            <span className="flex min-w-0 items-center gap-2.5">
                 {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : icon}
-                <span className="min-w-0">{label}</span>
-            </span>
-            <span className="flex shrink-0 flex-col items-end text-right leading-tight">
-                {showTotal && <span className="tabular-nums">{formatRub(total)}</span>}
-                <span className="text-11-regular opacity-80">
-                    {feePercent > 0
-                        ? showTotal
-                            ? `с комиссией банка ${formatRub(fee)}`
-                            : `+ комиссия банка ${feePercent}%`
-                        : 'без комиссии'}
+                <span className="flex min-w-0 flex-col leading-tight">
+                    <span>{label}</span>
+                    <span className="text-11-regular opacity-80">
+                        {feePercent > 0
+                            ? showTotal
+                                ? `с комиссией банка ${formatRub(fee)}`
+                                : `+ комиссия банка ${feePercent}%`
+                            : 'без комиссии'}
+                    </span>
                 </span>
             </span>
+            {showTotal && <span className="shrink-0 tabular-nums">{formatRub(total)}</span>}
         </Button>
     );
 }
