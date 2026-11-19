@@ -280,8 +280,12 @@ export class OnlinePaymentService {
                     const qr = await client.getSbpPayload(providerPaymentId);
                     if (qr.Data) paymentUrl = qr.Data;
                 } catch (err) {
-                    // СБП может быть не подключена на терминале — тогда клиент выберет способ на форме банка.
-                    log.warn({ paymentId: created.id, err }, 'GetQr failed, falling back to payment form');
+                    // СБП не подключена на терминале (банк отвечает 3001). Раньше открывали обычную
+                    // форму банка — клиент нажимал «СБП» и попадал на оплату картой с комиссией СБП.
+                    // Теперь отменяем платёж в банке и честно говорим, что СБП недоступна.
+                    log.warn({ paymentId: created.id, err }, 'GetQr failed, SBP is unavailable');
+                    await client.cancel(providerPaymentId).catch(() => undefined);
+                    throw new ValidationError('Оплата по СБП сейчас недоступна. Оплатите, пожалуйста, картой');
                 }
             }
 
@@ -300,6 +304,7 @@ export class OnlinePaymentService {
             await this.repo
                 .transition(created.id, 'REJECTED', { adminNote: 'Не удалось создать платёж в банке' }, ['AWAITING'])
                 .catch(() => undefined);
+            if (err instanceof ValidationError) throw err;
             if (err instanceof TbankApiError) {
                 log.error({ paymentId: created.id, code: err.errorCode, details: err.details }, 'tbank init failed');
                 throw new ValidationError(`Платёжный сервис отклонил запрос: ${err.message}`);

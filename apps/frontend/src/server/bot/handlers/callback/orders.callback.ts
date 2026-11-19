@@ -310,6 +310,13 @@ export function formatPurchaseDetail(
         } else if (payment.due > 0 && payment.pending <= 0 && payment.awaiting <= 0 && payment.paid > 0) {
             footerParts.push('Оплачено');
         }
+        const overpaid = Math.max(0, roundMoney(payment.paid - payment.due));
+        if (overpaid > 0) {
+            footerParts.push(
+                `Переплата: ${overpaid.toLocaleString('ru-RU')} ₽ — часть позиций убрали после оплаты. ` +
+                    'Организатор вернёт разницу или зачтёт её.',
+            );
+        }
     }
     const footerText = footerParts.filter((p): p is string => p != null).join('\n');
 

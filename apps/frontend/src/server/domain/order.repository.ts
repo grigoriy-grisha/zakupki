@@ -207,6 +207,28 @@ export class OrderRepository {
     /**
      * Hard delete для админа.
      */
+    /** У участника есть оплата по закупке (подтверждённая или на проверке) — позиции нельзя стирать бесследно. */
+    async hasPaymentsInPurchase(userId: number, purchaseId: number): Promise<boolean> {
+        const count = await dbClient.payment.count({
+            where: {
+                userId,
+                purchaseId,
+                parentId: null,
+                refundOfId: null,
+                status: { in: ['CONFIRMED', 'PENDING'] },
+            },
+        });
+        return count > 0;
+    }
+
+    async findActiveLineIdsByUserAndPurchase(userId: number, purchaseId: number): Promise<number[]> {
+        const rows = await dbClient.orderLine.findMany({
+            where: { userId, status: 'ACTIVE', purchaseItem: { purchaseId } },
+            select: { id: true },
+        });
+        return rows.map((r) => r.id);
+    }
+
     countActiveLinesByUserAndItem(purchaseItemId: number, userId: number) {
         return dbClient.orderLine.count({ where: { purchaseItemId, userId, status: 'ACTIVE' } });
     }

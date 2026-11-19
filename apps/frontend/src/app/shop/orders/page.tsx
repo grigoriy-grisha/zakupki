@@ -177,11 +177,14 @@ function PurchaseOrderCard({
 
     const purchasePayments = myPayments?.filter((p) => p.purchaseId === group.id) ?? [];
     const paymentSummary = summarizePurchasePayments(group.total, purchasePayments);
-    const { remaining, available, hasPending, isFullyPaid } = paymentSummary;
+    const { remaining, available, hasPending, isFullyPaid, overpaid } = paymentSummary;
     const pinnedPromo = findPinnedPromo(purchasePayments);
     const paymentOpen = !completed && isPurchasePaymentOpen(fs);
 
-    const breakdowns = group.orders.map((order) => linePriceBreakdown(order));
+    // Отменённые позиции (ноль к оплате) в разбивку не входят — из-за них она пропадала целиком.
+    const breakdowns = group.orders
+        .filter((o) => o.quantity > 0 || o.packageCount > 0 || Number(o.amountDue) > 0)
+        .map((order) => linePriceBreakdown(order));
     const totals =
         breakdowns.length > 0 && breakdowns.every((b) => b != null)
             ? breakdowns.reduce(
@@ -294,6 +297,16 @@ function PurchaseOrderCard({
                             {purchasePayments.map((p) => (
                                 <MyPaymentRow key={p.id} payment={p as unknown as ShopPaymentView} />
                             ))}
+                        </div>
+                    )}
+
+                    {overpaid > 0 && (
+                        <div className="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
+                            <p className="text-14-semibold text-fg-primary">Переплата {formatRub(overpaid)}</p>
+                            <p className="mt-0.5 text-13-regular text-fg-secondary">
+                                Вы оплатили больше, чем сейчас стоит заказ: часть позиций убрали после оплаты.
+                                Организатор вернёт разницу или зачтёт её — напишите ему, если есть вопросы.
+                            </p>
                         </div>
                     )}
 

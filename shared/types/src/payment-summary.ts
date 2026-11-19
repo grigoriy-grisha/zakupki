@@ -8,6 +8,8 @@ export type PaymentTotals = {
     hasPending: boolean;
     remaining: number;
     available: number;
+    /** Подтверждённых оплат больше, чем стоит заказ (админ убрал позиции после оплаты). */
+    overpaid: number;
 };
 
 export type PaymentSummaryInput = {
@@ -35,6 +37,7 @@ export function computePaymentTotals(due: number, payments: PaymentSummaryInput[
 
     const remaining = Math.max(0, roundMoney(due - confirmedPaid));
     const available = Math.max(0, roundMoney(remaining - pendingPaid - awaitingPaid));
+    const overpaid = Math.max(0, roundMoney(confirmedPaid - due));
 
-    return { confirmedPaid, pendingPaid, awaitingPaid, hasPending, remaining, available };
+    return { confirmedPaid, pendingPaid, awaitingPaid, hasPending, remaining, available, overpaid };
 }

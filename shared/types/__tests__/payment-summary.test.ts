@@ -1,6 +1,20 @@
 import { computePaymentTotals } from '../src/payment-summary';
 
 describe('computePaymentTotals', () => {
+    it('shows overpayment when confirmed payments exceed the order', () => {
+        const totals = computePaymentTotals(600, [{ status: 'CONFIRMED', total: 1000.5 }]);
+
+        expect(totals.overpaid).toBe(400.5);
+        expect(totals.remaining).toBe(0);
+        expect(totals.available).toBe(0);
+    });
+
+    it('pending payments do not count as overpayment', () => {
+        const totals = computePaymentTotals(600, [{ status: 'PENDING', total: 1000 }]);
+
+        expect(totals.overpaid).toBe(0);
+    });
+
     it('computes remaining from confirmed payments only', () => {
         const totals = computePaymentTotals(1000, [
             { status: 'CONFIRMED', total: 400 },
@@ -58,6 +72,7 @@ describe('computePaymentTotals', () => {
             hasPending: false,
             remaining: 250,
             available: 250,
+            overpaid: 0,
         });
     });
 });

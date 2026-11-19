@@ -216,8 +216,12 @@ export class OrderService {
         if (!line) return;
         // Снимок для «Вернуть» имеет смысл, только если это последняя строка товара у участника:
         // иначе он скрыт за оставшимися строками и потом молча затрётся.
+        // Если участник уже платил, позицию не стираем, а отменяем: иначе пропадает след того,
+        // за что он заплатил, и переплату нечем объяснить.
+        const purchaseId = line.purchaseItem?.purchaseId;
+        const paid = purchaseId != null && (await this.repo.hasPaymentsInPurchase(line.userId, purchaseId));
         const siblings = await this.repo.countActiveLinesByUserAndItem(line.purchaseItemId, line.userId);
-        if (siblings > 1) await this.repo.deleteOrderLineById(id);
+        if (siblings > 1 && !paid) await this.repo.deleteOrderLineById(id);
         else await this.repo.softDeleteLines([id]);
         await this.eventBus.emitPurchaseItemChanged(line.purchaseItemId);
         await this.notifyOrderLineDeleted(line.purchaseItemId, line.userId);
@@ -225,8 +229,17 @@ export class OrderService {
 
     async removeAllByUserFromPurchase(userId: number, purchaseId: number) {
         const itemIds = await this.repo.findPurchaseItemIdsByUserAndPurchase(userId, purchaseId);
-        const result = await this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
-        await this.repo.deletePurchaseOrder(userId, purchaseId);
+        let result: { count: number };
+        if (await this.repo.hasPaymentsInPurchase(userId, purchaseId)) {
+            // Участник платил: позиции отменяем, заказ оставляем — клиент увидит переплату,
+            // а админ сможет сделать возврат.
+            const ids = await this.repo.findActiveLineIdsByUserAndPurchase(userId, purchaseId);
+            await this.repo.softDeleteLines(ids);
+            result = { count: ids.length };
+        } else {
+            result = await this.repo.deleteAllByUserAndPurchase(userId, purchaseId);
+            await this.repo.deletePurchaseOrder(userId, purchaseId);
+        }
         await Promise.all(itemIds.map((id) => this.eventBus.emitPurchaseItemChanged(id)));
         await this.notifyOrderCleared(userId, purchaseId);
         return result;
