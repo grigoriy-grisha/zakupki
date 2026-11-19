@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPaymentBreakdown, type PaymentBreakdownLine } from '../payment-breakdown';
+import { buildPaymentBreakdown, formatReceiptLineName, type PaymentBreakdownLine } from '../payment-breakdown';
 
 const LINES: PaymentBreakdownLine[] = [
     { name: 'Miyuki DB-0031 — 25 гр', amountDue: 120, base: 100, delivery: 8, org: 12 },
@@ -85,5 +85,43 @@ describe('buildPaymentBreakdown', () => {
         const part = buildPaymentBreakdown({ tag: '#С1', lines, due: 130, amount: 50, discount: 5, fee: 0 });
         expect(part.items.every((i) => i.amount > 0)).toBe(true);
         expect(sum(part.items)).toBe(45);
+    });
+});
+
+describe('formatReceiptLineName', () => {
+    it('целые упаковки — количество и цена за упаковку', () => {
+        expect(
+            formatReceiptLineName({ name: 'Miyuki DB-0031', quantity: 50, unitCode: 'гр', packSize: 25, price: 900 }),
+        ).toBe('Miyuki DB-0031 — 50 гр (2 уп. по 450 руб.)');
+    });
+
+    it('штучный товар — цена за единицу', () => {
+        expect(formatReceiptLineName({ name: 'Ножницы', quantity: 3, unitCode: 'шт', packSize: 0, price: 450 })).toBe(
+            'Ножницы — 3 шт по 150 руб./шт',
+        );
+    });
+
+    it('развес не кратный упаковке — цена за грамм с копейками', () => {
+        expect(formatReceiptLineName({ name: 'Бисер', quantity: 30, unitCode: 'гр', packSize: 25, price: 372 })).toBe(
+            'Бисер — 30 гр по 12,40 руб./гр',
+        );
+    });
+
+    it('одна штука — без цены за единицу', () => {
+        expect(formatReceiptLineName({ name: 'Игла', quantity: 1, unitCode: 'шт', packSize: 0, price: 50 })).toBe(
+            'Игла — 1 шт',
+        );
+    });
+
+    it('длинное название обрезается, количество и цена остаются', () => {
+        const name = formatReceiptLineName({
+            name: 'Очень длинное название товара '.repeat(10),
+            quantity: 3,
+            unitCode: 'шт',
+            packSize: 0,
+            price: 450,
+        });
+        expect(name.length).toBeLessThanOrEqual(128);
+        expect(name.endsWith('— 3 шт по 150 руб./шт')).toBe(true);
     });
 });

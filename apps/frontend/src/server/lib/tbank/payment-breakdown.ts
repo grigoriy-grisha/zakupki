@@ -1,4 +1,4 @@
-import { roundMoney } from '@zakupki/types';
+import { formatQtyUnit, roundMoney } from '@zakupki/types';
 
 /** Строка заказа клиента: что купил и из чего сложилась её сумма. */
 export type PaymentBreakdownLine = {
@@ -43,6 +43,45 @@ export function formatReceiptRub(value: number): string {
     // Узкие неразрывные пробелы из toLocaleString банк может показать квадратиками, а знак «₽»
     // в письмах Т-Банка превращается в «?» — пишем «руб.», как сам банк.
     return `${text.replace(/[\u00a0\u202f]/g, ' ')} руб.`;
+}
+
+const NAME_MAX = 128;
+
+/**
+ * Название позиции чека с количеством и ценой: «Miyuki DB-0031 — 50 гр (2 уп. по 450 руб.)»
+ * или «Ножницы — 3 шт по 150 руб./шт». Цена — товара без доставки и оргсбора (они в чеке
+ * отдельными строками). Если название длинное, обрезаем товар, а не количество с ценой.
+ */
+export function formatReceiptLineName(p: {
+    name: string;
+    quantity: number;
+    unitCode: string | null | undefined;
+    packSize: number;
+    /** Цена всей строки за товар (без доставки и оргсбора). */
+    price: number;
+}): string {
+    const name = p.name.trim() || 'Товар';
+    let suffix = '';
+    if (p.quantity > 0) {
+        const qty = formatQtyUnit(p.quantity, p.unitCode);
+        const packs = p.packSize > 1 ? p.quantity / p.packSize : 0;
+        const wholePacks = packs >= 1 && Math.abs(packs - Math.round(packs)) < 1e-9;
+        if (p.price <= 0) {
+            suffix = ` — ${qty}`;
+        } else if (wholePacks) {
+            const n = Math.round(packs);
+            suffix = ` — ${qty} (${n} уп. по ${formatReceiptRub(roundMoney(p.price / n))})`;
+        } else if (p.quantity === 1) {
+            suffix = ` — ${qty}`;
+        } else {
+            const unit = formatQtyUnit(1, p.unitCode).replace(/^1\s*/, '');
+            const per = formatReceiptRub(roundMoney(p.price / p.quantity));
+            suffix = unit ? ` — ${qty} по ${per}/${unit}` : ` — ${qty} по ${per}`;
+        }
+    }
+    if (name.length + suffix.length <= NAME_MAX) return name + suffix;
+    if (suffix.length >= NAME_MAX - 10) return (name + suffix).slice(0, NAME_MAX);
+    return `${name.slice(0, NAME_MAX - suffix.length - 1).trimEnd()}…${suffix}`;
 }
 
 /**

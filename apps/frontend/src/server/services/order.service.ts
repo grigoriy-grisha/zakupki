@@ -6,7 +6,6 @@ import {
     computeAmountDueWithPackages,
     computeOrderLinePriceBreakdown,
     ForbiddenError,
-    formatQtyUnit,
     type HandoffStatus,
     NotFoundError,
     OrderBook,
@@ -22,6 +21,7 @@ import type { PurchaseRepository } from '../domain/purchase.repository';
 import { buildLinePriceInfo } from '../lib/line-price-info';
 import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
 import type { PaymentBreakdownLine } from '../lib/tbank/payment-breakdown';
+import { formatReceiptLineName } from '../lib/tbank/payment-breakdown';
 import type { NotificationService } from '../services/notification.service';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
@@ -169,9 +169,14 @@ export class OrderService {
             const title = formatPurchaseProductLine1(product);
             const brand = product.brand?.name?.trim();
             const name = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
-            const qty = effectiveQty > 0 ? ` — ${formatQtyUnit(effectiveQty, item.unitCode)}` : '';
             return {
-                name: `${name || 'Товар'}${qty}`.slice(0, 128),
+                name: formatReceiptLineName({
+                    name,
+                    quantity: effectiveQty,
+                    unitCode: item.unitCode,
+                    packSize,
+                    price: breakdown?.baseRub ?? amountDue,
+                }),
                 amountDue,
                 base: breakdown?.baseRub ?? null,
                 delivery: breakdown?.deliveryRub ?? 0,
