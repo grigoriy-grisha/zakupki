@@ -8,6 +8,7 @@ import {
     PackageIcon,
     SettingsIcon,
     ShoppingCartIcon,
+    StoreIcon,
     UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -146,6 +147,25 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                     );
                 })}
             </nav>
+
+            {/* Переход в магазин — посмотреть витрину глазами клиента. */}
+            <div className="pb-4 pl-2 pr-4">
+                <AppLink
+                    href="/shop"
+                    onClick={() => {
+                        onNavigate?.();
+                        closeMobile();
+                    }}
+                    title={collapsed ? 'Магазин' : undefined}
+                    className={cn(
+                        'flex h-9 items-center rounded-full border border-border-low text-fg-secondary transition-colors hover:bg-secondary/10 hover:text-secondary',
+                        collapsed ? 'w-11 justify-center px-0' : 'gap-2 px-3',
+                    )}
+                >
+                    <StoreIcon className="size-4 shrink-0" />
+                    {!collapsed && <span className="text-14-medium">Магазин</span>}
+                </AppLink>
+            </div>
         </aside>
     );
 }
