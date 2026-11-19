@@ -19,6 +19,11 @@ import {
     type TbankTaxation,
     type TbankVat,
 } from '../lib/tbank';
+import {
+    buildPaymentBreakdown,
+    type PaymentBreakdown,
+    type PaymentBreakdownItem,
+} from '../lib/tbank/payment-breakdown';
 import type { BotPaymentService } from './bot-payment.service';
 import type { NotificationService } from './notification.service';
 import type { PromoCodeService } from './promo-code.service';
@@ -218,14 +223,21 @@ export class OnlinePaymentService {
         });
         if (!created) throw new ValidationError('Не удалось создать платёж');
 
-        const description = `Оплата заказа по закупке ${purchase.tag}`.slice(0, 140);
+        const breakdown = buildPaymentBreakdown({
+            tag: purchase.tag,
+            lines: await this.paymentInfo.getPaymentBreakdownLines(params.userId, params.purchaseId),
+            due: info.due,
+            amount: params.amount,
+            discount,
+            fee,
+        });
         const resultUrl = `${publicUrl}/shop/orders?purchaseId=${params.purchaseId}`;
 
         try {
             const init = await client.init({
                 Amount: toKopecks(total),
                 OrderId: providerOrderId,
-                Description: description,
+                Description: breakdown.description,
                 NotificationURL: `${publicUrl}/api/payments/tbank/notification`,
                 SuccessURL: params.returnUrl ?? `${resultUrl}&payment=success`,
                 FailURL: params.returnUrl ?? `${resultUrl}&payment=fail`,
@@ -238,9 +250,7 @@ export class OnlinePaymentService {
                     // чтобы клиент не вводил его второй раз (сам чек уходит через Receipt.Email).
                     ...(receiptContact ? { Email: receiptContact.email } : {}),
                 },
-                Receipt: receiptContact
-                    ? await this.buildReceipt({ tag: purchase.tag, net, fee, contact: receiptContact })
-                    : undefined,
+                Receipt: receiptContact ? await this.buildReceipt({ breakdown, contact: receiptContact }) : undefined,
             });
             if (!init.PaymentId || !init.PaymentURL) {
                 throw new TbankApiError('Банк не вернул ссылку на оплату', init.ErrorCode ?? 'unknown');
@@ -328,7 +338,7 @@ export class OnlinePaymentService {
         if (config.receiptEnabled) {
             const contact = normalizeReceiptContact(await this.getSavedReceiptContact(payment.userId));
             if (contact) {
-                receipt = await this.buildReceipt({ tag, net: amount, fee: 0, contact, refund: true });
+                receipt = await this.buildReceipt({ refund: { tag, amount }, contact });
             } else {
                 log.warn({ paymentId: payment.id }, 'refund without receipt: no saved contact');
             }
@@ -615,12 +625,11 @@ export class OnlinePaymentService {
     }
 
     private async buildReceipt(params: {
-        tag: string;
-        net: number;
-        fee: number;
-        contact: { email?: string; phone?: string };
+        /** Расшифровка платежа: товары, доставка, оргсбор, комиссия. */
+        breakdown?: PaymentBreakdown;
         /** Чек возврата: одна позиция на возвращаемую сумму. */
-        refund?: boolean;
+        refund?: { tag: string; amount: number };
+        contact: { email?: string; phone?: string };
     }): Promise<TbankReceipt> {
         const values = await this.settings.getMany(['receipt_taxation', 'receipt_vat']);
         const taxation = (TBANK_TAXATIONS as readonly string[]).includes(values.receipt_taxation)
@@ -630,30 +639,21 @@ export class OnlinePaymentService {
             ? (values.receipt_vat as TbankVat)
             : 'none';
 
-        const items: TbankReceipt['Items'] = [
-            {
-                Name: `Оплата заказа по закупке ${params.tag}`.slice(0, 128),
-                Price: toKopecks(params.net),
-                Quantity: 1,
-                Amount: toKopecks(params.net),
-                Tax: vat,
-                PaymentMethod: 'full_prepayment',
-                PaymentObject: 'commodity',
-                MeasurementUnit: 'шт',
-            },
-        ];
-        if (params.fee > 0) {
-            items.push({
-                Name: 'Комиссия за онлайн-оплату',
-                Price: toKopecks(params.fee),
-                Quantity: 1,
-                Amount: toKopecks(params.fee),
-                Tax: vat,
-                PaymentMethod: 'full_prepayment',
-                PaymentObject: 'service',
-                MeasurementUnit: 'шт',
-            });
-        }
+        const sourceItems: PaymentBreakdownItem[] = params.refund
+            ? [{ kind: 'goods', name: `Оплата заказа по закупке ${params.refund.tag}`, amount: params.refund.amount }]
+            : (params.breakdown?.items ?? []);
+        // Частичная оплата заказа — «частичная предоплата», заказ целиком — «предоплата 100%».
+        const paymentMethod = params.breakdown?.partial ? 'prepayment' : 'full_prepayment';
+        const items: TbankReceipt['Items'] = sourceItems.map((item) => ({
+            Name: item.name.slice(0, 128),
+            Price: toKopecks(item.amount),
+            Quantity: 1,
+            Amount: toKopecks(item.amount),
+            Tax: vat,
+            PaymentMethod: paymentMethod,
+            PaymentObject: item.kind === 'goods' ? 'commodity' : 'service',
+            MeasurementUnit: 'шт',
+        }));
         return {
             FfdVersion: '1.2',
             Taxation: taxation,

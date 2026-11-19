@@ -285,6 +285,29 @@ export class OrderRepository {
         });
     }
 
+    /** Строки заказа клиента по одной закупке с товаром — для расшифровки платежа в чеке. */
+    async findReceiptLines(userId: number, purchaseId: number) {
+        return dbClient.orderLine.findMany({
+            where: { userId, purchaseItem: { purchaseId } },
+            include: {
+                purchaseItem: {
+                    include: {
+                        product: { include: productInclude },
+                        purchase: {
+                            select: {
+                                id: true,
+                                tag: true,
+                                deliveryPercent: true,
+                                currencyRates: { select: { currencyId: true, rateToRub: true } },
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { id: 'asc' },
+        });
+    }
+
     async getByUser(userId: number) {
         return dbClient.orderLine.findMany({
             where: { userId, status: 'ACTIVE' },

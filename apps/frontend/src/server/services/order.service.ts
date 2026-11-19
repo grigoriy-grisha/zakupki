@@ -5,7 +5,9 @@ import {
     canCancelOrder,
     computeAmountDue,
     computeAmountDueWithPackages,
+    computeOrderLinePriceBreakdown,
     ForbiddenError,
+    formatQtyUnit,
     type HandoffStatus,
     NotFoundError,
     OrderBook,
@@ -14,10 +16,13 @@ import {
     ValidationError,
 } from '@zakupki/types';
 
+import { formatPurchaseProductLine1 } from '@/lib/product-label/format-purchase';
+
 import type { OrderRepository } from '../domain/order.repository';
 import type { PurchaseRepository } from '../domain/purchase.repository';
 import { buildLinePriceInfo } from '../lib/line-price-info';
 import { mapToPurchaseItem, toOrderLines } from '../lib/order-domain-mapper';
+import type { PaymentBreakdownLine } from '../lib/tbank/payment-breakdown';
 import type { NotificationService } from '../services/notification.service';
 import type { PricingSettingsService } from '../services/settings/pricing-settings';
 
@@ -141,6 +146,39 @@ export class OrderService {
             ...line,
             priceInfo: buildLinePriceInfo(line, orgFeeDefaultPercent, packDiscountPercent),
         }));
+    }
+
+    /** Что клиент купил в закупке и из чего сложилась сумма каждой строки — для чека онлайн-оплаты. */
+    async getPaymentBreakdownLines(userId: number, purchaseId: number): Promise<PaymentBreakdownLine[]> {
+        const [lines, orgFeeDefaultPercent, packDiscountPercent] = await Promise.all([
+            this.repo.findReceiptLines(userId, purchaseId),
+            this.pricingSettings.getOrgFeeDefaultPercent(),
+            this.pricingSettings.getBeadPackPriceDiscountPercent(),
+        ]);
+        return lines.map((line) => {
+            const amountDue = Number(line.amountDue);
+            const quantity = Number(line.quantity);
+            const packageCount = Number(line.packageCount ?? 0);
+            const priceInfo = buildLinePriceInfo(line, orgFeeDefaultPercent, packDiscountPercent);
+            const breakdown = priceInfo
+                ? computeOrderLinePriceBreakdown({ amountDue, quantity, packageCount, ...priceInfo })
+                : null;
+            const item = line.purchaseItem;
+            const packSize = item.packAmount != null ? Number(item.packAmount) : 0;
+            const effectiveQty = quantity + packageCount * packSize;
+            const product = item.product;
+            const title = formatPurchaseProductLine1(product);
+            const brand = product.brand?.name?.trim();
+            const name = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
+            const qty = effectiveQty > 0 ? ` — ${formatQtyUnit(effectiveQty, item.unitCode)}` : '';
+            return {
+                name: `${name || 'Товар'}${qty}`.slice(0, 128),
+                amountDue,
+                base: breakdown?.baseRub ?? null,
+                delivery: breakdown?.deliveryRub ?? 0,
+                org: breakdown?.orgFeeRub ?? 0,
+            };
+        });
     }
 
     async getActiveLinesForUserItem(purchaseItemId: number, userId: number) {

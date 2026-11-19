@@ -105,6 +105,11 @@ export class BotPaymentService {
         return map.get(purchaseId) ?? null;
     }
 
+    /** Строки заказа клиента по закупке с расшифровкой суммы — для чека онлайн-оплаты. */
+    async getPaymentBreakdownLines(userId: number, purchaseId: number) {
+        return this.orderService.getPaymentBreakdownLines(userId, purchaseId);
+    }
+
     async validatePromoCode(
         code: string,
         purchaseId: number,
