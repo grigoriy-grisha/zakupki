@@ -66,7 +66,8 @@ export function usePaymentForm(purchaseId: number, available: number, due: numbe
     const promoActive =
         appliedPromo != null &&
         numAmount > 0 &&
-        (appliedPromo.minAmount == null || submittedAmount >= appliedPromo.minAmount);
+        // Сервер сверяет минимальную сумму промокода с суммой всего заказа, а не с этим платежом.
+        (appliedPromo.minAmount == null || due >= appliedPromo.minAmount);
     const promoIssue =
         appliedPromo && numAmount > 0 && !promoActive
             ? `Промокод ${appliedPromo.code} не действует: минимальная сумма ${formatRub(appliedPromo.minAmount ?? 0)}`
@@ -75,7 +76,7 @@ export function usePaymentForm(purchaseId: number, available: number, due: numbe
         ? computePromoDiscount(appliedPromo.type, appliedPromo.value, submittedAmount)
         : 0;
     const finalAmount = roundMoney(submittedAmount - promoDiscount);
-    const maxTransfer = computeMaxTransfer(available, appliedPromo);
+    const maxTransfer = computeMaxTransfer(available, appliedPromo, due);
     const exceedsMax = exceedsMaxTransfer(numAmount, maxTransfer);
     const amountError = exceedsMax ? `Максимум ${formatRub(maxTransfer)}` : '';
 

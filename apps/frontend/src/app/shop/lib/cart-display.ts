@@ -1,4 +1,10 @@
-import { buildOrderQtyOptions, computeOrderLinePriceBreakdown, getActiveStep } from '@zakupki/types';
+import {
+    buildOrderQtyOptions,
+    computeOrderLinePriceBreakdown,
+    computeUnitPriceRubFromItem,
+    getActiveStep,
+    roundMoney,
+} from '@zakupki/types';
 
 import type { MergedOrderLine } from '@/app/shop/lib/order-grouping';
 
@@ -11,22 +17,32 @@ export interface CartPriceInfo {
     deliveryPercent: number;
 }
 
+/** Цена за единицу — той же функцией, что считает сервер (с округлением на каждом шаге). */
 export function unitPriceFromPriceInfo(info: CartPriceInfo | null | undefined): number | null {
     if (!info) return null;
-    const { pricePerPackCurrency, rateToRub, packSize, orgFeePercent, deliveryPercent } = info;
-    if (pricePerPackCurrency == null || rateToRub == null || rateToRub <= 0) return null;
-    const size = packSize != null && Number(packSize) > 0 ? Number(packSize) : 1;
-    const unit = (Number(pricePerPackCurrency) * rateToRub * (1 + (orgFeePercent + deliveryPercent) / 100)) / size;
-    return Math.round(unit * 100) / 100;
+    return computeUnitPriceRubFromItem({
+        pricePerPackCurrency: info.pricePerPackCurrency,
+        rateToRub: info.rateToRub,
+        orgFeePercent: info.orgFeePercent,
+        deliveryPercent: info.deliveryPercent,
+        packSize: info.packSize,
+    });
 }
 
-export function linePriceBreakdown(order: MergedOrderLine) {
-    const priceInfo = order.source?.priceInfo as CartPriceInfo | null | undefined;
+type BreakdownSourceLine = {
+    amountDue?: unknown;
+    quantity?: unknown;
+    packageCount?: unknown;
+    priceInfo?: unknown;
+};
+
+function breakdownOfLine(line: BreakdownSourceLine) {
+    const priceInfo = line.priceInfo as CartPriceInfo | null | undefined;
     if (!priceInfo) return null;
     return computeOrderLinePriceBreakdown({
-        amountDue: order.amountDue,
-        quantity: order.quantity,
-        packageCount: order.packageCount,
+        amountDue: Number(line.amountDue ?? 0),
+        quantity: Number(line.quantity ?? 0),
+        packageCount: Number(line.packageCount ?? 0),
         pricePerPackCurrency: priceInfo.pricePerPackCurrency,
         rateToRub: priceInfo.rateToRub,
         packSize: priceInfo.packSize,
@@ -34,6 +50,29 @@ export function linePriceBreakdown(order: MergedOrderLine) {
         orgFeePercent: priceInfo.orgFeePercent,
         deliveryPercent: priceInfo.deliveryPercent,
     });
+}
+
+/**
+ * Расшифровка объединённой строки: считаем каждую исходную строку отдельно (как сервер и бот)
+ * и складываем — иначе скидка за пачку «находится» на сумме сбора и добора, где её не было.
+ */
+export function linePriceBreakdown(order: MergedOrderLine) {
+    const lines: BreakdownSourceLine[] = order.lines?.length ? order.lines : [order.source ?? {}];
+    const parts = lines
+        .filter((l) => Number(l.quantity ?? 0) > 0 || Number(l.packageCount ?? 0) > 0)
+        .map(breakdownOfLine);
+    const valid = parts.filter((p): p is NonNullable<typeof p> => p != null);
+    if (valid.length === 0 || valid.length !== parts.length) return null;
+    const [first, ...rest] = valid;
+    return rest.reduce(
+        (acc, p) => ({
+            ...acc,
+            baseRub: roundMoney(acc.baseRub + p.baseRub),
+            orgFeeRub: roundMoney(acc.orgFeeRub + p.orgFeeRub),
+            deliveryRub: roundMoney(acc.deliveryRub + p.deliveryRub),
+        }),
+        first,
+    );
 }
 
 interface StepSourceItem {
@@ -50,8 +89,7 @@ export function activeOrderStep(purchaseItem: StepSourceItem, fulfillmentStatus:
         fulfillmentStatus,
         options: buildOrderQtyOptions({
             multiplicity: Number(purchaseItem.multiplicity) || 1,
-            minPackageAmount:
-                purchaseItem.minPackageAmount != null ? Number(purchaseItem.minPackageAmount) : null,
+            minPackageAmount: purchaseItem.minPackageAmount != null ? Number(purchaseItem.minPackageAmount) : null,
             minPackageUnit: null,
             unitCode: purchaseItem.unitCode ?? purchaseItem.product?.unitCode ?? null,
         }),

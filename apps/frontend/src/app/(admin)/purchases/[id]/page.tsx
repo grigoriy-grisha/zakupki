@@ -194,6 +194,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
                 totalDue={participantsData.totalDue}
                 totalPaid={participantsData.totalPaid}
                 totalPending={participantsData.totalPending}
+                totalRemaining={participantsData.totalRemaining}
                 participantsCount={participantsData.userIds.length}
             />
 

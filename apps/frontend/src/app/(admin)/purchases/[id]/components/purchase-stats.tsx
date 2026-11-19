@@ -9,6 +9,8 @@ interface PurchaseStatsProps {
     totalDue: number;
     totalPaid: number;
     totalPending: number;
+    /** Сумма долгов участников (переплата одного не уменьшает долг другого). */
+    totalRemaining: number;
     participantsCount: number;
 }
 
@@ -18,9 +20,10 @@ export function PurchaseStats({
     totalDue,
     totalPaid,
     totalPending,
+    totalRemaining,
     participantsCount,
 }: PurchaseStatsProps) {
-    const remaining = Math.max(0, totalDue - totalPaid);
+    const remaining = totalRemaining;
     return (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
             <StatCard icon={PackageIcon} value={itemsCount} label="Товаров" hint="в закупке" />

@@ -4,6 +4,7 @@
  * Объединяет COLLECTION + supplement строки в единое представление
  * для отображения (корзина, список заказов, детали).
  */
+import { roundMoney } from '../pricing/currency-pricing';
 import type { AggregatedOrder, OrderLineVO } from './types';
 
 /** Только ACTIVE строки. */
@@ -37,5 +38,13 @@ export function mergeLines(lines: OrderLineVO[]): AggregatedOrder {
         }
     }
 
-    return { purchaseItemId, quantity, amountDue, packageCount, baseQuantity, basePackageCount, lineIds };
+    return {
+        purchaseItemId,
+        quantity,
+        amountDue: roundMoney(amountDue),
+        packageCount,
+        baseQuantity,
+        basePackageCount,
+        lineIds,
+    };
 }

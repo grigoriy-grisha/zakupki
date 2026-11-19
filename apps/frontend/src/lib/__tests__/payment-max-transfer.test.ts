@@ -61,4 +61,10 @@ describe('computeSubmittedAmount', () => {
     it('без промокода сумма не меняется', () => {
         expect(computeSubmittedAmount(500, 1000, null)).toBe(500);
     });
+
+    it('минимальную сумму промокода сверяет с суммой заказа, а не с остатком', () => {
+        // Заказ 5000, уже оплачено 4000, промокод от 3000: на остаток 1000 скидка действует.
+        expect(computeMaxTransfer(1000, { ...OKS, minAmount: 3000 }, 5000)).toBeLessThan(1000);
+        expect(computeMaxTransfer(1000, { ...OKS, minAmount: 6000 }, 5000)).toBe(1000);
+    });
 });

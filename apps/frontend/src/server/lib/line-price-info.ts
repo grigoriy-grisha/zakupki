@@ -1,5 +1,6 @@
 import {
     computeOrderLinePriceBreakdown,
+    isWeightUnit,
     resolveCurrencyRate,
     resolveDeliveryPercent,
     resolveOrgFeePercent,
@@ -8,6 +9,7 @@ import {
 export type LinePriceSource = {
     purchaseItem: {
         currencyId: number | null;
+        unitCode: string | null;
         pricePerPackCurrency: unknown;
         packAmount: unknown;
         orgFeePercentOverride: unknown;
@@ -35,7 +37,8 @@ export function buildLinePriceInfo(line: LinePriceSource, orgFeeDefaultPercent: 
         pricePerPackCurrency: item.pricePerPackCurrency != null ? Number(item.pricePerPackCurrency) : null,
         rateToRub,
         packSize: item.packAmount != null ? Number(item.packAmount) : null,
-        packDiscountPercent,
+        // Скидка за целые пачки при расчёте суммы действует только для весовых товаров (см. hasActivePackDiscount).
+        packDiscountPercent: isWeightUnit(item.unitCode) ? packDiscountPercent : 0,
         orgFeePercent: resolveOrgFeePercent(
             item.orgFeePercentOverride != null ? Number(item.orgFeePercentOverride) : null,
             orgFeeDefaultPercent,

@@ -99,8 +99,10 @@ export function findPinnedPromo(
 export function computeMaxTransfer(
     available: number,
     promo: Pick<PaymentPromoInfo, 'type' | 'value' | 'minAmount'> | null,
+    /** Сумма всего заказа: минимальную сумму промокода сервер сверяет с ней, а не с остатком. */
+    due: number = available,
 ): number {
-    const promoCoversFull = promo != null && (promo.minAmount == null || available >= promo.minAmount);
+    const promoCoversFull = promo != null && (promo.minAmount == null || due >= promo.minAmount);
     const discount = promoCoversFull ? computePromoDiscount(promo.type, promo.value, available) : 0;
     return roundMoney(available - discount);
 }

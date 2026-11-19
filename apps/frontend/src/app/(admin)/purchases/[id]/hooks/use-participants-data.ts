@@ -1,6 +1,6 @@
 'use client';
 
-import type { HandoffStatus } from '@zakupki/types';
+import { type HandoffStatus, roundMoney } from '@zakupki/types';
 import { useMemo } from 'react';
 
 import { trpc } from '@/lib/client/trpc';
@@ -61,6 +61,7 @@ const emptyMaps = () => ({
     totalDue: 0,
     totalPaid: 0,
     totalPending: 0,
+    totalRemaining: 0,
 });
 
 export function useParticipantsData(purchaseId: number) {
@@ -194,6 +195,14 @@ export function useParticipantsData(purchaseId: number) {
             .filter((p) => p.status === 'PENDING')
             .reduce((sum, p) => sum + paymentTotal(p), 0);
 
+        // «Осталось» считаем по каждому участнику: переплата одного не гасит долг другого.
+        const dueByUser = new Map<number, number>();
+        typedOrders.forEach((o) => dueByUser.set(o.userId, (dueByUser.get(o.userId) ?? 0) + safeNumber(o.amountDue)));
+        let totalRemaining = 0;
+        for (const [userId, due] of dueByUser) {
+            totalRemaining += Math.max(0, roundMoney(due - (paidByUser.get(userId) ?? 0)));
+        }
+
         return {
             isEmpty: false as const,
             userIds,
@@ -204,9 +213,10 @@ export function useParticipantsData(purchaseId: number) {
             pendingByUser,
             orderComments,
             handoffByUser,
-            totalDue,
-            totalPaid,
-            totalPending,
+            totalDue: roundMoney(totalDue),
+            totalPaid: roundMoney(totalPaid),
+            totalPending: roundMoney(totalPending),
+            totalRemaining: roundMoney(totalRemaining),
         };
     }, [orders, purchaseOrders, payments]);
 

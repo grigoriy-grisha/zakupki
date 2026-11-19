@@ -60,6 +60,8 @@ export interface MergedOrderLine {
     baseQuantity: number;
     /** Оригинальные ID строк */
     ids: number[];
+    /** Исходные строки (сбор + доборы) — для расшифровки цены по каждой. */
+    lines: GroupableOrderLine[];
     /** Первая строка — для доступа к purchaseItem/product (any, т.к. каждый компонент кастит под себя) */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     source: any;
@@ -124,6 +126,7 @@ export function groupOrdersByPurchase(orders: GroupableOrderLine[]): OrderPurcha
                 packageCount: aggregated.packageCount,
                 baseQuantity: aggregated.baseQuantity,
                 ids: aggregated.lineIds,
+                lines,
                 source,
             };
         }),
