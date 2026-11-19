@@ -10,11 +10,12 @@ import {
     type PurchaseFulfillmentStatus,
     type PurchaseStatus,
 } from '@zakupki/types';
-import { Archive, Boxes, ClipboardList, PackageCheck, Send, Truck } from 'lucide-react';
+import { Archive, Boxes, CircleCheck, ClipboardList, Clock, CreditCard, PackageCheck, Send, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { useHandoffChoice } from '@/app/shop/hooks/use-handoff-choice';
 import { useOnlinePaymentSync, usePaymentReturnToast } from '@/app/shop/hooks/use-online-payment-sync';
+import { groupPaymentState, summarizeAwaitingPayment } from '@/app/shop/lib/awaiting-payment';
 import { linePriceBreakdown } from '@/app/shop/lib/cart-display';
 import { type GroupableOrderLine, groupOrdersByPurchase, type OrderPurchaseGroup } from '@/app/shop/lib/order-grouping';
 import { CartLine } from '@/app/shop/orders/components/cart-line';
@@ -193,12 +194,18 @@ function PurchaseOrderCard({
               )
             : null;
 
+    const paymentState = groupPaymentState(group, purchasePayments);
+    const itemCount = group.orders.filter((o) => o.quantity > 0 || o.packageCount > 0).length;
+
     const handoffChoice = useHandoffChoice();
     const handoffStatus = (group.handoffStatus ?? null) as HandoffStatus | null;
 
     return (
-        <section className="py-5 first:pt-0 last:pb-0 sm:py-6">
-            <div className="flex items-start justify-between gap-3">
+        <section
+            id={`purchase-${group.id}`}
+            className="scroll-mt-20 overflow-hidden rounded-2xl border border-border-low bg-bg-card shadow-sm sm:rounded-3xl"
+        >
+            <div className="flex items-start justify-between gap-3 border-b border-border-low bg-bg-soft px-4 py-4 sm:px-6 sm:py-5">
                 <div className="min-w-0">
                     {group.orderNumber != null && (
                         <p className="text-13-regular text-fg-secondary tabular-nums sm:text-14-regular">
@@ -220,123 +227,134 @@ function PurchaseOrderCard({
                     )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
+                    <span className="text-18-semibold text-fg-primary tabular-nums sm:text-20-semibold">
+                        {formatRub(group.total)}
+                    </span>
+                    <span className="text-12-regular text-fg-tertiary">
+                        {itemCount} {pluralItems(itemCount)}
+                    </span>
+                    <GroupPaymentChip state={paymentState} isPast={isPast} />
                     {handoffStatus && <HandoffPill status={handoffStatus} />}
                 </div>
             </div>
 
-            <div className="mt-5 divide-y divide-border-low sm:mt-6">
-                {group.orders.map((order) => (
-                    <CartLine key={order.purchaseItemId} group={group} order={order} editable={editable} />
-                ))}
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-border-low bg-bg-soft p-4 sm:mt-6 sm:p-5">
-                {totals && (totals.org > 0 || totals.delivery > 0) && (
-                    <div className="flex flex-col gap-1.5 text-14-medium text-fg-secondary tabular-nums">
-                        <div className="flex items-baseline justify-between gap-4">
-                            <span>Стоимость выбранных товаров</span>
-                            <span className="whitespace-nowrap">{formatPriceRub(totals.base)}</span>
-                        </div>
-                        {totals.org > 0 && (
-                            <div className="flex items-baseline justify-between gap-4">
-                                <span>Оргсбор</span>
-                                <span className="whitespace-nowrap">{formatPriceRub(totals.org)}</span>
-                            </div>
-                        )}
-                        {totals.delivery > 0 && (
-                            <div className="flex items-baseline justify-between gap-4">
-                                <span>Доставка</span>
-                                <span className="whitespace-nowrap">{formatPriceRub(totals.delivery)}</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-                <div
-                    className={cn(
-                        'flex items-baseline justify-between gap-4',
-                        totals && (totals.org > 0 || totals.delivery > 0) ? 'mt-3 border-t border-border-low pt-3' : '',
-                    )}
-                >
-                    <span className="text-13-semibold uppercase tracking-wide text-fg-secondary sm:text-14-semibold">
-                        Итоговая сумма
-                    </span>
-                    <span className="whitespace-nowrap text-20-semibold text-primary tabular-nums sm:text-24-semibold">
-                        {formatRub(group.total)}
-                    </span>
+            <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+                <div className="mt-1 divide-y divide-border-low">
+                    {group.orders.map((order) => (
+                        <CartLine key={order.purchaseItemId} group={group} order={order} editable={editable} />
+                    ))}
                 </div>
-            </div>
 
-            <div className="mt-3 flex flex-col gap-3 sm:gap-4">
-                {(handoffStatus === 'READY_TO_SHIP' || handoffStatus === 'STORED') && (
-                    <HandoffMessageCard status={handoffStatus} />
-                )}
-
-                {purchasePayments.length > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                        <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">Ваши оплаты</p>
-                        {purchasePayments.map((p) => (
-                            <MyPaymentRow key={p.id} payment={p as unknown as ShopPaymentView} />
-                        ))}
-                    </div>
-                )}
-
-                {handoffStatus === 'ASSEMBLED' && group.orderNumber != null && (
-                    <div className="rounded-2xl border-2 border-gold/70 bg-bg-card/70 p-4">
-                        <p className="flex items-center gap-2 text-14-semibold text-fg-primary">
-                            <Boxes className="size-4 shrink-0 text-primary" />
-                            Ваш заказ собран
-                        </p>
-                        <p className="mt-1 text-13-regular text-fg-secondary">
-                            Отправляем заказ сейчас или пока оставим его на хранение?
-                        </p>
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                            <Button
-                                variant="brand"
-                                size="sm"
-                                className="w-full sm:flex-1 sm:w-auto"
-                                disabled={handoffChoice.isPending}
-                                onClick={() =>
-                                    handoffChoice.mutate({
-                                        purchaseOrderId: group.orderNumber!,
-                                        choice: 'READY_TO_SHIP',
-                                    })
-                                }
-                            >
-                                <Send className="size-3.5" />
-                                Отправить заказ
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full sm:flex-1 sm:w-auto"
-                                disabled={handoffChoice.isPending}
-                                onClick={() =>
-                                    handoffChoice.mutate({
-                                        purchaseOrderId: group.orderNumber!,
-                                        choice: 'STORED',
-                                    })
-                                }
-                            >
-                                <Archive className="size-3.5" />
-                                Оставить на хранение
-                            </Button>
+                <div className="mt-4 rounded-2xl border border-border-low bg-bg-soft p-4 sm:p-5">
+                    {totals && (totals.org > 0 || totals.delivery > 0) && (
+                        <div className="flex flex-col gap-1.5 text-14-medium text-fg-secondary tabular-nums">
+                            <div className="flex items-baseline justify-between gap-4">
+                                <span>Стоимость выбранных товаров</span>
+                                <span className="whitespace-nowrap">{formatPriceRub(totals.base)}</span>
+                            </div>
+                            {totals.org > 0 && (
+                                <div className="flex items-baseline justify-between gap-4">
+                                    <span>Оргсбор</span>
+                                    <span className="whitespace-nowrap">{formatPriceRub(totals.org)}</span>
+                                </div>
+                            )}
+                            {totals.delivery > 0 && (
+                                <div className="flex items-baseline justify-between gap-4">
+                                    <span>Доставка</span>
+                                    <span className="whitespace-nowrap">{formatPriceRub(totals.delivery)}</span>
+                                </div>
+                            )}
                         </div>
+                    )}
+                    <div
+                        className={cn(
+                            'flex items-baseline justify-between gap-4',
+                            totals && (totals.org > 0 || totals.delivery > 0)
+                                ? 'mt-3 border-t border-border-low pt-3'
+                                : '',
+                        )}
+                    >
+                        <span className="text-13-semibold uppercase tracking-wide text-fg-secondary sm:text-14-semibold">
+                            Итоговая сумма
+                        </span>
+                        <span className="whitespace-nowrap text-20-semibold text-primary tabular-nums sm:text-24-semibold">
+                            {formatRub(group.total)}
+                        </span>
                     </div>
-                )}
+                </div>
 
-                <PaymentStatusBlock
-                    total={group.total}
-                    remaining={remaining}
-                    available={available}
-                    hasPending={hasPending}
-                    isFullyPaid={isFullyPaid}
-                    isPast={isPast}
-                    paymentOpen={paymentOpen}
-                    purchaseId={group.id}
-                    pinnedPromo={pinnedPromo}
-                    orderCount={group.orders.length}
-                    awaitingPayment={findAwaitingPayment(purchasePayments as unknown as ShopPaymentView[])}
-                />
+                <div className="mt-3 flex flex-col gap-3 sm:gap-4">
+                    {(handoffStatus === 'READY_TO_SHIP' || handoffStatus === 'STORED') && (
+                        <HandoffMessageCard status={handoffStatus} />
+                    )}
+
+                    {purchasePayments.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                            <p className="text-11-medium uppercase tracking-wide text-fg-tertiary">Ваши оплаты</p>
+                            {purchasePayments.map((p) => (
+                                <MyPaymentRow key={p.id} payment={p as unknown as ShopPaymentView} />
+                            ))}
+                        </div>
+                    )}
+
+                    {handoffStatus === 'ASSEMBLED' && group.orderNumber != null && (
+                        <div className="rounded-2xl border-2 border-gold/70 bg-bg-card/70 p-4">
+                            <p className="flex items-center gap-2 text-14-semibold text-fg-primary">
+                                <Boxes className="size-4 shrink-0 text-primary" />
+                                Ваш заказ собран
+                            </p>
+                            <p className="mt-1 text-13-regular text-fg-secondary">
+                                Отправляем заказ сейчас или пока оставим его на хранение?
+                            </p>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <Button
+                                    variant="brand"
+                                    size="sm"
+                                    className="w-full sm:flex-1 sm:w-auto"
+                                    disabled={handoffChoice.isPending}
+                                    onClick={() =>
+                                        handoffChoice.mutate({
+                                            purchaseOrderId: group.orderNumber!,
+                                            choice: 'READY_TO_SHIP',
+                                        })
+                                    }
+                                >
+                                    <Send className="size-3.5" />
+                                    Отправить заказ
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full sm:flex-1 sm:w-auto"
+                                    disabled={handoffChoice.isPending}
+                                    onClick={() =>
+                                        handoffChoice.mutate({
+                                            purchaseOrderId: group.orderNumber!,
+                                            choice: 'STORED',
+                                        })
+                                    }
+                                >
+                                    <Archive className="size-3.5" />
+                                    Оставить на хранение
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    <PaymentStatusBlock
+                        total={group.total}
+                        remaining={remaining}
+                        available={available}
+                        hasPending={hasPending}
+                        isFullyPaid={isFullyPaid}
+                        isPast={isPast}
+                        paymentOpen={paymentOpen}
+                        purchaseId={group.id}
+                        pinnedPromo={pinnedPromo}
+                        orderCount={group.orders.length}
+                        awaitingPayment={findAwaitingPayment(purchasePayments as unknown as ShopPaymentView[])}
+                    />
+                </div>
             </div>
         </section>
     );
@@ -404,7 +422,7 @@ export default function OrdersPage() {
                 <h1 className="text-h1 text-center text-secondary sm:text-left">Мои заказы</h1>
             </div>
 
-            <div className="rounded-[10px] bg-bg-soft p-4 sm:rounded-[20px] sm:p-6">
+            <div>
                 <OrdersSegmentedTabs
                     tab={tab}
                     onTabChange={setTab}
@@ -413,7 +431,7 @@ export default function OrdersPage() {
                 />
 
                 {tab === 'active' ? (
-                    <div className="mt-5 sm:mt-12">
+                    <div className="mt-5 sm:mt-8">
                         {activeGroups.length === 0 ? (
                             <OrdersEmptyState
                                 title="Нет активных заказов"
@@ -421,7 +439,8 @@ export default function OrdersPage() {
                                 showShopLink
                             />
                         ) : (
-                            <div className="divide-y divide-border-low">
+                            <div className="flex flex-col gap-4 sm:gap-6">
+                                <AwaitingPaymentBanner groups={activeGroups} myPayments={myPayments} />
                                 {activeGroups.map((group) => (
                                     <PurchaseOrderCard
                                         key={group.id}
@@ -434,14 +453,14 @@ export default function OrdersPage() {
                         )}
                     </div>
                 ) : (
-                    <div className="mt-5 sm:mt-12">
+                    <div className="mt-5 sm:mt-8">
                         {pastGroups.length === 0 ? (
                             <OrdersEmptyState
                                 title="Нет прошлых заказов"
                                 description="Сюда попадают заказы из завершённых закупок."
                             />
                         ) : (
-                            <div className="divide-y divide-border-low">
+                            <div className="flex flex-col gap-4 sm:gap-6">
                                 {pastGroups.map((group) => (
                                     <PurchaseOrderCard key={group.id} group={group} myPayments={myPayments} isPast />
                                 ))}
@@ -449,6 +468,81 @@ export default function OrdersPage() {
                         )}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function pluralItems(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'товар';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'товара';
+    return 'товаров';
+}
+
+function GroupPaymentChip({ state, isPast }: { state: ReturnType<typeof groupPaymentState>; isPast: boolean }) {
+    const base = 'inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-12-medium';
+    if (state.isFullyPaid) {
+        return (
+            <span className={cn(base, 'border-success/40 bg-success/10 text-success')}>
+                <CircleCheck className="size-3" />
+                Оплачено
+            </span>
+        );
+    }
+    if (state.hasPending && state.toPay <= 0.009) {
+        return (
+            <span className={cn(base, 'border-warning/40 bg-warning/10 text-warning')}>
+                <Clock className="size-3" />
+                Оплата на проверке
+            </span>
+        );
+    }
+    if (state.awaiting && !isPast) {
+        return (
+            <span className={cn(base, 'border-primary/40 bg-primary/10 text-primary tabular-nums')}>
+                <CreditCard className="size-3" />К оплате {formatRub(state.toPay)}
+            </span>
+        );
+    }
+    return null;
+}
+
+/** Сводка сверху: сколько товаров и в каких закупках ждут оплаты, со ссылками на карточки. */
+function AwaitingPaymentBanner({
+    groups,
+    myPayments,
+}: {
+    groups: OrderPurchaseGroup[];
+    myPayments: Parameters<typeof summarizeAwaitingPayment>[1] | undefined;
+}) {
+    if (!myPayments) return null;
+    const summary = summarizeAwaitingPayment(groups, myPayments);
+    if (summary.items === 0) return null;
+    const awaitingGroups = groups.filter((g) => groupPaymentState(g, myPayments).awaiting);
+    return (
+        <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-4 sm:p-5">
+            <p className="flex items-center gap-2 text-14-semibold text-fg-primary sm:text-16-semibold">
+                <CreditCard className="size-4 shrink-0 text-primary" />
+                Ждут оплаты: {summary.items} {pluralItems(summary.items)} на {formatRub(summary.amount)}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+                {awaitingGroups.map((g) => (
+                    <a
+                        key={g.id}
+                        href={`#purchase-${g.id}`}
+                        className={cn(
+                            'inline-flex h-8 items-center gap-2 rounded-full border border-border-low bg-bg-card px-3',
+                            'text-13-medium text-fg-primary transition-colors hover:border-primary/50',
+                        )}
+                    >
+                        <span className="text-secondary">{g.tag}</span>
+                        <span className="tabular-nums text-primary">
+                            {formatRub(groupPaymentState(g, myPayments).toPay)}
+                        </span>
+                    </a>
+                ))}
             </div>
         </div>
     );

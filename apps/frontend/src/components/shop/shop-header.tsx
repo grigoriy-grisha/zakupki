@@ -1,16 +1,13 @@
 'use client';
 
 import { ShoppingBasket } from 'lucide-react';
-import { signOut,useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { signOut, useSession } from 'next-auth/react';
+import { useMemo, useState } from 'react';
 
+import { summarizeAwaitingPayment } from '@/app/shop/lib/awaiting-payment';
+import { type GroupableOrderLine, groupOrdersByPurchase } from '@/app/shop/lib/order-grouping';
 import { AppLink } from '@/components/app-link';
-import {
-    BrandLogo,
-    HeaderBellIcon,
-    HeaderLogoutIcon,
-    HeaderProfileIcon,
-} from '@/components/icons';
+import { BrandLogo, HeaderBellIcon, HeaderLogoutIcon, HeaderProfileIcon } from '@/components/icons';
 import { NotificationBell } from '@/components/shop/notification-bell';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +19,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { withPlatformPrefix } from '@/lib/app-path';
+import { trpc } from '@/lib/client/trpc';
+import { formatRub } from '@/lib/format/money';
 import { useIsTelegramWebApp } from '@/lib/hooks/use-is-telegram-web-app';
 import { usePlatform } from '@/lib/hooks/use-platform';
 import { cn } from '@/lib/utils';
@@ -37,11 +36,15 @@ export function ShopHeader() {
     const isTelegramWebApp = useIsTelegramWebApp();
     const isAuthenticated = !!session?.user || isTelegramWebApp;
     const [logoutOpen, setLogoutOpen] = useState(false);
+    const awaiting = useAwaitingPaymentSummary(isAuthenticated);
+    const cartLabel =
+        awaiting.items > 0
+            ? `Корзина: ${awaiting.items} ${pluralGoods(awaiting.items)} ждут оплаты на ${formatRub(awaiting.amount)}`
+            : 'Корзина';
 
     const handleLogout = () => {
         setLogoutOpen(false);
-        const base =
-            process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ?? window.location.origin;
+        const base = process.env.NEXT_PUBLIC_VK_REDIRECT_URL?.replace(/\/$/, '') ?? window.location.origin;
         const loginPath = platform ? withPlatformPrefix('/login', platform) : '/login';
         void signOut({ callbackUrl: `${base}${loginPath}` });
     };
@@ -68,9 +71,32 @@ export function ShopHeader() {
                             <HeaderProfileIcon className="size-5" />
                             <span className="hidden sm:inline">Профиль</span>
                         </AppLink>
-                        <AppLink href="/shop/orders" className={navLinkClass} aria-label="Корзина">
-                            <ShoppingBasket className="size-5" strokeWidth={1.5} />
+                        <AppLink
+                            href="/shop/orders"
+                            className={navLinkClass}
+                            aria-label={cartLabel}
+                            title={awaiting.items > 0 ? cartLabel : undefined}
+                        >
+                            <span className="relative">
+                                <ShoppingBasket className="size-5" strokeWidth={1.5} />
+                                {awaiting.items > 0 && (
+                                    <span
+                                        className={cn(
+                                            'absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center',
+                                            'rounded-full bg-primary px-1 text-[10px] font-bold leading-none',
+                                            'text-primary-foreground tabular-nums ring-2 ring-bg-base',
+                                        )}
+                                    >
+                                        {awaiting.items > 99 ? '99+' : awaiting.items}
+                                    </span>
+                                )}
+                            </span>
                             <span className="hidden sm:inline">Корзина</span>
+                            {awaiting.items > 0 && (
+                                <span className="hidden whitespace-nowrap text-12-medium text-primary lg:inline">
+                                    · к оплате {formatRub(awaiting.amount)}
+                                </span>
+                            )}
                         </AppLink>
                         <NotificationBell icon={HeaderBellIcon} iconClassName="size-5 text-fg-primary" />
                         {!isTelegramWebApp && (
@@ -99,9 +125,7 @@ export function ShopHeader() {
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle>Выйти из аккаунта?</DialogTitle>
-                        <DialogDescription>
-                            Вы сможете снова войти через VK или Telegram.
-                        </DialogDescription>
+                        <DialogDescription>Вы сможете снова войти через VK или Telegram.</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" size="sm" onClick={() => setLogoutOpen(false)}>
@@ -115,4 +139,23 @@ export function ShopHeader() {
             </Dialog>
         </header>
     );
+}
+
+/** Сколько товаров ждут оплаты: те же запросы, что и на странице корзины, — кэш общий. */
+function useAwaitingPaymentSummary(enabled: boolean) {
+    const { data: orders } = trpc.orders.getMyOrders.useQuery(undefined, { enabled, staleTime: 30_000 });
+    const { data: payments } = trpc.payments.getMyPayments.useQuery(undefined, { enabled, staleTime: 30_000 });
+    return useMemo(() => {
+        if (!orders || !payments) return { items: 0, amount: 0, purchases: 0 };
+        const groups = groupOrdersByPurchase(orders as unknown as GroupableOrderLine[]);
+        return summarizeAwaitingPayment(groups, payments);
+    }, [orders, payments]);
+}
+
+function pluralGoods(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'товар';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'товара';
+    return 'товаров';
 }

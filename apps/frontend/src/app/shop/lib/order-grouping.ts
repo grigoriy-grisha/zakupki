@@ -4,7 +4,7 @@
  * Агрегация строк (COLLECTION + supplement → одна запись) делегируется в доменную
  * mergeLines (shared) — единая логика с ботом и админкой.
  */
-import { mergeLines, toOrderLinesVO } from '@zakupki/types';
+import { mergeLines, roundMoney, toOrderLinesVO } from '@zakupki/types';
 
 /** Минимальный интерфейс orderLine для группировки. Поля приходят из tRPC (Decimal→string). */
 export interface GroupableOrderLine {
@@ -114,7 +114,7 @@ export function groupOrdersByPurchase(orders: GroupableOrderLine[]): OrderPurcha
     // Сборка результата: mergeLines по каждому purchaseItem
     return Array.from(byPurchase.values()).map(({ group, total, byItem }) => ({
         ...group,
-        total,
+        total: roundMoney(total),
         orders: Array.from(byItem.values()).map(({ source, lines }) => {
             const aggregated = mergeLines(toOrderLinesVO(lines));
             return {

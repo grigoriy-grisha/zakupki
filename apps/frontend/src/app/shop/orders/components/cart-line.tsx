@@ -24,6 +24,7 @@ export function CartLine({ group, order, editable }: CartLineProps) {
     const fs = (group.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
     const mutations = useOrderMutations(group.id, order.purchaseItemId);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [photoFailed, setPhotoFailed] = useState(false);
 
     const product = order.source?.purchaseItem?.product;
     const purchaseItem = order.source?.purchaseItem;
@@ -81,10 +82,12 @@ export function CartLine({ group, order, editable }: CartLineProps) {
                     href={`/shop/purchase/${group.id}/item/${order.purchaseItemId}`}
                     className="block size-16 shrink-0 overflow-hidden rounded-xl bg-bg-card sm:size-20 sm:rounded-2xl"
                 >
-                    {photo ? (
+                    {photo && !photoFailed ? (
                         <img
                             src={absoluteProductPhotoUrl(photo.id)}
-                            alt={product?.name ?? ''}
+                            alt=""
+                            loading="lazy"
+                            onError={() => setPhotoFailed(true)}
                             className="h-full w-full object-cover"
                         />
                     ) : (
@@ -141,14 +144,13 @@ export function CartLine({ group, order, editable }: CartLineProps) {
 
             {editable && (
                 <div className="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:mt-4 sm:justify-end sm:gap-x-4">
+                    <span className="mr-auto text-14-semibold text-fg-primary tabular-nums sm:text-16-semibold">
+                        {priceLine}
+                    </span>
                     <CartStepper
                         value={order.quantity > 0 ? `${order.quantity} ${unitShort}` : '—'}
-                        onRemove={() =>
-                            mutations.adjust.mutate({ purchaseItemId: order.purchaseItemId, delta: -step })
-                        }
-                        onAdd={() =>
-                            mutations.adjust.mutate({ purchaseItemId: order.purchaseItemId, delta: step })
-                        }
+                        onRemove={() => mutations.adjust.mutate({ purchaseItemId: order.purchaseItemId, delta: -step })}
+                        onAdd={() => mutations.adjust.mutate({ purchaseItemId: order.purchaseItemId, delta: step })}
                         removeDisabled={!canDecrease || mutations.isPending}
                         addDisabled={mutations.isPending}
                         removeLabel="Убрать"
@@ -185,8 +187,8 @@ export function CartLine({ group, order, editable }: CartLineProps) {
                 description={
                     <>
                         «{product?.name ?? 'Товар'}» будет полностью удалён из вашего заказа
-                        {isEmpty ? '' : ` (${qtyLabelOf(order, unitShort)})`}. На этапах добора действует
-                        минимальный объём — если часть заказа уже зафиксирована, убрать можно только её остаток.
+                        {isEmpty ? '' : ` (${qtyLabelOf(order, unitShort)})`}. На этапах добора действует минимальный
+                        объём — если часть заказа уже зафиксирована, убрать можно только её остаток.
                     </>
                 }
                 confirmLabel="Убрать"
@@ -214,8 +216,7 @@ function CartStepper({
     removeLabel: string;
     addLabel: string;
 }) {
-    const btnBase =
-        'flex size-8 shrink-0 items-center justify-center rounded-full transition-colors sm:size-9';
+    const btnBase = 'flex size-8 shrink-0 items-center justify-center rounded-full transition-colors sm:size-9';
     const btnRemove = cn(
         btnBase,
         'border-2 border-primary text-primary hover:bg-primary/10',
@@ -247,13 +248,7 @@ function CartStepper({
             >
                 <span className="truncate">{value}</span>
             </div>
-            <button
-                type="button"
-                onClick={onAdd}
-                disabled={addDisabled}
-                aria-label={addLabel}
-                className={btnAdd}
-            >
+            <button type="button" onClick={onAdd} disabled={addDisabled} aria-label={addLabel} className={btnAdd}>
                 <Plus className="size-3.5 sm:size-4" />
             </button>
         </div>
