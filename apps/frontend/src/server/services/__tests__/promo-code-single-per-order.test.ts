@@ -68,3 +68,29 @@ describe('PromoCodeService: one promo code per order', () => {
         await expect(clean.validate('SALE20', 5, 500, 1)).resolves.toMatchObject({ discount: 100 });
     });
 });
+
+describe('PromoCodeService: minimum order amount', () => {
+    const MIN = promo(3, 'MIN1000', { minAmount: 1000 });
+    const withCode = (pinned: FakePromo | null) => {
+        const repo = { findByCode: async () => MIN };
+        const paymentRepo = { findPinnedPromo: async () => pinned, getPromoDiscountUsed: async () => 0 };
+        return new PromoCodeService(repo as never, paymentRepo as never);
+    };
+
+    it('a pinned code keeps working after the order dropped below the minimum', async () => {
+        const service = withCode(MIN);
+        await expect(
+            service.resolveForSubmit({ userId: 1, purchaseId: 5, code: 'MIN1000', amount: 300, due: 800 }),
+        ).resolves.toEqual({ promoCodeId: 3, discountAmount: 30 });
+        await expect(service.validate('MIN1000', 5, 800, 1, 300)).resolves.toMatchObject({ discount: 30 });
+    });
+
+    it('a new code is checked against the order total, the discount is taken from the payment', async () => {
+        const service = withCode(null);
+        await expect(service.validate('MIN1000', 5, 800, 1, 300)).rejects.toThrow('Минимальная сумма заказа');
+        await expect(service.validate('MIN1000', 5, 1500, 1, 300)).resolves.toMatchObject({
+            discount: 30,
+            finalAmount: 270,
+        });
+    });
+});

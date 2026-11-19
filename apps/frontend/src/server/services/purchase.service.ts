@@ -463,6 +463,11 @@ export class PurchaseService {
     async recalculateAmounts(purchaseId: number, onlyItemId?: number) {
         const purchase = await this.repo.getById(purchaseId, true);
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
+        // Завершённая закупка закрыта: суммы в ней не меняем.
+        if (purchase.status === 'DONE') {
+            log.warn({ purchaseId }, 'recalc skipped: purchase is done');
+            return;
+        }
 
         const packDiscountPercent = await this.pricingSettings.getBeadPackPriceDiscountPercent();
         const orgFeeDefaultPercent = await this.pricingSettings.getOrgFeeDefaultPercent();

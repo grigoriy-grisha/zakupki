@@ -1,4 +1,4 @@
-import { computePromoDiscount, NotFoundError, type PromoCodeType, ValidationError } from '@zakupki/types';
+import { computePromoDiscount, NotFoundError, type PromoCodeType, roundMoney, ValidationError } from '@zakupki/types';
 
 import type { PaymentRepository } from '../domain/payment.repository';
 import type { PromoCodeRepository } from '../domain/promo-code.repository';
@@ -36,15 +36,28 @@ export class PromoCodeService {
         return this.repo.list();
     }
 
-    async validate(code: string, purchaseId: number, orderAmount: number, userId?: number) {
+    /**
+     * @param orderAmount сумма всего заказа — с ней сверяется минимальная сумма промокода.
+     * @param paymentAmount сумма этого платежа — от неё считается скидка (по умолчанию весь заказ).
+     */
+    async validate(
+        code: string,
+        purchaseId: number,
+        orderAmount: number,
+        userId?: number,
+        paymentAmount: number = orderAmount,
+    ) {
         const promo = await this.repo.findByCode(code);
         if (!promo) throw new NotFoundError('Промокод');
+        let alreadyPinned = false;
         if (userId != null) {
-            this.assertNotSecondPromo(await this.paymentRepo.findPinnedPromo(userId, purchaseId), promo.id);
+            const pinned = await this.paymentRepo.findPinnedPromo(userId, purchaseId);
+            this.assertNotSecondPromo(pinned, promo.id);
+            alreadyPinned = pinned != null && pinned.id === promo.id;
         }
-        this.assertUsable(promo, purchaseId, orderAmount);
+        this.assertUsable(promo, purchaseId, orderAmount, { alreadyPinned });
 
-        const discount = computePromoDiscount(promo.type as PromoCodeType, Number(promo.value), orderAmount);
+        const discount = computePromoDiscount(promo.type as PromoCodeType, Number(promo.value), paymentAmount);
         return {
             id: promo.id,
             code: promo.code,
@@ -53,7 +66,7 @@ export class PromoCodeService {
             value: Number(promo.value),
             minAmount: promo.minAmount != null ? Number(promo.minAmount) : null,
             discount,
-            finalAmount: orderAmount - discount,
+            finalAmount: roundMoney(paymentAmount - discount),
         };
     }
 
@@ -89,7 +102,8 @@ export class PromoCodeService {
         }
 
         // Промокод уже закреплён за этим заказом прошлой оплатой — доплаты идут с ним же,
-        // даже если код с тех пор выключили, он истёк или закончились активации.
+        // даже если код с тех пор выключили, он истёк, закончились активации или заказ
+        // уменьшился ниже минимальной суммы.
         const alreadyPinned = pinned != null && pinned.id === promo.id;
         try {
             this.assertUsable(promo, params.purchaseId, params.due, { alreadyPinned });
@@ -145,7 +159,10 @@ export class PromoCodeService {
         }
         if (promo.purchaseId && promo.purchaseId !== purchaseId)
             throw new ValidationError('Промокод не подходит для этой закупки');
-        if (promo.minAmount && orderAmount < Number(promo.minAmount)) {
+        // Минимальная сумма проверяется при первой оплате с кодом. Если потом заказ уменьшился
+        // (админ убрал товар), закреплённый код не снимаем: иначе клиент не мог доплатить
+        // остаток онлайн — сайт и бот всё равно отправляют закреплённый код.
+        if (!opts.alreadyPinned && promo.minAmount && orderAmount < Number(promo.minAmount)) {
             throw new ValidationError(`Минимальная сумма заказа: ${Number(promo.minAmount).toLocaleString('ru-RU')} ₽`);
         }
     }

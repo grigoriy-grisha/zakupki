@@ -1,7 +1,8 @@
 import { createLogger } from '@zakupki/logger';
-import { isPurchasePaymentOpen, roundMoney, ValidationError } from '@zakupki/types';
+import { isPurchasePayable, roundMoney, ValidationError } from '@zakupki/types';
 
 import { computeOnlineFee, SBP_MIN_TOTAL } from '@/lib/online-payment-fee';
+import { isLiveAwaiting } from '@/lib/payment-utils';
 
 import type { PaymentRepository } from '../domain/payment.repository';
 import type { PurchaseRepository } from '../domain/purchase.repository';
@@ -168,7 +169,8 @@ export class OnlinePaymentService {
 
         const purchase = await this.purchases.findPaymentInfo(params.purchaseId);
         // Удалённая закупка скрыта из магазина и бота — оплату по ней тоже не принимаем.
-        if (!purchase || purchase.deletedAt || !isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
+        // Завершённая закупка закрыта: в магазине кнопки оплаты нет, бот и сервер теперь так же.
+        if (!purchase || purchase.deletedAt || !isPurchasePayable(purchase.status, purchase.fulfillmentStatus)) {
             throw new ValidationError('Оплата по этой закупке сейчас не принимается');
         }
 
@@ -180,6 +182,11 @@ export class OnlinePaymentService {
                 throw new ValidationError('Укажите email для электронного чека');
             }
         }
+
+        // Просроченные ссылки клиент уже не оплатит, и в остатке (сайт, бот) они не резервируются —
+        // закрываем их сразу, не дожидаясь сверки. Если по такой ссылке оплата всё же идёт, сверка
+        // это увидит и новую ссылку не выдадим — двойной оплаты не будет.
+        await this.releaseAwaiting(params.userId, params.purchaseId, client, { onlyExpired: true });
 
         // Открытые ссылки клиента по закупке держат резерв. Если новая сумма помещается в свободный
         // остаток (клиент доплачивает часть) — открытую ссылку не трогаем. Иначе закрываем старые
@@ -525,12 +532,18 @@ export class OnlinePaymentService {
         return settled;
     }
 
-    private async releaseAwaiting(userId: number, purchaseId: number, client: TbankClient): Promise<void> {
+    private async releaseAwaiting(
+        userId: number,
+        purchaseId: number,
+        client: TbankClient,
+        opts: { onlyExpired?: boolean } = {},
+    ): Promise<void> {
         const awaiting = await this.repo.findAwaiting(userId, purchaseId);
         for (const payment of awaiting) {
+            if (opts.onlyExpired && isLiveAwaiting(payment)) continue;
             const outcome = await this.reconcile(payment, client, {
                 cancelIfOpen: true,
-                reason: 'Заменена новой оплатой',
+                reason: opts.onlyExpired ? 'Время на оплату истекло' : 'Заменена новой оплатой',
             });
             if (outcome === 'processing') {
                 throw new ValidationError(

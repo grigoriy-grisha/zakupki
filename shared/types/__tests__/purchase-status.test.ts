@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyPieceUnitInvariants } from '../src/units/normalize';
+import { isPurchasePayable } from '../src';
 import { canTransitionPurchaseStatus, PURCHASE_STATUS_TRANSITIONS } from '../src/purchase-status';
+import { applyPieceUnitInvariants } from '../src/units/normalize';
 
 describe('PURCHASE_STATUS_TRANSITIONS', () => {
     it('allows DRAFT → ACTIVE', () => {
@@ -66,5 +67,21 @@ describe('applyPieceUnitInvariants', () => {
         const fields = { packAmount: 50 };
         applyPieceUnitInvariants('pcs', fields);
         expect(fields).toEqual({ packAmount: 50 });
+    });
+});
+
+describe('isPurchasePayable', () => {
+    it('open payment stage of an active purchase is payable', () => {
+        expect(isPurchasePayable('ACTIVE', 'PAYMENT')).toBe(true);
+        expect(isPurchasePayable('ACTIVE', 'READY_FOR_PICKUP')).toBe(true);
+    });
+
+    it('a finished purchase is not payable even with an open stage', () => {
+        expect(isPurchasePayable('DONE', 'PAYMENT')).toBe(false);
+    });
+
+    it('payment stage not reached yet', () => {
+        expect(isPurchasePayable('ACTIVE', 'COLLECTION')).toBe(false);
+        expect(isPurchasePayable('ACTIVE', 'REORDER')).toBe(false);
     });
 });

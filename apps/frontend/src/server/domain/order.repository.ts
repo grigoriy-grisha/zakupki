@@ -418,10 +418,16 @@ export class OrderRepository {
         return rows.map((r) => r.purchaseItemId);
     }
 
-    /** id закупок, где есть хотя бы одна ACTIVE строка заказа (для пересчёта сумм). */
+    /**
+     * id закупок, где есть хотя бы одна ACTIVE строка заказа (для пересчёта сумм).
+     * Завершённые и удалённые не берём: там всё оплачено и закрыто, пересчёт дал бы ложные долги.
+     */
     async findPurchaseIdsWithActiveLines(): Promise<number[]> {
         const rows = await dbClient.orderLine.findMany({
-            where: { status: 'ACTIVE' },
+            where: {
+                status: 'ACTIVE',
+                purchaseItem: { purchase: { status: { not: 'DONE' }, deletedAt: null } },
+            },
             select: { purchaseItem: { select: { purchaseId: true } } },
         });
         return [...new Set(rows.map((r) => r.purchaseItem.purchaseId))];

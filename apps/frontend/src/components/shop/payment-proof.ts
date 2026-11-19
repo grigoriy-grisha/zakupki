@@ -1,6 +1,6 @@
 import { computePaymentTotals, type PaymentTotals } from '@zakupki/types';
 
-import { paymentTotal } from '@/lib/payment-utils';
+import { isLiveAwaiting, paymentTotal } from '@/lib/payment-utils';
 
 export type ShopPaymentView = {
     id: number;
@@ -40,10 +40,7 @@ export type PurchasePaymentSummary = PaymentTotals & {
     isFullyPaid: boolean;
 };
 
-/** Ссылка на оплату ещё действует (срок не вышел). */
-export function isLiveAwaiting(p: { status: string; expiresAt?: Date | string | null }, now = Date.now()): boolean {
-    return p.status === 'AWAITING' && (!p.expiresAt || new Date(p.expiresAt).getTime() > now);
-}
+export { isLiveAwaiting };
 
 export function summarizePurchasePayments(
     amountDue: number,

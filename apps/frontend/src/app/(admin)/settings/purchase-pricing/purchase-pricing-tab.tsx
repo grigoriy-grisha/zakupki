@@ -17,7 +17,7 @@ export function PurchasePricingTab() {
     const updateOrgFee = trpc.settings.updateOrgFee.useMutation({
         onSuccess: async () => {
             await utils.settings.getPricing.invalidate();
-            toast.success('Настройки сохранены');
+            toast.success('Орг. сбор сохранён, суммы заказов пересчитаны');
         },
         onError: (error) => toast.error(error.message),
     });
@@ -25,7 +25,7 @@ export function PurchasePricingTab() {
     const updateBeadPackDiscount = trpc.settings.updateBeadPackDiscount.useMutation({
         onSuccess: async () => {
             await utils.settings.getPricing.invalidate();
-            toast.success('Скидка сохранена, суммы заказов пересчитываются');
+            toast.success('Скидка сохранена, суммы заказов пересчитаны');
         },
         onError: (error) => toast.error(error.message),
     });
@@ -77,9 +77,10 @@ export function PurchasePricingTab() {
                 <div className="space-y-2">
                     <Label htmlFor="org-fee-percent">Орг. сбор по умолчанию, %</Label>
                     <p className="text-14-regular text-fg-secondary">
-                        Применяется ко всем товарам закупки, если у товара не задан собственный процент.
-                        У разных поставщиков орг. сбор может отличаться из-за логистики — переопределите
-                        его в колонке «Цена за уп. + орг. сбор» таблицы товаров.
+                        Применяется ко всем товарам закупки, если у товара не задан собственный процент. У разных
+                        поставщиков орг. сбор может отличаться из-за логистики — переопределите его в колонке «Цена за
+                        уп. + орг. сбор» таблицы товаров. При сохранении суммы заказов в незавершённых закупках
+                        пересчитываются.
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                         <Input
@@ -102,8 +103,8 @@ export function PurchasePricingTab() {
                 <div className="space-y-2">
                     <Label htmlFor="pack-discount-percent">Скидка за целую пачку, %</Label>
                     <p className="text-14-regular text-fg-secondary">
-                        Применяется к целым пачкам весовых товаров (бисер и т.п.) во всех закупках.
-                        При сохранении суммы всех активных заказов пересчитываются.
+                        Применяется к целым пачкам весовых товаров (бисер и т.п.) во всех закупках. При сохранении суммы
+                        заказов в незавершённых закупках пересчитываются.
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                         <Input

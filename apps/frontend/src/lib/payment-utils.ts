@@ -7,6 +7,11 @@ export function paymentTotal(p: { amount: unknown; children?: { amount: unknown 
     return Number(p.amount) + childAmount;
 }
 
+/** Ссылка на онлайн-оплату ещё действует (срок не вышел). */
+export function isLiveAwaiting(p: { status: string; expiresAt?: Date | string | null }, now = Date.now()): boolean {
+    return p.status === 'AWAITING' && (!p.expiresAt || new Date(p.expiresAt).getTime() > now);
+}
+
 type PaymentLike = {
     amount: unknown;
     method?: string | null;
@@ -116,6 +121,8 @@ export function exceedsMaxTransfer(amount: number, maxTransfer: number): boolean
  * Сумма платежа до скидки по введённой сумме перевода. Не больше остатка:
  * обратный пересчёт процента (перевод / 0.96) округлением иногда даёт +1 копейку
  * сверх остатка, и сервер отклонял «Оплатить всё».
+ * Перевод на весь максимум закрывает весь остаток: обратный пересчёт мог дать на копейку
+ * меньше, и после «Оплатить всё» оставался долг 0,01 ₽, который уже нельзя оплатить онлайн.
  */
 export function computeSubmittedAmount(
     transfer: number,
@@ -123,6 +130,8 @@ export function computeSubmittedAmount(
     promo: Pick<PaymentPromoInfo, 'type' | 'value'> | null,
 ): number {
     if (!promo || !(transfer > 0)) return transfer;
+    const fullTransfer = roundMoney(available - computePromoDiscount(promo.type, promo.value, available));
+    if (roundMoney(transfer) >= fullTransfer) return roundMoney(available);
     const gross =
         promo.type === 'PERCENT'
             ? Math.round((transfer * 10000) / (100 - promo.value)) / 100

@@ -41,7 +41,7 @@ export type BotPurchaseOrderDetail = {
             unitCode: string;
             packAmount?: string | number | null;
             product: { name: string; articleNumber: string | null; unitCode: string } | null;
-            purchase: { fulfillmentStatus: string };
+            purchase: { status?: string; fulfillmentStatus: string };
         } | null;
         priceInfo: BotOrderLinePriceInfo | null;
     }>;
@@ -53,7 +53,10 @@ export class BotOrderService {
     }
 
     async getPurchaseOrderDetail(userId: number, purchaseId: number): Promise<BotPurchaseOrderDetail | null> {
-        return serviceContainer.order.getPurchaseOrderDetail(userId, purchaseId) as Promise<BotPurchaseOrderDetail | null>;
+        return serviceContainer.order.getPurchaseOrderDetail(
+            userId,
+            purchaseId,
+        ) as Promise<BotPurchaseOrderDetail | null>;
     }
 
     async getActiveLinesForUserItem(purchaseItemId: number, userId: number) {

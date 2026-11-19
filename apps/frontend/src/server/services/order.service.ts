@@ -3,7 +3,6 @@ import type { EventBus } from '@zakupki/queue';
 import type { OrderEffect, OrderLine, PurchaseItem } from '@zakupki/types';
 import {
     canCancelOrder,
-    computeAmountDue,
     computeAmountDueWithPackages,
     computeOrderLinePriceBreakdown,
     ForbiddenError,
@@ -306,10 +305,7 @@ export class OrderService {
             removed.map((line) => {
                 const quantity = Number(line.removedQuantity ?? 0);
                 const packageCount = line.removedPackageCount ?? 0;
-                const amountDue =
-                    line.createdOnStage === 'COLLECTION'
-                        ? computeAmountDueWithPackages(quantity, packageCount, item)
-                        : computeAmountDue(quantity, item);
+                const amountDue = computeAmountDueWithPackages(quantity, packageCount, item);
                 return { id: line.id, quantity, packageCount, amountDue };
             }),
         );

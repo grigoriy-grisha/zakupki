@@ -6,6 +6,9 @@ import { adminProcedure, protectedProcedure, router } from '../trpc';
 
 const settingKeySchema = z.string().refine(isSettingKey, { message: 'Неизвестный ключ настройки' });
 
+/** Настройки, от которых зависят суммы заказов: после их смены записанные суммы пересчитываем. */
+const PRICING_SETTING_KEYS = new Set<string>(['bead_pack_price_discount_percent', 'org_fee_default_percent']);
+
 export const settingsRouter = router({
     getPricing: protectedProcedure.query(({ ctx }) => ctx.services.pricingSettings.getPricingSettings()),
 
@@ -37,6 +40,9 @@ export const settingsRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             await ctx.services.pricingSettings.setOrgFeeDefaultPercent(input.percent);
+            // Оргсбор входит в amountDue записанных заказов: без пересчёта старые заказы оставались
+            // по старому проценту, новые — по новому, а расшифровка суммы уходила в минус.
+            await ctx.services.purchase.recalculateAllAmounts();
             return { orgFeeDefaultPercent: input.percent };
         }),
 
@@ -111,6 +117,7 @@ export const settingsRouter = router({
                 }
             }
             await ctx.services.settings.set(input.key, typed as never);
+            if (PRICING_SETTING_KEYS.has(input.key)) await ctx.services.purchase.recalculateAllAmounts();
             return { key: input.key, value: typed };
         }),
 });

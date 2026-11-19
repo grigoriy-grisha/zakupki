@@ -1,4 +1,4 @@
-import { isPurchasePaymentOpen, ValidationError } from '@zakupki/types';
+import { isPurchaseCompleted, isPurchasePaymentOpen, ValidationError } from '@zakupki/types';
 import { z } from 'zod';
 
 import { adminProcedure, protectedProcedure, router } from '../trpc';
@@ -27,6 +27,9 @@ export const paymentsRouter = router({
         )
         .mutation(async ({ ctx, input }) => {
             const purchase = await ctx.services.purchase.getById(input.purchaseId);
+            if (isPurchaseCompleted(purchase.status)) {
+                throw new ValidationError('Закупка завершена, оплата по ней закрыта');
+            }
             if (!isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
                 throw new ValidationError('Оплата ещё не открыта. Ждём начала оплаты.');
             }

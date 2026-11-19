@@ -15,9 +15,9 @@
  * Все helpers — pure functions, не зависят от классов. Используются стратегиями
  * для построения MultiUpdate-результатов.
  */
-import { OrderLine } from '../order-line';
-import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
 import type { PurchaseFulfillmentStatus } from '../../index';
+import { OrderLine } from '../order-line';
+import { computeAmountDueWithPackages } from '../pricing';
 import type { OrderEffect, OrderError, OrderLineVO, PoolAggregation, PurchaseItem } from '../types';
 
 // ── Public types ────────────────────────────────────────────────────
@@ -90,11 +90,10 @@ export function applySetQtyOnLine(
     targetIsBase: boolean,
     newQty: number,
 ): MultiUpdate {
-    const usesPackages = line?.isBase ?? targetIsBase;
+    // Упаковки считаем у любой строки, не только у базовой: у добавки они тоже бывают,
+    // и общий пересчёт закупки их учитывает — иначе сумма прыгала бы туда-обратно.
     const pkgCount = line?.packageCount ?? 0;
-    const amountDue = usesPackages
-        ? computeAmountDueWithPackages(newQty, pkgCount, item)
-        : computeAmountDue(newQty, item);
+    const amountDue = computeAmountDueWithPackages(newQty, pkgCount, item);
     const createdOnStage: PurchaseFulfillmentStatus =
         line?.createdOnStage ?? (targetIsBase ? 'COLLECTION' : item.fulfillmentStatus);
     const newLine = line

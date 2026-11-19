@@ -102,9 +102,7 @@ export abstract class BaseMutableStrategy extends StageStrategy {
         const target = this.findBaseLine(userId) ?? this.findSupplementLine(userId);
         if (target) {
             const newQty = target.quantity + amount;
-            const amountDue = target.isBase
-                ? computeAmountDueWithPackages(newQty, target.packageCount, this.item)
-                : computeAmountDue(newQty, this.item);
+            const amountDue = computeAmountDueWithPackages(newQty, target.packageCount, this.item);
             return {
                 updates: [{ old: target, new: target.withQuantity(newQty, amountDue) }],
                 effects: [
@@ -142,9 +140,7 @@ export abstract class BaseMutableStrategy extends StageStrategy {
             const newQty = line.quantity - take;
             remaining -= take;
             if (newQty > 0) {
-                const amountDue = line.isBase
-                    ? computeAmountDueWithPackages(newQty, line.packageCount, this.item)
-                    : computeAmountDue(newQty, this.item);
+                const amountDue = computeAmountDueWithPackages(newQty, line.packageCount, this.item);
                 updates.push({ old: line, new: line.withQuantity(newQty, amountDue) });
                 effects.push(
                     makeUpsertEffect(this.item, userId, line.createdOnStage, newQty, amountDue, line.packageCount),
@@ -227,7 +223,10 @@ export abstract class BaseMutableStrategy extends StageStrategy {
         }
 
         const userLines = this.activeUserLines(userId);
-        let remaining = Math.min(-delta, userLines.reduce((s, l) => s + l.packageCount, 0));
+        let remaining = Math.min(
+            -delta,
+            userLines.reduce((s, l) => s + l.packageCount, 0),
+        );
         if (remaining === 0) return ok();
 
         // supplement-first: isBase идут после isSupplement

@@ -130,7 +130,7 @@ export class PurchaseRepository {
     findPaymentInfo(id: number) {
         return dbClient.purchase.findUnique({
             where: { id },
-            select: { fulfillmentStatus: true, tag: true, deletedAt: true },
+            select: { status: true, fulfillmentStatus: true, tag: true, deletedAt: true },
         });
     }
 

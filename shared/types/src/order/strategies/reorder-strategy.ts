@@ -13,27 +13,26 @@
  *   - Возможно создание новой COLLECTION с pkg>0, qty=0
  *   - Hard-delete при qty=0 && pkg=0
  */
-import { computeAmountDue, computeAmountDueWithPackages } from '../pricing';
-import { validateSupplementPool } from '../pool';
 import { validateSupplierLimit } from '../limit';
-import { validateOrderedStock } from '../ordered-stock';
-import { effectiveQty } from '../order-math';
 import type { OrderLine } from '../order-line';
-import { BaseMutableStrategy } from './stage-strategy';
+import { effectiveQty } from '../order-math';
+import { validateOrderedStock } from '../ordered-stock';
+import { validateSupplementPool } from '../pool';
+import { computeAmountDueWithPackages } from '../pricing';
 import {
     aggregateForPool,
-    applySetPackagesOnLine,
     applyZeroOutOnLine,
     err,
     forbidden,
+    type LineUpdate,
     makeNewLine,
     makeUpsertEffect,
+    type MultiUpdate,
     ok,
     splitReorderDelta,
     toActiveVOs,
-    type LineUpdate,
-    type MultiUpdate,
 } from './atomic';
+import { BaseMutableStrategy } from './stage-strategy';
 
 export class ReorderStrategy extends BaseMutableStrategy {
     readonly stageName = 'REORDER' as const;
@@ -97,7 +96,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
         }
         if (spillover > 0) {
             const newQty = (supp?.quantity ?? 0) + spillover;
-            const amountDue = computeAmountDue(newQty, this.item);
+            const amountDue = computeAmountDueWithPackages(newQty, supp?.packageCount ?? 0, this.item);
             const newSupp = supp
                 ? supp.withQuantity(newQty, amountDue)
                 : makeNewLine(this.item, userId, 'REORDER', newQty, amountDue, 0);
@@ -116,7 +115,7 @@ export class ReorderStrategy extends BaseMutableStrategy {
         if (supp && supp.quantity > 0) {
             const newQty = supp.quantity + delta;
             if (newQty > 0) {
-                const amountDue = computeAmountDue(newQty, this.item);
+                const amountDue = computeAmountDueWithPackages(newQty, supp.packageCount, this.item);
                 return {
                     updates: [{ old: supp, new: supp.withQuantity(newQty, amountDue) }],
                     effects: [makeUpsertEffect(this.item, userId, 'REORDER', newQty, amountDue, supp.packageCount)],

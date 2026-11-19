@@ -1,6 +1,8 @@
 import {
     buildQuantityDisplay,
     computeOrderLinePriceBreakdown,
+    isPurchaseCompleted,
+    isPurchasePayable,
     isPurchasePaymentOpen,
     mergeLines,
     type OrderLinePriceBreakdown,
@@ -83,11 +85,14 @@ async function showPurchaseDetail(ctx: CustomContext, container: ServiceContaine
     const fulfillmentStatus = detail.lines[0]?.purchaseItem?.purchase?.fulfillmentStatus as
         | PurchaseFulfillmentStatus
         | undefined;
-    const paymentOpen = isPurchasePaymentOpen(fulfillmentStatus);
+    // Завершённая закупка закрыта для оплаты — как в магазине.
+    const purchaseStatus = detail.lines[0]?.purchaseItem?.purchase?.status;
+    const paymentOpen = isPurchasePayable(purchaseStatus, fulfillmentStatus);
     const canPay = Boolean(paymentOpen && payment && payment.available > 0);
+    const waitsForPayment = Boolean(payment && payment.available > 0) && !isPurchaseCompleted(purchaseStatus);
 
     const text = formatPurchaseDetail(detail, purchaseId, payment, fulfillmentStatus);
-    const keyboard = buildDetailKeyboard(purchaseId, canPay, paymentOpen, Boolean(payment && payment.available > 0));
+    const keyboard = buildDetailKeyboard(purchaseId, canPay, paymentOpen, waitsForPayment);
 
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: keyboard });

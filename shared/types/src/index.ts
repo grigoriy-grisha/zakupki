@@ -65,6 +65,18 @@ export function isPurchasePaymentOpen(status: PurchaseFulfillmentStatus | null |
     return idx >= 0 && paymentIdx >= 0 && idx >= paymentIdx;
 }
 
+/**
+ * Можно ли сейчас платить по закупке: этап оплаты открыт и закупка не завершена.
+ * Одно правило для магазина, бота и сервера — раньше завершённую закупку с долгом
+ * можно было оплатить в боте, а в магазине нет.
+ */
+export function isPurchasePayable(
+    status: PurchaseStatus | string | null | undefined,
+    fulfillmentStatus: PurchaseFulfillmentStatus | string | null | undefined,
+): boolean {
+    return !isPurchaseCompleted(status) && isPurchasePaymentOpen(fulfillmentStatus as PurchaseFulfillmentStatus);
+}
+
 // Order domain — ООП (rich entities + aggregate root)
 export type {
     AdjustResult,

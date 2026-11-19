@@ -58,6 +58,19 @@ describe('computeSubmittedAmount', () => {
         }
     });
 
+    it('«Оплатить всё» с любым процентом закрывает остаток без хвоста в 0,01 ₽', () => {
+        // Раньше 1,50 ₽ со скидкой 3% давали платёж 1,49 и долг 0,01, который онлайн уже не оплатить.
+        expect(computeSubmittedAmount(1.45, 1.5, { type: 'PERCENT', value: 3 })).toBe(1.5);
+        for (const value of [3, 5, 7, 10, 15, 20, 33, 50]) {
+            const promo = { type: 'PERCENT' as const, value, minAmount: null };
+            for (let kop = 100; kop < 300000; kop += 13) {
+                const available = kop / 100;
+                const max = computeMaxTransfer(available, promo);
+                expect(computeSubmittedAmount(max, available, promo)).toBe(available);
+            }
+        }
+    });
+
     it('без промокода сумма не меняется', () => {
         expect(computeSubmittedAmount(500, 1000, null)).toBe(500);
     });

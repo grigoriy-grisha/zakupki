@@ -1,5 +1,5 @@
 import { dbClient, type PrismaClient } from '@zakupki/database';
-import { isPurchasePaymentOpen } from '@zakupki/types';
+import { isPurchasePayable } from '@zakupki/types';
 
 export const PAYMENT_NOT_OPEN_MESSAGE =
     'Пока нельзя оплатить заказ.\nОплата ещё не открыта — дождитесь этапа «Оплата заказов».\nСтатус: /orders';
@@ -16,10 +16,10 @@ export class PurchasePaymentGuard {
     async isOpenById(purchaseId: number): Promise<boolean> {
         const purchase = await this.db.purchase.findUnique({
             where: { id: purchaseId },
-            select: { fulfillmentStatus: true, deletedAt: true },
+            select: { status: true, fulfillmentStatus: true, deletedAt: true },
         });
         if (!purchase || purchase.deletedAt) return false;
-        return isPurchasePaymentOpen(purchase.fulfillmentStatus);
+        return isPurchasePayable(purchase.status, purchase.fulfillmentStatus);
     }
 
     /** Удобный алиас для константы. */

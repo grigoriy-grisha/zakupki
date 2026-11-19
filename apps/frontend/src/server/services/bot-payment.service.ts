@@ -2,9 +2,11 @@ import { dbClient } from '@zakupki/database';
 import {
     computeOrderLinePriceBreakdown,
     computePaymentTotals,
-    isPurchasePaymentOpen,
+    isPurchasePayable,
     type PurchaseFulfillmentStatus,
 } from '@zakupki/types';
+
+import { isLiveAwaiting } from '@/lib/payment-utils';
 
 import type { PaymentRepository } from '../domain/payment.repository';
 import type { OrderService } from './order.service';
@@ -78,14 +80,14 @@ export class BotPaymentService {
             purchaseIds.length > 0
                 ? await dbClient.purchase.findMany({
                       where: { id: { in: purchaseIds }, deletedAt: null },
-                      select: { id: true, fulfillmentStatus: true },
+                      select: { id: true, status: true, fulfillmentStatus: true },
                   })
                 : [];
         const purchaseById = new Map(purchases.map((p) => [p.id, p]));
 
         map.forEach((info, purchaseId) => {
             const purchase = purchaseById.get(purchaseId);
-            if (!purchase || info.available <= 0 || !isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
+            if (!purchase || info.available <= 0 || !isPurchasePayable(purchase.status, purchase.fulfillmentStatus)) {
                 return;
             }
             result.push({
@@ -110,13 +112,25 @@ export class BotPaymentService {
         return this.orderService.getPaymentBreakdownLines(userId, purchaseId);
     }
 
+    /**
+     * Проверка промокода в боте. Минимальную сумму сверяем с суммой всего заказа — как сайт
+     * и как сервер при создании оплаты, а скидку считаем от этого платежа. Раньше бот сверял
+     * минимум с платежом, и при частичной оплате код отклонялся, хотя на сайте проходил.
+     */
     async validatePromoCode(
         code: string,
         purchaseId: number,
-        orderAmount: number,
+        paymentAmount: number,
         userId?: number,
     ): Promise<{ id: number; code: string; label: string | null; discount: number; finalAmount: number }> {
-        return this.promoCodeService.validate(code.toUpperCase().trim(), purchaseId, orderAmount, userId);
+        const due = userId != null ? (await this.getPurchasePaymentInfo(userId, purchaseId))?.due : undefined;
+        return this.promoCodeService.validate(
+            code.toUpperCase().trim(),
+            purchaseId,
+            due ?? paymentAmount,
+            userId,
+            paymentAmount,
+        );
     }
 
     /** Промокод, закреплённый за заказом прошлой оплатой (для авто-применения в боте). */
@@ -157,6 +171,9 @@ export class BotPaymentService {
 
         const totalsByPurchase = new Map<number, Array<{ status: string; total: number }>>();
         for (const payment of payments) {
+            // Просроченную ссылку уже не оплатить: в остатке её не резервируем (как на сайте), иначе бот
+            // не давал платить до сверки. Сервер закроет её у банка при новой оплате.
+            if (payment.status === 'AWAITING' && !isLiveAwaiting(payment)) continue;
             const tag = payment.purchase?.tag ?? '—';
             const entry = getEntry(payment.purchaseId, tag);
             if (tag !== '—') entry.tag = tag;

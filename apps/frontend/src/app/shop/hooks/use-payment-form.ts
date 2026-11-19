@@ -63,20 +63,22 @@ export function usePaymentForm(purchaseId: number, available: number, due: numbe
     const consentRequired = consent != null && !consent.accepted;
     const numAmount = Number(amount);
     const submittedAmount = computeSubmittedAmount(numAmount, available, appliedPromo);
+    // Сервер сверяет минимальную сумму промокода с суммой всего заказа, а не с этим платежом.
+    // Закреплённый за заказом код действует и после того, как заказ уменьшился ниже минимума.
+    const promoForLimits = appliedPromo?.pinned ? { ...appliedPromo, minAmount: null } : appliedPromo;
     const promoActive =
-        appliedPromo != null &&
+        promoForLimits != null &&
         numAmount > 0 &&
-        // Сервер сверяет минимальную сумму промокода с суммой всего заказа, а не с этим платежом.
-        (appliedPromo.minAmount == null || due >= appliedPromo.minAmount);
+        (promoForLimits.minAmount == null || due >= promoForLimits.minAmount);
     const promoIssue =
         appliedPromo && numAmount > 0 && !promoActive
             ? `Промокод ${appliedPromo.code} не действует: минимальная сумма ${formatRub(appliedPromo.minAmount ?? 0)}`
             : '';
     const promoDiscount = promoActive
-        ? computePromoDiscount(appliedPromo.type, appliedPromo.value, submittedAmount)
+        ? computePromoDiscount(promoForLimits.type, promoForLimits.value, submittedAmount)
         : 0;
     const finalAmount = roundMoney(submittedAmount - promoDiscount);
-    const maxTransfer = computeMaxTransfer(available, appliedPromo, due);
+    const maxTransfer = computeMaxTransfer(available, promoForLimits, due);
     const exceedsMax = exceedsMaxTransfer(numAmount, maxTransfer);
     const amountError = exceedsMax ? `Максимум ${formatRub(maxTransfer)}` : '';
 
