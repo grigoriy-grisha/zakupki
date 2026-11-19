@@ -1,6 +1,7 @@
 'use client';
 
 import { PURCHASE_FULFILLMENT_LABELS, type PurchaseFulfillmentStatus } from '@zakupki/types';
+import { useEffect, useRef, useState } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/lib/client/trpc';
@@ -9,6 +10,80 @@ import { useAppRouter } from '@/lib/hooks/use-app-router';
 import { cn } from '@/lib/utils';
 
 import { SidebarSlot } from './sidebar-slot';
+
+const WIDTH_STORAGE_KEY = 'shop-sidebar-width';
+const DEFAULT_WIDTH = 320;
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 480;
+
+function clampWidth(value: number): number {
+    return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(value)));
+}
+
+/** Ширина левой панели: тянется за линию справа и запоминается в браузере. */
+function useResizableWidth() {
+    const [width, setWidth] = useState(DEFAULT_WIDTH);
+    const drag = useRef<{ startX: number; startWidth: number } | null>(null);
+
+    useEffect(() => {
+        try {
+            const saved = Number(localStorage.getItem(WIDTH_STORAGE_KEY));
+            if (saved) setWidth(clampWidth(saved));
+        } catch {
+            // localStorage недоступен (приватный режим) — остаёмся на ширине по умолчанию
+        }
+    }, []);
+
+    function save(value: number) {
+        try {
+            localStorage.setItem(WIDTH_STORAGE_KEY, String(value));
+        } catch {
+            // не критично: ширина просто не запомнится
+        }
+    }
+
+    const handleProps = {
+        role: 'separator' as const,
+        'aria-orientation': 'vertical' as const,
+        'aria-label': 'Ширина панели',
+        'aria-valuemin': MIN_WIDTH,
+        'aria-valuemax': MAX_WIDTH,
+        'aria-valuenow': width,
+        tabIndex: 0,
+        title: 'Потяните, чтобы изменить ширину',
+        onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = { startX: e.clientX, startWidth: width };
+            document.body.style.userSelect = 'none';
+        },
+        onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+            if (!drag.current) return;
+            setWidth(clampWidth(drag.current.startWidth + e.clientX - drag.current.startX));
+        },
+        onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
+            if (!drag.current) return;
+            const next = clampWidth(drag.current.startWidth + e.clientX - drag.current.startX);
+            drag.current = null;
+            document.body.style.userSelect = '';
+            setWidth(next);
+            save(next);
+        },
+        onDoubleClick: () => {
+            setWidth(DEFAULT_WIDTH);
+            save(DEFAULT_WIDTH);
+        },
+        onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            const next = clampWidth(width + (e.key === 'ArrowRight' ? 16 : -16));
+            setWidth(next);
+            save(next);
+        },
+    };
+
+    return { width, handleProps };
+}
 
 interface ShopSidebarProps {
     className?: string;
@@ -21,18 +96,27 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
         statuses: ['ACTIVE'],
     });
 
+    const { width, handleProps } = useResizableWidth();
+
     const match = pathname.match(/\/shop\/purchase\/(\d+)/);
     const activePurchaseId = match ? Number(match[1]) : null;
 
     return (
         <aside
-            className={cn(
-                'sticky top-14 h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 hidden md:flex flex-col',
-                className,
-            )}
+            className={cn('sticky top-14 h-[calc(100dvh-3.5rem)] shrink-0 hidden md:flex flex-col', className)}
+            style={{ width }}
         >
-            <span aria-hidden className="absolute bottom-10 right-0 top-10 w-0.5 bg-secondary" />
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-8 sm:pt-10">
+            {/* Линия справа — ручка: тянуть мышкой, двойной клик возвращает ширину по умолчанию. */}
+            <div
+                {...handleProps}
+                className="group/resize absolute bottom-10 right-0 top-10 z-10 w-3 translate-x-1/2 cursor-col-resize touch-none outline-none"
+            >
+                <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-secondary transition-[width] group-hover/resize:w-1 group-focus-visible/resize:w-1 group-active/resize:w-1"
+                />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-10 pt-8 sm:pt-10">
                 <div>
                     {isLoading ? (
                         <div className="space-y-4">

@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronRight, FolderOpen, Package, Tag } from 'lucide-react';
 
 import type { TreeNode } from '@/app/(admin)/products/lib/types';
+import { TruncatedText } from '@/components/shared/truncated-text';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +36,8 @@ export function FilterTree({
                 size="sm"
                 onClick={onClear}
                 className={cn(
-                    'h-auto w-full justify-start gap-2 rounded-full px-3 py-2 text-13-medium',
+                    // ring-inset: снаружи кольцо фокуса обрезается контейнером с overflow-hidden
+                    'h-auto w-full justify-start gap-2 rounded-full px-2.5 py-2 text-13-medium focus-visible:ring-inset',
                     selectedId === null ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-primary',
                 )}
             >
@@ -80,10 +82,10 @@ function FilterTreeNode({
                             size="sm"
                             onClick={() => onSelect(node)}
                             className={cn(
-                                'h-auto w-full justify-start gap-1.5 rounded-full px-3 py-1.5 text-13-medium',
+                                'h-auto w-full justify-start gap-1 rounded-full px-2 py-1.5 text-13-medium focus-visible:ring-inset',
                                 isSelected ? 'bg-bg-soft text-fg-primary hover:bg-bg-soft' : 'text-fg-primary',
                             )}
-                            style={{ paddingLeft: `${depth * 14 + 12}px` }}
+                            style={{ paddingLeft: `${depth * 10 + 6}px` }}
                         >
                             {hasChildren ? (
                                 <span
@@ -91,7 +93,7 @@ function FilterTreeNode({
                                         e.stopPropagation();
                                         onToggle(node.id);
                                     }}
-                                    className="flex h-5 w-5 shrink-0 items-center justify-center"
+                                    className="flex size-4 shrink-0 items-center justify-center"
                                 >
                                     {isExpanded ? (
                                         <ChevronDown className="size-3.5" />
@@ -100,7 +102,7 @@ function FilterTreeNode({
                                     )}
                                 </span>
                             ) : (
-                                <span className="w-5 shrink-0" />
+                                <span className="w-4 shrink-0" />
                             )}
                             {node.isBrandFolder ? (
                                 <Tag className="size-3.5 shrink-0 text-fg-tertiary" />
@@ -112,17 +114,17 @@ function FilterTreeNode({
                                     )}
                                 />
                             )}
+                            {compact ? (
+                                // Длинное название обрезается, полное — в подсказке при наведении.
+                                <TruncatedText className="min-w-0 flex-1 cursor-pointer text-left">
+                                    {node.label}
+                                </TruncatedText>
+                            ) : (
+                                <span className="min-w-0 flex-1 text-left break-words">{node.label}</span>
+                            )}
                             <span
                                 className={cn(
-                                    'min-w-0 flex-1 text-left',
-                                    compact ? 'truncate' : 'break-words',
-                                )}
-                            >
-                                {node.label}
-                            </span>
-                            <span
-                                className={cn(
-                                    'rounded-full bg-bg-soft px-2 text-12-medium tabular-nums text-fg-secondary',
+                                    'rounded-full bg-bg-soft px-1.5 text-12-medium tabular-nums text-fg-secondary',
                                     compact ? 'shrink-0' : 'ml-auto',
                                 )}
                             >

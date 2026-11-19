@@ -6,13 +6,13 @@ import { EyeOff } from 'lucide-react';
 import { Highlight } from '@/components/shared/highlight';
 import { PackageUnitSelect } from '@/components/shared/package-unit-select';
 import { ProductPhotoPreview } from '@/components/shared/product-photo-preview';
+import { TruncatedText } from '@/components/shared/truncated-text';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { TableCell } from '@/components/ui/table';
 import { trpc } from '@/lib/client/trpc';
 import { cn } from '@/lib/utils';
 
 import type { PurchaseItem } from '../../lib/types';
-import { TruncatedText } from '../truncated-text';
 import { InlineCell } from './inline-cell';
 
 export function numOrDash(value: string | number | null | undefined): string {
@@ -82,7 +82,8 @@ export function PackSizeCell({
             </TableCell>
         );
     }
-    const resolvedUnit = packUnit ?? getUnitByCode(unitCode ?? '')?.shortName ?? getUnitByCode('piece')?.shortName ?? 'шт';
+    const resolvedUnit =
+        packUnit ?? getUnitByCode(unitCode ?? '')?.shortName ?? getUnitByCode('piece')?.shortName ?? 'шт';
     return (
         <TableCell className="px-2 py-1 text-right">
             <div className="flex items-center justify-end gap-1">
@@ -95,11 +96,7 @@ export function PackSizeCell({
                     align="right"
                     className="w-14"
                 />
-                <PackageUnitSelect
-                    value={resolvedUnit}
-                    onChange={(v) => onCommit({ packUnit: v })}
-                    className="h-7"
-                />
+                <PackageUnitSelect value={resolvedUnit} onChange={(v) => onCommit({ packUnit: v })} className="h-7" />
             </div>
         </TableCell>
     );
