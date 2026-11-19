@@ -231,7 +231,13 @@ export class OnlinePaymentService {
                 FailURL: params.returnUrl ?? `${resultUrl}&payment=fail`,
                 RedirectDueDate: formatTbankDate(expiresAt),
                 PayType: 'O',
-                DATA: { paymentId: String(created.id), purchaseId: String(params.purchaseId) },
+                DATA: {
+                    paymentId: String(created.id),
+                    purchaseId: String(params.purchaseId),
+                    // Email в DATA банк подставляет в поле «Мне нужен чек» на своей форме,
+                    // чтобы клиент не вводил его второй раз (сам чек уходит через Receipt.Email).
+                    ...(receiptContact ? { Email: receiptContact.email } : {}),
+                },
                 Receipt: receiptContact
                     ? await this.buildReceipt({ tag: purchase.tag, net, fee, contact: receiptContact })
                     : undefined,
