@@ -1,5 +1,5 @@
 import { createLogger } from '@zakupki/logger';
-import { ForbiddenError, ValidationError } from '@zakupki/types';
+import { ForbiddenError, NotFoundError, ValidationError } from '@zakupki/types';
 
 import type { PaymentRepository } from '../domain/payment.repository';
 import type { NotificationService } from './notification.service';
@@ -27,23 +27,40 @@ export class PaymentService {
         return this.repo.getByUser(userId);
     }
 
-    /** Онлайн-оплаты меняют статус только по уведомлениям банка — ручное решение их бы рассинхронизировало. */
-    private async assertManual(id: number): Promise<void> {
+    /**
+     * Проверки ручного решения админа. Онлайн-оплаты меняют статус только по уведомлениям банка —
+     * ручное решение их бы рассинхронизировало. Раньше ручной платёж можно было переключать
+     * «Подтверждён» ↔ «Отклонён» как угодно, в том числе после возврата по нему.
+     */
+    private async assertAdminTransition(id: number, target: 'CONFIRMED' | 'REJECTED'): Promise<void> {
         const payment = await this.repo.findWithPurchase(id);
-        if (payment && payment.method !== 'MANUAL') {
+        if (!payment) throw new NotFoundError('Платёж', id);
+        if (payment.method !== 'MANUAL') {
             throw new ValidationError('Статус онлайн-оплаты меняется автоматически по уведомлению банка');
+        }
+        if (payment.parentId != null || payment.refundOfId != null) {
+            throw new ValidationError('Скидка и возврат меняют статус только вместе с основной оплатой');
+        }
+        if (payment.status === target) {
+            throw new ValidationError(target === 'CONFIRMED' ? 'Платёж уже подтверждён' : 'Платёж уже отклонён');
+        }
+        if (target === 'CONFIRMED' && payment.purchase.deletedAt) {
+            throw new ValidationError('Закупка удалена — подтвердить оплату по ней нельзя');
+        }
+        if (target === 'REJECTED' && (await this.repo.getRefundedTotal(id)) > 0) {
+            throw new ValidationError('По этому платежу уже сделан возврат — отклонить его нельзя');
         }
     }
 
     async confirm(id: number, adminNote?: string) {
-        await this.assertManual(id);
+        await this.assertAdminTransition(id, 'CONFIRMED');
         const result = await this.repo.updateStatus(id, 'CONFIRMED', adminNote);
         await this.notifyPayment(id, 'PAYMENT_CONFIRMED', adminNote);
         return result;
     }
 
     async reject(id: number, adminNote?: string) {
-        await this.assertManual(id);
+        await this.assertAdminTransition(id, 'REJECTED');
         const result = await this.repo.updateStatus(id, 'REJECTED', adminNote);
         await this.notifyPayment(id, 'PAYMENT_REJECTED', adminNote);
         return result;

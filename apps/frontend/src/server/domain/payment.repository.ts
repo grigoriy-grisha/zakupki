@@ -2,6 +2,8 @@ import type { PaymentMethod, PaymentStatus, Prisma } from '@zakupki/database';
 import { dbClient } from '@zakupki/database';
 import { NotFoundError, ValidationError } from '@zakupki/types';
 
+import { computeRefundDiscountShare } from '@/lib/payment-utils';
+
 export class PaymentRepository {
     async create(data: { userId: number; purchaseId: number; amount: number; note?: string }) {
         return dbClient.payment.create({
@@ -128,7 +130,7 @@ export class PaymentRepository {
             include: {
                 user: true,
                 children: { include: { promoCode: true } },
-                refunds: { select: { amount: true, status: true } },
+                refunds: { select: { amount: true, status: true, children: { select: { amount: true } } } },
             },
             orderBy: { submittedAt: 'desc' },
         });
@@ -195,7 +197,9 @@ export class PaymentRepository {
                 amount: true,
                 status: true,
                 method: true,
-                purchase: { select: { tag: true } },
+                parentId: true,
+                refundOfId: true,
+                purchase: { select: { tag: true, deletedAt: true } },
             },
         });
     }
@@ -341,8 +345,10 @@ export class PaymentRepository {
                 },
             });
 
+            // Дочерние строки оплаты — это только скидка по промокоду. Ищем без promoCodeId:
+            // после удаления промокода ссылка на него обнуляется, и скидка переставала отменяться.
             const discountChild = await tx.payment.findFirst({
-                where: { parentId: data.original.id, promoCodeId: { not: null }, status: 'CONFIRMED' },
+                where: { parentId: data.original.id, status: 'CONFIRMED' },
                 select: { amount: true, promoCodeId: true },
             });
             const discount = Number(discountChild?.amount ?? 0);
@@ -350,19 +356,18 @@ export class PaymentRepository {
             if (discountChild && discount > 0 && paidNet > 0) {
                 const previous = await tx.payment.findMany({
                     where: { refundOfId: data.original.id, status: 'CONFIRMED', id: { not: refund.id } },
-                    select: { amount: true, children: { select: { amount: true, promoCodeId: true } } },
+                    select: { amount: true, children: { select: { amount: true } } },
                 });
-                const refundedBefore = -previous.reduce((sum, r) => sum + Number(r.amount), 0);
-                const discountReversed = -previous.reduce(
-                    (sum, r) =>
-                        sum + r.children.filter((c) => c.promoCodeId != null).reduce((a, c) => a + Number(c.amount), 0),
-                    0,
-                );
-                const discountLeft = Math.round((discount - discountReversed) * 100) / 100;
-                const isFull = Math.round((refundedBefore + data.amount) * 100) >= Math.round(paidNet * 100);
-                const share = isFull
-                    ? discountLeft
-                    : Math.min(discountLeft, Math.round(((discount * data.amount) / paidNet) * 100) / 100);
+                const share = computeRefundDiscountShare({
+                    paid: paidNet,
+                    discount,
+                    refundedBefore: -previous.reduce((sum, r) => sum + Number(r.amount), 0),
+                    discountReversedBefore: -previous.reduce(
+                        (sum, r) => sum + r.children.reduce((a, c) => a + Number(c.amount), 0),
+                        0,
+                    ),
+                    amount: data.amount,
+                });
                 if (share > 0) {
                     await tx.payment.create({
                         data: {

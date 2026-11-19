@@ -478,6 +478,15 @@ export class PurchaseService {
         const touchedItemIds = new Set<number>();
         const changedByUser = new Map<number, { prev: number; next: number }>();
         const updates: { id: number; amountDue: number }[] = [];
+        // Сумма всего заказа участника до пересчёта: «Было/Стало» в уведомлении показывает
+        // заказ целиком, а не только строки, которые изменились.
+        const orderTotalByUser = new Map<number, number>();
+        for (const item of purchase.items) {
+            for (const line of item.orderLines) {
+                if (line.status !== 'ACTIVE') continue;
+                orderTotalByUser.set(line.userId, (orderTotalByUser.get(line.userId) ?? 0) + Number(line.amountDue));
+            }
+        }
         for (const item of purchase.items) {
             if (onlyItemId != null && item.id !== onlyItemId) continue;
             // Доменный PurchaseItem для canonical-прайсинга. getById не вкладывает
@@ -525,7 +534,7 @@ export class PurchaseService {
         if (onlyItemId == null) {
             await Promise.all(Array.from(touchedItemIds).map((id) => this.eventBus.emitPurchaseItemChanged(id)));
         }
-        await this.notifyAmountRecalculated(purchase.id, purchase.tag, changedByUser);
+        await this.notifyAmountRecalculated(purchase.id, purchase.tag, changedByUser, orderTotalByUser);
     }
 
     /**
@@ -544,8 +553,11 @@ export class PurchaseService {
         purchaseId: number,
         purchaseTag: string,
         changedByUser: Map<number, { prev: number; next: number }>,
+        orderTotalByUser: Map<number, number>,
     ): Promise<void> {
         for (const [userId, agg] of changedByUser) {
+            const prevTotal = orderTotalByUser.get(userId) ?? agg.prev;
+            const nextTotal = prevTotal - agg.prev + agg.next;
             try {
                 await this.notification.notify({
                     userId,
@@ -553,8 +565,8 @@ export class PurchaseService {
                     payload: {
                         purchaseId,
                         purchaseTag,
-                        prevAmountDue: Math.round(agg.prev * 100) / 100,
-                        newAmountDue: Math.round(agg.next * 100) / 100,
+                        prevAmountDue: Math.round(prevTotal * 100) / 100,
+                        newAmountDue: Math.round(nextTotal * 100) / 100,
                     },
                 });
             } catch (err) {

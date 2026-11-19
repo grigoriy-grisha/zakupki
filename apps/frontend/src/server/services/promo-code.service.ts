@@ -21,6 +21,9 @@ export class PromoCodeService {
         minAmount?: number;
         expiresAt?: Date;
     }) {
+        if (data.type === 'PERCENT' && data.value > 100) {
+            throw new ValidationError('Скидка в процентах не может быть больше 100%');
+        }
         return this.repo.create(data);
     }
 
@@ -57,13 +60,22 @@ export class PromoCodeService {
         }
         this.assertUsable(promo, purchaseId, orderAmount, { alreadyPinned });
 
-        const discount = computePromoDiscount(promo.type as PromoCodeType, Number(promo.value), paymentAmount);
+        // Фиксированная скидка тратится частями. Если код уже применяли к этому заказу,
+        // показываем только остаток — иначе клиент видел скидку, которую оплата не даст.
+        let value = Number(promo.value);
+        if (alreadyPinned && promo.type === 'FIXED' && userId != null) {
+            const used = await this.paymentRepo.getPromoDiscountUsed(userId, purchaseId, promo.id);
+            value = Math.max(0, roundMoney(value - used));
+            if (value <= 0) throw new ValidationError('Скидка по этому промокоду уже использована полностью');
+        }
+
+        const discount = computePromoDiscount(promo.type as PromoCodeType, value, paymentAmount);
         return {
             id: promo.id,
             code: promo.code,
             label: promo.label,
             type: promo.type,
-            value: Number(promo.value),
+            value,
             minAmount: promo.minAmount != null ? Number(promo.minAmount) : null,
             discount,
             finalAmount: roundMoney(paymentAmount - discount),

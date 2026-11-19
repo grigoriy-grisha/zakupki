@@ -131,7 +131,7 @@ export interface PaymentRef {
     providerPaymentId?: string | null;
     /** Строка возврата: ссылается на исходную оплату, сумма отрицательная. */
     refundOfId?: number | null;
-    refunds?: { amount: unknown; status: string }[];
+    refunds?: { amount: unknown; status: string; children?: { amount: unknown }[] }[];
     user?: UserBrief;
     children?: { amount: unknown; promoCode: { code: string } | null }[];
 }

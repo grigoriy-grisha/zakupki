@@ -192,6 +192,12 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
     }
 
     const selectedPayment = data.payments.find((p) => p.id === selectedPaymentId) ?? null;
+    const selectedOverpaid = (() => {
+        if (!selectedPayment) return 0;
+        const uid = selectedPayment.userId;
+        const due = (data.userOrders.get(uid) ?? []).reduce((sum, o) => sum + safeNumber(o.amountDue), 0);
+        return Math.max(0, Math.round(((data.paidByUser.get(uid) ?? 0) - due) * 100) / 100);
+    })();
 
     const totalPages = Math.max(1, Math.ceil(filteredUserIds.length / PARTICIPANTS_PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -407,6 +413,7 @@ export function AdminParticipantsList({ purchaseId }: AdminParticipantsListProps
                         if (!open) setSelectedPaymentId(null);
                     }}
                     purchaseId={purchaseId}
+                    overpaid={selectedOverpaid}
                 />
             )}
 

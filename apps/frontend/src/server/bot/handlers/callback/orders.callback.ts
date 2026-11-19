@@ -8,6 +8,7 @@ import {
     type OrderLinePriceBreakdown,
     PURCHASE_FULFILLMENT_LABELS,
     type PurchaseFulfillmentStatus,
+    roundMoney,
     toOrderLinesVO,
 } from '@zakupki/types';
 import { InlineKeyboard } from 'grammy';
@@ -140,7 +141,10 @@ function formatOrderBreakdown(
         priceInfo: BotOrderLinePriceInfo | null;
     }[],
 ): string | null {
-    const breakdowns = groups.map((g) => computeGroupBreakdown(g));
+    // Отменённые строки (ничего не заказано и не к оплате) в сумму не входят — раньше из-за них
+    // расшифровка всего заказа пропадала.
+    const live = groups.filter((g) => g.totalAmount > 0 || g.qty > 0 || g.packs > 0);
+    const breakdowns = live.map((g) => computeGroupBreakdown(g));
     if (breakdowns.length === 0 || breakdowns.some((b) => b == null)) return null;
     const total = breakdowns.reduce(
         (acc, b) => ({
@@ -151,9 +155,9 @@ function formatOrderBreakdown(
         { baseRub: 0, orgFeeRub: 0, deliveryRub: 0 },
     );
     return (
-        `<i>товар ${total.baseRub.toLocaleString('ru-RU')} ₽ · ` +
-        `оргсбор ${total.orgFeeRub.toLocaleString('ru-RU')} ₽ · ` +
-        `доставка ${total.deliveryRub.toLocaleString('ru-RU')} ₽</i>`
+        `<i>товар ${roundMoney(total.baseRub).toLocaleString('ru-RU')} ₽ · ` +
+        `оргсбор ${roundMoney(total.orgFeeRub).toLocaleString('ru-RU')} ₽ · ` +
+        `доставка ${roundMoney(total.deliveryRub).toLocaleString('ru-RU')} ₽</i>`
     );
 }
 

@@ -58,6 +58,8 @@ export type TbankInitRequest = {
     /** Формат YYYY-MM-DDTHH:MM:SS+03:00. */
     RedirectDueDate?: string;
     PayType?: 'O' | 'T';
+    /** Язык платёжной формы банка: без него форма открывалась на языке браузера (английском). */
+    Language?: 'ru' | 'en';
     DATA?: Record<string, string>;
     Receipt?: TbankReceipt;
 };

@@ -92,3 +92,28 @@ describe('formatPurchaseDetail', () => {
         expect(skippedAmount).toBe(skippedCount * 500);
     });
 });
+
+describe('formatPurchaseDetail: breakdown with a cancelled line', () => {
+    const priceInfo = {
+        pricePerPackCurrency: 100,
+        rateToRub: 1,
+        packSize: 10,
+        packDiscountPercent: 0,
+        orgFeePercent: 10,
+        deliveryPercent: 0,
+    };
+
+    it('keeps the order breakdown when one of the lines was cancelled', () => {
+        const detail: BotPurchaseOrderDetail = {
+            purchaseOrderId: 42,
+            tag: 'СЗ10_ТЕСТ',
+            totalDue: 110,
+            lines: [
+                makeLine(1, { amountDue: 110, priceInfo }),
+                makeLine(2, { quantity: 0, amountDue: 0, status: 'CANCELLED', priceInfo }),
+            ],
+        };
+        const text = formatPurchaseDetail(detail, 5, null, 'REORDER').replace(/\u00a0/g, ' ');
+        expect(text).toMatch(/<i>товар [\d ,]+ ₽ · оргсбор [\d ,]+ ₽ · доставка/);
+    });
+});

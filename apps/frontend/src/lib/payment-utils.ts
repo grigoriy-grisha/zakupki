@@ -12,6 +12,46 @@ export function isLiveAwaiting(p: { status: string; expiresAt?: Date | string | 
     return p.status === 'AWAITING' && (!p.expiresAt || new Date(p.expiresAt).getTime() > now);
 }
 
+export type RefundDiscountInput = {
+    /** Сколько клиент заплатил деньгами по оплате (без скидки). */
+    paid: number;
+    /** Скидка по промокоду, которая была в этой оплате. */
+    discount: number;
+    /** Сколько денег по оплате уже вернули раньше. */
+    refundedBefore: number;
+    /** Сколько скидки уже отменили прошлыми возвратами. */
+    discountReversedBefore: number;
+};
+
+/**
+ * Какая часть скидки по промокоду отменяется вместе с возвратом: доля скидки пропорционально
+ * возвращённым деньгам, при полном возврате — вся оставшаяся скидка. Одна формула для сервера
+ * и окна возврата в админке.
+ */
+export function computeRefundDiscountShare(p: RefundDiscountInput & { amount: number }): number {
+    const discountLeft = roundMoney(p.discount - p.discountReversedBefore);
+    if (discountLeft <= 0 || p.paid <= 0 || p.amount <= 0) return 0;
+    const isFull = Math.round((p.refundedBefore + p.amount) * 100) >= Math.round(p.paid * 100);
+    if (isFull) return discountLeft;
+    return Math.max(0, Math.min(discountLeft, roundMoney((p.discount * p.amount) / p.paid)));
+}
+
+/**
+ * Сколько вернуть деньгами, чтобы снять переплату и не создать долг. Вместе с возвратом
+ * отменяется доля скидки, поэтому «вернуть всю переплату» оставляло клиенту ложный долг:
+ * переплата 400 ₽ при скидке 10% — вернуть нужно 360 ₽, а не 400.
+ */
+export function refundForOverpayment(p: RefundDiscountInput & { overpaid: number; maxRefund: number }): number {
+    if (p.overpaid <= 0 || p.maxRefund <= 0) return 0;
+    const costOf = (r: number) => r + computeRefundDiscountShare({ ...p, amount: r });
+    const fits = (r: number) => Math.round(costOf(r) * 100) <= Math.round(p.overpaid * 100);
+    const discountLeft = Math.max(0, p.discount - p.discountReversedBefore);
+    let r = Math.min(p.maxRefund, roundMoney((p.overpaid * p.paid) / (p.paid + (discountLeft > 0 ? p.discount : 0))));
+    while (r > 0 && !fits(r)) r = roundMoney(r - 0.01);
+    while (r + 0.01 <= p.maxRefund + 1e-9 && fits(roundMoney(r + 0.01))) r = roundMoney(r + 0.01);
+    return Math.max(0, r);
+}
+
 type PaymentLike = {
     amount: unknown;
     method?: string | null;

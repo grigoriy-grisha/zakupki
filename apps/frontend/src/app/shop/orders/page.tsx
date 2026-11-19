@@ -370,8 +370,10 @@ function findAwaitingPayment(payments: ShopPaymentView[]): { paymentUrl: string;
 export default function OrdersPage() {
     const router = useAppRouter();
     const [tab, setTab] = useState<OrdersTab>('active');
-    const { data: myOrders, isLoading } = trpc.orders.getMyOrders.useQuery();
-    const { data: myPayments } = trpc.payments.getMyPayments.useQuery();
+    // Возврат, подтверждение оплаты или пересчёт делает админ — когда клиент возвращается
+    // на вкладку, подтягиваем свежие данные, иначе он видел старый список оплат без возврата.
+    const { data: myOrders, isLoading } = trpc.orders.getMyOrders.useQuery(undefined, { refetchOnWindowFocus: true });
+    const { data: myPayments } = trpc.payments.getMyPayments.useQuery(undefined, { refetchOnWindowFocus: true });
     useOnlinePaymentSync((myPayments ?? []).some((p) => isLiveAwaiting(p)));
     usePaymentReturnToast();
 

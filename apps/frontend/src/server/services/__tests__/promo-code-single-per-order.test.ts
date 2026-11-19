@@ -94,3 +94,31 @@ describe('PromoCodeService: minimum order amount', () => {
         });
     });
 });
+
+describe('PromoCodeService: fixed code budget and percent cap', () => {
+    const fixedService = (used: number) => {
+        const repo = { findByCode: async () => CODES.FIX300 };
+        const paymentRepo = { findPinnedPromo: async () => CODES.FIX300, getPromoDiscountUsed: async () => used };
+        return new PromoCodeService(repo as never, paymentRepo as never);
+    };
+
+    it('re-entering a used-up fixed code is rejected instead of showing a discount', async () => {
+        await expect(fixedService(300).validate('FIX300', 5, 900, 1, 500)).rejects.toThrow(
+            'уже использована полностью',
+        );
+    });
+
+    it('re-entering a partly used fixed code shows only the remaining discount', async () => {
+        await expect(fixedService(200).validate('FIX300', 5, 900, 1, 500)).resolves.toMatchObject({
+            value: 100,
+            discount: 100,
+            finalAmount: 400,
+        });
+    });
+
+    it('a percent code above 100% cannot be created', async () => {
+        const service = new PromoCodeService({ create: async () => ({}) } as never, {} as never);
+        await expect(service.create({ code: 'X', type: 'PERCENT', value: 150 })).rejects.toThrow('больше 100%');
+        await expect(service.create({ code: 'Y', type: 'FIXED', value: 150 })).resolves.toEqual({});
+    });
+});

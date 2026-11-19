@@ -126,7 +126,7 @@ describe('renderNotificationBody', () => {
             adminNote: 'Зачислено',
         });
         expect(body).toContain('#SUMMER2026');
-        expect(body).toContain('1500 ₽');
+        expect(body).toContain('1 500 ₽');
         expect(body).toContain('Зачислено');
     });
 
@@ -148,7 +148,7 @@ describe('renderNotificationBody', () => {
             adminNote: 'Не хватает чека',
         });
         expect(body).toContain('отклонена');
-        expect(body).toContain('999.50 ₽');
+        expect(body).toContain('999,50 ₽');
         expect(body).toContain('Причина');
         expect(body).toContain('Не хватает чека');
     });
@@ -280,7 +280,7 @@ describe('renderNotificationTelegramBody', () => {
             amount: 1500,
             adminNote: 'Зачислено',
         });
-        expect(body).toContain('<b>Сумма:</b> 1500 ₽');
+        expect(body).toContain('<b>Сумма:</b> 1 500 ₽');
         expect(body).toContain('<b>Комментарий:</b> Зачислено');
     });
 
@@ -293,7 +293,7 @@ describe('renderNotificationTelegramBody', () => {
         });
         expect(body).toContain('<b>Причина:</b>');
         expect(body).not.toContain('Комментарий');
-        expect(body).toContain('999.50 ₽');
+        expect(body).toContain('999,50 ₽');
     });
 
     it('shows Было + Стало rows for ORDER_QTY_CHANGED when prevQty is present', () => {
@@ -535,7 +535,7 @@ describe('getNotificationFields', () => {
         });
         expect(fields).toEqual([
             { label: 'Закупка', value: '#X' },
-            { label: 'Сумма', value: '1500 ₽' },
+            { label: 'Сумма', value: '1 500 ₽' },
             { label: 'Комментарий', value: 'Ок' },
         ]);
     });

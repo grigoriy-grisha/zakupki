@@ -294,8 +294,13 @@ export function renderNotificationUrl<T extends NotificationType>(
 }
 
 function formatAmount(amount: number): string {
-    // Money: integer rubles render without decimals, fractional with 2 places.
-    return amount % 1 === 0 ? `${amount} ₽` : `${amount.toFixed(2)} ₽`;
+    // Целые рубли — без копеек, иначе два знака; разряды по-русски: «32 963,14 ₽», а не «32963.14 ₽».
+    const whole = Math.round(amount * 100) % 100 === 0;
+    const text = amount.toLocaleString('ru-RU', {
+        minimumFractionDigits: whole ? 0 : 2,
+        maximumFractionDigits: whole ? 0 : 2,
+    });
+    return `${text} ₽`;
 }
 
 /**

@@ -259,6 +259,7 @@ export class OnlinePaymentService {
                 FailURL: params.returnUrl ?? `${resultUrl}&payment=fail`,
                 RedirectDueDate: formatTbankDate(expiresAt),
                 PayType: 'O',
+                Language: 'ru',
                 DATA: {
                     paymentId: String(created.id),
                     purchaseId: String(params.purchaseId),

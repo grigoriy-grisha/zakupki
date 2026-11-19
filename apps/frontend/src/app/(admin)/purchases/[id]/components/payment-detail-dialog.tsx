@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRub } from '@/lib/format/money';
-import { describePayment } from '@/lib/payment-utils';
+import { computeRefundDiscountShare, describePayment, refundForOverpayment } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS, REFUND_BADGE } from '../../../lib/constants';
@@ -23,9 +23,17 @@ interface PaymentDetailDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     purchaseId: number;
+    /** Переплата участника по закупке (оплачено − к оплате), если есть. */
+    overpaid?: number;
 }
 
-export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }: PaymentDetailDialogProps) {
+export function PaymentDetailDialog({
+    payment,
+    open,
+    onOpenChange,
+    purchaseId,
+    overpaid = 0,
+}: PaymentDetailDialogProps) {
     const status = payment.status;
     const { isRefund, total: totalAmount, promoAmount: childAmount, promoCode } = describePayment(payment);
     const cfg = isRefund ? REFUND_BADGE : (PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING);
@@ -195,7 +203,7 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
                     )}
 
                     {isOnline && !isRefund && status === 'CONFIRMED' && (
-                        <RefundSection payment={payment} purchaseId={purchaseId} />
+                        <RefundSection payment={payment} purchaseId={purchaseId} overpaid={overpaid} />
                     )}
 
                     {!isOnline && !showReject && (
@@ -274,11 +282,30 @@ export function PaymentDetailDialog({ payment, open, onOpenChange, purchaseId }:
     );
 }
 
-function RefundSection({ payment, purchaseId }: { payment: PaymentRef; purchaseId: number }) {
-    const refunded = (payment.refunds ?? [])
-        .filter((r) => r.status === 'CONFIRMED')
-        .reduce((sum, r) => sum - Number(r.amount), 0);
+function RefundSection({
+    payment,
+    purchaseId,
+    overpaid,
+}: {
+    payment: PaymentRef;
+    purchaseId: number;
+    overpaid: number;
+}) {
+    const confirmedRefunds = (payment.refunds ?? []).filter((r) => r.status === 'CONFIRMED');
+    const refunded = confirmedRefunds.reduce((sum, r) => sum - Number(r.amount), 0);
     const maxRefund = Math.max(0, Math.round((Number(payment.amount) - refunded) * 100) / 100);
+    // Вместе с деньгами отменяется доля скидки по промокоду — её показываем заранее,
+    // иначе «вернуть всю переплату» оставляло клиенту неожиданный долг.
+    const discountInput = {
+        paid: Number(payment.amount),
+        discount: (payment.children ?? []).reduce((sum, c) => sum + Number(c.amount), 0),
+        refundedBefore: refunded,
+        discountReversedBefore: -confirmedRefunds.reduce(
+            (sum, r) => sum + (r.children ?? []).reduce((a, c) => a + Number(c.amount), 0),
+            0,
+        ),
+    };
+    const overpaidRefund = refundForOverpayment({ ...discountInput, overpaid, maxRefund });
 
     const [open, setOpen] = useState(false);
     const [amountStr, setAmountStr] = useState('');
@@ -292,6 +319,7 @@ function RefundSection({ payment, purchaseId }: { payment: PaymentRef; purchaseI
         amount > 0 &&
         Number.isInteger(Math.round(amount * 1e6) / 1e4) &&
         Math.round(amount * 100) <= Math.round(maxRefund * 100);
+    const discountShare = amountValid ? computeRefundDiscountShare({ ...discountInput, amount }) : 0;
 
     if (maxRefund <= 0) {
         return (
@@ -311,7 +339,7 @@ function RefundSection({ payment, purchaseId }: { payment: PaymentRef; purchaseI
                     variant="outline"
                     className="w-full gap-2"
                     onClick={() => {
-                        setAmountStr(String(maxRefund));
+                        setAmountStr(String(overpaidRefund > 0 ? overpaidRefund : maxRefund));
                         setOpen(true);
                     }}
                 >
@@ -340,6 +368,21 @@ function RefundSection({ payment, purchaseId }: { payment: PaymentRef; purchaseI
                     Можно до {formatRub(maxRefund)}. Деньги вернутся на карту клиента за несколько дней. Комиссия банка
                     не возвращается.
                 </p>
+                {overpaidRefund > 0 && (
+                    <button
+                        type="button"
+                        className="text-12-regular text-primary underline-offset-2 hover:underline"
+                        onClick={() => setAmountStr(String(overpaidRefund))}
+                    >
+                        Вернуть только переплату: {formatRub(overpaidRefund)}
+                    </button>
+                )}
+                {discountShare > 0 && (
+                    <p className="text-12-regular text-warning">
+                        Вместе с возвратом отменится скидка по промокоду: {formatRub(discountShare)}. Долг клиента
+                        вырастет на эту сумму.
+                    </p>
+                )}
             </div>
             <div className="space-y-2">
                 <Label htmlFor="refund-reason">Причина (увидит клиент)</Label>
