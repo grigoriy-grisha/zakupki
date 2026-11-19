@@ -77,7 +77,7 @@ export class BotPaymentService {
         const purchases =
             purchaseIds.length > 0
                 ? await dbClient.purchase.findMany({
-                      where: { id: { in: purchaseIds } },
+                      where: { id: { in: purchaseIds }, deletedAt: null },
                       select: { id: true, fulfillmentStatus: true },
                   })
                 : [];
@@ -114,8 +114,9 @@ export class BotPaymentService {
         code: string,
         purchaseId: number,
         orderAmount: number,
+        userId?: number,
     ): Promise<{ id: number; code: string; label: string | null; discount: number; finalAmount: number }> {
-        return this.promoCodeService.validate(code.toUpperCase().trim(), purchaseId, orderAmount);
+        return this.promoCodeService.validate(code.toUpperCase().trim(), purchaseId, orderAmount, userId);
     }
 
     /** Промокод, закреплённый за заказом прошлой оплатой (для авто-применения в боте). */

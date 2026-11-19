@@ -79,8 +79,9 @@ export class BotPaymentService {
         code: string,
         purchaseId: number,
         orderAmount: number,
+        userId?: number,
     ): Promise<{ id: number; code: string; label: string | null; discount: number; finalAmount: number }> {
-        return serviceContainer.botPayment.validatePromoCode(code, purchaseId, orderAmount);
+        return serviceContainer.botPayment.validatePromoCode(code, purchaseId, orderAmount, userId);
     }
 
     /** Промокод, закреплённый за заказом прошлой оплатой. */

@@ -126,9 +126,12 @@ export class PurchaseRepository {
         });
     }
 
-    /** Этап и тег закупки — для приёма онлайн-оплаты и текста чека. */
+    /** Этап и тег закупки — для приёма онлайн-оплаты и текста чека. deletedAt — удалённую не оплачивают. */
     findPaymentInfo(id: number) {
-        return dbClient.purchase.findUnique({ where: { id }, select: { fulfillmentStatus: true, tag: true } });
+        return dbClient.purchase.findUnique({
+            where: { id },
+            select: { fulfillmentStatus: true, tag: true, deletedAt: true },
+        });
     }
 
     findByTag(tag: string) {
@@ -221,7 +224,8 @@ export class PurchaseRepository {
                 await tx.payment.deleteMany({ where: { purchaseId: id } });
             }
 
-            await tx.promoCode.updateMany({ where: { purchaseId: id }, data: { purchaseId: null } });
+            // Промокоды закупки выключаем: без привязки к закупке они бы начали действовать на все закупки.
+            await tx.promoCode.updateMany({ where: { purchaseId: id }, data: { purchaseId: null, isActive: false } });
             await tx.purchaseOrder.deleteMany({ where: { purchaseId: id } });
             return tx.purchase.delete({ where: { id } });
         });
@@ -429,7 +433,8 @@ export class PurchaseRepository {
                 supplierLimit: true,
                 supplierLimitUnit: true,
                 product: { select: { unitCode: true } },
-                purchase: { select: { status: true } },
+                purchase: { select: { status: true, currencyRates: { select: { currencyId: true } } } },
+                _count: { select: { orderLines: { where: { status: 'ACTIVE' } } } },
             },
         });
     }

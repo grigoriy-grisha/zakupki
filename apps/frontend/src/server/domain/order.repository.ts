@@ -310,7 +310,8 @@ export class OrderRepository {
 
     async getByUser(userId: number) {
         return dbClient.orderLine.findMany({
-            where: { userId, status: 'ACTIVE' },
+            // Заказы удалённых закупок клиенту не показываем: оплатить их уже нельзя.
+            where: { userId, status: 'ACTIVE', purchaseItem: { purchase: { deletedAt: null } } },
             include: {
                 purchaseItem: {
                     include: {

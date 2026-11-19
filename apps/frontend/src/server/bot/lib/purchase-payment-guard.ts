@@ -16,9 +16,10 @@ export class PurchasePaymentGuard {
     async isOpenById(purchaseId: number): Promise<boolean> {
         const purchase = await this.db.purchase.findUnique({
             where: { id: purchaseId },
-            select: { fulfillmentStatus: true },
+            select: { fulfillmentStatus: true, deletedAt: true },
         });
-        return isPurchasePaymentOpen(purchase?.fulfillmentStatus);
+        if (!purchase || purchase.deletedAt) return false;
+        return isPurchasePaymentOpen(purchase.fulfillmentStatus);
     }
 
     /** Удобный алиас для константы. */

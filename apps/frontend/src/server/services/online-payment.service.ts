@@ -108,6 +108,14 @@ export function normalizeReceiptContact(raw: string | null | undefined): { email
     return { email: value.toLowerCase() };
 }
 
+/** Пометка к отклонённой оплате: с кодом отказа банка, если он его прислал («0» — не ошибка). */
+export function failedPaymentNote(failure?: { code?: string; message?: string }): string {
+    const code = failure?.code?.trim();
+    if (!code || code === '0') return 'Оплата не прошла';
+    const message = failure?.message?.trim();
+    return `Оплата не прошла (код банка ${code}${message ? `: ${message}` : ''})`;
+}
+
 /**
  * Онлайн-оплата заказов через интернет-эквайринг Т-Банка.
  *
@@ -159,7 +167,8 @@ export class OnlinePaymentService {
         const config = await this.getConfig();
 
         const purchase = await this.purchases.findPaymentInfo(params.purchaseId);
-        if (!purchase || !isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
+        // Удалённая закупка скрыта из магазина и бота — оплату по ней тоже не принимаем.
+        if (!purchase || purchase.deletedAt || !isPurchasePaymentOpen(purchase.fulfillmentStatus)) {
             throw new ValidationError('Оплата по этой закупке сейчас не принимается');
         }
 
@@ -427,6 +436,12 @@ export class OnlinePaymentService {
 
         const orderId = String(body.OrderId ?? '');
         const status = String(body.Status ?? '');
+        // Код отказа банка: без него не понять, почему платёж не прошёл (карта, 3-D Secure, лимиты).
+        const failure = {
+            code: body.ErrorCode != null ? String(body.ErrorCode) : undefined,
+            message: typeof body.Message === 'string' ? body.Message : undefined,
+        };
+        log.info({ orderId, status, errorCode: failure.code, message: failure.message }, 'tbank notification');
         const payment = await this.repo.findByProviderOrderId(orderId);
         if (!payment) {
             log.warn({ orderId, status }, 'tbank notification: unknown order');
@@ -447,7 +462,7 @@ export class OnlinePaymentService {
             return true;
         }
 
-        await this.applyProviderStatus(payment, status);
+        await this.applyProviderStatus(payment, status, failure);
         return true;
     }
 
@@ -574,7 +589,11 @@ export class OnlinePaymentService {
         return 'processing';
     }
 
-    private async applyProviderStatus(payment: { id: number; status: string }, status: string): Promise<void> {
+    private async applyProviderStatus(
+        payment: { id: number; status: string },
+        status: string,
+        failure?: { code?: string; message?: string },
+    ): Promise<void> {
         if (TBANK_PAID_STATUSES.has(status)) {
             const updated = await this.repo.transition(
                 payment.id,
@@ -594,7 +613,7 @@ export class OnlinePaymentService {
             await this.repo.transition(
                 payment.id,
                 'REJECTED',
-                { adminNote: 'Оплата не прошла', providerStatus: status },
+                { adminNote: failedPaymentNote(failure), providerStatus: status },
                 ['AWAITING'],
             );
             return;

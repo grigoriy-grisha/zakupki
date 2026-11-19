@@ -36,9 +36,12 @@ export class PromoCodeService {
         return this.repo.list();
     }
 
-    async validate(code: string, purchaseId: number, orderAmount: number) {
+    async validate(code: string, purchaseId: number, orderAmount: number, userId?: number) {
         const promo = await this.repo.findByCode(code);
         if (!promo) throw new NotFoundError('Промокод');
+        if (userId != null) {
+            this.assertNotSecondPromo(await this.paymentRepo.findPinnedPromo(userId, purchaseId), promo.id);
+        }
         this.assertUsable(promo, purchaseId, orderAmount);
 
         const discount = computePromoDiscount(promo.type as PromoCodeType, Number(promo.value), orderAmount);
@@ -79,6 +82,7 @@ export class PromoCodeService {
         if (params.code) {
             promo = await this.repo.findByCode(params.code.toUpperCase().trim());
             if (!promo) throw new NotFoundError('Промокод');
+            this.assertNotSecondPromo(pinned, promo.id);
         } else {
             promo = pinned;
             if (!promo) return null;
@@ -103,6 +107,18 @@ export class PromoCodeService {
         if (discount <= 0) return null;
 
         return { promoCodeId: promo.id, discountAmount: discount };
+    }
+
+    /**
+     * На один заказ — один промокод. Без этой проверки после израсходованного фиксированного кода
+     * (поле промокода снова видно) клиент вводил второй и получал ещё одну скидку.
+     */
+    private assertNotSecondPromo(pinned: { id: number; code: string } | null, promoId: number) {
+        if (pinned && pinned.id !== promoId) {
+            throw new ValidationError(
+                `К заказу уже применён промокод ${pinned.code}. Второй промокод к этому заказу добавить нельзя`,
+            );
+        }
     }
 
     private assertUsable(

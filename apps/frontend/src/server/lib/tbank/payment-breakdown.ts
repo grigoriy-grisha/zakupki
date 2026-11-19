@@ -40,8 +40,9 @@ export function formatReceiptRub(value: number): string {
         minimumFractionDigits: value % 1 === 0 ? 0 : 2,
         maximumFractionDigits: 2,
     });
-    // Узкие неразрывные пробелы из toLocaleString банк может показать квадратиками.
-    return `${text.replace(/[\u00a0\u202f]/g, ' ')} ₽`;
+    // Узкие неразрывные пробелы из toLocaleString банк может показать квадратиками, а знак «₽»
+    // в письмах Т-Банка превращается в «?» — пишем «руб.», как сам банк.
+    return `${text.replace(/[\u00a0\u202f]/g, ' ')} руб.`;
 }
 
 /**
@@ -96,6 +97,15 @@ export function buildPaymentBreakdown(params: {
         { kind: 'delivery', name: 'Доставка от поставщика', amount: deliveryRaw },
         { kind: 'org', name: 'Организационный сбор', amount: orgRaw },
     ];
+    // Расшифровка может дать минус (копейки округления цены за грамм, сменённый оргсбор).
+    // Позицию с минусом банк не примет, а если её выбросить — сумма чека разойдётся с оплатой.
+    // Переносим минус в самую крупную позицию: общая сумма не меняется.
+    const negative = raw.reduce((s, i) => s + Math.min(0, i.amount), 0);
+    if (negative < 0) {
+        for (const i of raw) if (i.amount < 0) i.amount = 0;
+        const largest = raw.reduce((best, i) => (i.amount > best.amount ? i : best), raw[0]);
+        largest.amount += negative;
+    }
     const rawSum = raw.reduce((s, i) => s + i.amount, 0);
     const factor = rawSum > 0 ? net / rawSum : 0;
     const scaled = raw.map((i) => ({ ...i, amount: roundMoney(i.amount * factor) }));

@@ -41,7 +41,12 @@ export class PaymentPromoHandler implements MessageHandler {
         const amount = current.amount!;
         let promo;
         try {
-            promo = await this.container.paymentService.validatePromoCode(text, current.purchaseId, amount);
+            promo = await this.container.paymentService.validatePromoCode(
+                text,
+                current.purchaseId,
+                amount,
+                ctx.session.userId ?? undefined,
+            );
         } catch (err) {
             const msg = userErrorMessage(err, 'Не удалось проверить промокод');
             const keyboard = new InlineKeyboard()

@@ -4,6 +4,7 @@ import {
     applyPieceUnitInvariants,
     canAddItemsAtStage,
     computeAmountDueWithPackages,
+    computeUnitPriceRubNewModel,
     isPieceUnit,
     mapToPurchaseItem,
     NotFoundError,
@@ -163,11 +164,7 @@ export class PurchaseService {
 
         const sync = await this.tryDeleteChannelPost(item.tgChannelId, item.tgMessageId);
         if (!sync.attempted || sync.warning) {
-            await this.telegramPublish.enqueueDeleteChannelPost(
-                purchaseItemId,
-                item.tgMessageId,
-                item.tgChannelId,
-            );
+            await this.telegramPublish.enqueueDeleteChannelPost(purchaseItemId, item.tgMessageId, item.tgChannelId);
         }
 
         await this.repo.updatePurchaseItem(purchaseItemId, {
@@ -249,6 +246,15 @@ export class PurchaseService {
         if (pricingChanged && item.purchase?.status === 'DONE') {
             throw new ValidationError('В завершённой закупке нельзя менять цены');
         }
+        // Валюта без курса в закупке: суммы уже сделанных заказов стало бы не из чего посчитать.
+        const nextCurrencyId = itemUpdate.currencyId;
+        if (
+            typeof nextCurrencyId === 'number' &&
+            item._count.orderLines > 0 &&
+            !(item.purchase?.currencyRates ?? []).some((r) => r.currencyId === nextCurrencyId)
+        ) {
+            throw new ValidationError('Сначала задайте курс этой валюты в закупке: по товару уже есть заказы');
+        }
 
         if (typeof nextUnitCode === 'string' && nextUnitCode !== item.product.unitCode) {
             await this.productRepo.update(item.productId, { unitCode: nextUnitCode });
@@ -319,9 +325,7 @@ export class PurchaseService {
         }
         if (!canAddItemsAtStage(purchase.fulfillmentStatus)) {
             const stage = (purchase.fulfillmentStatus ?? 'COLLECTION') as PurchaseFulfillmentStatus;
-            throw new ValidationError(
-                `На этапе «${PURCHASE_FULFILLMENT_LABELS[stage]}» добавление товаров недоступно`,
-            );
+            throw new ValidationError(`На этапе «${PURCHASE_FULFILLMENT_LABELS[stage]}» добавление товаров недоступно`);
         }
 
         if (items.length === 0) {
@@ -346,9 +350,7 @@ export class PurchaseService {
 
         const toCreate = uniqueConfigs.filter((c) => !existingSet.has(`${c.productId}::${c.supplierId ?? ''}`));
 
-        const productUnits = await this.repo.getProductUnitCodes(
-            Array.from(new Set(toCreate.map((c) => c.productId))),
-        );
+        const productUnits = await this.repo.getProductUnitCodes(Array.from(new Set(toCreate.map((c) => c.productId))));
         const unitByProduct = new Map(productUnits.map((p) => [p.id, p.unitCode]));
 
         const created = [];
@@ -403,11 +405,7 @@ export class PurchaseService {
             const sync = await this.tryDeleteChannelPost(item.tgChannelId, item.tgMessageId);
             postWarning = sync.warning;
             if (!sync.attempted || sync.warning) {
-                await this.telegramPublish.enqueueDeleteChannelPost(
-                    id,
-                    item.tgMessageId,
-                    item.tgChannelId,
-                );
+                await this.telegramPublish.enqueueDeleteChannelPost(id, item.tgMessageId, item.tgChannelId);
             }
         }
 
@@ -427,9 +425,7 @@ export class PurchaseService {
                                 productLabel: label.productLabel,
                             },
                         })
-                        .catch((err) =>
-                            log.warn({ purchaseItemId: id, userId, err }, 'failed to notify item removal'),
-                        ),
+                        .catch((err) => log.warn({ purchaseItemId: id, userId, err }, 'failed to notify item removal')),
                 ),
             );
         }
@@ -490,6 +486,13 @@ export class PurchaseService {
                     deliveryPercent: Number(purchase.deliveryPercent ?? 0),
                 },
             );
+            // Нет цены или курса — сумму не посчитать: оставляем записанную, а не обнуляем заказы.
+            if (computeUnitPriceRubNewModel(domainItem) == null) {
+                if (item.orderLines.some((l) => l.status === 'ACTIVE')) {
+                    log.warn({ purchaseId, itemId: item.id }, 'recalc skipped: item has no price or currency rate');
+                }
+                continue;
+            }
             let touched = false;
             for (const line of item.orderLines) {
                 if (line.status !== 'ACTIVE') continue;
@@ -569,6 +572,17 @@ export class PurchaseService {
         if (!purchase) throw new NotFoundError('Закупка', purchaseId);
         if (purchase.status === 'DONE') {
             throw new ValidationError('В завершённой закупке нельзя менять курсы и доставку');
+        }
+        // Без курса суммы заказов в этой валюте не посчитать — раньше пересчёт обнулял их у всех участников.
+        const ratedIds = new Set(rates.map((r) => r.currencyId));
+        const missing = new Set<string>();
+        for (const item of purchase.items) {
+            if (item.currencyId == null || ratedIds.has(item.currencyId)) continue;
+            if (!item.orderLines.some((l) => l.status === 'ACTIVE')) continue;
+            missing.add(item.currency?.name ?? `#${item.currencyId}`);
+        }
+        if (missing.size > 0) {
+            throw new ValidationError(`Нельзя убрать курс: в закупке есть заказы в валюте ${[...missing].join(', ')}`);
         }
         log.info(
             {

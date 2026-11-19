@@ -57,6 +57,7 @@ export const promoCodesRouter = router({
                 input.code.toUpperCase().trim(),
                 input.purchaseId,
                 input.orderAmount,
+                ctx.userId,
             );
         }),
 });
