@@ -117,7 +117,7 @@ export function ShopSidebar({ className }: ShopSidebarProps) {
                 />
             </div>
             {/* Скролл тонкий, виден только при наведении и стоит в стороне от линии-ручки. */}
-            <div className="mr-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-10 pt-8 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:var(--color-border)_transparent] sm:pt-10">
+            <div className="mr-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto pb-10 pl-5 pr-2.5 pt-8 [scrollbar-color:transparent_transparent] [scrollbar-width:thin] hover:[scrollbar-color:var(--color-border)_transparent] sm:pt-10">
                 <div>
                     {isLoading ? (
                         <div className="space-y-4">
