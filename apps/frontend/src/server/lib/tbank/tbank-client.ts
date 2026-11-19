@@ -63,7 +63,11 @@ export class TbankClient {
 
     /** Ссылка СБП (qr.nspk.ru) для платежа — открывает выбор банка на телефоне. */
     getSbpPayload(paymentId: string): Promise<TbankGetQrResponse> {
-        return this.call<TbankGetQrResponse>('GetQr', { PaymentId: paymentId, DataType: 'PAYLOAD' });
+        return this.call<TbankGetQrResponse>('GetQr', {
+            PaymentId: paymentId,
+            DataType: 'PAYLOAD',
+            PaymentMethod: 'SBP',
+        });
     }
 
     cancel(paymentId: string): Promise<TbankGetStateResponse> {
